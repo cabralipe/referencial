@@ -95,8 +95,10 @@ CHANNEL_LAYERS = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': env.db(),  # lê DATABASE_URL
+    'default': env.db('REFERENCIAL_DATABASE_URL')
 }
+DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
+
 
 
 
