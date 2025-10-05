@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: 'Arial', sans-serif; margin: 2cm; }
+    header { border-bottom: 2px solid {{ tema.cor_primaria|default:'#004aad' }}; margin-bottom: 20px; }
+    footer { border-top: 1px solid {{ tema.cor_secundaria|default:'#00b4d8' }}; margin-top: 30px; font-size: 10px; color: #999; }
+    h1, h2, h3 { color: {{ tema.cor_primaria|default:'#004aad' }}; }
+    ul.anexos { list-style: square; }
+  </style>
+</head>
+<body>
+  <header>
+    {% if tema.logo_url %}
+      <img src="{{ tema.logo_url }}" alt="Logo" height="60" />
+    {% endif %}
+    <h1>{{ titulo }}</h1>
+  </header>
+  <main>
+    {{ conteudo_html|safe }}
+  </main>
+  <footer>
+    {{ tema.rodape_html|safe }}
+  </footer>
+</body>
+</html>
