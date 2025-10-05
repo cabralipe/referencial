@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from rest_framework.exceptions import PermissionDenied
+
 from .models import Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
 
 
@@ -57,3 +59,23 @@ def obter_config(cliente: Cliente, chave: str, default: Optional[str] = None) ->
     if registro:
         return registro.valor_texto
     return default
+
+
+def flag_ativa(cliente: Cliente, flag: str) -> bool:
+    registro = ClienteFeatureFlag.raw_objects.filter(cliente=cliente, flag=flag, is_deleted=False).first()
+    return bool(registro and registro.ativo)
+
+
+def verificar_flag(request, flag: str) -> None:
+    cliente = getattr(request, "cliente_id", None)
+    if cliente is None and request.user.is_authenticated:
+        cliente = getattr(request.user, "cliente_id", None)
+    if cliente is None:
+        raise PermissionDenied("Cliente não associado")
+    from core.models import Cliente
+
+    cliente_obj = Cliente.objects.filter(pk=cliente).first()
+    if not cliente_obj:
+        raise PermissionDenied("Cliente não encontrado")
+    if not flag_ativa(cliente_obj, flag):
+        raise PermissionDenied("Funcionalidade desabilitada para este cliente")

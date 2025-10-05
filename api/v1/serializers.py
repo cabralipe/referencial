@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema
 from core.utils import coletar_contexto_do_cliente
+from comments.models import Comentario
 from curriculum.models import Anexo, Pergunta, Resposta, Tarefa, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
+from library.models import BlocoTexto, Midia
+from notifications.models import Notificacao
+from reviews.models import Revisao
 from workshop.models import CelulaQuadro, Quadro
 
 
@@ -206,6 +210,91 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "timestamp",
         )
         read_only_fields = fields
+
+
+class RevisaoSerializer(serializers.ModelSerializer):
+    etag = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Revisao
+        fields = (
+            "id",
+            "alvo_tipo",
+            "alvo_id",
+            "status",
+            "parecer_html",
+            "revisor",
+            "solicitante",
+            "created_at",
+            "updated_at",
+            "etag",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "solicitante", "etag")
+
+
+class ComentarioSerializer(serializers.ModelSerializer):
+    etag = serializers.CharField(read_only=True)
+    mentions = serializers.ListField(child=serializers.IntegerField(), required=False, allow_empty=True, write_only=True)
+    mentions_ids = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Comentario
+        fields = (
+            "id",
+            "alvo_tipo",
+            "alvo_id",
+            "anchor_json",
+            "conteudo_html",
+            "autor",
+            "resolvido",
+            "resolvido_por",
+            "resolved_at",
+            "mentions",
+            "mentions_ids",
+            "created_at",
+            "updated_at",
+            "etag",
+        )
+        read_only_fields = (
+            "id",
+            "autor",
+            "resolvido_por",
+            "resolved_at",
+            "mentions_ids",
+            "created_at",
+            "updated_at",
+            "etag",
+        )
+
+    def get_mentions_ids(self, obj):
+        return list(obj.mentions.values_list("id", flat=True))
+
+
+class NotificacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notificacao
+        fields = ("id", "tipo", "payload_json", "lida", "created_at")
+        read_only_fields = ("id", "tipo", "payload_json", "created_at")
+
+
+class MidiaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Midia
+        fields = ("id", "url", "legenda", "tags", "uploaded_by", "created_at")
+        read_only_fields = ("id", "uploaded_by", "created_at")
+
+
+class BlocoTextoSerializer(serializers.ModelSerializer):
+    etag = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = BlocoTexto
+        fields = ("id", "titulo", "conteudo_html", "tags", "created_by", "updated_at", "etag")
+        read_only_fields = ("id", "created_by", "updated_at", "etag")
+
+
+class DiffResponseSerializer(serializers.Serializer):
+    html = serializers.CharField()
 
 
 class LoginSerializer(serializers.Serializer):

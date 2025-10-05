@@ -27,7 +27,7 @@ Serviços úteis:
 - Worker Celery: `celery -A config worker -l info`
 - Celery Beat: `celery -A config beat -l info`
 
-Use `make up`, `make worker` ou `make beat` como atalhos.
+Use `make up`, `make worker`, `make sockets` ou `make beat` como atalhos.
 
 ## Variáveis de ambiente
 
@@ -59,8 +59,16 @@ Ative plugins por cliente ajustando `ClienteConfig` (`chave=export_plugin`) ou v
 - `PUT /api/v1/quadro/{id}/celula` — salva células idempotentes
 - `POST /api/v1/exports` — agenda exportações PDF/DOCX
 - `GET /api/v1/audit` — trilha de auditoria
+- `POST /api/v1/revisoes` / `PUT /api/v1/revisoes/{id}` — fluxo de revisão/aprovação com ETag
+- `POST /api/v1/comentarios` / `PUT /api/v1/comentarios/{id}` — comentários em linha, resolução e menções
+- `GET /api/v1/diff?alvo_tipo=&alvo_id=&from=&to=` — diff HTML entre versões de respostas/texto único
+- `GET /api/v1/notificacoes` / `PUT /api/v1/notificacoes/{id}/lida` — inbox in-app
+- `POST /api/v1/midias` e `POST /api/v1/blocos` — biblioteca de mídia/blocos reutilizáveis
 
 WebSockets disponíveis em `/ws/presence/{docType}/{id}` para presença/locks leves.
+Streams adicionais:
+- `/ws/stream/{alvo_tipo}/{alvo_id}` para eventos de comentários e revisões
+- `/ws/notifications/` para notificações em tempo real por usuário
 
 ## Testes e QA
 
@@ -70,6 +78,18 @@ ruff check .
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) executa lint, checks, migrations e testes com cobertura mínima recomendada (80%).
+
+## Feature flags
+
+Ative/desative funcionalidades de curto prazo via `ClienteFeatureFlag`:
+
+```
+ff.comments.enabled
+ff.reviews.enabled
+ff.diff.enabled
+ff.notifications.enabled
+ff.library.enabled
+```
 
 ## Estrutura
 

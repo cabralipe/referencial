@@ -1,4 +1,4 @@
-.PHONY: up worker beat celery flower test lint format
+.PHONY: up worker beat celery flower sockets test lint format
 
 POETRY ?= poetry
 PYTHON ?= python
@@ -16,6 +16,9 @@ beat:
 
 celery:
 	celery -A config worker -l info --beat
+
+sockets:
+	daphne -b 0.0.0.0 -p 8001 config.asgi:application
 
 test:
 	pytest --cov=.

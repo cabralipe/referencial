@@ -64,6 +64,10 @@ INSTALLED_APPS = [
     "workshop",
     "dynamicforms",
     "exports",
+    "reviews",
+    "comments",
+    "notifications",
+    "library",
     "api",
     "sockets",
     "tasks",
@@ -191,10 +195,14 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.UserRateThrottle",
         "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "user": env("DEFAULT_THROTTLE_RATES_USER"),
         "anon": env("DEFAULT_THROTTLE_RATES_ANON"),
+        "comments-write": "20/min",
+        "reviews-write": "20/min",
+        "library-write": "20/min",
     },
 }
 

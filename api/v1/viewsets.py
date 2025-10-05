@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
+from rest_framework.views import APIView
 
 from core.models import AuditLog, Cliente
 from core.permissions import (
@@ -15,9 +19,17 @@ from core.permissions import (
     IsArticuladorForGT,
     IsMemberOfGT,
 )
+from core.utils import coletar_contexto_do_cliente, verificar_flag
+from comments.models import Comentario
 from curriculum.models import Anexo, Resposta, Tarefa, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
+from library.models import BlocoTexto, Midia
+from notifications.models import Notificacao
+from notifications.services import criar_notificacao
+from reviews.models import Revisao
+from sockets.utils import broadcast_stream_event
+from diffs.services import build_diff
 from tasks.exports import enqueue_export_job
 from tasks.synthesis import enqueue_texto_unico
 from workshop.models import CelulaQuadro, Quadro
@@ -34,6 +46,12 @@ from .serializers import (
     QuadroSerializer,
     RespostaCampoDinamicoSerializer,
     RespostaSerializer,
+    RevisaoSerializer,
+    ComentarioSerializer,
+    NotificacaoSerializer,
+    MidiaSerializer,
+    BlocoTextoSerializer,
+    DiffResponseSerializer,
     TarefaSerializer,
     TextoUnicoSerializer,
 )
@@ -56,6 +74,21 @@ def _get_request_cliente_id(request) -> int:
     if cliente_id is None:
         raise ValidationError("Cliente não associado")
     return int(cliente_id)
+
+
+class FeatureFlagMixin:
+    feature_flag: str | None = None
+
+    def initial(self, request, *args, **kwargs):
+        if self.feature_flag:
+            verificar_flag(request, self.feature_flag)
+        return super().initial(request, *args, **kwargs)
+
+
+def _assert_roles(user, allowed_roles):
+    if user.role in allowed_roles or user.role == user.Role.SUPER_ADMIN:
+        return
+    raise PermissionDenied("Ação não permitida para o seu perfil")
 
 
 class ClienteViewSet(viewsets.ViewSet):
@@ -284,3 +317,278 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if entidade_id:
             queryset = queryset.filter(entidade_id=entidade_id)
         return queryset.order_by("-timestamp")
+
+
+class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
+    serializer_class = RevisaoSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ("alvo_tipo", "alvo_id", "status")
+    ordering = ("-created_at",)
+    throttle_scope = "reviews-write"
+    feature_flag = "ff.reviews.enabled"
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return Revisao.objects.filter(cliente_id=cliente_id)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        _assert_roles(user, {user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE})
+        revisao = serializer.save(
+            cliente_id=_get_request_cliente_id(self.request),
+            solicitante=user,
+        )
+        self._created_instance = revisao
+        if revisao.revisor:
+            criar_notificacao(
+                cliente_id=revisao.cliente_id,
+                usuario_id=revisao.revisor_id,
+                tipo="revisao.solicitada",
+                payload={"revisao_id": revisao.id, "status": revisao.status},
+            )
+        broadcast_stream_event(revisao.alvo_tipo, revisao.alvo_id, "review:status_changed", {
+            "revisao_id": revisao.id,
+            "status": revisao.status,
+        })
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        instance = getattr(self, "_created_instance", None)
+        if instance:
+            response["ETag"] = instance.etag
+        return response
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", True)
+        instance = self.get_object()
+        if request.user != instance.revisor:
+            _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE})
+        _check_etag(request, instance)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        old_status = instance.status
+        revisao = serializer.save()
+        if revisao.status != old_status:
+            interessados = [uid for uid in [revisao.solicitante_id, revisao.revisor_id] if uid]
+            for usuario_id in interessados:
+                criar_notificacao(
+                    cliente_id=revisao.cliente_id,
+                    usuario_id=usuario_id,
+                    tipo="revisao.status",
+                    payload={"revisao_id": revisao.id, "status": revisao.status},
+                )
+            broadcast_stream_event(
+                revisao.alvo_tipo,
+                revisao.alvo_id,
+                "review:status_changed",
+                {"revisao_id": revisao.id, "status": revisao.status},
+            )
+        response = Response(serializer.data)
+        response["ETag"] = revisao.etag
+        return response
+
+
+class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
+    serializer_class = ComentarioSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ("alvo_tipo", "alvo_id", "resolvido")
+    feature_flag = "ff.comments.enabled"
+    throttle_scope = "comments-write"
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return Comentario.objects.filter(cliente_id=cliente_id).select_related("autor", "resolvido_por")
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        _assert_roles(user, {user.Role.MEMBRO_GT, user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE})
+        mentions_ids = serializer.validated_data.pop("mentions", [])
+        comentario = serializer.save(
+            cliente_id=_get_request_cliente_id(self.request),
+            autor=user,
+        )
+        if mentions_ids:
+            usuarios = get_user_model().objects.filter(id__in=mentions_ids, cliente_id=comentario.cliente_id)
+            comentario.mentions.set(usuarios)
+        self._created_instance = comentario
+        broadcast_stream_event(
+            comentario.alvo_tipo,
+            comentario.alvo_id,
+            "comment:created",
+            {
+                "comentario_id": comentario.id,
+                "autor_id": comentario.autor_id,
+                "conteudo_html": comentario.conteudo_html,
+                "anchor_json": comentario.anchor_json,
+            },
+        )
+        for mention in comentario.mentions.all():
+            criar_notificacao(
+                cliente_id=comentario.cliente_id,
+                usuario_id=mention.id,
+                tipo="comentario.mention",
+                payload={"comentario_id": comentario.id, "alvo_tipo": comentario.alvo_tipo, "alvo_id": comentario.alvo_id},
+            )
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        instance = getattr(self, "_created_instance", None)
+        if instance:
+            response["ETag"] = instance.etag
+        return response
+
+    def update(self, request, *args, **kwargs):
+        parcial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        _check_etag(request, instance)
+        serializer = self.get_serializer(instance, data=request.data, partial=parcial)
+        serializer.is_valid(raise_exception=True)
+        vai_resolver = (
+            serializer.validated_data.get("resolvido")
+            and not instance.resolvido
+        )
+        if vai_resolver:
+            _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE})
+        mentions_ids = serializer.validated_data.pop("mentions", None)
+        comentario = serializer.save()
+        if mentions_ids is not None:
+            usuarios = get_user_model().objects.filter(id__in=mentions_ids, cliente_id=comentario.cliente_id)
+            comentario.mentions.set(usuarios)
+        if vai_resolver:
+            comentario.resolvido_por = request.user
+            comentario.resolved_at = timezone.now()
+            comentario.save(update_fields=["resolvido", "resolvido_por", "resolved_at", "updated_at"])
+            evento = "comment:resolved"
+            payload = {"comentario_id": comentario.id, "resolvido": True}
+        else:
+            evento = "comment:updated"
+            payload = {"comentario_id": comentario.id, "conteudo_html": comentario.conteudo_html}
+        broadcast_stream_event(comentario.alvo_tipo, comentario.alvo_id, evento, payload)
+        serializer = self.get_serializer(comentario)
+        response = Response(serializer.data)
+        response["ETag"] = comentario.etag
+        return response
+
+
+class NotificacaoViewSet(FeatureFlagMixin, mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    serializer_class = NotificacaoSerializer
+    permission_classes = [HasClientScope]
+    feature_flag = "ff.notifications.enabled"
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return Notificacao.objects.filter(cliente_id=cliente_id, usuario=self.request.user)
+
+    @action(detail=True, methods=["put"], url_path="lida")
+    def marcar_lida(self, request, pk=None):
+        notificacao = self.get_object()
+        notificacao.lida = True
+        notificacao.save(update_fields=["lida", "updated_at"])
+        serializer = self.get_serializer(notificacao)
+        return Response(serializer.data)
+
+
+class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
+    serializer_class = MidiaSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend]
+    feature_flag = "ff.library.enabled"
+    throttle_scope = "library-write"
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = Midia.objects.filter(cliente_id=cliente_id)
+        query = self.request.query_params.get("query")
+        if query:
+            queryset = queryset.filter(models.Q(url__icontains=query) | models.Q(legenda__icontains=query))
+        tags = self.request.query_params.getlist("tags") or self.request.query_params.get("tags")
+        if tags:
+            if isinstance(tags, str):
+                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            tags_set = set(tags)
+            items = list(queryset)
+            matches = [item.id for item in items if tags_set.issubset(set(item.tags or []))]
+            queryset = queryset.filter(id__in=matches)
+        return queryset.order_by("-created_at")
+
+    def perform_create(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save(cliente_id=_get_request_cliente_id(self.request), uploaded_by=self.request.user)
+
+    def perform_update(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        instance.delete()
+
+
+class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
+    serializer_class = BlocoTextoSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend]
+    feature_flag = "ff.library.enabled"
+    throttle_scope = "library-write"
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = BlocoTexto.objects.filter(cliente_id=cliente_id)
+        query = self.request.query_params.get("query")
+        if query:
+            queryset = queryset.filter(models.Q(titulo__icontains=query) | models.Q(conteudo_html__icontains=query))
+        tags = self.request.query_params.getlist("tags") or self.request.query_params.get("tags")
+        if tags:
+            if isinstance(tags, str):
+                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            tags_set = set(tags)
+            items = list(queryset)
+            matches = [item.id for item in items if tags_set.issubset(set(item.tags or []))]
+            queryset = queryset.filter(id__in=matches)
+        return queryset
+
+    def perform_create(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        bloco = serializer.save(cliente_id=_get_request_cliente_id(self.request), created_by=self.request.user)
+        self._created_instance = bloco
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        instance = getattr(self, "_created_instance", None)
+        if instance:
+            response["ETag"] = instance.etag
+        return response
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        _check_etag(request, instance)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        response = Response(serializer.data)
+        response["ETag"] = serializer.instance.etag
+        return response
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        instance.delete()
+
+
+class DiffView(FeatureFlagMixin, APIView):
+    feature_flag = "ff.diff.enabled"
+    permission_classes = [HasClientScope]
+
+    def get(self, request):
+        alvo_tipo = request.query_params.get("alvo_tipo")
+        alvo_id = request.query_params.get("alvo_id")
+        from_version = request.query_params.get("from")
+        to_version = request.query_params.get("to")
+        if not all([alvo_tipo, alvo_id, from_version, to_version]):
+            raise ValidationError("Informe alvo_tipo, alvo_id, from e to")
+        html = build_diff(alvo_tipo, alvo_id, int(from_version), int(to_version))
+        serializer = DiffResponseSerializer({"html": html})
+        return Response(serializer.data)

@@ -1,0 +1,6 @@
+Você recebeu uma nova notificação do Referencial Curricular.
+
+Tipo: {{ notification.tipo }}
+Detalhes: {{ notification.payload_json|default:"{}" }}
+
+Acesse o sistema para visualizar.
