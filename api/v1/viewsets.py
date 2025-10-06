@@ -440,7 +440,10 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         return response
 
     def update(self, request, *args, **kwargs):
-        parcial = kwargs.pop("partial", False)
+        # Permitimos updates parciais mesmo para requisições PUT, pois a
+        # interface usa o método para marcar comentários como resolvidos sem
+        # reenviar todo o payload original.
+        parcial = kwargs.pop("partial", True)
         instance = self.get_object()
         _check_etag(request, instance)
         serializer = self.get_serializer(instance, data=request.data, partial=parcial)

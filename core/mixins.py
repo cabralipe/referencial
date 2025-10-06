@@ -30,6 +30,38 @@ class ClientScopedManager(models.Manager):
                 qs = qs.filter(cliente_id=cliente_id)
         return qs
 
+    def _query_includes_deleted(self, args, kwargs) -> bool:
+        if "is_deleted" in kwargs:
+            return True
+
+        def contains_field(q):
+            for child in q.children:
+                if isinstance(child, models.Q):
+                    if contains_field(child):
+                        return True
+                else:
+                    lookup = child[0]
+                    if lookup.split("__", 1)[0] == "is_deleted":
+                        return True
+            return False
+
+        return any(isinstance(arg, models.Q) and contains_field(arg) for arg in args)
+
+    def filter(self, *args, **kwargs):  # type: ignore[override]
+        if hasattr(self.model, "is_deleted") and self._query_includes_deleted(args, kwargs):
+            return self.with_deleted().filter(*args, **kwargs)
+        return super().filter(*args, **kwargs)
+
+    def exclude(self, *args, **kwargs):  # type: ignore[override]
+        if hasattr(self.model, "is_deleted") and self._query_includes_deleted(args, kwargs):
+            return self.with_deleted().exclude(*args, **kwargs)
+        return super().exclude(*args, **kwargs)
+
+    def get(self, *args, **kwargs):  # type: ignore[override]
+        if hasattr(self.model, "is_deleted") and self._query_includes_deleted(args, kwargs):
+            return self.with_deleted().get(*args, **kwargs)
+        return super().get(*args, **kwargs)
+
     def for_cliente(self, cliente: Union[int, models.Model]):
         cliente_id = cliente.id if hasattr(cliente, "id") else int(cliente)
         return self.with_deleted().filter(cliente_id=cliente_id)
