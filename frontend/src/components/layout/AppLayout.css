@@ -1,0 +1,139 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f1f5f9;
+}
+
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  background-color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #0f172a;
+}
+
+.app-shell__brand img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+.app-shell__logo-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+}
+
+.app-shell__brand strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.app-shell__brand span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.app-shell__nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.app-shell__nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  color: #0f172a;
+  font-weight: 500;
+  position: relative;
+}
+
+.app-shell__nav a.active {
+  background-color: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.app-shell__nav--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app-shell__user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-shell__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+.app-shell__user-info small {
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.app-shell__user button {
+  border: none;
+  background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
+  color: #ffffff;
+  padding: 0.55rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-shell__main {
+  flex: 1;
+}
+
+.app-shell__content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+.app-shell__footer {
+  padding: 1.5rem 2rem;
+  background-color: #ffffff;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+@media (max-width: 900px) {
+  .app-shell__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .app-shell__nav {
+    width: 100%;
+  }
+
+  .app-shell__user {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

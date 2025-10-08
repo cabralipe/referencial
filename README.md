@@ -29,6 +29,21 @@ Serviços úteis:
 
 Use `make up`, `make worker`, `make sockets` ou `make beat` como atalhos.
 
+## Frontend (React + Vite)
+
+O SPA fica em `frontend/` e consome a API REST.
+
+```bash
+cd frontend
+npm install
+npm run dev      # Vite em http://localhost:5173
+npm run build    # Gera artifacts em static/frontend/
+```
+
+- Ajuste `VITE_API_BASE_URL` se a API estiver em outro host (padrão `/api/v1`).
+- Após `npm run build`, o Django serve o bundle via rota catch-all em `config/urls.py`.
+- Em desenvolvimento, rode Vite separado e mantenha o backend em `localhost:8000`.
+
 ## Variáveis de ambiente
 
 Configure o arquivo `.env` (exemplo em `.env.example`). Principais chaves:
