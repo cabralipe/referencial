@@ -3,6 +3,17 @@ import { useCallback } from 'react';
 import { API_BASE_URL } from '@/config/env';
 import { useAuth } from '@/context/AuthContext';
 
+// Função para obter o token CSRF do cookie
+function getCsrfToken(): string | null {
+  const name = 'csrftoken';
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+}
+
 export class ApiError extends Error {
   status: number;
   payload: unknown;
@@ -96,6 +107,14 @@ export function useApiClient() {
 
       if (!headers.has('Accept')) {
         headers.set('Accept', 'application/json');
+      }
+
+      // Adicionar token CSRF para métodos que modificam dados
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+          headers.set('X-CSRFToken', csrfToken);
+        }
       }
 
       let body: BodyInit | undefined;

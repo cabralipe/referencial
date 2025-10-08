@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import login
+from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,3 +31,12 @@ class SessionLoginView(APIView):
         if user.cliente:
             data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
         return Response(data)
+
+
+class CsrfTokenView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Força a criação do token CSRF
+        token = get_token(request)
+        return Response({"csrfToken": token})

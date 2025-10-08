@@ -37,6 +37,26 @@ SECRET_KEY = env("REFERENCIAL_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",") if host.strip()]
 
+# Configurações de CSRF para desenvolvimento
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+# Configurações de CSRF para permitir acesso do JavaScript
+CSRF_COOKIE_HTTPONLY = False  # Permite que JavaScript acesse o cookie CSRF
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_USE_SESSIONS = False  # Usa cookies em vez de sessões para CSRF
+
+# Configurações de CORS para desenvolvimento
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
 SITE_ID = 1
 
 # Aplicativos instalados
@@ -57,6 +77,7 @@ INSTALLED_APPS = [
     "channels",
     "storages",
     "django_celery_beat",
+    "corsheaders",
 
     # Apps internos
     "core",
@@ -74,6 +95,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
