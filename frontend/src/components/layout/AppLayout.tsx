@@ -44,8 +44,38 @@ export function AppLayout() {
           <NavLink to="/" end>
             Painel
           </NavLink>
-          <NavLink to="/tarefas" className="app-shell__nav--disabled">
+          <NavLink to="/tarefas">
             Tarefas
+          </NavLink>
+          <NavLink to="/texto-unico">
+            Texto único
+          </NavLink>
+          <NavLink to="/quadros">
+            Quadros
+          </NavLink>
+          <NavLink to="/formularios">
+            Formulários
+          </NavLink>
+          <NavLink to="/revisoes">
+            Revisões
+          </NavLink>
+          <NavLink to="/comentarios">
+            Comentários
+          </NavLink>
+          <NavLink to="/notificacoes">
+            Notificações
+          </NavLink>
+          <NavLink to="/biblioteca">
+            Biblioteca
+          </NavLink>
+          <NavLink to="/exportacoes">
+            Exportações
+          </NavLink>
+          <NavLink to="/diff">
+            Diff
+          </NavLink>
+          <NavLink to="/auditoria">
+            Auditoria
           </NavLink>
         </nav>
 

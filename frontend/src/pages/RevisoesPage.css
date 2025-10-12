@@ -1,0 +1,199 @@
+.revisoes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.revisoes__header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.revisoes__header p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+}
+
+.revisoes__filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.revisoes__filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.revisoes__filters input,
+.revisoes__filters select {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+}
+
+.revisoes__filters .ghost {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background-color: rgba(148, 163, 184, 0.2);
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.revisoes__nova {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.revisoes__nova h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.revisoes__nova form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.revisoes__nova label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.revisoes__nova label.full {
+  grid-column: 1 / -1;
+}
+
+.revisoes__nova input,
+.revisoes__nova textarea {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #f8fafc;
+}
+
+.revisoes__nova textarea {
+  min-height: 120px;
+  resize: vertical;
+  background-color: #ffffff;
+}
+
+.revisoes__nova button {
+  grid-column: 1 / -1;
+  justify-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.revisoes__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.revisoes__card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.revisoes__card h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.revisoes__metas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.revisoes__card details {
+  background-color: #f8fafc;
+  border-radius: 0.85rem;
+  padding: 0.75rem 1rem;
+}
+
+.revisoes__editar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.revisoes__editar label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.revisoes__editar label.full {
+  grid-column: 1 / -1;
+}
+
+.revisoes__editar input,
+.revisoes__editar textarea {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+}
+
+.revisoes__editar textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.revisoes__editar button {
+  grid-column: 1 / -1;
+  justify-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.revisoes__empty {
+  border-radius: 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  padding: 2rem;
+  text-align: center;
+  color: #475569;
+}
+
+@media (max-width: 720px) {
+  .revisoes__nova form,
+  .revisoes__editar {
+    grid-template-columns: 1fr;
+  }
+}

@@ -4,10 +4,13 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGtIds } from '@/hooks/useAvailableGtIds';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
+import { usePresence } from '@/hooks/usePresence';
+import { useAuth } from '@/context/AuthContext';
 import type { Pergunta } from '@/api/types';
 
 import './TaskDetailPage.css';
@@ -22,6 +25,8 @@ export function TaskDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const gtParam = searchParams.get('gt');
   const selectedGtId = gtParam ? Number(gtParam) : null;
+
+  const { user } = useAuth();
 
   const [gtInput, setGtInput] = useState(gtParam ?? '');
   const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
@@ -38,6 +43,19 @@ export function TaskDetailPage() {
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { gtOptions } = useAvailableGtIds();
   const upsertResposta = useUpsertResposta(selectedGtId);
+
+  const presence = usePresence({
+    docType: 'tarefa',
+    objectId: selectedGtId ? `${tarefaId}-${selectedGtId}` : undefined,
+    enabled: Boolean(selectedGtId),
+  });
+
+  const otherParticipants = useMemo(() => {
+    if (!user?.id) {
+      return presence.participants;
+    }
+    return presence.participants.filter((participantId) => participantId !== user.id);
+  }, [presence.participants, user?.id]);
 
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [lastUpdated, setLastUpdated] = useState<Record<number, string>>({});
@@ -178,7 +196,7 @@ export function TaskDetailPage() {
       <div className="task-detail__error">
         <h2>Algo deu errado</h2>
         <p>{message}</p>
-        <Link to="/">Voltar ao painel</Link>
+        <Link to="/tarefas">Voltar à lista</Link>
       </div>
     );
   }
@@ -307,7 +325,7 @@ export function TaskDetailPage() {
   return (
     <div className="task-detail">
       <div className="task-detail__breadcrumb">
-        <Link to="/">← Voltar</Link>
+        <Link to="/tarefas">← Voltar</Link>
         <span>/</span>
         <span>Tarefa #{tarefa.ordem}</span>
       </div>
@@ -319,6 +337,37 @@ export function TaskDetailPage() {
         </div>
         <TaskStatusBadge status={tarefa.status} />
       </header>
+
+      <PageInstructions
+        title="Como trabalhar nesta tarefa"
+        description="Selecione o GT e registre as respostas mantendo versões atualizadas."
+        items={[
+          {
+            title: 'Escolha um GT válido',
+            description: 'Use o campo ou atalhos para carregar as respostas do grupo antes de editar.',
+          },
+          {
+            title: 'Edite e revise cada pergunta',
+            description: 'Atualize o texto, salve para persistir no servidor e use a visualização para conferir o HTML.',
+          },
+          {
+            title: 'Acompanhe feedbacks',
+            description: 'Mensagens de sucesso ou erro aparecem abaixo do editor para cada pergunta.',
+          },
+        ]}
+      />
+
+      {selectedGtId && (
+        <div className="task-detail__presence">
+          {otherParticipants.length > 0 ? (
+            <span>
+              {otherParticipants.length} participante(s) conectados além de você.
+            </span>
+          ) : (
+            <span>Você é a única pessoa conectada neste GT agora.</span>
+          )}
+        </div>
+      )}
 
       <section className="task-detail__selector">
         <div>

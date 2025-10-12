@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ApiError } from '@/api/client';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefas } from '@/hooks/useTarefas';
 
 import './DashboardPage.css';
@@ -109,6 +110,25 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <PageInstructions
+        title="Como navegar pelo painel"
+        description="Acompanhe o status geral das tarefas e identifique rapidamente onde atuar."
+        items={[
+          {
+            title: 'Aplique filtros combinados',
+            description: 'Use status, tipo e etapa para encontrar exatamente as tarefas que precisa revisar.',
+          },
+          {
+            title: 'Abra o detalhe da tarefa',
+            description: 'Clique em qualquer card para ver perguntas e respostas de um GT específico.',
+          },
+          {
+            title: 'Monitore o progresso',
+            description: 'Observe o resumo do topo para acompanhar a quantidade de tarefas por status.',
+          },
+        ]}
+      />
 
       <div className="dashboard__filters">
         <label className="dashboard__filter">

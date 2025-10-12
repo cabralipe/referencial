@@ -41,6 +41,7 @@ npm run build    # Gera artifacts em static/frontend/
 ```
 
 - Ajuste `VITE_API_BASE_URL` se a API estiver em outro host (padrão `/api/v1`).
+- Para WebSockets, configure `VITE_WS_BASE_URL` quando houver proxy reverso ou porta separada (ex.: `wss://referencial.gov.br`).
 - Após `npm run build`, o Django serve o bundle via rota catch-all em `config/urls.py`.
 - Em desenvolvimento, rode Vite separado e mantenha o backend em `localhost:8000`.
 

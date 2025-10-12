@@ -1,0 +1,89 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { useApiClient, ApiError } from '@/api/client';
+import type { PaginatedResponse, Revisao } from '@/api/types';
+
+interface UseRevisoesParams {
+  alvoTipo?: string;
+  alvoId?: number;
+  status?: string;
+}
+
+export function useRevisoes({ alvoId, alvoTipo, status }: UseRevisoesParams = {}) {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['revisoes', { alvoId, alvoTipo, status }],
+    queryFn: async () => {
+      const response = await client.get<PaginatedResponse<Revisao>>('/revisoes', {
+        query: {
+          alvo_tipo: alvoTipo,
+          alvo_id: alvoId,
+          status,
+          page_size: 200,
+        },
+      });
+      return response.data.results ?? [];
+    },
+  });
+}
+
+interface CreateRevisaoInput {
+  alvoTipo: string;
+  alvoId: number;
+  parecerHtml?: string;
+  revisor?: number | null;
+}
+
+export function useCreateRevisao() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ alvoTipo, alvoId, parecerHtml, revisor }: CreateRevisaoInput) => {
+      const response = await client.post<Revisao>('/revisoes', {
+        body: {
+          alvo_tipo: alvoTipo,
+          alvo_id: alvoId,
+          parecer_html: parecerHtml,
+          revisor,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['revisoes'] });
+    },
+  });
+}
+
+interface UpdateRevisaoInput {
+  revisaoId: number;
+  payload: Partial<{
+    status: string;
+    parecer_html: string;
+    revisor: number | null;
+  }>;
+  etag?: string;
+}
+
+export function useUpdateRevisao() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ revisaoId, payload, etag }: UpdateRevisaoInput) => {
+      if (!etag) {
+        throw new ApiError('É necessário informar o ETag da revisão para atualizar.', 428);
+      }
+      const response = await client.patch<Revisao>(`/revisoes/${revisaoId}`, {
+        body: payload,
+        ifMatch: etag,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['revisoes'] });
+    },
+  });
+}

@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { APP_TITLE } from '@/config/env';
 import { useAuth } from '@/context/AuthContext';
+import { PageInstructions } from '@/components/common/PageInstructions';
 
 import './LoginPage.css';
 
@@ -79,6 +80,25 @@ export function LoginPage() {
             {isSubmitting || status === 'loading' ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        <PageInstructions
+          title="Antes de acessar"
+          description="Garanta que o cadastro institucional esteja ativo para evitar bloqueios."
+          items={[
+            {
+              title: 'E-mail corporativo',
+              description: 'Utilize o endereço fornecido pela sua instituição ou equipe de projetos.',
+            },
+            {
+              title: 'Senha atualizada',
+              description: 'Caso tenha esquecido, recupere a senha no portal do servidor antes de tentar novamente.',
+            },
+            {
+              title: 'Ambiente seguro',
+              description: 'Evite redes públicas ao acessar informações sensíveis do referencial.',
+            },
+          ]}
+        />
       </section>
 
       <section className="login__aside">

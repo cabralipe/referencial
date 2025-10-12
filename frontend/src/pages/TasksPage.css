@@ -1,0 +1,118 @@
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tasks__header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.tasks__header p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+}
+
+.tasks__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.tasks__controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.tasks__controls select,
+.tasks__controls input {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+  font-size: 0.95rem;
+}
+
+.tasks__controls select:focus,
+.tasks__controls input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.tasks__search input {
+  width: 100%;
+}
+
+.tasks__table-wrapper {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+  background-color: #ffffff;
+  box-shadow: 0 18px 30px -24px rgba(15, 23, 42, 0.25);
+}
+
+.tasks__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tasks__table th,
+.tasks__table td {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.tasks__table th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.tasks__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tasks__table a {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.tasks__empty,
+.tasks__error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 2rem;
+  text-align: center;
+}
+
+.tasks__error button {
+  align-self: center;
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .tasks__table-wrapper {
+    overflow-x: auto;
+  }
+
+  .tasks__table {
+    min-width: 640px;
+  }
+}

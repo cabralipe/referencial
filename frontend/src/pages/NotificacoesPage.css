@@ -1,0 +1,133 @@
+.notificacoes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.notificacoes__header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.notificacoes__header p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+}
+
+.notificacoes__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.notificacoes__status {
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+}
+
+.notificacoes__status--ok {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.notificacoes__status--warn {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #b91c1c;
+}
+
+.notificacoes__actions .ghost {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(148, 163, 184, 0.25);
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.notificacoes__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.notificacoes__lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 1.25rem;
+}
+
+.notificacoes__item--unread {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 12px 30px -25px rgba(37, 99, 235, 0.6);
+}
+
+.notificacoes__lista strong {
+  display: block;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.notificacoes__lista span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.notificacoes__lista pre {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
+.notificacoes__lista button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.notificacoes__lista button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.notificacoes__empty {
+  border-radius: 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  padding: 2rem;
+  text-align: center;
+  color: #475569;
+}
+
+@media (max-width: 720px) {
+  .notificacoes__lista li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notificacoes__lista button {
+    align-self: flex-end;
+  }
+
+  .notificacoes__actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

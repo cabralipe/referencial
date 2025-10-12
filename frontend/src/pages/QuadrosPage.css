@@ -1,0 +1,137 @@
+.quadros {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.quadros__header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.quadros__header p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+}
+
+.quadros__filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.quadros__filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.quadros__filters select {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+}
+
+.quadros__filters select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.quadros__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.quadros__card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quadros__card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.quadros__card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.quadros__card span {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.quadros__grid table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 1rem;
+}
+
+.quadros__grid td {
+  background-color: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  vertical-align: top;
+}
+
+.quadros__grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.quadros__grid textarea {
+  resize: vertical;
+  min-height: 120px;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 0.65rem;
+  font-size: 0.9rem;
+  background-color: #ffffff;
+}
+
+.quadros__grid button {
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quadros__empty {
+  border-radius: 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  padding: 2rem;
+  background-color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+  color: #475569;
+}
+
+@media (max-width: 840px) {
+  .quadros__grid table {
+    border-spacing: 0.75rem;
+  }
+
+  .quadros__grid textarea {
+    min-height: 100px;
+  }
+}
