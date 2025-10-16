@@ -115,3 +115,30 @@ class TenantModel(SoftDeleteModel):
             if current is not None:
                 self.cliente_id = current
         super().save(*args, **kwargs)
+
+
+class ClientScopedViewSetMixin:
+    """Mixin para ViewSets que aplica escopo por cliente automaticamente."""
+    
+    def get_queryset(self):
+        """Aplica filtro por cliente no queryset."""
+        queryset = super().get_queryset()
+        
+        # Se o modelo tem campo cliente, aplica o filtro
+        if hasattr(queryset.model, 'cliente'):
+            cliente_id = get_current_cliente_id()
+            if cliente_id is not None:
+                queryset = queryset.filter(cliente_id=cliente_id)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """Define o cliente automaticamente na criação."""
+        if hasattr(serializer.Meta.model, 'cliente'):
+            cliente_id = get_current_cliente_id()
+            if cliente_id is not None:
+                serializer.save(cliente_id=cliente_id)
+            else:
+                serializer.save()
+        else:
+            serializer.save()

@@ -33,6 +33,17 @@ export interface Resposta {
   etag: string;
 }
 
+// GT (Grupo de Trabalho) interface
+export interface GT {
+  id: number;
+  nome: string;
+  etapa: string;
+  membros: number[];
+  cliente: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TextoUnico {
   id: number;
   gt: number;
@@ -44,6 +55,43 @@ export interface TextoUnico {
   etag: string;
 }
 
+// Payload types for TextoUnico operations
+export interface CreateTextoUnicoPayload {
+  gt: number;
+  tarefa: number;
+  conteudo_html: string;
+}
+
+export interface UpdateTextoUnicoPayload {
+  conteudo_html: string;
+}
+
+// User interface
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  perfil?: string;
+}
+
+// Reviews System Types
+export type ReviewTargetType = 'resposta' | 'texto_unico' | 'quadro';
+export type ReviewStatus = 'rascunho' | 'em_revisao' | 'aprovado' | 'reprovado';
+
+export interface Review {
+  id: number;
+  alvo_tipo: ReviewTargetType;
+  alvo_id: string;
+  status: ReviewStatus;
+  parecer_html: string;
+  revisor: User | null;
+  solicitante: User | null;
+  created_at: string;
+  updated_at: string;
+  etag: string;
+}
+
+// Legacy interface for backward compatibility
 export interface Revisao {
   id: number;
   alvo_tipo: string;
@@ -79,4 +127,68 @@ export interface Notificacao {
   payload_json: Record<string, unknown>;
   lida: boolean;
   created_at: string;
+}
+
+// Quadros (Oficinas) interfaces
+export interface Quadro {
+  id: number;
+  gt: number;
+  template: string;
+  version: number;
+  celulas: CelulaQuadro[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CelulaQuadro {
+  id: number;
+  quadro: number;
+  linha: number;
+  coluna: number;
+  valor_html: string;
+}
+
+// Template configuration interfaces
+export interface QuadroTemplate {
+  id: string;
+  nome: string;
+  descricao: string;
+  linhas: number;
+  colunas: number;
+  cabecalhos?: {
+    linhas?: string[];
+    colunas?: string[];
+  };
+  configuracao?: {
+    celulasFixas?: Array<{
+      linha: number;
+      coluna: number;
+      valor: string;
+      editavel: boolean;
+    }>;
+    estilos?: {
+      [key: string]: React.CSSProperties;
+    };
+  };
+}
+
+// Payload types for Quadro operations
+export interface UpdateCelulaPayload {
+  linha: number;
+  coluna: number;
+  valor_html: string;
+}
+
+export interface CreateQuadroPayload {
+  gt: number;
+  template: string;
+}
+
+// Component state interfaces
+export interface QuadroState {
+  quadro: Quadro | null;
+  loading: boolean;
+  error: string | null;
+  editingCell: { linha: number; coluna: number } | null;
+  unsavedChanges: boolean;
 }

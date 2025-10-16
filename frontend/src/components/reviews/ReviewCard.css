@@ -1,0 +1,160 @@
+.review-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.review-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.review-card__header {
+  margin-bottom: 16px;
+}
+
+.review-card__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.review-card__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.review-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-card__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.review-card__meta-item svg {
+  color: #adb5bd;
+}
+
+.review-card__parecer {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.review-card__parecer h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.review-card__parecer-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+}
+
+.review-card__parecer-content p {
+  margin: 0 0 8px 0;
+}
+
+.review-card__parecer-content p:last-child {
+  margin-bottom: 0;
+}
+
+.review-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn--sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn--secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn--secondary:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.btn--success {
+  background: #28a745;
+  color: white;
+}
+
+.btn--success:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.btn--danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn--danger:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .review-card {
+    padding: 16px;
+  }
+  
+  .review-card__info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .review-card__actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    justify-content: center;
+  }
+}

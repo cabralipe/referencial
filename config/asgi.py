@@ -2,9 +2,9 @@
 
 import os
 
+from core.websocket_auth import SessionAuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
-from django.urls import path
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -18,6 +18,8 @@ except Exception:  # pragma: no cover - sockets app might not be ready in migrat
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": URLRouter(websocket_urlpatterns),
+        "websocket": SessionAuthMiddlewareStack(
+            URLRouter(websocket_urlpatterns)
+        ),
     }
 )

@@ -85,8 +85,8 @@ interface InternalState {
 }
 
 const initialState: InternalState = {
-  status: initialTokens.accessToken ? 'loading' : 'idle',
-  user: initialUser,
+  status: 'idle', // Sempre começar como 'idle' e verificar a sessão primeiro
+  user: null, // Não carregar usuário do localStorage automaticamente
   cliente: null,
   tokens: initialTokens,
   error: null,
@@ -99,6 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const bootstrapInFlight = useRef(false);
 
   const logout = useCallback(async () => {
+    try {
+      // Chamar endpoint de logout no backend
+      await fetch(resolveApiUrl('/v1/auth/logout'), {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.warn('Erro ao fazer logout no servidor', error);
+    }
+    
     clearAuthStorage();
     setState({
       status: 'idle',
@@ -113,75 +123,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshAccessToken = useCallback(async () => {
-    const refreshToken = state.tokens.refreshToken;
-    if (!refreshToken) {
-      await logout();
-      return null;
-    }
-    try {
-      const response = await fetch(resolveApiUrl('/auth/jwt/refresh'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        await logout();
-        return null;
-      }
-      const data = (await response.json()) as { access: string };
-      const newTokens: AuthTokens = {
-        accessToken: data.access,
-        refreshToken,
-      };
-      saveTokens(newTokens);
-      setState((prev) => ({
-        ...prev,
-        tokens: newTokens,
-      }));
-      return data.access;
-    } catch (error) {
-      console.warn('Falha ao atualizar token de acesso', error);
-      await logout();
-      return null;
-    }
-  }, [logout, state.tokens.refreshToken]);
+    // Para session-based auth, não precisamos de refresh token
+    // A sessão é mantida pelos cookies
+    return null;
+  }, []);
 
   const authenticatedFetch = useCallback(
-    async (path: string, init?: RequestInit, tokenOverride?: string) => {
-      const accessToken = tokenOverride ?? state.tokens.accessToken;
-      if (!accessToken) {
-        throw new Error('Token de acesso indisponível');
-      }
+    async (path: string, init?: RequestInit) => {
       const headers = new Headers(init?.headers ?? {});
-      if (!headers.has('Authorization')) {
-        headers.set('Authorization', `Bearer ${accessToken}`);
-      }
       if (!headers.has('Accept')) {
         headers.set('Accept', 'application/json');
       }
       const response = await fetch(resolveApiUrl(path), {
         ...init,
         headers,
-        credentials: 'include',
+        credentials: 'include', // Importante para session-based auth
       });
-      if (response.status === 401 && !tokenOverride) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return authenticatedFetch(path, init, refreshed);
-        }
+      if (response.status === 401) {
+        // Se não autorizado, fazer logout
+        await logout();
       }
       return response;
     },
-    [refreshAccessToken, state.tokens.accessToken],
+    [logout],
   );
 
   const fetchCliente = useCallback(
     async (tokenOverride?: string) => {
-      const response = await authenticatedFetch('/cliente/me', undefined, tokenOverride);
+      const response = await authenticatedFetch('/v1/cliente/me', undefined, tokenOverride);
       if (!response.ok) {
         const message = await extractErrorMessage(response);
         throw new Error(message);
@@ -205,6 +174,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchCliente]);
 
+  // Função para obter o token CSRF do cookie
+  const getCsrfToken = useCallback((): string | null => {
+    const name = 'csrftoken';
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop()?.split(';').shift() || null;
+    }
+    return null;
+  }, []);
+
   const login = useCallback(
     async ({ email, password }: LoginCredentials) => {
       setState((prev) => ({
@@ -214,21 +194,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }));
       try {
         // Primeiro, fazer uma requisição para obter o token CSRF
-        await fetch(resolveApiUrl('/auth/csrf'), {
+        await fetch(resolveApiUrl('/v1/auth/csrf'), {
           method: 'GET',
           credentials: 'include',
         });
-
-        // Função para obter o token CSRF do cookie
-        function getCsrfToken(): string | null {
-          const name = 'csrftoken';
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) {
-            return parts.pop()?.split(';').shift() || null;
-          }
-          return null;
-        }
 
         const csrfToken = getCsrfToken();
         const payload = JSON.stringify({ email, password });
@@ -243,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: 'include',
         };
 
-        const sessionResponse = await fetch(resolveApiUrl('/auth/login'), commonInit);
+        const sessionResponse = await fetch(resolveApiUrl('/v1/auth/login'), commonInit);
         if (!sessionResponse.ok) {
           const message = await extractErrorMessage(sessionResponse);
           throw new Error(message || 'Falha ao autenticar');
@@ -253,25 +222,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cliente?: ClienteContextPayload;
         };
 
-        const jwtResponse = await fetch(resolveApiUrl('/auth/jwt'), commonInit);
-        if (!jwtResponse.ok) {
-          const message = await extractErrorMessage(jwtResponse);
-          throw new Error(message || 'Não foi possível obter tokens de acesso');
-        }
-        const jwtData = (await jwtResponse.json()) as { access: string; refresh: string };
-
         const user = mapUser(sessionData.user);
+        // Para session-based auth, não precisamos de tokens JWT
         const tokens: AuthTokens = {
-          accessToken: jwtData.access,
-          refreshToken: jwtData.refresh,
+          accessToken: null,
+          refreshToken: null,
         };
-        saveTokens(tokens);
         saveUser(user);
 
         let cliente = sessionData.cliente ?? null;
         if (!cliente) {
           try {
-            cliente = await fetchCliente(jwtData.access);
+            cliente = await fetchCliente();
           } catch (clienteError) {
             console.warn('Falha ao carregar contexto do cliente após login', clienteError);
           }
@@ -300,18 +262,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [fetchCliente],
+    [fetchCliente, getCsrfToken],
   );
+
+  // Verificar sessão atual no início do app
+  useEffect(() => {
+    if (bootstrapInFlight.current || state.status !== 'idle') {
+      return;
+    }
+    
+    const checkSession = async () => {
+      bootstrapInFlight.current = true;
+      try {
+        // Verificar se há uma sessão válida
+        const response = await authenticatedFetch('/v1/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          const user = mapUser(data.user);
+          const cliente = data.cliente;
+          
+          saveUser(user);
+          setState({
+            status: 'authenticated',
+            user,
+            cliente,
+            tokens: state.tokens,
+            error: null,
+          });
+        } else {
+          // Não há sessão válida, limpar dados salvos
+          clearAuthStorage();
+          setState((prev) => ({
+            ...prev,
+            status: 'idle',
+            user: null,
+            cliente: null,
+            error: null,
+          }));
+        }
+      } catch (error) {
+        // Erro ao verificar sessão, limpar dados
+        clearAuthStorage();
+        setState((prev) => ({
+          ...prev,
+          status: 'idle',
+          user: null,
+          cliente: null,
+          error: null,
+        }));
+      } finally {
+        bootstrapInFlight.current = false;
+      }
+    };
+
+    checkSession();
+  }, [authenticatedFetch, state.status, state.tokens]);
 
   useEffect(() => {
     if (bootstrapInFlight.current) {
       return;
     }
-    if (
-      state.status === 'loading' &&
-      state.tokens.accessToken &&
-      state.tokens.refreshToken
-    ) {
+    if (state.status === 'loading' && state.user) {
       bootstrapInFlight.current = true;
       fetchCliente()
         .then((cliente) => {
@@ -330,7 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           bootstrapInFlight.current = false;
         });
     }
-  }, [fetchCliente, logout, state.status, state.tokens.accessToken, state.tokens.refreshToken]);
+  }, [fetchCliente, logout, state.status, state.user]);
 
   const getAccessToken = useCallback(() => state.tokens.accessToken, [state.tokens.accessToken]);
 

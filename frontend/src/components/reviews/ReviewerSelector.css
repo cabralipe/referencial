@@ -1,0 +1,226 @@
+.reviewer-selector {
+  position: relative;
+  width: 100%;
+}
+
+.reviewer-selector__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+}
+
+.reviewer-selector__trigger:hover {
+  border-color: #007bff;
+}
+
+.reviewer-selector__trigger.open {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.reviewer-selector__trigger.loading {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.reviewer-selector__trigger-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.reviewer-selector__selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #495057;
+}
+
+.reviewer-selector__email {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.reviewer-selector__placeholder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
+}
+
+.reviewer-selector__arrow {
+  color: #6c757d;
+  transition: transform 0.2s ease;
+}
+
+.reviewer-selector__trigger.open .reviewer-selector__arrow {
+  transform: rotate(180deg);
+}
+
+.reviewer-selector__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.reviewer-selector__search {
+  position: relative;
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.reviewer-selector__search svg {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+}
+
+.reviewer-selector__search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+
+.reviewer-selector__search-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.reviewer-selector__options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.reviewer-selector__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.reviewer-selector__option:last-child {
+  border-bottom: none;
+}
+
+.reviewer-selector__option:hover {
+  background: #f8f9fa;
+}
+
+.reviewer-selector__option.selected {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.reviewer-selector__option-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.reviewer-selector__option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reviewer-selector__option-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.reviewer-selector__option.selected .reviewer-selector__option-name {
+  color: #1976d2;
+}
+
+.reviewer-selector__option-email {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.reviewer-selector__check {
+  color: #1976d2;
+  flex-shrink: 0;
+}
+
+.reviewer-selector__no-results {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.reviewer-selector__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* Custom scrollbar for options */
+.reviewer-selector__options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviewer-selector__options::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.reviewer-selector__options::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.reviewer-selector__options::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .reviewer-selector__dropdown {
+    max-height: 250px;
+  }
+  
+  .reviewer-selector__options {
+    max-height: 150px;
+  }
+}
+
+/* Focus styles for accessibility */
+.reviewer-selector__trigger:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.reviewer-selector__option:focus {
+  outline: none;
+  background: #e3f2fd;
+}

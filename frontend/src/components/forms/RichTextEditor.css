@@ -1,0 +1,128 @@
+.rich-text-editor {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  height: 32px;
+}
+
+.toolbar-button:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.toolbar-button:active:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editor-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111827;
+  background: transparent;
+  resize: none;
+  overflow-y: auto;
+}
+
+.editor-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.editor-textarea.readonly {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.editor-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.character-count {
+  font-weight: 500;
+}
+
+.editor-hint {
+  font-style: italic;
+}
+
+/* Focus styles */
+.rich-text-editor:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .editor-toolbar {
+    padding: 6px 8px;
+  }
+  
+  .toolbar-button {
+    padding: 4px 6px;
+    font-size: 11px;
+    min-width: 28px;
+    height: 28px;
+  }
+  
+  .editor-textarea {
+    padding: 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .editor-footer {
+    padding: 6px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}

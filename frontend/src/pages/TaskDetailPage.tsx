@@ -8,6 +8,8 @@ import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGtIds } from '@/hooks/useAvailableGtIds';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
+import { useCreateReview } from '@/hooks/useReviews';
+import { CommentSidebar, CommentSidebarTrigger } from '@/components/comments';
 import type { Pergunta } from '@/api/types';
 
 import './TaskDetailPage.css';
@@ -38,9 +40,14 @@ export function TaskDetailPage() {
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { gtOptions } = useAvailableGtIds();
   const upsertResposta = useUpsertResposta(selectedGtId);
+  const createReview = useCreateReview();
 
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [lastUpdated, setLastUpdated] = useState<Record<number, string>>({});
+  const [activeCommentTarget, setActiveCommentTarget] = useState<{
+    type: 'resposta';
+    id: number;
+  } | null>(null);
 
   useEffect(() => {
     setGtInput(gtParam ?? '');
@@ -165,6 +172,35 @@ export function TaskDetailPage() {
     }
   };
 
+  const handleSolicitarRevisao = async () => {
+    if (!selectedGtId) return;
+    
+    try {
+      await createReview.mutateAsync({
+        target_type: 'tarefa',
+        target_id: tarefaId,
+        gt_id: selectedGtId,
+        parecer_html: '',
+      });
+      setFeedback((prev) => ({
+        ...prev,
+        0: {
+          type: 'success',
+          message: 'Solicitação de revisão enviada com sucesso.',
+        },
+      }));
+    } catch (err) {
+      const message = buildErrorMessage(err, 'Não foi possível solicitar a revisão.');
+      setFeedback((prev) => ({
+        ...prev,
+        0: {
+          type: 'error',
+          message,
+        },
+      }));
+    }
+  };
+
   if (tarefaLoading || perguntasLoading) {
     return <FullPageLoader message="Carregando tarefa..." />;
   }
@@ -279,14 +315,35 @@ export function TaskDetailPage() {
                 Descartar alterações
               </button>
             </div>
-            <button
-              type="button"
-              className="ghost"
-              onClick={handleCopy}
-              disabled={!draft}
-            >
-              Copiar conteúdo
-            </button>
+            <div className="pergunta-card__actions-right">
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleCopy}
+                disabled={!draft}
+              >
+                Copiar conteúdo
+              </button>
+              {respostaAtual && (
+                <CommentSidebarTrigger
+                  targetType="resposta"
+                  targetId={respostaAtual.id}
+                  onToggle={(isOpen) => {
+                    if (isOpen) {
+                      setActiveCommentTarget({
+                        type: 'resposta',
+                        id: respostaAtual.id,
+                      });
+                    } else {
+                      setActiveCommentTarget(null);
+                    }
+                  }}
+                  className="ghost"
+                >
+                  Comentários
+                </CommentSidebarTrigger>
+              )}
+            </div>
           </div>
 
           {feedbackEntry && (
@@ -317,7 +374,35 @@ export function TaskDetailPage() {
           <h1>{tarefa.tipo === 'OFICINA' ? 'Oficina' : 'Questionário'} #{tarefa.ordem}</h1>
           <p>{etapaLabel}</p>
         </div>
-        <TaskStatusBadge status={tarefa.status} />
+        <div className="task-detail__header-actions">
+          <TaskStatusBadge status={tarefa.status} />
+          {selectedGtId && (
+            <>
+              <button
+                type="button"
+                onClick={handleSolicitarRevisao}
+                disabled={createReview.isPending}
+                className="task-detail__review-button"
+              >
+                {createReview.isPending ? 'Solicitando...' : 'Solicitar Revisão'}
+              </button>
+              <Link 
+                to={`/textos-unicos/${tarefaId}?gt=${selectedGtId}`}
+                className="task-detail__texto-unico-link"
+              >
+                Texto Único
+              </Link>
+              {tarefa.tipo === 'OFICINA' && (
+                <Link 
+                  to={`/quadros/${tarefaId}?gt=${selectedGtId}`}
+                  className="task-detail__quadros-link"
+                >
+                  Quadros
+                </Link>
+              )}
+            </>
+          )}
+        </div>
       </header>
 
       <section className="task-detail__selector">
@@ -359,6 +444,12 @@ export function TaskDetailPage() {
         )}
       </section>
 
+      {feedback[0] && (
+        <div className={`task-detail__feedback task-detail__feedback--${feedback[0].type}`}>
+          {feedback[0].message}
+        </div>
+      )}
+
       {!selectedGtId && (
         <div className="task-detail__empty">
           <h3>Nenhum GT selecionado</h3>
@@ -371,6 +462,21 @@ export function TaskDetailPage() {
       )}
 
       {selectedGtId && sortedPerguntas.map((pergunta) => renderPergunta(pergunta))}
+
+      {/* Comment Sidebar */}
+      {activeCommentTarget && (
+        <CommentSidebar
+          targetType={activeCommentTarget.type}
+          targetId={activeCommentTarget.id}
+          isOpen={true}
+          onClose={() => setActiveCommentTarget(null)}
+          title={`Comentários - Resposta ${
+            sortedPerguntas.find(p => 
+              respostas?.find(r => r.pergunta === p.id)?.id === activeCommentTarget.id
+            )?.ordem || ''
+          }`}
+        />
+      )}
     </div>
   );
 }

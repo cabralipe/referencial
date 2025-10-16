@@ -1,0 +1,155 @@
+.quadro-cell {
+  display: table-cell;
+  border: 1px solid #dee2e6;
+  padding: 12px;
+  vertical-align: top;
+  min-height: 80px;
+  min-width: 150px;
+  position: relative;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.quadro-cell.editable {
+  cursor: pointer;
+}
+
+.quadro-cell.editable:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.1);
+}
+
+.quadro-cell.editing {
+  padding: 0;
+  background-color: #fff;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.quadro-cell.readonly {
+  background-color: #f8f9fa;
+  cursor: default;
+}
+
+.quadro-cell.fixed {
+  background-color: #e9ecef;
+  font-weight: 600;
+  color: #495057;
+  cursor: default;
+}
+
+/* Comment button */
+.cell-comment-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.quadro-cell:hover .cell-comment-button {
+  opacity: 1;
+}
+
+.cell-comment-button:hover {
+  background: #fff;
+  border-color: #007bff;
+  transform: scale(1.1);
+}
+
+.quadro-cell.readonly .cell-placeholder {
+  display: none;
+}
+
+.cell-editor {
+  width: 100%;
+  min-height: 80px;
+  border: none;
+  padding: 12px;
+  resize: none;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  background: transparent;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.cell-content {
+  min-height: 56px;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.cell-content strong {
+  font-weight: 600;
+  color: #495057;
+}
+
+.cell-content small {
+  font-size: 0.875em;
+  color: #6c757d;
+  display: block;
+  margin-top: 4px;
+}
+
+.cell-placeholder {
+  color: #6c757d;
+  font-style: italic;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.875em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .quadro-cell {
+    min-width: 120px;
+    padding: 8px;
+    min-height: 60px;
+  }
+  
+  .cell-editor {
+    min-height: 60px;
+    padding: 8px;
+    font-size: 14px;
+  }
+  
+  .cell-content {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  
+  .cell-placeholder {
+    min-height: 44px;
+    font-size: 12px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .quadro-cell {
+    min-height: 44px; /* Minimum touch target size */
+  }
+  
+  .quadro-cell.editable:hover {
+    background-color: white; /* Remove hover effects on touch devices */
+    border-color: #dee2e6;
+    box-shadow: none;
+  }
+}

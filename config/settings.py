@@ -128,15 +128,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# Channels / Redis
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [env("REFERENCIAL_REDIS_URL")],
+# Configuração do Django Channels
+if DEBUG:
+    # Use in-memory channel layer for development
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
-}
+else:
+    # Use Redis for production
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.getenv("REFERENCIAL_REDIS_URL", "redis://127.0.0.1:6379/0")],
+            },
+        },
+    }
 
 # Banco de dados
 DATABASES = {

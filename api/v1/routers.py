@@ -19,6 +19,16 @@ from .viewsets import (
     TextoUnicoViewSet,
 )
 
+# Import dos ViewSets da biblioteca de mídia
+from library.views import (
+    MediaFileViewSet,
+    MediaFolderViewSet,
+    TagViewSet,
+    FileVersionViewSet,
+    FileShareViewSet,
+    UserProfileViewSet,
+)
+
 router = DefaultRouter()
 router.trailing_slash = "/?"
 router.register("tarefas", TarefaViewSet, basename="tarefa")
@@ -33,5 +43,13 @@ router.register("comentarios", ComentarioViewSet, basename="comentario")
 router.register("notificacoes", NotificacaoViewSet, basename="notificacao")
 router.register("midias", MidiaViewSet, basename="midia")
 router.register("blocos", BlocoTextoViewSet, basename="bloco")
+
+# Rotas da biblioteca de mídia
+router.register("media/files", MediaFileViewSet, basename="mediafile")
+router.register("media/folders", MediaFolderViewSet, basename="mediafolder")
+router.register("media/tags", TagViewSet, basename="mediatag")
+router.register("media/versions", FileVersionViewSet, basename="fileversion")
+router.register("media/shares", FileShareViewSet, basename="fileshare")
+router.register("media/profile", UserProfileViewSet, basename="userprofile")
 
 __all__ = ["router"]

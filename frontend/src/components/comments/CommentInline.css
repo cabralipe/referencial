@@ -1,0 +1,216 @@
+/* Comment Inline Styles */
+.comment-inline {
+  position: relative;
+}
+
+/* Selection overlay */
+.comment-inline-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  z-index: 50;
+}
+
+/* Comment editor modal */
+.comment-inline-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  width: 384px;
+  max-width: 90vw;
+}
+
+.comment-inline-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.comment-inline-modal-title {
+  font-weight: 500;
+  margin: 0;
+}
+
+.comment-inline-modal-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.comment-inline-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.comment-inline-modal-quote {
+  font-size: 14px;
+  color: #6b7280;
+  background-color: #f9fafb;
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 2px solid rgba(59, 130, 246, 0.2);
+  margin-bottom: 12px;
+}
+
+/* Comment indicators */
+.comment-indicator {
+  position: absolute;
+  z-index: 10;
+}
+
+.comment-indicator-trigger {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 50%;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.comment-indicator-trigger:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.comment-indicator-trigger-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* Popover styles */
+.comment-indicator-popover {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  width: 384px;
+  max-width: 90vw;
+  z-index: 50;
+}
+
+.comment-indicator-popover-header {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.comment-indicator-popover-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.comment-indicator-popover-title-text {
+  font-weight: 500;
+  margin: 0;
+}
+
+.comment-indicator-popover-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.comment-indicator-popover-quote {
+  font-size: 12px;
+  color: #6b7280;
+  background-color: rgba(243, 244, 246, 0.5);
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.comment-indicator-popover-content {
+  max-height: 384px;
+  overflow-y: auto;
+}
+
+/* Selection highlighting */
+.comment-inline-selection {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-radius: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .comment-inline-modal {
+    width: 320px;
+    padding: 12px;
+  }
+  
+  .comment-indicator-popover {
+    width: 320px;
+  }
+}
+
+/* Animation for indicators */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.comment-indicator {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Overlay animation */
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.comment-inline-overlay {
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+/* Modal animation */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.comment-inline-modal {
+  animation: modalSlideIn 0.2s ease-out;
+}

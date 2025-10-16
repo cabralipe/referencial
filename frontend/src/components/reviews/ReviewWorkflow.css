@@ -1,0 +1,278 @@
+.review-workflow {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.review-workflow__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.review-workflow__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.review-workflow__steps {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.review-workflow__step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.review-workflow__step:last-child {
+  margin-bottom: 0;
+}
+
+.review-workflow__step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.review-workflow__step-indicator.pending {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  color: #6c757d;
+}
+
+.review-workflow__step-indicator.active {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  color: #856404;
+  animation: pulse 2s infinite;
+}
+
+.review-workflow__step-indicator.completed {
+  background: #d1edff;
+  border: 2px solid #007bff;
+  color: #0c5460;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+  }
+}
+
+.review-workflow__step-content {
+  flex: 1;
+  padding-top: 4px;
+}
+
+.review-workflow__step-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 4px 0;
+}
+
+.review-workflow__step-description {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.review-workflow__step-connector {
+  position: absolute;
+  left: 19px;
+  top: 40px;
+  width: 2px;
+  height: 24px;
+  background: #e9ecef;
+  transition: background-color 0.3s ease;
+}
+
+.review-workflow__step-connector.completed {
+  background: #007bff;
+}
+
+.review-workflow__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.review-workflow__info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #495057;
+}
+
+.review-workflow__info-item svg {
+  color: #6c757d;
+  flex-shrink: 0;
+}
+
+.review-workflow__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.review-workflow__parecer {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.review-workflow__parecer h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.review-workflow__parecer-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #495057;
+}
+
+.review-workflow__parecer-content p {
+  margin: 0 0 12px 0;
+}
+
+.review-workflow__parecer-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn--secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.btn--primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn--success {
+  background: #28a745;
+  color: white;
+}
+
+.btn--success:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.btn--danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .review-workflow {
+    padding: 20px;
+  }
+  
+  .review-workflow__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .review-workflow__actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    justify-content: center;
+  }
+  
+  .review-workflow__info {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .review-workflow {
+    padding: 16px;
+  }
+  
+  .review-workflow__step {
+    gap: 12px;
+  }
+  
+  .review-workflow__step-indicator {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .review-workflow__step-connector {
+    left: 15px;
+  }
+}
