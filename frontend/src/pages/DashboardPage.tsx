@@ -4,7 +4,6 @@ import { ApiError } from '@/api/client';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useTarefas } from '@/hooks/useTarefas';
-import { useUnresolvedComments } from '@/hooks/useComments';
 
 import './DashboardPage.css';
 
@@ -32,9 +31,6 @@ export function DashboardPage() {
     etapa: etapaFilter || undefined,
   });
 
-  // Fetch unresolved comments for dashboard summary
-  const { data: unresolvedComments, isLoading: commentsLoading } = useUnresolvedComments();
-
   const etapas = useMemo(() => {
     if (!tarefas) {
       return [] as string[];
@@ -47,8 +43,6 @@ export function DashboardPage() {
     });
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [tarefas]);
-
-  const unresolvedCount = unresolvedComments?.length || 0;
 
   const resumo = useMemo(() => {
     if (!tarefas) {
@@ -112,12 +106,6 @@ export function DashboardPage() {
           <div>
             <span className="summary__label">Concluídas</span>
             <strong className="summary__value">{resumo.concluidas}</strong>
-          </div>
-          <div className={`summary__comments ${unresolvedCount > 0 ? 'summary__comments--pending' : ''}`}>
-            <span className="summary__label">Comentários pendentes</span>
-            <strong className="summary__value">
-              {commentsLoading ? '...' : unresolvedCount}
-            </strong>
           </div>
         </div>
       </div>

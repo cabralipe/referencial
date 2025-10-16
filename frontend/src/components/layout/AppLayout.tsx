@@ -2,14 +2,12 @@ import { CSSProperties, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
-import { useMediaPermissions } from '../../hooks/useMediaPermissions';
 
 import './AppLayout.css';
 
 export function AppLayout() {
   const { cliente, user, logout } = useAuth();
   const navigate = useNavigate();
-  const { isGuest } = useMediaPermissions();
 
   const themeStyles = useMemo(() => {
     const primary = cliente?.tema?.cor_primaria ?? '#2563eb';
@@ -49,14 +47,6 @@ export function AppLayout() {
           <NavLink to="/tarefas" className="app-shell__nav--disabled">
             Tarefas
           </NavLink>
-          <NavLink to="/reviews">
-            Reviews
-          </NavLink>
-          {!isGuest && (
-            <NavLink to="/media">
-              Biblioteca de Mídia
-            </NavLink>
-          )}
         </nav>
 
         <div className="app-shell__user">
