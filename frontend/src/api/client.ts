@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import { API_BASE_URL } from '@/config/env';
+import { appendCsrfHeader } from '@/api/csrf';
 import { useAuth } from '@/context/AuthContext';
 
 // Função para obter o token CSRF do cookie
@@ -137,13 +138,17 @@ export function useApiClient() {
         headers.set('If-Match', options.ifMatch);
       }
 
-      const init: RequestInit = {
+      let init: RequestInit = {
         method,
         headers,
         body,
         signal: options.signal,
         credentials: 'include',
       };
+
+      if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase())) {
+        init = appendCsrfHeader(init);
+      }
 
       let response = await fetch(url, init);
 

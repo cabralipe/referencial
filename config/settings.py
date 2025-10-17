@@ -28,6 +28,7 @@ env = environ.Env(
     DEFAULT_HOOK_PLUGIN=(str, "default"),
     JWT_ACCESS_TOKEN_LIFETIME_MINUTES=(int, 60),
     JWT_REFRESH_TOKEN_LIFETIME_DAYS=(int, 7),
+    CSRF_TRUSTED_ORIGINS=(str, "http://localhost:5173,http://127.0.0.1:5173"),
 )
 
 if (env_file := BASE_DIR / ".env").exists():
@@ -36,6 +37,7 @@ if (env_file := BASE_DIR / ".env").exists():
 SECRET_KEY = env("REFERENCIAL_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",") if host.strip()]
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in env("CSRF_TRUSTED_ORIGINS").split(",") if origin.strip()]
 
 # Configurações de CSRF para desenvolvimento
 CSRF_TRUSTED_ORIGINS = [

@@ -1,6 +1,6 @@
 import pytest
 from curriculum.models import TextoUnico
-from dynamicforms.models import CampoDinamico, FormularioDinamico
+from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from workshop.models import Quadro
 
 
@@ -61,6 +61,45 @@ def test_formulario_endpoints(auth_client, cliente):
         format="json",
     )
     assert resposta.status_code == 201
+
+
+@pytest.mark.django_db
+def test_formulario_respostas_upsert(auth_client, cliente):
+    formulario = FormularioDinamico.objects.create(cliente=cliente, nome="Inscrição")
+    campo = CampoDinamico.objects.create(
+        cliente=cliente,
+        formulario=formulario,
+        chave="modalidade",
+        tipo=CampoDinamico.Tipo.SELECT,
+        config_json={"choices": ["presencial", "remoto"]},
+        ordem=1,
+    )
+
+    primeira = auth_client.post(
+        f"/api/v1/formularios/{formulario.id}/respostas",
+        {
+            "campo": campo.id,
+            "valor_texto": "presencial",
+            "owner_type": "resposta",
+            "owner_id": "dummy",
+        },
+        format="json",
+    )
+    assert primeira.status_code == 201
+
+    segunda = auth_client.post(
+        f"/api/v1/formularios/{formulario.id}/respostas",
+        {
+            "campo": campo.id,
+            "valor_texto": "remoto",
+            "owner_type": "resposta",
+            "owner_id": "dummy",
+        },
+        format="json",
+    )
+    assert segunda.status_code == 200
+    resposta = RespostaCampoDinamico.objects.get()
+    assert resposta.valor_texto == "remoto"
 
 
 @pytest.mark.django_db

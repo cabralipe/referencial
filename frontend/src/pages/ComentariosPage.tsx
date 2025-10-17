@@ -18,6 +18,14 @@ export function ComentariosPage() {
   const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
   const [mostrarResolvidos, setMostrarResolvidos] = useState<'todos' | 'abertos' | 'fechados'>('todos');
 
+  const alvoIdNumero = useMemo(() => {
+    if (!alvoIdFiltro) {
+      return undefined;
+    }
+    const parsed = Number(alvoIdFiltro);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [alvoIdFiltro]);
+
   const { data: comentarios, isLoading, refetch } = useComentarios({
     alvoTipo: alvoTipoFiltro || undefined,
     alvoId: alvoIdNumero,
@@ -30,8 +38,6 @@ export function ComentariosPage() {
   });
   const criarComentario = useCreateComentario();
   const atualizarComentario = useUpdateComentario();
-
-  const alvoIdNumero = alvoIdFiltro ? Number(alvoIdFiltro) : undefined;
 
   useStreamSubscription({
     alvoTipo: alvoTipoFiltro || undefined,

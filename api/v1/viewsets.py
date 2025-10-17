@@ -285,10 +285,33 @@ class FormularioDinamicoViewSet(viewsets.ReadOnlyModelViewSet):
         formulario = self.get_object()
         data = request.data.copy()
         data["formulario"] = formulario.pk
-        serializer = RespostaCampoDinamicoSerializer(data=data)
+        cliente_id = _get_request_cliente_id(request)
+
+        campo_id = data.get("campo")
+        if not campo_id:
+            raise ValidationError({"campo": "Campo é obrigatório"})
+        if not formulario.campos.filter(pk=campo_id).exists():
+            raise ValidationError({"campo": "Campo não pertence a este formulário"})
+
+        owner_type = data.get("owner_type") or RespostaCampoDinamico.OwnerType.RESPOSTA
+        data["owner_type"] = owner_type
+        owner_id = data.get("owner_id")
+        if owner_id is None:
+            raise ValidationError({"owner_id": "Identificador do proprietário é obrigatório"})
+
+        instance = RespostaCampoDinamico.objects.filter(
+            formulario=formulario,
+            campo_id=campo_id,
+            owner_type=owner_type,
+            owner_id=str(owner_id),
+            cliente_id=cliente_id,
+        ).first()
+
+        serializer = RespostaCampoDinamicoSerializer(instance, data=data, partial=bool(instance))
         serializer.is_valid(raise_exception=True)
-        serializer.save(cliente_id=_get_request_cliente_id(request))
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer.save(cliente_id=cliente_id, formulario=formulario)
+        status_code = status.HTTP_200_OK if instance else status.HTTP_201_CREATED
+        return Response(serializer.data, status=status_code)
 
 
 class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

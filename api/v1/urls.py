@@ -7,7 +7,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .routers import router
 from .viewsets import ClienteViewSet, DiffView
+<<<<<<< HEAD
 from .views import SessionLoginView, CsrfTokenView
+=======
+from .views import CsrfTokenView, SessionLoginView
+>>>>>>> 7e6ca79 (Video Prototipo)
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -15,6 +19,7 @@ urlpatterns = [
     path("diff", DiffView.as_view(), name="diff-html"),
     path("auth/csrf", CsrfTokenView.as_view(), name="csrf-token"),
     path("auth/login", SessionLoginView.as_view(), name="auth-login"),
+    path("auth/csrf", CsrfTokenView.as_view(), name="auth-csrf"),
     path("auth/jwt", TokenObtainPairView.as_view(), name="token-obtain"),
     path("auth/jwt/refresh", TokenRefreshView.as_view(), name="token-refresh"),
 ]

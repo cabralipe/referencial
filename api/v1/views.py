@@ -37,6 +37,9 @@ class CsrfTokenView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+<<<<<<< HEAD
         # Força a criação do token CSRF
+=======
+>>>>>>> 7e6ca79 (Video Prototipo)
         token = get_token(request)
         return Response({"csrfToken": token})

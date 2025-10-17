@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { API_BASE_URL } from '@/config/env';
+import { appendCsrfHeader, ensureCsrfToken, CSRF_HEADER } from '@/api/csrf';
 
 import {
   clearAuthStorage,
@@ -119,15 +120,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     try {
-      const response = await fetch(resolveApiUrl('/auth/jwt/refresh'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
-        credentials: 'include',
-      });
+      const response = await fetch(
+        resolveApiUrl('/auth/jwt/refresh'),
+        appendCsrfHeader({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+          credentials: 'include',
+        }),
+      );
       if (!response.ok) {
         await logout();
         return null;
@@ -163,11 +167,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!headers.has('Accept')) {
         headers.set('Accept', 'application/json');
       }
-      const response = await fetch(resolveApiUrl(path), {
-        ...init,
-        headers,
-        credentials: 'include',
-      });
+      const response = await fetch(
+        resolveApiUrl(path),
+        appendCsrfHeader({
+          ...init,
+          headers,
+          credentials: 'include',
+        }),
+      );
       if (response.status === 401 && !tokenOverride) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -232,12 +239,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const csrfToken = getCsrfToken();
         const payload = JSON.stringify({ email, password });
+        const csrfToken = await ensureCsrfToken();
         const commonInit: RequestInit = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+<<<<<<< HEAD
             ...(csrfToken && { 'X-CSRFToken': csrfToken }),
+=======
+            [CSRF_HEADER]: csrfToken,
+>>>>>>> 7e6ca79 (Video Prototipo)
           },
           body: payload,
           credentials: 'include',

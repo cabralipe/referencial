@@ -303,7 +303,12 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        user = authenticate(request=request, email=attrs.get("email"), password=attrs.get("password"))
+        email = attrs.get("email")
+        password = attrs.get("password")
+        if email:
+            email = email.strip().lower()
+            attrs["email"] = email
+        user = authenticate(request=request, username=email, password=password)
         if not user:
             raise serializers.ValidationError("Credenciais inválidas")
         attrs["user"] = user

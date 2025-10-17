@@ -1,8 +1,10 @@
 """Configurações do Django Admin para entidades centrais."""
 
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
+from .forms import UsuarioCreationForm, UsuarioChangeForm
 
 
 @admin.register(Cliente)
@@ -41,11 +43,51 @@ class ClienteTemaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Usuario)
-class UsuarioAdmin(admin.ModelAdmin):
+class UsuarioAdmin(DjangoUserAdmin):
+    add_form = UsuarioCreationForm
+    form = UsuarioChangeForm
+    model = Usuario
     list_display = ("email", "nome", "cliente", "role", "is_active", "last_login")
     list_filter = ("role", "is_active", "cliente")
     search_fields = ("email", "nome")
     ordering = ("email",)
+    readonly_fields = ("last_login", "date_joined")
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        ("Informações pessoais", {"fields": ("nome", "cliente", "role")}),
+        (
+            "Permissões",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        ("Datas importantes", {"fields": ("last_login", "date_joined")}),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "email",
+                    "nome",
+                    "cliente",
+                    "role",
+                    "password1",
+                    "password2",
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                ),
+            },
+        ),
+    )
 
 
 @admin.register(AuditLog)
