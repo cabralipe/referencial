@@ -237,19 +237,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return null;
         }
 
-        const csrfToken = getCsrfToken();
-        const payload = JSON.stringify({ email, password });
         const csrfToken = await ensureCsrfToken();
+        const payload = JSON.stringify({ email, password });
         const commonInit: RequestInit = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
-<<<<<<< HEAD
-            ...(csrfToken && { 'X-CSRFToken': csrfToken }),
-=======
             [CSRF_HEADER]: csrfToken,
->>>>>>> 7e6ca79 (Video Prototipo)
           },
           body: payload,
           credentials: 'include',
