@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Error</title>
+</head>
+<body>
+    <h1>Testing Frontend Error</h1>
+    <div id="status">Starting test...</div>
+    <div id="logs"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += '<p>' + message + '</p>';
+        }
+        
+        async function testFrontendError() {
+            try {
+                statusDiv.textContent = 'Testing frontend error...';
+                
+                // First, get CSRF token
+                log('1. Getting CSRF token...');
+                const csrfResponse = await fetch('http://localhost:5173/api/v1/csrf/', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!csrfResponse.ok) {
+                    throw new Error(`CSRF request failed: ${csrfResponse.status}`);
+                }
+                
+                const csrfData = await csrfResponse.json();
+                const csrfToken = csrfData.csrfToken;
+                log(`CSRF token obtained: ${csrfToken.substring(0, 10)}...`);
+                
+                // Login
+                log('2. Logging in...');
+                const loginResponse = await fetch('http://localhost:5173/api/v1/auth/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: 'admin@test.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                if (!loginResponse.ok) {
+                    const loginError = await loginResponse.text();
+                    throw new Error(`Login failed: ${loginResponse.status} - ${loginError}`);
+                }
+                
+                log('Login successful!');
+                
+                // Now try to make a PUT request to respostas/1 that should trigger the error
+                log('3. Making PUT request to /api/v1/respostas/1...');
+                const putResponse = await fetch('http://localhost:5173/api/v1/respostas/1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Cliente-ID': '1'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        conteudo_html: '<p>Test content</p>',
+                        etag: 'test-etag'
+                    })
+                });
+                
+                if (!putResponse.ok) {
+                    const errorText = await putResponse.text();
+                    log(`PUT request failed: ${putResponse.status} - ${errorText}`);
+                } else {
+                    const result = await putResponse.json();
+                    log(`PUT request successful: ${JSON.stringify(result)}`);
+                }
+                
+                statusDiv.textContent = 'Test completed!';
+                
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                statusDiv.textContent = 'Test failed!';
+            }
+        }
+        
+        // Start the test
+        testFrontendError();
+    </script>
+</body>
+</html>
