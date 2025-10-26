@@ -275,7 +275,7 @@ export function TaskDetailPage() {
             value={draft}
             onChange={(event) => handleChangeDraft(pergunta.id, event.target.value)}
             rows={8}
-            placeholder="Digite o conteúdo em HTML ou texto formatado..."
+            placeholder="Digite sua resposta em texto simples..."
             disabled={!selectedGtId}
           />
 
@@ -313,11 +313,6 @@ export function TaskDetailPage() {
             </p>
           )}
         </div>
-
-        <details className="pergunta-card__preview" open>
-          <summary>Pré-visualização</summary>
-          <div dangerouslySetInnerHTML={{ __html: draft }} />
-        </details>
       </article>
     );
   };
@@ -340,7 +335,7 @@ export function TaskDetailPage() {
 
       <PageInstructions
         title="Como trabalhar nesta tarefa"
-        description="Selecione o GT e registre as respostas mantendo versões atualizadas."
+        description="Selecione o GT e registre as respostas em texto simples mantendo versões atualizadas."
         items={[
           {
             title: 'Escolha um GT válido',
@@ -348,7 +343,7 @@ export function TaskDetailPage() {
           },
           {
             title: 'Edite e revise cada pergunta',
-            description: 'Atualize o texto, salve para persistir no servidor e use a visualização para conferir o HTML.',
+            description: 'Digite suas respostas em texto simples e salve para persistir no servidor.',
           },
           {
             title: 'Acompanhe feedbacks',
