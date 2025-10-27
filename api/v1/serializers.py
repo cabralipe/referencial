@@ -8,7 +8,7 @@ from rest_framework import serializers
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
-from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
+from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
