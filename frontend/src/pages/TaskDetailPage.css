@@ -86,6 +86,13 @@
   cursor: pointer;
 }
 
+.gt-selector__error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
 .gt-selector__suggestions {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
-import { useAvailableGtIds } from '@/hooks/useAvailableGtIds';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useQuadros, useUpdateCelulaQuadro } from '@/hooks/useQuadros';
 
 import './QuadrosPage.css';
@@ -14,7 +14,7 @@ function buildKey(quadroId: number, linha: number, coluna: number): CellKey {
 }
 
 export function QuadrosPage() {
-  const { gtOptions } = useAvailableGtIds();
+  const { gtOptions } = useAvailableGts();
   const [selectedGt, setSelectedGt] = useState<number | ''>('');
   const [templateFilter, setTemplateFilter] = useState('');
   const [drafts, setDrafts] = useState<Record<CellKey, string>>({});
@@ -80,8 +80,8 @@ export function QuadrosPage() {
           <select value={selectedGt} onChange={(event) => setSelectedGt(event.target.value ? Number(event.target.value) : '')}>
             <option value="">Todos</option>
             {gtOptions.map((gt) => (
-              <option key={gt} value={gt}>
-                {gt}
+              <option key={gt.id} value={gt.id}>
+                {gt.displayName}
               </option>
             ))}
           </select>

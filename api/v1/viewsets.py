@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
@@ -21,7 +21,7 @@ from core.permissions import (
 )
 from core.utils import coletar_contexto_do_cliente, verificar_flag
 from comments.models import Comentario
-from curriculum.models import Anexo, Resposta, Tarefa, TextoUnico
+from curriculum.models import Anexo, GT, Resposta, Tarefa, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -40,6 +40,7 @@ from .serializers import (
     CampoDinamicoSerializer,
     ClienteMeSerializer,
     PerguntaSerializer,
+    GTSerializer,
     ExportJobSerializer,
     FormularioDinamicoSerializer,
     CelulaQuadroSerializer,
@@ -104,6 +105,28 @@ class ClienteViewSet(viewsets.ViewSet):
             raise ValidationError("Cliente não associado ao usuário")
         serializer = ClienteMeSerializer.from_cliente(cliente)
         return Response(serializer.data)
+
+
+class GTViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = GTSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ("etapa",)
+    search_fields = ("nome",)
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = GT.objects.filter(cliente_id=cliente_id).order_by("nome")
+        user = self.request.user
+        if not getattr(user, "is_authenticated", False):
+            return queryset.none()
+        if getattr(user, "role", None) in {
+            user.Role.ADMIN_CLIENTE,
+            user.Role.ARTICULADOR,
+            user.Role.SUPER_ADMIN,
+        }:
+            return queryset
+        return queryset.filter(membros=user)
 
 
 class TarefaViewSet(viewsets.ReadOnlyModelViewSet):

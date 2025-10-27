@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
-import { useAvailableGtIds } from '@/hooks/useAvailableGtIds';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useGenerateTextoUnico, useTextoUnicos } from '@/hooks/useTextoUnico';
 import { useTarefas } from '@/hooks/useTarefas';
 
@@ -10,7 +10,7 @@ import './TextoUnicoPage.css';
 
 export function TextoUnicoPage() {
   const { data: tarefas } = useTarefas();
-  const { gtOptions } = useAvailableGtIds();
+  const { gtOptions } = useAvailableGts();
 
   const [selectedGt, setSelectedGt] = useState<number | ''>('');
   const [selectedTarefa, setSelectedTarefa] = useState<number | ''>('');
@@ -72,8 +72,8 @@ export function TextoUnicoPage() {
           <select value={selectedGt} onChange={(event) => setSelectedGt(event.target.value ? Number(event.target.value) : '')}>
             <option value="">Selecione</option>
             {gtOptions.map((gt) => (
-              <option key={gt} value={gt}>
-                {gt}
+              <option key={gt.id} value={gt.id}>
+                {gt.displayName}
               </option>
             ))}
           </select>

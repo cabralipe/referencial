@@ -22,6 +22,12 @@ export interface Pergunta {
   obrigatoria: boolean;
 }
 
+export interface GT {
+  id: number;
+  nome: string;
+  etapa: string;
+}
+
 export interface Resposta {
   id: number;
   gt: number;

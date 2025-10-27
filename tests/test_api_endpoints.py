@@ -1,5 +1,5 @@
 import pytest
-from curriculum.models import TextoUnico
+from curriculum.models import GT, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from workshop.models import Quadro
 
@@ -32,6 +32,33 @@ def test_resposta_crud_flow(auth_client, gt, pergunta):
 
     after_delete = auth_client.get("/api/v1/respostas")
     assert after_delete.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_gt_endpoint_lists_for_admin(auth_client, cliente):
+    GT.objects.create(cliente=cliente, nome="GT Norte", etapa="I")
+    GT.objects.create(cliente=cliente, nome="GT Sul", etapa="II")
+
+    response = auth_client.get("/api/v1/gts")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 2
+    nomes = {item["nome"] for item in payload["results"]}
+    assert {"GT Norte", "GT Sul"} == nomes
+
+
+@pytest.mark.django_db
+def test_gt_endpoint_filters_by_membership(api_client, cliente, membro_gt):
+    gt_visivel = GT.objects.create(cliente=cliente, nome="GT Visível", etapa="I")
+    GT.objects.create(cliente=cliente, nome="GT Oculto", etapa="II")
+    gt_visivel.membros.add(membro_gt)
+
+    api_client.force_authenticate(membro_gt)
+    response = api_client.get("/api/v1/gts")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 1
+    assert payload["results"][0]["nome"] == gt_visivel.nome
 
 
 @pytest.mark.django_db

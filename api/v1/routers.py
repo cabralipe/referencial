@@ -9,6 +9,7 @@ from .viewsets import (
     BlocoTextoViewSet,
     ComentarioViewSet,
     ExportJobViewSet,
+    GTViewSet,
     FormularioDinamicoViewSet,
     MidiaViewSet,
     NotificacaoViewSet,
@@ -22,6 +23,7 @@ from .viewsets import (
 router = DefaultRouter()
 router.trailing_slash = "/?"
 router.register("tarefas", TarefaViewSet, basename="tarefa")
+router.register("gts", GTViewSet, basename="gt")
 router.register("respostas", RespostaViewSet, basename="resposta")
 router.register("texto_unico", TextoUnicoViewSet, basename="texto_unico")
 router.register("quadro", QuadroViewSet, basename="quadro")

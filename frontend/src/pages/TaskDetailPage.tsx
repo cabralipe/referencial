@@ -7,7 +7,7 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
-import { useAvailableGtIds } from '@/hooks/useAvailableGtIds';
+import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
@@ -28,7 +28,8 @@ export function TaskDetailPage() {
 
   const { user } = useAuth();
 
-  const [gtInput, setGtInput] = useState(gtParam ?? '');
+  const [gtInput, setGtInput] = useState('');
+  const [gtSelectionError, setGtSelectionError] = useState<string | null>(null);
   const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, FeedbackEntry>>({});
 
@@ -41,7 +42,7 @@ export function TaskDetailPage() {
     error: perguntasErrorObj,
   } = usePerguntas(tarefaId);
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
-  const { gtOptions } = useAvailableGtIds();
+  const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
 
   const presence = usePresence({
@@ -61,8 +62,17 @@ export function TaskDetailPage() {
   const [lastUpdated, setLastUpdated] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    setGtInput(gtParam ?? '');
-  }, [gtParam]);
+    if (!gtParam) {
+      setGtInput('');
+      setGtSelectionError(null);
+      return;
+    }
+    const matched = gtOptions.find((option) => String(option.id) === gtParam);
+    if (matched) {
+      setGtInput(matched.displayName);
+      setGtSelectionError(null);
+    }
+  }, [gtOptions, gtParam]);
 
   useEffect(() => {
     if (!perguntas) {
@@ -93,7 +103,9 @@ export function TaskDetailPage() {
 
   useEffect(() => {
     if (!gtParam && gtOptions.length > 0) {
-      setSearchParams({ gt: String(gtOptions[0]) }, { replace: true });
+      const first = gtOptions[0];
+      setGtInput(first.displayName);
+      setSearchParams({ gt: String(first.id) }, { replace: true });
     }
   }, [gtOptions, gtParam, setSearchParams]);
 
@@ -113,15 +125,32 @@ export function TaskDetailPage() {
 
   const handleSubmitGt = (event: FormEvent) => {
     event.preventDefault();
-    if (gtInput.trim().length === 0) {
+    const trimmed = gtInput.trim();
+    if (trimmed.length === 0) {
       setSearchParams({}, { replace: true });
+      setGtSelectionError(null);
       return;
     }
-    setSearchParams({ gt: gtInput.trim() }, { replace: true });
+    const normalized = trimmed.toLowerCase();
+    let selected = gtOptions.find((option) => option.displayName.toLowerCase() === normalized);
+    if (!selected) {
+      const byName = gtOptions.filter((option) => option.nome.trim().toLowerCase() === normalized);
+      if (byName.length === 1) {
+        selected = byName[0];
+      }
+    }
+    if (!selected) {
+      setGtSelectionError('GT não encontrado. Selecione um nome válido da lista.');
+      return;
+    }
+    setGtSelectionError(null);
+    setSearchParams({ gt: String(selected.id) }, { replace: true });
   };
 
-  const handleSelectGt = (gt: number) => {
-    setSearchParams({ gt: String(gt) }, { replace: true });
+  const handleSelectGt = (gt: GtOption) => {
+    setGtSelectionError(null);
+    setGtInput(gt.displayName);
+    setSearchParams({ gt: String(gt.id) }, { replace: true });
   };
 
   const handleChangeDraft = (perguntaId: number, value: string) => {
@@ -373,16 +402,25 @@ export function TaskDetailPage() {
 
         <form className="gt-selector" onSubmit={handleSubmitGt}>
           <label>
-            <span>ID do GT</span>
+            <span>Nome do GT</span>
             <input
-              type="number"
+              type="text"
               value={gtInput}
-              onChange={(event) => setGtInput(event.target.value)}
-              placeholder="Ex.: 12"
-              min={1}
+              list="gt-selector-options"
+              onChange={(event) => {
+                setGtSelectionError(null);
+                setGtInput(event.target.value);
+              }}
+              placeholder="Ex.: GT Norte"
             />
           </label>
           <button type="submit">Aplicar</button>
+          <datalist id="gt-selector-options">
+            {gtOptions.map((gt) => (
+              <option key={gt.id} value={gt.displayName} label={gt.nome} />
+            ))}
+          </datalist>
+          {gtSelectionError && <p className="gt-selector__error">{gtSelectionError}</p>}
         </form>
 
         {gtOptions.length > 0 && (
@@ -391,12 +429,12 @@ export function TaskDetailPage() {
             <div>
               {gtOptions.slice(0, 6).map((gt) => (
                 <button
-                  key={gt}
+                  key={gt.id}
                   type="button"
                   onClick={() => handleSelectGt(gt)}
-                  className={selectedGtId === gt ? 'active' : ''}
+                  className={selectedGtId === gt.id ? 'active' : ''}
                 >
-                  {gt}
+                  {gt.displayName}
                 </button>
               ))}
             </div>

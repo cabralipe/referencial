@@ -8,7 +8,7 @@ from rest_framework import serializers
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
-from curriculum.models import Anexo, Pergunta, Resposta, Tarefa, TextoUnico
+from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -56,6 +56,12 @@ class TarefaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tarefa
         fields = ("id", "ordem", "etapa", "tipo", "status")
+
+
+class GTSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GT
+        fields = ("id", "nome", "etapa")
 
 
 class PerguntaSerializer(serializers.ModelSerializer):
