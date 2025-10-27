@@ -8,7 +8,7 @@ from rest_framework import serializers
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
-from curriculum.models import Anexo, Pergunta, Resposta, Tarefa, TextoUnico
+from curriculum.models import Anexo, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -127,6 +127,37 @@ class TextoUnicoSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "version", "updated_at", "responsavel", "etag")
 
 
+class TextoColaborativoSerializer(serializers.ModelSerializer):
+    etag = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = TextoColaborativo
+        fields = (
+            "id",
+            "gt",
+            "titulo",
+            "conteudo_html",
+            "autor",
+            "version",
+            "created_at",
+            "updated_at",
+            "etag",
+        )
+        read_only_fields = ("id", "version", "created_at", "updated_at", "autor", "etag")
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            validated_data["autor"] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            validated_data["autor"] = request.user
+        return super().update(instance, validated_data)
+
+
 class CelulaQuadroSerializer(serializers.ModelSerializer):
     class Meta:
         model = CelulaQuadro
@@ -194,6 +225,35 @@ class ExportJobSerializer(serializers.ModelSerializer):
             "finished_at",
         )
         read_only_fields = ("id", "status", "url_resultado", "created_at", "finished_at")
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        cliente_id = getattr(getattr(request, "user", None), "cliente_id", None)
+        if not cliente_id:
+            raise serializers.ValidationError("Cliente do usuário não encontrado.")
+
+        alvo_tipo = attrs.get("alvo_tipo")
+        alvo_id = attrs.get("alvo_id")
+        if not alvo_tipo or not alvo_id:
+            return attrs
+
+        modelo_por_tipo = {
+            ExportJob.AlvoTipo.TEXTO_UNICO: TextoUnico,
+            ExportJob.AlvoTipo.QUADRO: Quadro,
+        }
+        modelo = modelo_por_tipo.get(alvo_tipo)
+        if not modelo:
+            raise serializers.ValidationError({"alvo_tipo": "Tipo de alvo inválido."})
+
+        lookup = {"cliente_id": cliente_id, "pk": alvo_id}
+        if any(field.attname == "is_deleted" for field in modelo._meta.fields):
+            lookup["is_deleted"] = False
+
+        if not modelo.raw_objects.filter(**lookup).exists():
+            raise serializers.ValidationError({"alvo_id": "Alvo não encontrado para este cliente."})
+
+        attrs["alvo_id"] = str(alvo_id)
+        return attrs
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

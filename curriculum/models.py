@@ -157,3 +157,42 @@ class TextoUnico(TenantModel):
     @property
     def etag(self) -> str:
         return f"W/\"texto-unico-{self.pk}-v{self.version}\""
+
+
+class TextoColaborativo(TenantModel):
+    gt = models.ForeignKey(GT, on_delete=models.CASCADE, related_name="textos_colaborativos")
+    titulo = models.CharField(max_length=255)
+    conteudo_html = models.TextField(blank=True)
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="textos_colaborativos",
+    )
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        indexes = [
+            models.Index(fields=["cliente", "gt"]),
+        ]
+
+    def save(self, *args, **kwargs):  # type: ignore[override]
+        if self.pk:
+            self.version += 1
+            update_fields = kwargs.get("update_fields")
+            if update_fields:
+                update_fields = set(update_fields)
+                update_fields.update({"version", "updated_at"})
+                kwargs["update_fields"] = list(update_fields)
+        else:
+            self.version = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.titulo
+
+    @property
+    def etag(self) -> str:
+        return f"W/\"texto-colaborativo-{self.pk}-v{self.version}\""
