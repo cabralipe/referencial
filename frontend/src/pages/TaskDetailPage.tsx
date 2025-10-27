@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '@/api/client';
@@ -28,8 +28,6 @@ export function TaskDetailPage() {
 
   const { user } = useAuth();
 
-  const [gtInput, setGtInput] = useState('');
-  const [gtSelectionError, setGtSelectionError] = useState<string | null>(null);
   const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, FeedbackEntry>>({});
 
@@ -62,19 +60,6 @@ export function TaskDetailPage() {
   const [lastUpdated, setLastUpdated] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    if (!gtParam) {
-      setGtInput('');
-      setGtSelectionError(null);
-      return;
-    }
-    const matched = gtOptions.find((option) => String(option.id) === gtParam);
-    if (matched) {
-      setGtInput(matched.displayName);
-      setGtSelectionError(null);
-    }
-  }, [gtOptions, gtParam]);
-
-  useEffect(() => {
     if (!perguntas) {
       return;
     }
@@ -102,10 +87,21 @@ export function TaskDetailPage() {
   }, [perguntas, respostas]);
 
   useEffect(() => {
-    if (!gtParam && gtOptions.length > 0) {
-      const first = gtOptions[0];
-      setGtInput(first.displayName);
-      setSearchParams({ gt: String(first.id) }, { replace: true });
+    if (gtOptions.length === 0) {
+      if (gtParam) {
+        setSearchParams({}, { replace: true });
+      }
+      return;
+    }
+
+    if (!gtParam) {
+      setSearchParams({ gt: String(gtOptions[0].id) }, { replace: true });
+      return;
+    }
+
+    const exists = gtOptions.some((option) => String(option.id) === gtParam);
+    if (!exists) {
+      setSearchParams({ gt: String(gtOptions[0].id) }, { replace: true });
     }
   }, [gtOptions, gtParam, setSearchParams]);
 
@@ -123,33 +119,7 @@ export function TaskDetailPage() {
     return fallback;
   };
 
-  const handleSubmitGt = (event: FormEvent) => {
-    event.preventDefault();
-    const trimmed = gtInput.trim();
-    if (trimmed.length === 0) {
-      setSearchParams({}, { replace: true });
-      setGtSelectionError(null);
-      return;
-    }
-    const normalized = trimmed.toLowerCase();
-    let selected = gtOptions.find((option) => option.displayName.toLowerCase() === normalized);
-    if (!selected) {
-      const byName = gtOptions.filter((option) => option.nome.trim().toLowerCase() === normalized);
-      if (byName.length === 1) {
-        selected = byName[0];
-      }
-    }
-    if (!selected) {
-      setGtSelectionError('GT não encontrado. Selecione um nome válido da lista.');
-      return;
-    }
-    setGtSelectionError(null);
-    setSearchParams({ gt: String(selected.id) }, { replace: true });
-  };
-
   const handleSelectGt = (gt: GtOption) => {
-    setGtSelectionError(null);
-    setGtInput(gt.displayName);
     setSearchParams({ gt: String(gt.id) }, { replace: true });
   };
 
@@ -400,28 +370,32 @@ export function TaskDetailPage() {
           <p>Escolha o grupo de trabalho para visualizar e editar as respostas vinculadas.</p>
         </div>
 
-        <form className="gt-selector" onSubmit={handleSubmitGt}>
+        <div className="gt-selector">
           <label>
             <span>Nome do GT</span>
-            <input
-              type="text"
-              value={gtInput}
-              list="gt-selector-options"
+            <select
+              value={selectedGtId ? String(selectedGtId) : ''}
               onChange={(event) => {
-                setGtSelectionError(null);
-                setGtInput(event.target.value);
+                const value = event.target.value;
+                if (!value) {
+                  setSearchParams({}, { replace: true });
+                  return;
+                }
+                setSearchParams({ gt: value }, { replace: true });
               }}
-              placeholder="Ex.: GT Norte"
-            />
+              disabled={gtOptions.length === 0}
+            >
+              <option value="">
+                {gtOptions.length === 0 ? 'Nenhum GT disponível' : 'Selecione'}
+              </option>
+              {gtOptions.map((gt) => (
+                <option key={gt.id} value={gt.id}>
+                  {gt.displayName}
+                </option>
+              ))}
+            </select>
           </label>
-          <button type="submit">Aplicar</button>
-          <datalist id="gt-selector-options">
-            {gtOptions.map((gt) => (
-              <option key={gt.id} value={gt.displayName} label={gt.nome} />
-            ))}
-          </datalist>
-          {gtSelectionError && <p className="gt-selector__error">{gtSelectionError}</p>}
-        </form>
+        </div>
 
         {gtOptions.length > 0 && (
           <div className="gt-selector__suggestions">

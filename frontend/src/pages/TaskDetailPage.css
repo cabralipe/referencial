@@ -69,28 +69,16 @@
   color: #1f2937;
 }
 
-.gt-selector input {
+.gt-selector input,
+.gt-selector select {
   border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.6);
   padding: 0.6rem 0.8rem;
   font-size: 1rem;
 }
 
-.gt-selector button {
-  border: none;
-  border-radius: 0.75rem;
-  padding: 0.6rem 1rem;
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-  font-weight: 600;
-  color: #fff;
-  cursor: pointer;
-}
-
-.gt-selector__error {
-  flex-basis: 100%;
-  margin: 0;
-  color: #dc2626;
-  font-size: 0.85rem;
+.gt-selector select {
+  background-color: #fff;
 }
 
 .gt-selector__suggestions {

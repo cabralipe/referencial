@@ -14,10 +14,25 @@ export function useAvailableGts() {
   const query = useQuery({
     queryKey: ['gts', 'available'],
     queryFn: async () => {
-      const response = await client.get<PaginatedResponse<GT>>('/gts', {
-        query: { page_size: 200 },
-      });
-      return response.data.results ?? [];
+      const collected: GT[] = [];
+      let nextUrl: string | null = null;
+      let currentUrl: string = '/gts';
+      let firstFetch = true;
+
+      do {
+        const response = await client.get<PaginatedResponse<GT>>(currentUrl, {
+          query: firstFetch ? { page_size: 200, only_member: 'true' } : undefined,
+        });
+        const { results = [], next } = response.data;
+        collected.push(...results);
+        nextUrl = next ?? null;
+        if (nextUrl) {
+          currentUrl = nextUrl;
+        }
+        firstFetch = false;
+      } while (nextUrl);
+
+      return collected;
     },
     staleTime: 5 * 60 * 1000,
   });

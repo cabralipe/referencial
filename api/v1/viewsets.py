@@ -121,6 +121,13 @@ class GTViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if not getattr(user, "is_authenticated", False):
             return queryset.none()
+
+        only_member_param = str(self.request.query_params.get("only_member", "")).lower()
+        only_member = only_member_param in {"1", "true", "yes"}
+
+        if only_member:
+            return queryset.filter(membros=user)
+
         if getattr(user, "role", None) in {
             user.Role.ADMIN_CLIENTE,
             user.Role.ARTICULADOR,

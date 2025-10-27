@@ -62,6 +62,19 @@ def test_gt_endpoint_filters_by_membership(api_client, cliente, membro_gt):
 
 
 @pytest.mark.django_db
+def test_gt_endpoint_only_member_param_limits_admin(auth_client, cliente, usuario):
+    gt_membro = GT.objects.create(cliente=cliente, nome="GT Local", etapa="I")
+    gt_membro.membros.add(usuario)
+    GT.objects.create(cliente=cliente, nome="GT Global", etapa="II")
+
+    response = auth_client.get("/api/v1/gts", {"only_member": "true"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 1
+    assert payload["results"][0]["nome"] == gt_membro.nome
+
+
+@pytest.mark.django_db
 def test_formulario_endpoints(auth_client, cliente):
     formulario = FormularioDinamico.objects.create(cliente=cliente, nome="Inscrição")
     CampoDinamico.objects.create(
