@@ -50,6 +50,18 @@ export interface TextoUnico {
   etag: string;
 }
 
+export interface TextoColaborativo {
+  id: number;
+  gt: number;
+  titulo: string;
+  conteudo_html: string;
+  autor: number | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  etag: string;
+}
+
 export interface Revisao {
   id: number;
   alvo_tipo: string;

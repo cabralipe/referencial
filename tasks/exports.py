@@ -30,7 +30,7 @@ def _build_context(job: ExportJob) -> ExportContext:
         "titulo": f"Exportação #{job.id}",
     }
     if job.alvo_tipo == ExportJob.AlvoTipo.TEXTO_UNICO:
-        texto = TextoUnico.objects.get(pk=job.alvo_id)
+        texto = TextoUnico.raw_objects.get(pk=job.alvo_id, cliente=cliente, is_deleted=False)
         payload.update(
             {
                 "conteudo_html": texto.conteudo_html,
@@ -38,19 +38,21 @@ def _build_context(job: ExportJob) -> ExportContext:
             }
         )
     elif job.alvo_tipo == ExportJob.AlvoTipo.QUADRO:
-        quadro = Quadro.objects.get(pk=job.alvo_id)
-        linhas = []
+        quadro = Quadro.raw_objects.get(pk=job.alvo_id, cliente=cliente, is_deleted=False)
+        linhas: Dict[int, list[str]] = {}
         for celula in quadro.celulas.order_by("linha", "coluna"):
-            linhas.append({
-                "linha": celula.linha,
-                "coluna": celula.coluna,
-                "valor_html": celula.valor_html,
-            })
+            linhas.setdefault(celula.linha, []).append(celula.valor_html)
+
+        table_rows = []
+        for linha_idx in sorted(linhas.keys()):
+            colunas = linhas[linha_idx]
+            cells_html = "".join(f"<td>{valor}</td>" for valor in colunas)
+            table_rows.append(f"<tr>{cells_html}</tr>")
+
+        conteudo_html = "<table><tbody>" + "".join(table_rows) + "</tbody></table>"
         payload.update(
             {
-                "conteudo_html": "<table>" + "".join(
-                    f"<tr><td>{c['valor_html']}</td></tr>" for c in linhas
-                ) + "</table>",
+                "conteudo_html": conteudo_html,
                 "titulo": f"Quadro {quadro.template}",
             }
         )

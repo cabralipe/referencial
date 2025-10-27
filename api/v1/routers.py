@@ -17,6 +17,7 @@ from .viewsets import (
     QuadroViewSet,
     RespostaViewSet,
     TarefaViewSet,
+    TextoColaborativoViewSet,
     TextoUnicoViewSet,
 )
 
@@ -26,6 +27,7 @@ router.register("tarefas", TarefaViewSet, basename="tarefa")
 router.register("gts", GTViewSet, basename="gt")
 router.register("respostas", RespostaViewSet, basename="resposta")
 router.register("texto_unico", TextoUnicoViewSet, basename="texto_unico")
+router.register("textos_colaborativos", TextoColaborativoViewSet, basename="texto_colaborativo")
 router.register("quadro", QuadroViewSet, basename="quadro")
 router.register("formularios", FormularioDinamicoViewSet, basename="formulario")
 router.register("exports", ExportJobViewSet, basename="export")
