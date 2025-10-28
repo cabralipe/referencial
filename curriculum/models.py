@@ -40,6 +40,7 @@ class Tarefa(TenantModel):
     etapa = models.CharField(max_length=120, blank=True)
     tipo = models.CharField(max_length=20, choices=Tipo.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.RASCUNHO)
+    gts = models.ManyToManyField(GT, related_name="tarefas", blank=True)
 
     class Meta:
         ordering = ("ordem",)
