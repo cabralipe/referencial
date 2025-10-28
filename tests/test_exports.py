@@ -76,7 +76,6 @@ def test_export_job_serializer_blocks_cross_cliente(cliente, usuario, gt, tarefa
     other_cliente = Cliente.objects.create(nome="Prefeitura Extra", slug="prefeitura-extra")
     other_gt = GT.objects.create(cliente=other_cliente, nome="GT Extra", etapa="I")
     other_tarefa = Tarefa.objects.create(cliente=other_cliente, ordem=1, etapa="I", tipo=Tarefa.Tipo.PERGUNTAS)
-    other_tarefa.gts.add(other_gt)
     texto_estrangeiro = TextoUnico.objects.create(cliente=other_cliente, gt=other_gt, tarefa=other_tarefa)
 
     request = type("Req", (), {"user": usuario})()

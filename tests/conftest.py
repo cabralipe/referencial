@@ -29,12 +29,10 @@ def gt(cliente):
 
 
 @pytest.fixture
-def tarefa(cliente, gt):
+def tarefa(cliente):
     from curriculum.models import Tarefa
 
-    tarefa = Tarefa.objects.create(cliente=cliente, ordem=1, etapa="I", tipo=Tarefa.Tipo.PERGUNTAS)
-    tarefa.gts.add(gt)
-    return tarefa
+    return Tarefa.objects.create(cliente=cliente, ordem=1, etapa="I", tipo=Tarefa.Tipo.PERGUNTAS)
 
 
 @pytest.fixture

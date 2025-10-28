@@ -3,7 +3,6 @@
 import re
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.html import strip_tags
 
 from .models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
@@ -17,52 +16,16 @@ class GTAdmin(admin.ModelAdmin):
 
 
 class TarefaForm(forms.ModelForm):
-    gts = forms.ModelMultipleChoiceField(
-        queryset=GT.objects.all(),
-        widget=FilteredSelectMultiple("GTs", is_stacked=False),
-        required=True,
-        label="GTs vinculados",
-    )
-
     class Meta:
         model = Tarefa
         fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        queryset = GT.objects.all().order_by('nome')
-        cliente_id = None
-
-        if self.instance and self.instance.cliente_id:
-            cliente_id = self.instance.cliente_id
-        else:
-            raw_cliente = self.data.get('cliente') or self.initial.get('cliente')
-            try:
-                cliente_id = int(raw_cliente)
-            except (TypeError, ValueError):
-                cliente_id = None
-
-        if cliente_id:
-            queryset = queryset.filter(cliente_id=cliente_id)
-
-        self.fields['gts'].queryset = queryset
-
-        if self.instance and self.instance.pk:
-            self.fields['gts'].initial = self.instance.gts.all()
-
-        if not self.instance.pk and not cliente_id:
-            self.fields['gts'].help_text = (
-                'Selecione o cliente antes de salvar para filtrar os GTs ou '
-                'escolha manualmente apenas GTs do mesmo cliente.'
-            )
-
+    
     def clean(self):
         cleaned_data = super().clean()
         cliente = cleaned_data.get('cliente')
         ordem = cleaned_data.get('ordem')
         tipo = cleaned_data.get('tipo')
-
+        
         if cliente and ordem and tipo:
             # Verificar se já existe uma tarefa com a mesma combinação
             existing_tarefa = Tarefa.objects.filter(
@@ -70,7 +33,7 @@ class TarefaForm(forms.ModelForm):
                 ordem=ordem,
                 tipo=tipo
             ).exclude(pk=self.instance.pk if self.instance else None)
-
+            
             if existing_tarefa.exists():
                 existing = existing_tarefa.first()
                 raise forms.ValidationError(
@@ -78,14 +41,7 @@ class TarefaForm(forms.ModelForm):
                     f"Ordem {ordem} e Tipo '{tipo}' (ID: {existing.id}). "
                     f"Por favor, escolha uma ordem diferente ou modifique a tarefa existente."
                 )
-
-        gts = cleaned_data.get('gts')
-        if not gts:
-            raise forms.ValidationError("Selecione ao menos um GT para associar à tarefa.")
-
-        if cliente and any(gt.cliente_id != cliente.id for gt in gts):
-            raise forms.ValidationError("Todos os GTs selecionados devem pertencer ao mesmo cliente da tarefa.")
-
+        
         return cleaned_data
 
 
@@ -95,7 +51,7 @@ class TarefaAdmin(admin.ModelAdmin):
     list_display = ("ordem", "tipo", "status", "cliente", "id")
     list_filter = ("cliente", "tipo", "status")
     search_fields = ("cliente__nome",)
-
+    
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         
@@ -118,28 +74,8 @@ class TarefaAdmin(admin.ModelAdmin):
                         )
             else:
                 form.base_fields['ordem'].help_text = "Selecione um cliente primeiro para ver as tarefas existentes."
-
+        
         return form
-
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == 'gts':
-            cliente_id = None
-            if request.method == 'POST':
-                cliente_id = request.POST.get('cliente') or request.POST.get('cliente', None)
-            if not cliente_id:
-                object_id = request.resolver_match.kwargs.get('object_id') if request.resolver_match else None
-                if object_id:
-                    try:
-                        tarefa = Tarefa.objects.get(pk=object_id)
-                    except Tarefa.DoesNotExist:
-                        tarefa = None
-                    else:
-                        cliente_id = tarefa.cliente_id
-            if cliente_id:
-                kwargs['queryset'] = GT.objects.filter(cliente_id=cliente_id).order_by('nome')
-            else:
-                kwargs['queryset'] = GT.objects.all().order_by('nome')
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 @admin.register(Pergunta)
