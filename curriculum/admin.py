@@ -64,6 +64,17 @@ class TarefaAdmin(admin.ModelAdmin):
     list_filter = ("cliente", "tipo", "status")
     search_fields = ("cliente__nome",)
     
+    def get_queryset(self, request):
+        """Customiza o queryset para super admins verem todas as tarefas."""
+        from core.models import Usuario
+        
+        # Se o usuário é super admin, mostrar todas as tarefas
+        if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+            return Tarefa.raw_objects.filter(is_deleted=False)
+        
+        # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+        return super().get_queryset(request)
+    
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         
@@ -99,37 +110,76 @@ class PerguntaAdmin(admin.ModelAdmin):
     fields = ("tarefa", "ordem", "texto", "permite_upload", "obrigatoria", "gts")
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "gts":
-            try:
-                # Detecta change view e carrega a Pergunta sem escopo de cliente
-                object_id = request.resolver_match.kwargs.get("object_id")
-            except Exception:
-                object_id = None
-            if object_id:
-                try:
-                    pergunta = Pergunta.raw_objects.get(pk=object_id)
-                    kwargs["queryset"] = GT.raw_objects.filter(cliente_id=pergunta.cliente_id)
-                except Pergunta.DoesNotExist:
-                    # fallback: mantém escopo atual
-                    kwargs["queryset"] = GT.objects.all()
-            else:
-                # add view: usa o escopo padrão (cliente atual)
-                kwargs["queryset"] = GT.objects.all()
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
-    
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
         """Customiza o queryset para campos ManyToMany."""
         if db_field.name == "gts":
             from core.models import Usuario
+            from django.db.models import Q
             
             # Se o usuário é super admin, mostrar todos os GTs
             if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
                 kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
             # Para outros usuários, usar o queryset padrão (com filtro de cliente)
             else:
-                kwargs["queryset"] = GT.objects.all()
+                base_queryset = GT.objects.all()
+                
+                # Se estamos editando uma pergunta existente, incluir os GTs já associados
+                # mesmo que eles não estejam normalmente disponíveis para o usuário
+                pergunta_id = self._get_pergunta_id_from_request(request)
+                if pergunta_id:
+                    try:
+                        pergunta = Pergunta.raw_objects.get(id=pergunta_id)
+                        gts_salvos_ids = list(pergunta.gts.values_list('id', flat=True))
+                        
+                        if gts_salvos_ids:
+                            # Combinar GTs disponíveis com GTs já salvos usando Q objects
+                            kwargs["queryset"] = GT.raw_objects.filter(
+                                Q(id__in=base_queryset.values_list('id', flat=True)) |
+                                Q(id__in=gts_salvos_ids, is_deleted=False)
+                            ).distinct()
+                        else:
+                            kwargs["queryset"] = base_queryset
+                    except (ValueError, Pergunta.DoesNotExist):
+                        kwargs["queryset"] = base_queryset
+                else:
+                    kwargs["queryset"] = base_queryset
         
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+    
+    def _get_pergunta_id_from_request(self, request):
+        """Extrai o ID da pergunta da URL de edição."""
+        try:
+            # Verificar se é uma URL de edição
+            if hasattr(request, 'path') and '/change/' in request.path:
+                url_parts = request.path.split('/')
+                # Procurar por padrão: .../pergunta/{id}/change/
+                for i, part in enumerate(url_parts):
+                    if part == 'pergunta' and i + 1 < len(url_parts):
+                        return int(url_parts[i + 1])
+        except (ValueError, IndexError):
+            pass
+        return None
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Customiza o queryset para campos ForeignKey."""
+        if db_field.name == "tarefa":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todas as tarefas
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = Tarefa.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = Tarefa.objects.all()
+        
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    def save_model(self, request, obj, form, change):
+        """Garante que o cliente_id seja definido corretamente baseado na tarefa."""
+        # Se não há cliente_id definido, usar o cliente da tarefa
+        if not obj.cliente_id and obj.tarefa:
+            obj.cliente_id = obj.tarefa.cliente_id
+        
+        super().save_model(request, obj, form, change)
 
 
 class RespostaForm(forms.ModelForm):
@@ -180,6 +230,29 @@ class RespostaAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('version',)
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Customiza o queryset para campos ForeignKey."""
+        if db_field.name == "gt":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todos os GTs
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = GT.objects.all()
+        elif db_field.name == "pergunta":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todas as perguntas
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = Pergunta.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = Pergunta.objects.all()
+        
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(Anexo)
@@ -192,3 +265,26 @@ class AnexoAdmin(admin.ModelAdmin):
 class TextoUnicoAdmin(admin.ModelAdmin):
     list_display = ("gt", "tarefa", "responsavel", "version", "updated_at")
     list_filter = ("gt", "tarefa")
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Customiza o queryset para campos ForeignKey."""
+        if db_field.name == "tarefa":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todas as tarefas
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = Tarefa.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = Tarefa.objects.all()
+        elif db_field.name == "gt":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todos os GTs
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = GT.objects.all()
+        
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
