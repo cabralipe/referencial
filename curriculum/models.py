@@ -59,6 +59,12 @@ class Pergunta(TenantModel):
     texto = models.TextField()
     permite_upload = models.BooleanField(default=False)
     obrigatoria = models.BooleanField(default=True)
+    gts = models.ManyToManyField(
+        GT,
+        blank=True,
+        related_name="perguntas",
+        help_text="Selecione um ou mais GTs aos quais esta pergunta se aplica. Deixe em branco para aplicar a todos.",
+    )
 
     class Meta:
         ordering = ("ordem",)

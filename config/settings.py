@@ -151,6 +151,15 @@ DATABASES = {
 # Garantimos que, se for SQLite, configuramos corretamente o engine
 if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
     DATABASES["default"]["NAME"] = str(BASE_DIR / "db.sqlite3")
+elif DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    # Garante que usamos o schema 'public' em conexões do servidor
+    DATABASES["default"].setdefault("OPTIONS", {})
+    # Define o search_path explicitamente para evitar problemas de visibilidade de tabelas
+    DATABASES["default"]["OPTIONS"]["options"] = "-c search_path=public"
+
+# Durante o ajuste do ambiente, evitamos reuso de conexões para garantir
+# que alterações de schema sejam percebidas imediatamente.
+DATABASES["default"]["CONN_MAX_AGE"] = 0
 
 # Autenticação
 AUTH_USER_MODEL = "core.Usuario"

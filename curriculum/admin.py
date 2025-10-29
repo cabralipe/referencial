@@ -13,6 +13,18 @@ class GTAdmin(admin.ModelAdmin):
     list_display = ("nome", "etapa", "cliente", "created_at")
     search_fields = ("nome", "etapa", "cliente__nome")
     filter_horizontal = ("membros",)
+    list_filter = ("cliente", "etapa")
+    
+    def get_queryset(self, request):
+        """Super admins podem ver todos os GTs, outros usuários seguem o filtro normal."""
+        from core.models import Usuario
+        
+        # Se o usuário é super admin, usar raw_objects para ver todos os GTs
+        if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+            return GT.raw_objects.filter(is_deleted=False)
+        
+        # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+        return super().get_queryset(request)
 
 
 class TarefaForm(forms.ModelForm):
@@ -83,6 +95,22 @@ class PerguntaAdmin(admin.ModelAdmin):
     list_display = ("tarefa", "ordem", "obrigatoria", "permite_upload")
     list_filter = ("tarefa", "permite_upload", "obrigatoria")
     search_fields = ("texto",)
+    filter_horizontal = ("gts",)
+    fields = ("tarefa", "ordem", "texto", "permite_upload", "obrigatoria", "gts")
+    
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """Customiza o queryset para campos ManyToMany."""
+        if db_field.name == "gts":
+            from core.models import Usuario
+            
+            # Se o usuário é super admin, mostrar todos os GTs
+            if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
+            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+            else:
+                kwargs["queryset"] = GT.objects.all()
+        
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class RespostaForm(forms.ModelForm):
