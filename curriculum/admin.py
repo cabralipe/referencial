@@ -97,6 +97,25 @@ class PerguntaAdmin(admin.ModelAdmin):
     search_fields = ("texto",)
     filter_horizontal = ("gts",)
     fields = ("tarefa", "ordem", "texto", "permite_upload", "obrigatoria", "gts")
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "gts":
+            try:
+                # Detecta change view e carrega a Pergunta sem escopo de cliente
+                object_id = request.resolver_match.kwargs.get("object_id")
+            except Exception:
+                object_id = None
+            if object_id:
+                try:
+                    pergunta = Pergunta.raw_objects.get(pk=object_id)
+                    kwargs["queryset"] = GT.raw_objects.filter(cliente_id=pergunta.cliente_id)
+                except Pergunta.DoesNotExist:
+                    # fallback: mantém escopo atual
+                    kwargs["queryset"] = GT.objects.all()
+            else:
+                # add view: usa o escopo padrão (cliente atual)
+                kwargs["queryset"] = GT.objects.all()
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
     
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         """Customiza o queryset para campos ManyToMany."""
