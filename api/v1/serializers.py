@@ -65,6 +65,8 @@ class GTSerializer(serializers.ModelSerializer):
 
 
 class PerguntaSerializer(serializers.ModelSerializer):
+    gts = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    
     class Meta:
         model = Pergunta
         fields = (
@@ -74,6 +76,7 @@ class PerguntaSerializer(serializers.ModelSerializer):
             "texto",
             "permite_upload",
             "obrigatoria",
+            "gts",
         )
         read_only_fields = ("tarefa",)
 

@@ -109,6 +109,18 @@ export function TaskDetailPage() {
     return (perguntas ?? []).slice().sort((a, b) => a.ordem - b.ordem);
   }, [perguntas]);
 
+  const filteredPerguntas = useMemo(() => {
+    if (!selectedGtId || !sortedPerguntas) {
+      return sortedPerguntas;
+    }
+    
+    // Filtrar perguntas que estão associadas ao GT selecionado
+    // Se uma pergunta não tem GTs associados (array vazio), ela aparece para todos os GTs
+    return sortedPerguntas.filter(pergunta => 
+      !pergunta.gts || pergunta.gts.length === 0 || pergunta.gts.includes(selectedGtId)
+    );
+  }, [sortedPerguntas, selectedGtId]);
+
   const buildErrorMessage = (err: unknown, fallback: string) => {
     if (err instanceof ApiError) {
       return err.message;
@@ -427,7 +439,14 @@ export function TaskDetailPage() {
         <div className="task-detail__loading">Atualizando respostas...</div>
       )}
 
-      {selectedGtId && sortedPerguntas.map((pergunta) => renderPergunta(pergunta))}
+      {selectedGtId && filteredPerguntas.length === 0 && !respostasFetching && (
+        <div className="task-detail__empty">
+          <h3>Nenhuma pergunta disponível</h3>
+          <p>Não há perguntas associadas a este GT para esta tarefa.</p>
+        </div>
+      )}
+
+      {selectedGtId && filteredPerguntas.map((pergunta) => renderPergunta(pergunta))}
     </div>
   );
 }

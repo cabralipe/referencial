@@ -20,6 +20,7 @@ export interface Pergunta {
   texto: string;
   permite_upload: boolean;
   obrigatoria: boolean;
+  gts: number[];
 }
 
 export interface GT {
