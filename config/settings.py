@@ -47,6 +47,14 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
+if render_host := os.getenv("RENDER_EXTERNAL_HOSTNAME"):
+    # Render injects the deployment hostname via environment variable
+    if render_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(render_host)
+    render_origin = f"https://{render_host}"
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
+
 # Configurações de CSRF para permitir acesso do JavaScript
 CSRF_COOKIE_HTTPONLY = False  # Permite que JavaScript acesse o cookie CSRF
 CSRF_COOKIE_SAMESITE = 'Lax'
