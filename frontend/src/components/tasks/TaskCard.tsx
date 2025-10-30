@@ -24,7 +24,8 @@ export function TaskCard({ tarefa }: TaskCardProps) {
         <TaskStatusBadge status={tarefa.status} />
       </div>
       <div className="task-card__body">
-        <p className="task-card__title">{label}</p>
+        <p className="task-card__title">{tarefa.nome}</p>
+        <p className="task-card__subtitle">{label}</p>
         {tarefa.etapa && <p className="task-card__subtitle">Etapa: {tarefa.etapa}</p>}
       </div>
     </Link>

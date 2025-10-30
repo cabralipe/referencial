@@ -1,5 +1,6 @@
 export interface Tarefa {
   id: number;
+  nome: string;
   ordem: number;
   etapa: string;
   tipo: 'PERGUNTAS' | 'OFICINA' | string;

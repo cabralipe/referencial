@@ -171,6 +171,7 @@ export function TasksPage() {
             <thead>
               <tr>
                 <th>#</th>
+                <th>Tarefa</th>
                 <th>Tipo</th>
                 <th>Etapa</th>
                 <th>Status</th>
@@ -181,6 +182,7 @@ export function TasksPage() {
               {filteredTarefas.map((tarefa) => (
                 <tr key={tarefa.id}>
                   <td>{tarefa.ordem}</td>
+                  <td>{tarefa.nome}</td>
                   <td>{TipoLabel[tarefa.tipo] ?? tarefa.tipo}</td>
                   <td>{tarefa.etapa}</td>
                   <td>
