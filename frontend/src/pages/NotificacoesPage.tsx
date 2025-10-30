@@ -1,8 +1,113 @@
+import type { ReactNode } from 'react';
+
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useMarcarNotificacaoLida, useNotificacoes, useNotificationsRealtime } from '@/hooks/useNotificacoes';
 
 import './NotificacoesPage.css';
+
+const KEY_LABELS: Record<string, string> = {
+  revisao_id: 'Revisão',
+  status: 'Status',
+  comentario_id: 'Comentário',
+  alvo_tipo: 'Alvo',
+  alvo_id: 'ID do alvo',
+  gt: 'GT',
+  texto_id: 'Texto',
+  texto_titulo: 'Título',
+  texto_tipo: 'Tipo do texto',
+  texto_created_at: 'Criado em',
+  texto_updated_at: 'Atualizado em',
+};
+
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T/;
+
+function humanizeKey(key: string): string {
+  if (KEY_LABELS[key]) {
+    return KEY_LABELS[key];
+  }
+  return key
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/(^|\s)\w/g, (match) => match.toUpperCase());
+}
+
+function looksLikeDate(key: string, value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  if (/_at$|_on$|_date$/i.test(key) || ISO_DATE_REGEX.test(value)) {
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime());
+  }
+  return false;
+}
+
+function formatValue(key: string, value: unknown): ReactNode {
+  if (value == null) {
+    return '—';
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Sim' : 'Não';
+  }
+
+  if (typeof value === 'number') {
+    return value.toLocaleString('pt-BR');
+  }
+
+  if (typeof value === 'string') {
+    if (looksLikeDate(key, value)) {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleString('pt-BR');
+      }
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '—';
+    }
+    if (value.every((item) => item == null)) {
+      return '—';
+    }
+    if (value.every((item) => typeof item === 'string' || typeof item === 'number')) {
+      return value.map((item) => String(item)).join(', ');
+    }
+    return (
+      <code className="notificacoes__payload-code">{JSON.stringify(value, null, 2)}</code>
+    );
+  }
+
+  if (typeof value === 'object') {
+    return (
+      <code className="notificacoes__payload-code">{JSON.stringify(value, null, 2)}</code>
+    );
+  }
+
+  return String(value);
+}
+
+function renderPayload(payload: Record<string, unknown> | null | undefined): ReactNode {
+  if (!payload || Object.keys(payload).length === 0) {
+    return <p className="notificacoes__payload-empty">Sem detalhes adicionais.</p>;
+  }
+
+  return (
+    <dl className="notificacoes__payload">
+      {Object.entries(payload)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => (
+          <div key={key} className="notificacoes__payload-row">
+            <dt className="notificacoes__payload-key">{humanizeKey(key)}</dt>
+            <dd className="notificacoes__payload-value">{formatValue(key, value)}</dd>
+          </div>
+        ))}
+    </dl>
+  );
+}
 
 export function NotificacoesPage() {
   const { data: notificacoes, isLoading, refetch } = useNotificacoes();
@@ -63,7 +168,7 @@ export function NotificacoesPage() {
               <div>
                 <strong>{notificacao.tipo}</strong>
                 <span>{new Date(notificacao.created_at).toLocaleString('pt-BR')}</span>
-                <pre>{JSON.stringify(notificacao.payload_json, null, 2)}</pre>
+                {renderPayload(notificacao.payload_json)}
               </div>
               <button
                 type="button"
