@@ -36,6 +36,7 @@ class Tarefa(TenantModel):
         EM_REVISAO = "em_revisao", "Em revisão"
         CONCLUIDA = "concluida", "Concluída"
 
+    nome = models.CharField(max_length=255, verbose_name="Tarefa")
     ordem = models.PositiveIntegerField()
     etapa = models.CharField(max_length=120, blank=True)
     tipo = models.CharField(max_length=20, choices=Tipo.choices)
@@ -46,7 +47,7 @@ class Tarefa(TenantModel):
         unique_together = ("cliente", "ordem", "tipo")
 
     def __str__(self) -> str:  # pragma: no cover
-        return f"{self.tipo}-{self.ordem}"
+        return self.nome if self.nome else f"{self.tipo}-{self.ordem}"
 
 
 class Pergunta(TenantModel):

@@ -60,9 +60,10 @@ class TarefaForm(forms.ModelForm):
 @admin.register(Tarefa)
 class TarefaAdmin(admin.ModelAdmin):
     form = TarefaForm
-    list_display = ("ordem", "tipo", "status", "cliente", "id")
+    list_display = ("nome", "ordem", "tipo", "status", "cliente", "id")
     list_filter = ("cliente", "tipo", "status")
-    search_fields = ("cliente__nome",)
+    search_fields = ("nome", "cliente__nome")
+    fields = ("nome", "cliente", "ordem", "etapa", "tipo", "status")
     
     def get_queryset(self, request):
         """Customiza o queryset para super admins verem todas as tarefas."""
