@@ -10,3 +10,6 @@ pip install -r requirements.txt
 # Build frontend bundle so Django can serve static files
 npm install --prefix frontend
 npm run build --prefix frontend
+
+# Collect static assets for WhiteNoise
+python manage.py collectstatic --noinput
