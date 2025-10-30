@@ -61,10 +61,11 @@ export function TasksPage() {
       return tarefas;
     }
     return tarefas.filter((tarefa) => {
+      const nome = tarefa.nome?.toLowerCase() ?? '';
       const etapa = tarefa.etapa?.toLowerCase() ?? '';
       const tipo = TipoLabel[tarefa.tipo] ?? tarefa.tipo;
       const ordem = String(tarefa.ordem);
-      return etapa.includes(term) || tipo.toLowerCase().includes(term) || ordem.includes(term);
+      return nome.includes(term) || etapa.includes(term) || tipo.toLowerCase().includes(term) || ordem.includes(term);
     });
   }, [tarefas, searchTerm]);
 
@@ -103,8 +104,8 @@ export function TasksPage() {
             description: 'Isolar tarefas em revisão ou concluídas ajuda a organizar mutirões de acompanhamento.',
           },
           {
-            title: 'Busque por etapa',
-            description: 'Digite o nome da etapa ou número da tarefa no campo de busca para reduzir a lista.',
+            title: 'Busque por nome ou etapa',
+            description: 'Digite o nome da tarefa, etapa ou número da tarefa no campo de busca para reduzir a lista.',
           },
           {
             title: 'Abra o detalhe',
@@ -155,7 +156,7 @@ export function TasksPage() {
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Ex.: etapa 3 ou 12"
+            placeholder="Ex.: Ordem, Tarefa ou Etapa"
           />
         </label>
       </div>
@@ -170,7 +171,7 @@ export function TasksPage() {
           <table className="tasks__table">
             <thead>
               <tr>
-                <th>#</th>
+                <th>Ordem</th>
                 <th>Tarefa</th>
                 <th>Tipo</th>
                 <th>Etapa</th>
