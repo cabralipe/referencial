@@ -1,6 +1,7 @@
 # Núcleo Django
 Django>=5.1,<5.2
 asgiref>=3.8
+gunicorn>=21.2
 
 # API e autenticação
 djangorestframework>=3.15
