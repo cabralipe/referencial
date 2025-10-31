@@ -154,7 +154,12 @@ CHANNEL_LAYERS = {
 DATABASE_URL = env("REFERENCIAL_DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 
 DATABASES = {
-    "default": env.db_url(DATABASE_URL) # Use env.db_url() para analisar a string
+    # O método 'env.db()' faz o parse (análise) da URL lida da variável de ambiente
+    # 'REFERENCIAL_DATABASE_URL' e retorna o dicionário de configuração do Django.
+    "default": env.db(
+        "REFERENCIAL_DATABASE_URL",
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+    )
 }
 
 # Garantimos que, se for SQLite, configuramos corretamente o engine
