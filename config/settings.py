@@ -178,35 +178,6 @@ elif DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
 
 # Durante o ajuste do ambiente, evitamos reuso de conexões para garantir
 # que alterações de schema sejam percebidas imediatamente.
-DATABASES["default"]["CONN_MAX_AGE"] = 0# Banco de dados
-# Usamos env.db() para analisar a URL e configurar a conexão
-DATABASE_URL = env("REFERENCIAL_DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-
-DATABASES = {
-    "default": env.db_url(DATABASE_URL) # Use env.db_url() para analisar a string
-}
-
-# Garantimos que, se for SQLite, configuramos corretamente o engine
-if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
-    # Se for SQLite, o nome é o caminho do arquivo
-    DATABASES["default"]["NAME"] = str(BASE_DIR / "db.sqlite3")
-elif DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
-    # Se for PostgreSQL, podemos adicionar opções de conexão.
-    
-    # 🚨 PONTO CRÍTICO: Se você estiver usando django-environ e ele analisou corretamente a URL,
-    # o campo 'NAME' JÁ deve ser 'referencial_db'. 
-    # O bloco original abaixo é para adicionar opções, não para corrigir o NAME.
-    
-    DATABASES["default"].setdefault("OPTIONS", {})
-    # Define o search_path explicitamente para evitar problemas de visibilidade de tabelas
-    DATABASES["default"]["OPTIONS"]["options"] = "-c search_path=public"
-    
-    # Se, mesmo assim, o erro persistir, o problema está na variável de ambiente.
-    # Você pode forçar a correção se souber que o nome REAL do banco é referencial_db:
-    # DATABASES["default"]["NAME"] = "referencial_db" 
-
-# Durante o ajuste do ambiente, evitamos reuso de conexões para garantir
-# que alterações de schema sejam percebidas imediatamente.
 DATABASES["default"]["CONN_MAX_AGE"] = 0
 
 # Autenticação
