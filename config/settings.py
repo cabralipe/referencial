@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 
 import environ
 
@@ -48,7 +49,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 if render_host := os.getenv("RENDER_EXTERNAL_HOSTNAME"):
-    # Render injects the deployment hostname via environment variable
+    # Render injeta o hostname do deploy via env var
     if render_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(render_host)
     render_origin = f"https://{render_host}"
@@ -149,41 +150,93 @@ CHANNEL_LAYERS = {
     }
 }
 
-# Banco de dados
-# Usamos env.db() para analisar a URL e configurar a conexão
-DATABASE_URL = env("REFERENCIAL_DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+# -------------------------
+# Banco de dados (robusto)
+# -------------------------
+def _sanitize_db_url(raw: str) -> str:
+    """
+    Corrige URLs malformadas como 'referencial_dbpostgresql://...' mantendo a partir de 'postgres...'.
+    Também aceita 'postgres://' e 'postgresql://', 'sqlite:///'.
+    """
+    if not raw:
+        return ""
+    s = raw.strip()
 
+    # Se já começa certo, retorna
+    if s.startswith(("postgres://", "postgresql://", "sqlite://")):
+        return s
+
+    # Se contiver 'postgres' em alguma posição > 0, corta dali pra frente
+    idx = s.find("postgres")
+    if idx > 0:
+        return s[idx:]
+
+    # Último recurso: retorna original (pode ser NAME puro para sqlite)
+    return s
+
+def _parse_database_url(url: str) -> dict:
+    """
+    Parse manual da URL de DB para um dict em formato Django DATABASES['default'].
+    - Suporta postgresql e sqlite.
+    - Força SSL no PostgreSQL (sslmode=require).
+    """
+    if not url:
+        # Default: SQLite local
+        return {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(BASE_DIR / "db.sqlite3"),
+        }
+
+    url = _sanitize_db_url(url)
+    parsed = urlparse(url)
+
+    # SQLite
+    if parsed.scheme.startswith("sqlite"):
+        # sqlite:///absolute/path.sqlite3  -> parsed.path
+        # sqlite:///:memory:                -> ":memory:"
+        path = parsed.path or ""
+        if path in ("", "/", "/:memory:"):
+            name = ":memory:"
+        else:
+            name = path.lstrip("/")
+            # caminho absoluto
+            if not name.startswith(("/", "\\")):
+                name = str(BASE_DIR / name)
+        return {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": name,
+        }
+
+    # Postgres
+    if parsed.scheme in ("postgres", "postgresql"):
+        name = parsed.path.lstrip("/") or ""
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(name),
+            "USER": unquote(parsed.username or ""),
+            "PASSWORD": unquote(parsed.password or "") if parsed.password else "",
+            "HOST": parsed.hostname or "",
+            "PORT": str(parsed.port or "5432"),
+            "OPTIONS": {
+                # SSL é importante no Render
+                "sslmode": "require",
+                # Define search_path explicitamente
+                "options": "-c search_path=public",
+            },
+            # Em ambiente de migração/ajuste, zero ajuda a evitar conexões penduradas
+            "CONN_MAX_AGE": 0,
+        }
+
+    # Fallback: trata como sqlite NAME
+    return {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": str(BASE_DIR / "db.sqlite3"),
+    }
+
+RAW_DB_URL = env("REFERENCIAL_DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 DATABASES = {
-    # O método 'env.db()' faz o parse (análise) da URL lida da variável de ambiente
-    # 'REFERENCIAL_DATABASE_URL' e retorna o dicionário de configuração do Django.
-    "default": env.db(
-        "REFERENCIAL_DATABASE_URL",
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-    )
+    "default": _parse_database_url(RAW_DB_URL),
 }
-
-# Garantimos que, se for SQLite, configuramos corretamente o engine
-if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
-    # Se for SQLite, o nome é o caminho do arquivo
-    DATABASES["default"]["NAME"] = str(BASE_DIR / "db.sqlite3")
-elif DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
-    # Se for PostgreSQL, podemos adicionar opções de conexão.
-    
-    # 🚨 PONTO CRÍTICO: Se você estiver usando django-environ e ele analisou corretamente a URL,
-    # o campo 'NAME' JÁ deve ser 'referencial_db'. 
-    # O bloco original abaixo é para adicionar opções, não para corrigir o NAME.
-    
-    DATABASES["default"].setdefault("OPTIONS", {})
-    # Define o search_path explicitamente para evitar problemas de visibilidade de tabelas
-    DATABASES["default"]["OPTIONS"]["options"] = "-c search_path=public"
-    
-    # Se, mesmo assim, o erro persistir, o problema está na variável de ambiente.
-    # Você pode forçar a correção se souber que o nome REAL do banco é referencial_db:
-    # DATABASES["default"]["NAME"] = "referencial_db" 
-
-# Durante o ajuste do ambiente, evitamos reuso de conexões para garantir
-# que alterações de schema sejam percebidas imediatamente.
-DATABASES["default"]["CONN_MAX_AGE"] = 0
 
 # Autenticação
 AUTH_USER_MODEL = "core.Usuario"
