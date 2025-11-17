@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, parse_qs
 
 import environ
 
@@ -17,6 +17,7 @@ env = environ.Env(
     REFERENCIAL_SECRET_KEY=(str, "unsafe-secret"),
     REFERENCIAL_DATABASE_URL=(str, ""),
     REFERENCIAL_REDIS_URL=(str, "redis://127.0.0.1:6379/0"),
+    REFERENCIAL_DATABASE_SSLMODE=(str, "require"),
     MEDIA_BACKEND=(str, "local"),
     ALLOWED_HOSTS=(str, "localhost,127.0.0.1"),
     TIME_ZONE=(str, "America/Maceio"),
@@ -210,6 +211,10 @@ def _parse_database_url(url: str) -> dict:
     # Postgres
     if parsed.scheme in ("postgres", "postgresql"):
         name = parsed.path.lstrip("/") or ""
+        qs = parse_qs(parsed.query or "")
+        sslmode = qs.get("sslmode", [env("REFERENCIAL_DATABASE_SSLMODE")])[0]
+        if (parsed.hostname in ("localhost", "127.0.0.1")) and sslmode == "require":
+            sslmode = "disable"
         return {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": unquote(name),
@@ -218,9 +223,7 @@ def _parse_database_url(url: str) -> dict:
             "HOST": parsed.hostname or "",
             "PORT": str(parsed.port or "5432"),
             "OPTIONS": {
-                # SSL é importante no Render
-                "sslmode": "require",
-                # Define search_path explicitamente
+                "sslmode": sslmode,
                 "options": "-c search_path=public",
             },
             # Em ambiente de migração/ajuste, zero ajuda a evitar conexões penduradas

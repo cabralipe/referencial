@@ -2,8 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
-export default defineConfig({
-  base: "/static/frontend/",
+export default defineConfig(({ command }) => ({
+  // Base diferente para desenvolvimento e build
+  base: command === "build" ? "/static/frontend/" : "/",
+  appType: "spa",
   plugins: [react()],
   resolve: {
     alias: {
@@ -12,7 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",
@@ -32,4 +34,4 @@ export default defineConfig({
     sourcemap: true,
   },
   publicDir: path.resolve(__dirname, "public"),
-});
+}));
