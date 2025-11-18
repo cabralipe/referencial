@@ -23,6 +23,7 @@ export interface ClienteContextPayload {
   flags: Record<string, boolean>;
   tema: {
     logo_url?: string;
+    meb_avatar_url?: string;
     cor_primaria?: string;
     cor_secundaria?: string;
     rodape_html?: string;

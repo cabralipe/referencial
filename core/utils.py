@@ -35,6 +35,7 @@ def coletar_contexto_do_cliente(cliente: Cliente) -> Dict[str, Any]:
     tema = (
         ClienteTema.raw_objects.filter(cliente=cliente, is_deleted=False).values(
             "logo_url",
+            "meb_avatar_url",
             "cor_primaria",
             "cor_secundaria",
             "rodape_html",

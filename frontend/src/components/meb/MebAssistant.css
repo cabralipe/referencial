@@ -1,0 +1,344 @@
+.meb-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--app-primary, #2563eb), var(--app-secondary, #0ea5e9));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  z-index: 60;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.meb-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+}
+
+.meb-toggle--open {
+  background: var(--app-secondary, #0ea5e9);
+}
+
+.meb-panel {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  width: 340px;
+  max-height: 520px;
+  background: #fff;
+  border-radius: 1.1rem;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+  z-index: 60;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .meb-toggle {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .meb-panel {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    bottom: 5.5rem;
+  }
+}
+
+.meb-panel__header {
+  padding: 1rem 1.25rem 0.75rem;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.1));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  position: relative;
+}
+
+.meb-panel__header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.meb-panel__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 1rem;
+  background: rgba(37, 99, 235, 0.1);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.meb-panel__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meb-panel__avatar-placeholder {
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.meb-panel__header strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.meb-panel__header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.meb-panel__status {
+  position: absolute;
+  top: 1rem;
+  right: 3rem;
+  font-size: 0.8rem;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.meb-panel__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: #22c55e;
+  animation: meb-pulse 1.5s infinite;
+}
+
+@keyframes meb-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0.4;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.meb-panel__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  border: none;
+  background: transparent;
+  font-size: 1.4rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+.meb-panel__thread-picker {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.meb-panel__thread-picker label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.meb-panel__thread-picker select {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.meb-panel__suggestions {
+  padding: 0.6rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.meb-panel__suggestions button {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.meb-panel__messages {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.meb-panel__helper {
+  font-size: 0.85rem;
+  color: #475569;
+  text-align: center;
+  margin: auto;
+}
+
+.meb-message {
+  max-width: 85%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.12);
+  align-self: flex-start;
+}
+
+.meb-message--me {
+  margin-left: auto;
+  background: var(--app-primary, #2563eb);
+  color: #fff;
+}
+
+.meb-message--me p {
+  color: #fff;
+}
+
+.meb-message--me .meb-message__meta {
+  color: rgba(255, 255, 255, 0.8);
+  justify-content: flex-end;
+}
+
+.meb-message--meb {
+  background: #eef2ff;
+}
+
+.meb-message--admin {
+  background: #e0f2fe;
+}
+
+.meb-message--cliente {
+  background: #fff;
+}
+
+.meb-message__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  margin-bottom: 0.3rem;
+  gap: 0.4rem;
+}
+
+.meb-message__meta time {
+  color: inherit;
+}
+
+.meb-message p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.meb-panel__composer {
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 0.75rem 1rem 1rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meb-panel__composer textarea {
+  resize: none;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 0.65rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-height: 64px;
+}
+
+.meb-panel__composer textarea:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.meb-panel__composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.meb-panel__composer-actions button {
+  background: var(--app-primary, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.4rem 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.meb-panel__composer-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meb-panel__error {
+  color: #dc2626;
+  font-size: 0.75rem;
+}
+.meb-panel__upload {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.meb-panel__upload-actions {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.meb-panel__upload-actions button {
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.9rem;
+  background: #fff;
+  color: var(--app-primary, #2563eb);
+  cursor: pointer;
+}
+
+.meb-panel__upload-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meb-panel__success {
+  color: #16a34a;
+  font-size: 0.75rem;
+}

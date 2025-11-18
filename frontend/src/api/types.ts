@@ -190,3 +190,27 @@ export interface BlocoTexto {
 export interface DiffResponse {
   html: string;
 }
+
+export interface MebThread {
+  id: number;
+  usuario: number;
+  usuario_nome: string | null;
+  usuario_email: string | null;
+  created_at: string;
+  updated_at: string;
+  last_message_preview: string | null;
+  last_message_origin: 'cliente' | 'admin' | 'meb' | 'sistema' | null;
+  last_message_at: string | null;
+  total_messages: number;
+}
+
+export interface MebMessage {
+  id: number;
+  thread: number;
+  conteudo: string;
+  origem: 'cliente' | 'admin' | 'meb' | 'sistema';
+  autor: number | null;
+  autor_nome: string | null;
+  created_at: string;
+  is_mine: boolean;
+}

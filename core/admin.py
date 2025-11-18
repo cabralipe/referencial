@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
-from .forms import UsuarioCreationForm, UsuarioChangeForm
+from .forms import UsuarioCreationForm, UsuarioChangeForm, ClienteTemaAdminForm
 
 
 @admin.register(Cliente)
@@ -31,9 +31,11 @@ class ClienteFeatureFlagAdmin(admin.ModelAdmin):
 
 @admin.register(ClienteTema)
 class ClienteTemaAdmin(admin.ModelAdmin):
+    form = ClienteTemaAdminForm
     list_display = (
         "cliente",
         "logo_url",
+        "meb_avatar_url",
         "cor_primaria",
         "cor_secundaria",
         "updated_at",

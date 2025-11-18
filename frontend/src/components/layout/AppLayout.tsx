@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
+import { MebAssistant } from '@/components/meb/MebAssistant';
 
 import './AppLayout.css';
 
@@ -264,6 +265,8 @@ export function AppLayout() {
           dangerouslySetInnerHTML={{ __html: cliente.tema.rodape_html }}
         />
       )}
+
+      <MebAssistant />
     </div>
   );
 }

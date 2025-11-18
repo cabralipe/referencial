@@ -19,6 +19,8 @@ from .viewsets import (
     TarefaViewSet,
     TextoColaborativoViewSet,
     TextoUnicoViewSet,
+    MebThreadViewSet,
+    MebMessageViewSet,
 )
 
 router = DefaultRouter()
@@ -37,5 +39,7 @@ router.register("comentarios", ComentarioViewSet, basename="comentario")
 router.register("notificacoes", NotificacaoViewSet, basename="notificacao")
 router.register("midias", MidiaViewSet, basename="midia")
 router.register("blocos", BlocoTextoViewSet, basename="bloco")
+router.register("meb/threads", MebThreadViewSet, basename="meb_thread")
+router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
 
 __all__ = ["router"]

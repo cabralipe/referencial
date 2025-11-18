@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "api",
     "sockets",
     "tasks",
+    "meb",
 ]
 
 MIDDLEWARE = [

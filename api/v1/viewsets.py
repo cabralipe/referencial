@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import Count, OuterRef, Subquery
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
@@ -27,6 +28,8 @@ from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
 from notifications.models import Notificacao
 from notifications.services import criar_notificacao
+from meb.models import MebMessage, MebThread
+from meb.services import auto_reply_for_message, ensure_thread_for_user
 from reviews.models import Revisao
 from sockets.utils import broadcast_stream_event
 from diffs.services import build_diff
@@ -53,6 +56,8 @@ from .serializers import (
     MidiaSerializer,
     BlocoTextoSerializer,
     DiffResponseSerializer,
+    MebMessageSerializer,
+    MebThreadSerializer,
     TarefaSerializer,
     TextoColaborativoSerializer,
     TextoUnicoSerializer,
@@ -601,6 +606,84 @@ class NotificacaoViewSet(FeatureFlagMixin, mixins.ListModelMixin, mixins.UpdateM
         notificacao.save(update_fields=["lida", "updated_at"])
         serializer = self.get_serializer(notificacao)
         return Response(serializer.data)
+
+
+class MebThreadViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = MebThreadSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ("usuario__nome", "usuario__email")
+    pagination_class = None
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = (
+            MebThread.objects.filter(cliente_id=cliente_id)
+            .select_related("usuario")
+        )
+        last_message = MebMessage.objects.filter(thread=OuterRef("pk")).order_by("-created_at")
+        queryset = queryset.annotate(
+            last_message_text=Subquery(last_message.values("conteudo")[:1]),
+            last_message_origin=Subquery(last_message.values("origem")[:1]),
+            last_message_at=Subquery(last_message.values("created_at")[:1]),
+            total_messages=Count("messages"),
+        )
+        if not self._user_can_manage():
+            queryset = queryset.filter(usuario=self.request.user)
+        return queryset.order_by("-updated_at")
+
+    def _user_can_manage(self) -> bool:
+        user = self.request.user
+        return getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}
+
+    @action(detail=False, methods=["get"], url_path="me")
+    def me(self, request):
+        if not getattr(request.user, "cliente_id", None):
+            raise ValidationError("Usuário sem cliente não pode iniciar o chat do MEB.")
+        thread = ensure_thread_for_user(request.user, _get_request_cliente_id(request))
+        serializer = self.get_serializer(thread)
+        return Response(serializer.data)
+
+
+class MebMessageViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = MebMessageSerializer
+    permission_classes = [HasClientScope]
+    pagination_class = None
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = (
+            MebMessage.objects.filter(cliente_id=cliente_id)
+            .select_related("autor", "thread", "thread__usuario")
+            .order_by("created_at", "id")
+        )
+        usuario_param = self.request.query_params.get("usuario_id")
+        if usuario_param:
+            try:
+                usuario_id = int(usuario_param)
+            except (TypeError, ValueError):
+                raise ValidationError({"usuario_id": "Informe um identificador numérico."})
+            if not self._user_can_manage():
+                raise PermissionDenied("Somente administradores podem consultar outros usuários.")
+            return queryset.filter(thread__usuario_id=usuario_id)
+        return queryset.filter(thread__usuario=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        if not request.query_params.get("usuario_id"):
+            try:
+                ensure_thread_for_user(request.user, _get_request_cliente_id(request))
+            except ValueError:
+                pass
+        return super().list(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        message = serializer.save()
+        if message.origem == MebMessage.Origem.CLIENTE:
+            auto_reply_for_message(message.thread, message.conteudo)
+
+    def _user_can_manage(self) -> bool:
+        user = self.request.user
+        return getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}
 
 
 class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):

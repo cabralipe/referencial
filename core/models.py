@@ -51,6 +51,7 @@ class ClienteTema(TenantModel):
     logo_url = models.URLField(blank=True)
     cor_primaria = models.CharField(max_length=7, default="#004aad")
     cor_secundaria = models.CharField(max_length=7, default="#00b4d8")
+    meb_avatar_url = models.URLField(blank=True)
     rodape_html = models.TextField(blank=True)
     cabecalho_html = models.TextField(blank=True)
 
