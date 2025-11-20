@@ -22,6 +22,55 @@ type FeedbackEntry = {
   message: string;
 };
 
+type Template = {
+  key: string;
+  label: string;
+  template: string;
+};
+
+const TEXTO_TEMPLATES: Template[] = [
+  {
+    key: 'topicos',
+    label: 'Resumo em tópicos',
+    template:
+      '<p><strong>Resumo rápido</strong></p><ul><li>Contexto principal...</li><li>Ponto de atenção...</li><li>Decisão tomada...</li></ul><p><strong>Próximo passo:</strong> ...</p>',
+  },
+  {
+    key: 'historia',
+    label: 'Narrativa clara',
+    template:
+      '<p><strong>Situação</strong>: ...</p><p><strong>Ação</strong>: ...</p><p><strong>Resultado</strong>: ...</p><p><em>Inclua números e evidências sempre que possível.</em></p>',
+  },
+  {
+    key: 'plano',
+    label: 'Plano de ação',
+    template:
+      '<p><strong>Objetivo</strong>: ...</p><ol><li>Passo 1 — descrição e responsável.</li><li>Passo 2 — data alvo.</li><li>Riscos e mitigação.</li></ol><p><strong>Métrica de sucesso</strong>: ...</p>',
+  },
+];
+
+const getWordStats = (value: string) => {
+  const trimmed = value.trim();
+  return {
+    words: trimmed ? trimmed.split(/\s+/).length : 0,
+    chars: value.length,
+  };
+};
+
+const ensureHtml = (value: string) => {
+  const text = value.trim();
+  if (!text) return '';
+  const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(text);
+  if (hasHtmlTag) {
+    return value;
+  }
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+    .join('');
+  return paragraphs || `<p>${text}</p>`;
+};
+
 function normalizePayload(payload: Record<string, unknown>): TextoColaborativo | null {
   if (!payload) {
     return null;
@@ -83,6 +132,7 @@ export function TextoUnicoPage() {
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novoConteudo, setNovoConteudo] = useState('');
   const [createFeedback, setCreateFeedback] = useState<FeedbackEntry | null>(null);
+  const novoStats = getWordStats(novoConteudo);
 
   useEffect(() => {
     if (!textosColaborativos) {
@@ -213,7 +263,7 @@ export function TextoUnicoPage() {
       const created = await createTexto.mutateAsync({
         gtId: selectedGtNumber,
         titulo: novoTitulo.trim(),
-        conteudoHtml: novoConteudo,
+        conteudoHtml: ensureHtml(novoConteudo),
       });
       setNovoTitulo('');
       setNovoConteudo('');
@@ -227,6 +277,30 @@ export function TextoUnicoPage() {
       const message = buildErrorMessage(err, 'Não foi possível criar o texto colaborativo.');
       setCreateFeedback({ type: 'error', message });
     }
+  };
+
+  const handleAppendTemplateNew = (template: string) => {
+    setNovoConteudo((prev) => {
+      const separator = prev.trim() ? '\n\n' : '';
+      return `${prev}${separator}${template}`;
+    });
+    setCreateFeedback({ type: 'info', message: 'Modelo adicionado. Personalize antes de salvar.' });
+  };
+
+  const handleAppendTemplateCollab = (textoId: number, template: string) => {
+    setCollabDrafts((prev) => {
+      const source = textosColaborativos?.find((item) => item.id === textoId);
+      const current = prev[textoId] ?? { titulo: source?.titulo ?? '', conteudo: source?.conteudo_html ?? '' };
+      const separator = current.conteudo.trim() ? '\n\n' : '';
+      return {
+        ...prev,
+        [textoId]: { ...current, conteudo: `${current.conteudo}${separator}${template}` },
+      };
+    });
+    setCollabFeedback((prev) => ({
+      ...prev,
+      [textoId]: { type: 'info', message: 'Modelo adicionado; ajuste o texto e salve.' },
+    }));
   };
 
   const handleSalvarTexto = async (textoId: number) => {
@@ -256,7 +330,7 @@ export function TextoUnicoPage() {
         textoId,
         gtId: selectedGtNumber,
         titulo: draft.titulo.trim(),
-        conteudoHtml: draft.conteudo,
+        conteudoHtml: ensureHtml(draft.conteudo),
         etag,
       });
       setCollabEtags((prev) => ({ ...prev, [textoId]: updated.etag }));
@@ -383,16 +457,35 @@ export function TextoUnicoPage() {
             <div className="texto-colaborativo__create">
               <input
                 type="text"
-                placeholder="Titulo do novo texto"
+                placeholder="Título do novo texto"
                 value={novoTitulo}
                 onChange={(event) => setNovoTitulo(event.target.value)}
               />
               <textarea
-                placeholder="Descreva o conteúdo inicial..."
+                placeholder="Descreva o conteúdo inicial (texto simples; convertaremos para HTML)"
                 rows={4}
                 value={novoConteudo}
                 onChange={(event) => setNovoConteudo(event.target.value)}
               />
+              <div className="texto-colaborativo__toolbar">
+                <div className="texto-colaborativo__chips">
+                  {TEXTO_TEMPLATES.map((template) => (
+                    <button
+                      key={template.key}
+                      type="button"
+                      onClick={() => handleAppendTemplateNew(template.template)}
+                      disabled={createTexto.isPending}
+                    >
+                      {template.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="texto-colaborativo__stats">
+                  <span>{novoStats.words} palavra(s)</span>
+                  <span>·</span>
+                  <span>{novoStats.chars} caractere(s)</span>
+                </div>
+              </div>
               <div className="texto-colaborativo__create-actions">
                 <button
                   type="button"
@@ -421,6 +514,7 @@ export function TextoUnicoPage() {
                     titulo: texto.titulo,
                     conteudo: texto.conteudo_html,
                   };
+                  const stats = getWordStats(draft.conteudo);
                   const feedback = collabFeedback[texto.id];
                   const saving = collabSaving[texto.id] ?? false;
                   const updatedAtLabel = new Date(texto.updated_at).toLocaleString('pt-BR');
@@ -455,6 +549,25 @@ export function TextoUnicoPage() {
                           }))
                         }
                       />
+                      <div className="texto-colaborativo__toolbar texto-colaborativo__toolbar--compact">
+                        <div className="texto-colaborativo__chips">
+                          {TEXTO_TEMPLATES.map((template) => (
+                            <button
+                              key={template.key}
+                              type="button"
+                              onClick={() => handleAppendTemplateCollab(texto.id, template.template)}
+                              disabled={saving || updateTexto.isPending}
+                            >
+                              {template.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="texto-colaborativo__stats">
+                          <span>{stats.words} palavra(s)</span>
+                          <span>·</span>
+                          <span>{stats.chars} caractere(s)</span>
+                        </div>
+                      </div>
                       <div className="texto-colaborativo__meta">
                         <span>Última atualização: {updatedAtLabel}</span>
                         {collabEtags[texto.id] && <span>ETag: {collabEtags[texto.id]}</span>}

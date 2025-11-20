@@ -21,6 +21,7 @@ type UseWebSocketReturn = {
   status: WebSocketStatus;
   lastError: Event | null;
   lastCloseEvent: CloseEvent | null;
+  url: string | null;
 };
 
 function resolveWebSocketBaseUrl(): string | null {
@@ -30,6 +31,16 @@ function resolveWebSocketBaseUrl(): string | null {
   const envBase = import.meta.env.VITE_WS_BASE_URL as string | undefined;
   if (envBase) {
     return envBase.replace(/\/$/, '');
+  }
+  const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (apiBase && apiBase.startsWith('http')) {
+    try {
+      const parsed = new URL(apiBase);
+      const wsProtocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProtocol}//${parsed.host}`;
+    } catch (_err) {
+      // fallback para heurística do host atual
+    }
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}`;
@@ -60,6 +71,7 @@ export function useWebSocket({
   const [status, setStatus] = useState<WebSocketStatus>('idle');
   const [lastError, setLastError] = useState<Event | null>(null);
   const [lastCloseEvent, setLastCloseEvent] = useState<CloseEvent | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
 
   const messageHandlerRef = useRef<MessageHandler | undefined>(onMessage);
   const openHandlerRef = useRef<EventHandler | undefined>(onOpen);
@@ -80,9 +92,11 @@ export function useWebSocket({
     const url = buildUrl(path);
     if (!url) {
       setStatus('closed');
+      setUrl(null);
       return undefined;
     }
 
+    setUrl(url);
     let socket: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
@@ -136,5 +150,5 @@ export function useWebSocket({
     };
   }, [path, enabled, autoReconnect, reconnectIntervalMs]);
 
-  return { status, lastError, lastCloseEvent };
+  return { status, lastError, lastCloseEvent, url };
 }

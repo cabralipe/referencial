@@ -26,6 +26,9 @@
   font-weight: 600;
   border-radius: 999px;
   padding: 0.35rem 0.9rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .notificacoes__status--ok {
@@ -36,6 +39,11 @@
 .notificacoes__status--warn {
   background-color: rgba(248, 113, 113, 0.2);
   color: #b91c1c;
+}
+
+.notificacoes__status-hint {
+  font-weight: 500;
+  color: #475569;
 }
 
 .notificacoes__actions .ghost {

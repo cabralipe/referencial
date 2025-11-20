@@ -213,6 +213,44 @@
   min-height: 160px;
 }
 
+.pergunta-card__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.pergunta-card__chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pergunta-card__chips button {
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.06);
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.pergunta-card__chips button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pergunta-card__stats {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
 .pergunta-card__actions {
   display: flex;
   justify-content: space-between;

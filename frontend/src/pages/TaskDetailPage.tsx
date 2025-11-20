@@ -20,6 +20,58 @@ type FeedbackEntry = {
   message: string;
 };
 
+type Snippet = {
+  key: string;
+  label: string;
+  template: string;
+};
+
+const RESPOSTA_SNIPPETS: Snippet[] = [
+  {
+    key: 'resumo',
+    label: 'Resumo estruturado',
+    template:
+      '<p><strong>Resumo:</strong> <em>contextualize em duas frases.</em></p><ul><li><strong>Pontos-chave:</strong> ...</li><li><strong>Evidências:</strong> ...</li></ul><p><strong>Próximos passos:</strong> ...</p>',
+  },
+  {
+    key: 'checklist',
+    label: 'Checklist de entrega',
+    template:
+      '<ul><li><strong>Ação</strong>: ...</li><li><strong>Responsável</strong>: ...</li><li><strong>Prazo</strong>: ...</li><li><strong>Status</strong>: concluído/em andamento</li></ul>',
+  },
+  {
+    key: 'narrativa',
+    label: 'Narrativa com impacto',
+    template:
+      '<p><strong>Cenário</strong>: ...</p><p><strong>Decisão</strong>: ...</p><p><strong>Impacto esperado</strong>: ...</p><p><strong>Métricas de sucesso</strong>: ...</p>',
+  },
+  {
+    key: 'bullets',
+    label: 'Lista em tópicos',
+    template: '<ul><li><strong>Contexto:</strong> ...</li><li><strong>O que foi feito:</strong> ...</li><li><strong>Resultados:</strong> ...</li></ul>',
+  },
+];
+
+const buildTextStats = (value: string) => {
+  const trimmed = value.trim();
+  const words = trimmed ? trimmed.split(/\s+/).length : 0;
+  return { words, chars: value.length };
+};
+
+const ensureHtml = (value: string) => {
+  const text = value.trim();
+  if (!text) return '';
+  const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(text);
+  if (hasHtmlTag) {
+    return value;
+  }
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+    .join('');
+  return paragraphs || `<p>${text}</p>`;
+};
+
 export function TaskDetailPage() {
   const { tarefaId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -142,6 +194,24 @@ export function TaskDetailPage() {
     }));
   };
 
+  const handleInsertSnippet = (perguntaId: number, template: string) => {
+    setDrafts((prev) => {
+      const current = prev[perguntaId] ?? '';
+      const separator = current.trim() ? '\n\n' : '';
+      return {
+        ...prev,
+        [perguntaId]: `${current}${separator}${template}`,
+      };
+    });
+    setFeedback((prev) => ({
+      ...prev,
+      [perguntaId]: {
+        type: 'info',
+        message: 'Modelo inserido. Ajuste o texto antes de salvar.',
+      },
+    }));
+  };
+
   const handleResetDraft = (pergunta: Pergunta) => {
     const resposta = respostas?.find((item) => item.pergunta === pergunta.id);
     setDrafts((prev) => ({
@@ -170,7 +240,7 @@ export function TaskDetailPage() {
       await upsertResposta.mutateAsync({
         respostaId: respostaAtual?.id,
         perguntaId: pergunta.id,
-        conteudoHtml: conteudo,
+        conteudoHtml: ensureHtml(conteudo),
         etag: respostaAtual?.etag,
       });
       setFeedback((prev) => ({
@@ -227,6 +297,7 @@ export function TaskDetailPage() {
     const atualizacao = lastUpdated[pergunta.id];
     const isSaving = savingQuestion === pergunta.id || upsertResposta.isPending;
     const cardClassName = alterado ? 'pergunta-card pergunta-card--dirty' : 'pergunta-card';
+    const stats = buildTextStats(draft);
 
     const handleCopy = async () => {
       if (!draft) {
@@ -290,6 +361,26 @@ export function TaskDetailPage() {
             disabled={!selectedGtId}
           />
 
+          <div className="pergunta-card__toolbar">
+            <div className="pergunta-card__chips">
+              {RESPOSTA_SNIPPETS.map((snippet) => (
+                <button
+                  key={snippet.key}
+                  type="button"
+                  onClick={() => handleInsertSnippet(pergunta.id, snippet.template)}
+                  disabled={!selectedGtId || isSaving}
+                >
+                  {snippet.label}
+                </button>
+              ))}
+            </div>
+            <div className="pergunta-card__stats">
+              <span>{stats.words} palavra(s)</span>
+              <span>·</span>
+              <span>{stats.chars} caractere(s)</span>
+            </div>
+          </div>
+
           <div className="pergunta-card__actions">
             <div className="pergunta-card__actions-left">
               <button
@@ -323,6 +414,11 @@ export function TaskDetailPage() {
               {feedbackEntry.message}
             </p>
           )}
+
+          <details className="pergunta-card__preview">
+            <summary>Pré-visualização</summary>
+            <div dangerouslySetInnerHTML={{ __html: draft || '<p>Sem conteúdo para exibir ainda.</p>' }} />
+          </details>
         </div>
 
       </article>

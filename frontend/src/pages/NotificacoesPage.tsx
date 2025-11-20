@@ -113,6 +113,10 @@ export function NotificacoesPage() {
   const { data: notificacoes, isLoading, refetch } = useNotificacoes();
   const marcarLida = useMarcarNotificacaoLida();
   const connection = useNotificationsRealtime();
+  const offlineHint =
+    connection.status === 'closed'
+      ? 'Verifique VITE_WS_BASE_URL apontando para o host/porta do backend (ex.: ws://localhost:8000).'
+      : '';
 
   if (isLoading && !notificacoes) {
     return <FullPageLoader message="Carregando notificações..." />;
@@ -155,6 +159,7 @@ export function NotificacoesPage() {
           }
         >
           WebSocket: {connection.status === 'open' ? 'conectado' : connection.status === 'connecting' ? 'conectando…' : 'offline'}
+          {offlineHint && <small className="notificacoes__status-hint">{offlineHint}</small>}
         </span>
         <button type="button" className="ghost" onClick={() => refetch()}>
           Recarregar agora

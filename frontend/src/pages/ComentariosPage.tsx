@@ -17,6 +17,8 @@ export function ComentariosPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
   const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
   const [mostrarResolvidos, setMostrarResolvidos] = useState<'todos' | 'abertos' | 'fechados'>('todos');
+  const [anchorLocal, setAnchorLocal] = useState('');
+  const [anchorTrecho, setAnchorTrecho] = useState('');
 
   const alvoIdNumero = useMemo(() => {
     if (!alvoIdFiltro) {
@@ -56,29 +58,66 @@ export function ComentariosPage() {
     return comentarios.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [comentarios]);
 
+  const ensureHtml = (value: string) => {
+    const text = value.trim();
+    if (!text) return '';
+    const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(text);
+    if (hasHtmlTag) {
+      return value;
+    }
+    const paragraphs = text
+      .split(/\n{2,}/)
+      .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+      .join('');
+    return paragraphs || `<p>${text}</p>`;
+  };
+
+  const anchorJsonPreview = useMemo(() => {
+    if (!anchorLocal.trim() && !anchorTrecho.trim()) {
+      return '';
+    }
+    return JSON.stringify(
+      {
+        ...(anchorLocal.trim() ? { local: anchorLocal.trim() } : {}),
+        ...(anchorTrecho.trim() ? { trecho: anchorTrecho.trim() } : {}),
+      },
+      null,
+      2,
+    );
+  }, [anchorLocal, anchorTrecho]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const alvoTipo = String(form.get('alvoTipo') ?? '').trim();
     const alvoId = Number(form.get('alvoId'));
     const conteudo = String(form.get('conteudo') ?? '').trim();
-    const anchor = String(form.get('anchor') ?? '').trim();
     const mentions = String(form.get('mentions') ?? '')
       .split(',')
       .map((value) => Number(value.trim()))
-      .filter((value) => Number.isFinite(value));
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    const anchorJson =
+      anchorLocal.trim() || anchorTrecho.trim()
+        ? JSON.stringify({
+            ...(anchorLocal.trim() ? { local: anchorLocal.trim() } : {}),
+            ...(anchorTrecho.trim() ? { trecho: anchorTrecho.trim() } : {}),
+          })
+        : undefined;
     if (!alvoTipo || !alvoId || !conteudo) {
       return;
     }
     await criarComentario.mutateAsync({
       alvoTipo,
       alvoId,
-      conteudoHtml: conteudo,
-      anchorJson: anchor || undefined,
+      conteudoHtml: ensureHtml(conteudo),
+      anchorJson,
       mentions: mentions.length > 0 ? mentions : undefined,
     });
     refetch();
     event.currentTarget.reset();
+    setAnchorLocal('');
+    setAnchorTrecho('');
   };
 
   const handleAtualizar = async (comentarioId: number, etag: string) => {
@@ -87,7 +126,7 @@ export function ComentariosPage() {
     await atualizarComentario.mutateAsync({
       comentarioId,
       payload: {
-        conteudo_html: conteudo,
+        conteudo_html: ensureHtml(conteudo ?? ''),
         resolvido,
       },
       etag,
@@ -177,13 +216,46 @@ export function ComentariosPage() {
             <span>Mentions (IDs separados por vírgula)</span>
             <input name="mentions" type="text" placeholder="Ex.: 3, 18" />
           </label>
+          <div className="comentarios__anchor full">
+            <div className="comentarios__anchor-header">
+              <span>Referência no conteúdo (opcional)</span>
+              <p>Descreva onde o comentário se aplica e nós geramos o JSON automaticamente.</p>
+            </div>
+            <div className="comentarios__anchor-fields">
+              <label>
+                <span>Local ou bloco</span>
+                <input
+                  type="text"
+                  name="anchorLocal"
+                  value={anchorLocal}
+                  onChange={(event) => setAnchorLocal(event.target.value)}
+                  placeholder="Ex.: Introdução · Pergunta 3"
+                />
+              </label>
+              <label>
+                <span>Trecho destacado</span>
+                <textarea
+                  name="anchorTrecho"
+                  rows={3}
+                  value={anchorTrecho}
+                  onChange={(event) => setAnchorTrecho(event.target.value)}
+                  placeholder="Cole o trecho ou palavras-chave que quer ancorar"
+                />
+              </label>
+            </div>
+            <div className="comentarios__anchor-preview">
+              <span>Prévia do JSON</span>
+              <code>{anchorJsonPreview || 'Nenhuma referência adicionada.'}</code>
+            </div>
+          </div>
           <label className="full">
-            <span>Anchor JSON (opcional)</span>
-            <textarea name="anchor" rows={3} placeholder='{"paragraph":2}' />
-          </label>
-          <label className="full">
-            <span>Conteúdo em HTML</span>
-            <textarea name="conteudo" rows={4} placeholder="Descreva o ajuste sugerido" required />
+            <span>Conteúdo</span>
+            <textarea
+              name="conteudo"
+              rows={4}
+              placeholder="Descreva o ajuste sugerido (texto simples; convertemos para HTML)"
+              required
+            />
           </label>
           <button type="submit" disabled={criarComentario.isPending}>
             {criarComentario.isPending ? 'Enviando...' : 'Registrar comentário'}

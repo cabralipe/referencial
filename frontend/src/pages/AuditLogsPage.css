@@ -14,6 +14,14 @@
   color: #475569;
 }
 
+.audit--forbidden {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: rgba(248, 113, 113, 0.08);
+  color: #991b1b;
+}
+
 .audit__filters form {
   display: flex;
   gap: 1rem;
@@ -36,6 +44,13 @@
   background-color: #ffffff;
 }
 
+.audit__filters select {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+}
+
 .audit__filters .primary {
   border: none;
   border-radius: 0.75rem;
@@ -46,40 +61,168 @@
   cursor: pointer;
 }
 
-.audit__tabela {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #ffffff;
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+.audit__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
 }
 
-.audit__tabela th,
-.audit__tabela td {
-  text-align: left;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  font-size: 0.9rem;
-  vertical-align: top;
+.audit__summary > div {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+  background: #ffffff;
+  display: grid;
+  gap: 0.2rem;
 }
 
-.audit__tabela th {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
-  color: #64748b;
+.audit__summary strong {
+  font-size: 1.4rem;
 }
 
-.audit__tabela tbody tr:last-child td {
-  border-bottom: none;
+.audit__summary small {
+  color: #475569;
 }
 
-.audit__tabela pre {
+.audit__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  width: fit-content;
+}
+
+.audit__badge--muted {
+  background: rgba(15, 23, 42, 0.04);
+  color: #0f172a;
+}
+
+.audit__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.audit__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.audit__group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.audit__group-header h3 {
   margin: 0;
+}
+
+.audit__group-header span {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.audit__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+
+.audit__card {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 18px 40px -38px rgba(15, 23, 42, 0.45);
+}
+
+.audit__card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.audit__entity {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.audit__entity span {
+  color: #475569;
+}
+
+.audit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.audit__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.75rem;
+  background: rgba(148, 163, 184, 0.2);
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.audit__chip--created {
+  background: rgba(34, 197, 94, 0.16);
+  color: #15803d;
+}
+
+.audit__chip--updated {
+  background: rgba(59, 130, 246, 0.16);
+  color: #1d4ed8;
+}
+
+.audit__chip--deleted {
+  background: rgba(248, 113, 113, 0.16);
+  color: #b91c1c;
+}
+
+.audit__id {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.audit__card details {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.8rem;
+  background: rgba(248, 250, 252, 0.8);
+  padding: 0.6rem 0.75rem;
+}
+
+.audit__card summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.audit__card pre {
+  margin: 0.75rem 0 0;
   background-color: #0f172a;
   color: #e2e8f0;
-  max-height: 220px;
+  max-height: 240px;
   overflow: auto;
   border-radius: 0.6rem;
   padding: 0.75rem;
@@ -95,12 +238,20 @@
 }
 
 @media (max-width: 900px) {
-  .audit__tabela {
-    display: block;
-    overflow-x: auto;
+  .audit__group-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
+}
 
-  .audit__tabela table {
-    min-width: 720px;
-  }
+.audit__hint {
+  color: #7f1d1d;
+}
+
+.audit__code {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.95rem;
+  margin-left: 0.35rem;
 }
