@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass
-from typing import Optional
+from typing import Iterable, Optional
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import MebMessage, MebThread
@@ -117,4 +118,49 @@ def auto_reply_for_message(thread: MebThread, message: str) -> MebMessage:
     return reply
 
 
-__all__ = ["ensure_thread_for_user", "auto_reply_for_message", "build_auto_reply"]
+def deliver_admin_broadcast(
+    *,
+    cliente_id: int,
+    autor,
+    conteudo: str,
+    usuario_ids: Optional[Iterable[int]] = None,
+    gt_ids: Optional[Iterable[int]] = None,
+    include_all: bool = False,
+) -> int:
+    """Envia uma mensagem administrativa para vários destinatários via MEB."""
+    UserModel = get_user_model()
+    base_queryset = UserModel.objects.filter(cliente_id=cliente_id, is_active=True)
+
+    recipients = base_queryset.none()
+    if include_all:
+        recipients = base_queryset
+    else:
+        if usuario_ids:
+            recipients = recipients.union(base_queryset.filter(id__in=list(usuario_ids)))
+        if gt_ids:
+            recipients = recipients.union(
+                base_queryset.filter(grupos_trabalho__id__in=list(gt_ids))
+            )
+
+    recipients = recipients.exclude(id=getattr(autor, "id", None)).distinct()
+    if not recipients.exists():
+        return 0
+
+    delivered = 0
+    now = timezone.now()
+    for usuario in recipients:
+        thread = ensure_thread_for_user(usuario, cliente_id)
+        MebMessage.objects.create(
+            cliente_id=cliente_id,
+            thread=thread,
+            autor=autor,
+            origem=MebMessage.Origem.ADMIN,
+            conteudo=conteudo,
+        )
+        thread.updated_at = now
+        thread.save(update_fields=["updated_at"])
+        delivered += 1
+    return delivered
+
+
+__all__ = ["ensure_thread_for_user", "auto_reply_for_message", "build_auto_reply", "deliver_admin_broadcast"]

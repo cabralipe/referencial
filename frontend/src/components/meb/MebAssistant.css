@@ -16,6 +16,36 @@
   transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
+.meb-toggle__avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  background: #fff;
+}
+
+.meb-toggle__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meb-toggle__label {
+  display: block;
+  letter-spacing: 0.02em;
+}
+
+.meb-toggle--nudge {
+  animation: meb-wiggle 0.9s ease-in-out infinite;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.35);
+}
+
+.meb-toggle--nudge:hover {
+  transform: translateY(0);
+}
+
 .meb-toggle:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
@@ -23,6 +53,21 @@
 
 .meb-toggle--open {
   background: var(--app-secondary, #0ea5e9);
+}
+
+@keyframes meb-wiggle {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+  70% {
+    transform: translateY(2px) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
 }
 
 .meb-panel {
@@ -341,4 +386,78 @@
 .meb-panel__success {
   color: #16a34a;
   font-size: 0.75rem;
+}
+
+.meb-panel__broadcast {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meb-panel__broadcast-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.meb-panel__broadcast-head p {
+  margin: 0.1rem 0 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.meb-panel__broadcast-scope {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.meb-panel__broadcast-scope label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #fff;
+  cursor: pointer;
+}
+
+.meb-panel__broadcast-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.meb-panel__broadcast-select select {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 0.4rem 0.6rem;
+  min-height: 76px;
+  font-family: inherit;
+}
+
+.meb-panel__broadcast textarea {
+  resize: vertical;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 0.65rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+.meb-panel__broadcast textarea:disabled {
+  background: #f1f5f9;
+}
+
+.meb-panel__hint {
+  color: #0f172a;
+  font-size: 0.8rem;
 }

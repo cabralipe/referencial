@@ -70,9 +70,10 @@ export function useUpdateTextoColaborativo() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ textoId, titulo, conteudoHtml, etag }: UpdateTextoColaborativoInput) => {
+    mutationFn: async ({ textoId, gtId, titulo, conteudoHtml, etag }: UpdateTextoColaborativoInput) => {
       const response = await client.put<TextoColaborativo>(`/textos_colaborativos/${textoId}`, {
         body: {
+          gt: gtId,
           titulo,
           conteudo_html: conteudoHtml,
         },

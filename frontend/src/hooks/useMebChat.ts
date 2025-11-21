@@ -62,6 +62,13 @@ type SendMessageVariables = {
   usuarioId?: number | null;
 };
 
+type BroadcastMessageVariables = {
+  conteudo: string;
+  alvo: 'usuario' | 'gt' | 'cliente';
+  usuarioId?: number | null;
+  gtIds?: number[];
+};
+
 export function useSendMebMessage() {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -80,6 +87,35 @@ export function useSendMebMessage() {
     onSuccess: (_data, variables) => {
       const key = variables?.usuarioId ?? 'me';
       queryClient.invalidateQueries({ queryKey: ['meb', 'messages', key] });
+      queryClient.invalidateQueries({ queryKey: ['meb', 'threads'] });
+      queryClient.invalidateQueries({ queryKey: ['meb', 'thread', 'me'] });
+    },
+  });
+}
+
+export function useBroadcastMebMessage() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ conteudo, alvo, usuarioId, gtIds }: BroadcastMessageVariables) => {
+      const body: Record<string, unknown> = {
+        conteudo,
+        alcance: alvo,
+      };
+      if (alvo === 'usuario' && usuarioId) {
+        body.usuario_ids = [usuarioId];
+      }
+      if (alvo === 'gt' && gtIds && gtIds.length > 0) {
+        body.gt_ids = gtIds;
+      }
+      const response = await client.post<{ sent: number }>('/meb/mensagens/broadcast', {
+        body,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meb', 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['meb', 'threads'] });
       queryClient.invalidateQueries({ queryKey: ['meb', 'thread', 'me'] });
     },

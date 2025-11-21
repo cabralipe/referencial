@@ -8,11 +8,17 @@ export interface GtOption extends GT {
   displayName: string;
 }
 
-export function useAvailableGts() {
+export type GtScope = 'member' | 'all';
+
+interface UseAvailableGtsOptions {
+  scope?: GtScope;
+}
+
+export function useAvailableGts({ scope = 'member' }: UseAvailableGtsOptions = {}) {
   const client = useApiClient();
 
   const query = useQuery({
-    queryKey: ['gts', 'available'],
+    queryKey: ['gts', 'available', scope],
     queryFn: async () => {
       const collected: GT[] = [];
       let nextUrl: string | null = null;
@@ -21,7 +27,9 @@ export function useAvailableGts() {
 
       do {
         const response = await client.get<PaginatedResponse<GT>>(currentUrl, {
-          query: firstFetch ? { page_size: 200, only_member: 'true' } : undefined,
+          query: firstFetch
+            ? { page_size: 200, ...(scope === 'member' ? { only_member: 'true' } : {}) }
+            : undefined,
         });
         const { results = [], next } = response.data;
         collected.push(...results);

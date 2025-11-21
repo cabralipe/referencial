@@ -29,7 +29,7 @@ from library.models import BlocoTexto, Midia
 from notifications.models import Notificacao
 from notifications.services import criar_notificacao
 from meb.models import MebMessage, MebThread
-from meb.services import auto_reply_for_message, ensure_thread_for_user
+from meb.services import auto_reply_for_message, deliver_admin_broadcast, ensure_thread_for_user
 from reviews.models import Revisao
 from sockets.utils import broadcast_stream_event
 from diffs.services import build_diff
@@ -680,6 +680,56 @@ class MebMessageViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets
         message = serializer.save()
         if message.origem == MebMessage.Origem.CLIENTE:
             auto_reply_for_message(message.thread, message.conteudo)
+
+    @action(detail=False, methods=["post"], url_path="broadcast")
+    def broadcast(self, request):
+        if not self._user_can_manage():
+            raise PermissionDenied("Somente administradores podem enviar notificações em massa.")
+
+        conteudo = str(request.data.get("conteudo") or "").strip()
+        if not conteudo:
+            raise ValidationError({"conteudo": "Digite uma mensagem para enviar no chat."})
+
+        def parse_ids(raw_value):
+            if raw_value is None:
+                return []
+            if isinstance(raw_value, str):
+                raw_value = [value.strip() for value in raw_value.split(",") if value.strip()]
+            if not isinstance(raw_value, (list, tuple, set)):
+                return []
+            parsed = []
+            for item in raw_value:
+                try:
+                    parsed.append(int(item))
+                except (TypeError, ValueError):
+                    continue
+            return parsed
+
+        usuario_ids = parse_ids(request.data.get("usuarios") or request.data.get("usuario_ids"))
+        gt_ids = parse_ids(request.data.get("gts") or request.data.get("gt_ids"))
+
+        alcance = str(request.data.get("alcance") or "").lower()
+        include_all = alcance in {"cliente", "secretaria", "all"} or bool(
+            request.data.get("toda_secretaria")
+        )
+
+        if not include_all and not usuario_ids and not gt_ids:
+            raise ValidationError("Escolha ao menos um usuário ou GT para enviar a mensagem.")
+
+        cliente_id = _get_request_cliente_id(request)
+        enviados = deliver_admin_broadcast(
+            cliente_id=cliente_id,
+            autor=request.user,
+            conteudo=conteudo,
+            usuario_ids=usuario_ids,
+            gt_ids=gt_ids,
+            include_all=include_all,
+        )
+
+        if enviados == 0:
+            raise ValidationError("Nenhum destinatário elegível encontrado para este aviso.")
+
+        return Response({"sent": enviados}, status=status.HTTP_201_CREATED)
 
     def _user_can_manage(self) -> bool:
         user = self.request.user

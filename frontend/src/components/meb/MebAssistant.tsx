@@ -1,7 +1,15 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/context/AuthContext';
-import { useMebMessages, useMebThreadMe, useMebThreads, useSendMebMessage, useUploadMebAvatar } from '@/hooks/useMebChat';
+import {
+  useBroadcastMebMessage,
+  useMebMessages,
+  useMebThreadMe,
+  useMebThreads,
+  useSendMebMessage,
+  useUploadMebAvatar,
+} from '@/hooks/useMebChat';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
 import type { MebThread } from '@/api/types';
 
 import './MebAssistant.css';
@@ -34,6 +42,11 @@ export function MebAssistant() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [selectedUsuario, setSelectedUsuario] = useState<number | null>(null);
+  const [broadcastScope, setBroadcastScope] = useState<'usuario' | 'gt' | 'cliente'>('usuario');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastGtIds, setBroadcastGtIds] = useState<number[]>([]);
+  const [broadcastFeedback, setBroadcastFeedback] = useState<string | null>(null);
+  const [lastSeenAt, setLastSeenAt] = useState<Date>(() => new Date());
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -46,14 +59,15 @@ export function MebAssistant() {
       setOpen(false);
       setSelectedUsuario(null);
       setMessage('');
+      setLastSeenAt(new Date());
     }
   }, [user]);
 
   const threadMeQuery = useMebThreadMe({
-    enabled: isAuthenticated && open && !isPrivileged,
+    enabled: isAuthenticated && !isPrivileged,
   });
   const threadsQuery = useMebThreads({
-    enabled: isAuthenticated && open && isPrivileged,
+    enabled: isAuthenticated && isPrivileged,
   });
 
   useEffect(() => {
@@ -77,13 +91,42 @@ export function MebAssistant() {
   });
 
   const sendMessage = useSendMebMessage();
+  const broadcastMessageMutation = useBroadcastMebMessage();
   const uploadAvatar = useUploadMebAvatar();
+  const { gtOptions: availableGts } = useAvailableGts({ scope: 'all' });
 
   useEffect(() => {
     if (!open) return;
     if (!messagesContainerRef.current) return;
     messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
   }, [messagesQuery.data, open]);
+
+  useEffect(() => {
+    if (open) {
+      setLastSeenAt(new Date());
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open && (messagesQuery.data || threadsQuery.data)) {
+      setLastSeenAt(new Date());
+    }
+  }, [messagesQuery.data, threadsQuery.data, open]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined;
+    }
+    const interval = setInterval(() => {
+      if (open) return;
+      if (isPrivileged) {
+        threadsQuery.refetch();
+      } else {
+        threadMeQuery.refetch();
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, isPrivileged, open, threadMeQuery, threadsQuery]);
 
   if (!user) {
     return null;
@@ -108,6 +151,18 @@ export function MebAssistant() {
   const disabledComposer = sendMessage.isPending || (isPrivileged && !selectedUsuario);
   const currentThreads = threadsQuery.data ?? [];
   const currentMessages = messagesQuery.data ?? [];
+  const lastSeenTs = lastSeenAt ? lastSeenAt.getTime() : 0;
+  const latestClientThreadTs = isPrivileged
+    ? currentThreads.reduce((latest, thread) => {
+        if (thread.last_message_origin === 'cliente' && thread.last_message_at) {
+          const ts = new Date(thread.last_message_at).getTime();
+          if (Number.isFinite(ts) && ts > latest) {
+            return ts;
+          }
+        }
+        return latest;
+      }, 0)
+    : 0;
 
   const statusLabel = messagesQuery.isFetching ? 'Atualizando…' : 'Online';
 
@@ -128,6 +183,11 @@ export function MebAssistant() {
   };
 
   const resolvedThread = isPrivileged ? currentThreads.find((thread) => thread.usuario === selectedUsuario) : threadMeQuery.data;
+  const lastMessageOrigin = resolvedThread?.last_message_origin ?? null;
+  const lastMessageAt = resolvedThread?.last_message_at ? new Date(resolvedThread.last_message_at).getTime() : 0;
+  const hasNewForUser = !isPrivileged && !open && lastMessageAt > lastSeenTs && lastMessageOrigin && lastMessageOrigin !== 'cliente';
+  const hasNewForAdmin = isPrivileged && !open && latestClientThreadTs > lastSeenTs;
+  const shouldNudge = hasNewForUser || hasNewForAdmin;
 
   const resolvedClientName = resolvedThread ? threadLabel(resolvedThread) : null;
 
@@ -170,16 +230,61 @@ export function MebAssistant() {
     });
   };
 
+  const handleBroadcastGtChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const values = Array.from(event.target.selectedOptions).map((option) => Number(option.value));
+    setBroadcastGtIds(values);
+  };
+
+  const handleBroadcastSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = broadcastMessage.trim();
+    if (!trimmed) {
+      setBroadcastFeedback('Digite a mensagem que será exibida no chat.');
+      return;
+    }
+    if (broadcastScope === 'usuario' && !selectedUsuario) {
+      setBroadcastFeedback('Escolha o usuário destinatário.');
+      return;
+    }
+    if (broadcastScope === 'gt' && broadcastGtIds.length === 0) {
+      setBroadcastFeedback('Selecione ao menos um GT.');
+      return;
+    }
+    setBroadcastFeedback(null);
+    broadcastMessageMutation.mutate(
+      {
+        conteudo: trimmed,
+        alvo: broadcastScope,
+        usuarioId: broadcastScope === 'usuario' ? selectedUsuario : undefined,
+        gtIds: broadcastScope === 'gt' ? broadcastGtIds : undefined,
+      },
+      {
+        onSuccess: () => {
+          setBroadcastMessage('');
+          setBroadcastGtIds([]);
+          setBroadcastScope('usuario');
+          setBroadcastFeedback('Aviso enviado no chat.');
+        },
+      },
+    );
+  };
+
   return (
     <>
       <button
         type="button"
-        className={`meb-toggle ${open ? 'meb-toggle--open' : ''}`}
+        className={`meb-toggle ${open ? 'meb-toggle--open' : ''} ${shouldNudge ? 'meb-toggle--nudge' : ''}`}
         onClick={() => setOpen((prev) => !prev)}
         aria-pressed={open}
         aria-label={open ? 'Fechar chat do MEB' : 'Abrir chat do MEB'}
       >
-        <span>MEB</span>
+        {mascotImage ? (
+          <span className="meb-toggle__avatar">
+            <img src={mascotImage} alt="Abrir chat do MEB" />
+          </span>
+        ) : (
+          <span className="meb-toggle__label">MEB</span>
+        )}
       </button>
       {open && (
         <section className="meb-panel" aria-live="polite">
@@ -244,6 +349,103 @@ export function MebAssistant() {
                 ))}
               </select>
             </div>
+          )}
+
+          {isPrivileged && (
+            <form className="meb-panel__broadcast" onSubmit={handleBroadcastSubmit}>
+              <div className="meb-panel__broadcast-head">
+                <div>
+                  <strong>Enviar aviso no chat</strong>
+                  <p>Digite a notificação que aparecerá como mensagem.</p>
+                </div>
+                {broadcastFeedback && <span className="meb-panel__hint">{broadcastFeedback}</span>}
+                {broadcastMessageMutation.isError && <span className="meb-panel__error">Não foi possível enviar.</span>}
+                {broadcastMessageMutation.isSuccess && !broadcastMessageMutation.isPending && !broadcastFeedback && (
+                  <span className="meb-panel__success">Aviso enviado!</span>
+                )}
+              </div>
+
+              <div className="meb-panel__broadcast-scope">
+                <label>
+                  <input
+                    type="radio"
+                    name="broadcast-scope"
+                    value="usuario"
+                    checked={broadcastScope === 'usuario'}
+                    onChange={() => setBroadcastScope('usuario')}
+                  />
+                  Usuário selecionado
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="broadcast-scope"
+                    value="gt"
+                    checked={broadcastScope === 'gt'}
+                    onChange={() => setBroadcastScope('gt')}
+                  />
+                  GTs inteiros
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="broadcast-scope"
+                    value="cliente"
+                    checked={broadcastScope === 'cliente'}
+                    onChange={() => setBroadcastScope('cliente')}
+                  />
+                  Secretaria inteira
+                </label>
+              </div>
+
+              {broadcastScope === 'usuario' && (
+                <p className="meb-panel__hint">Usa o usuário escolhido na lista de conversas.</p>
+              )}
+
+              {broadcastScope === 'gt' && (
+                <div className="meb-panel__broadcast-select">
+                  <label htmlFor="meb-broadcast-gt">Escolha um ou mais GTs</label>
+                  <select
+                    id="meb-broadcast-gt"
+                    multiple
+                    value={broadcastGtIds.map(String)}
+                    onChange={handleBroadcastGtChange}
+                  >
+                    {availableGts.map((gt) => (
+                      <option key={gt.id} value={gt.id}>
+                        {gt.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  <small>Segure Ctrl/Cmd para selecionar vários.</small>
+                </div>
+              )}
+
+              {broadcastScope === 'cliente' && (
+                <p className="meb-panel__hint">Todo mundo do cliente recebe este aviso no chat.</p>
+              )}
+
+              <textarea
+                rows={3}
+                placeholder="Mensagem que aparecerá no chat como uma notificação"
+                value={broadcastMessage}
+                onChange={(event) => setBroadcastMessage(event.target.value)}
+                disabled={broadcastMessageMutation.isPending}
+              />
+              <div className="meb-panel__composer-actions">
+                <button
+                  type="submit"
+                  disabled={
+                    broadcastMessageMutation.isPending ||
+                    !broadcastMessage.trim() ||
+                    (broadcastScope === 'usuario' && !selectedUsuario) ||
+                    (broadcastScope === 'gt' && broadcastGtIds.length === 0)
+                  }
+                >
+                  {broadcastMessageMutation.isPending ? 'Enviando...' : 'Enviar aviso'}
+                </button>
+              </div>
+            </form>
           )}
 
           {showSuggestionButtons && (
