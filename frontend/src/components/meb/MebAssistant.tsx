@@ -311,6 +311,7 @@ export function MebAssistant() {
             </button>
           </header>
 
+          <div className="meb-panel__content">
           {isPrivileged && (
             <div className="meb-panel__upload">
               <p>Atualize a imagem do mascote para personalizar o chat.</p>
@@ -328,26 +329,6 @@ export function MebAssistant() {
                 {uploadAvatar.isError && <span className="meb-panel__error">Falha ao enviar. Tente novamente.</span>}
                 {uploadAvatar.isSuccess && <span className="meb-panel__success">Avatar atualizado!</span>}
               </div>
-            </div>
-          )}
-
-          {isPrivileged && (
-            <div className="meb-panel__thread-picker">
-              <label htmlFor="meb-thread-select">Cliente</label>
-              <select
-                id="meb-thread-select"
-                value={selectedUsuario ?? ''}
-                onChange={(event) => handleSelectChange(event.target.value)}
-              >
-                {currentThreads.length === 0 && <option value="">Sem conversas ainda</option>}
-                {currentThreads.length > 0 && <option value="">Selecione um cliente</option>}
-                {currentThreads.map((thread) => (
-                  <option key={thread.id} value={thread.usuario}>
-                    {threadLabel(thread)}
-                    {thread.last_message_preview ? ` • ${thread.last_message_preview.slice(0, 30)}` : ''}
-                  </option>
-                ))}
-              </select>
             </div>
           )}
 
@@ -448,6 +429,26 @@ export function MebAssistant() {
             </form>
           )}
 
+          {isPrivileged && (
+            <div className="meb-panel__thread-picker">
+              <label htmlFor="meb-thread-select">Cliente</label>
+              <select
+                id="meb-thread-select"
+                value={selectedUsuario ?? ''}
+                onChange={(event) => handleSelectChange(event.target.value)}
+              >
+                {currentThreads.length === 0 && <option value="">Sem conversas ainda</option>}
+                {currentThreads.length > 0 && <option value="">Selecione um cliente</option>}
+                {currentThreads.map((thread) => (
+                  <option key={thread.id} value={thread.usuario}>
+                    {threadLabel(thread)}
+                    {thread.last_message_preview ? ` • ${thread.last_message_preview.slice(0, 30)}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {showSuggestionButtons && (
             <div className="meb-panel__suggestions">
               {QUICK_QUESTIONS.map((item) => (
@@ -501,6 +502,7 @@ export function MebAssistant() {
               </button>
             </div>
           </form>
+          </div>
         </section>
       )}
     </>
