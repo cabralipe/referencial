@@ -232,7 +232,6 @@ export function AuditLogsPage() {
                 <span>{group.items.length} evento(s)</span>
               </header>
               <div className="audit__cards">
-                {group.items.map((log) => (
                 {group.items.map((log) => {
                   const registro = formatDate(log.timestamp) ?? log.timestamp;
                   const ultimoAcesso = formatDate(log.usuario_last_login);

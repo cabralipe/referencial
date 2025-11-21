@@ -95,9 +95,7 @@
     outline: 2px solid var(--app-primary);
     outline-offset: 2px;
   }
-  .app-shell--sidebar-compact .app-shell__main {
-    grid-column: 1 / -1;
-  }
+  /* Remove content expansion rules from here - will be handled below */
 
   .app-shell--sidebar-compact .app-shell__content {
     max-width: none;
@@ -436,8 +434,9 @@
 }
 
 @media (min-width: 1024px) {
-  /* Expansão total do header e content quando menu recolhido */
+  /* Quando menu está recolhido, expande o conteúdo para ocupar todo espaço disponível */
   .app-shell--sidebar-compact .app-shell__header,
+  .app-shell--sidebar-compact .app-shell__main,
   .app-shell--sidebar-compact .app-shell__content,
   .app-shell--sidebar-compact .app-shell__footer {
     grid-column: 1 / -1;
@@ -445,17 +444,17 @@
     max-width: 100%;
   }
 
+  /* Ajusta o padding para considerar a sidebar compacta (96px) */
   .app-shell--sidebar-compact .app-shell__header {
     padding-left: calc(2rem + 96px);
   }
 
   .app-shell--sidebar-compact .app-shell__content {
     padding-left: calc(2rem + 96px);
+    padding-right: 2rem;
   }
 
-  .app-shell__header:focus-within,
-  .app-shell__content:focus-within {
-    outline: 2px solid var(--app-primary);
-    outline-offset: 2px;
+  .app-shell--sidebar-compact .app-shell__footer {
+    padding-left: calc(2rem + 96px);
   }
 }
