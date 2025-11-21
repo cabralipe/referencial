@@ -4,6 +4,7 @@ import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAuditLogs } from '@/hooks/useAuditLogs';
 import { useAuth } from '@/context/AuthContext';
+import type { AuditLog } from '@/api/types';
 
 import './AuditLogsPage.css';
 
@@ -19,6 +20,78 @@ const ENTIDADE_OPTIONS = [
   { value: 'revisao', label: 'Revisão' },
   { value: 'export', label: 'Exportação' },
 ];
+
+const ENTIDADE_LABELS: Record<string, string> = {
+  'curriculum.Resposta': 'Resposta de tarefa',
+  'curriculum.TextoUnico': 'Texto Único',
+  'curriculum.TextoColaborativo': 'Texto colaborativo',
+  'workshop.Quadro': 'Quadro',
+  'comments.Comentario': 'Comentário',
+  'reviews.Revisao': 'Revisão',
+  export: 'Exportação',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  created: 'criou',
+  updated: 'atualizou',
+  deleted: 'removeu',
+};
+
+function actionSentence(log: AuditLog) {
+  const entidadeLabel = ENTIDADE_LABELS[log.entidade] ?? log.entidade;
+  const action = ACTION_LABELS[log.acao.toLowerCase()] ?? log.acao;
+  const usuario = log.usuario_nome || log.usuario_email || `Usuário #${log.usuario_id ?? 'desconhecido'}`;
+  return `${usuario} ${action} ${entidadeLabel} #${log.entidade_id}`;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString('pt-BR');
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .replace(/(^|\s)\w/g, (match) => match.toUpperCase());
+}
+
+function formatValue(value: unknown): string {
+  if (value == null) return '—';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  if (typeof value === 'number') return value.toLocaleString('pt-BR');
+  if (typeof value === 'string') {
+    const maybeDate = new Date(value);
+    if (!Number.isNaN(maybeDate.getTime()) && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      return maybeDate.toLocaleString('pt-BR');
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((item) => formatValue(item)).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function renderDiffSummary(diff: Record<string, unknown> | null | undefined) {
+  const snapshot = (diff as { current?: Record<string, unknown> } | null)?.current ?? diff ?? {};
+  const entries = Object.entries(snapshot);
+  if (entries.length === 0) {
+    return <p className="audit__helper">Sem detalhes capturados para este evento.</p>;
+  }
+  return (
+    <dl className="audit__details">
+      {entries.map(([key, value]) => (
+        <div key={key} className="audit__details-row">
+          <dt>{humanizeKey(key)}</dt>
+          <dd>{formatValue(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export function AuditLogsPage() {
   const [entidade, setEntidade] = useState('');
@@ -77,7 +150,8 @@ export function AuditLogsPage() {
         <div>
           <h1>Auditoria</h1>
           <p>
-            Rastreie ações recentes para auditar alterações e garantir conformidade. Admin pode liberar leitura para demais perfis ativando a flag
+            Rastreie ações recentes com linguagem clara. Mostramos quem fez, o que fez, quando entrou e os dados alterados.
+            Admin pode liberar leitura para demais perfis ativando a flag
             <code className="audit__code">{EXTENDED_ACCESS_FLAG}</code> no painel.
           </p>
         </div>
@@ -89,15 +163,15 @@ export function AuditLogsPage() {
         items={[
           {
             title: 'Filtre por entidade',
-            description: 'Selecione o modelo (resposta, texto único, revisão) sem precisar digitar termos técnicos.',
+            description: 'Selecione o tipo (Resposta, Texto Único, Quadro) sem termos técnicos.',
           },
           {
             title: 'Acompanhe IDs específicos',
             description: 'Use o ID quando quiser chegar direto em um registro; é opcional.',
           },
           {
-            title: 'Analise o diff JSON',
-            description: 'O campo diff_json mostra o que mudou; útil para investigar regressões.',
+            title: 'Leia o que mudou',
+            description: 'Os detalhes já vêm traduzidos; use “Ver detalhes” para ver campos e valores registrados.',
           },
         ]}
       />
@@ -159,29 +233,35 @@ export function AuditLogsPage() {
               </header>
               <div className="audit__cards">
                 {group.items.map((log) => (
-                  <article key={log.id} className="audit__card">
-                    <header>
-                      <div>
-                        <p className="audit__entity">
-                          {log.entidade} <span>#{log.entidade_id}</span>
-                        </p>
-                        <div className="audit__meta">
-                          <span className={`audit__chip audit__chip--${log.acao.toLowerCase()}`}>
-                            {log.acao}
-                          </span>
-                          <span>Usuário: {log.usuario_id ?? '—'}</span>
-                          <span>Cliente: #{log.cliente}</span>
-                          <span>{new Date(log.timestamp).toLocaleTimeString('pt-BR')}</span>
+                {group.items.map((log) => {
+                  const registro = formatDate(log.timestamp) ?? log.timestamp;
+                  const ultimoAcesso = formatDate(log.usuario_last_login);
+                  return (
+                    <article key={log.id} className="audit__card">
+                      <header>
+                        <div>
+                          <p className="audit__entity">{actionSentence(log)}</p>
+                          <div className="audit__meta">
+                            <span className={`audit__chip audit__chip--${log.acao.toLowerCase()}`}>
+                              {ACTION_LABELS[log.acao.toLowerCase()] ?? log.acao}
+                            </span>
+                            <span>
+                              Usuário: {log.usuario_nome || '—'} {log.usuario_email ? `(${log.usuario_email})` : ''}
+                            </span>
+                            <span>Cliente: #{log.cliente}</span>
+                            <span>Registro: {registro}</span>
+                            {ultimoAcesso && <span>Último acesso: {ultimoAcesso}</span>}
+                          </div>
                         </div>
-                      </div>
-                      <span className="audit__id">ID {log.id}</span>
-                    </header>
-                    <details>
-                      <summary>Ver diff</summary>
-                      <pre>{JSON.stringify(log.diff_json, null, 2)}</pre>
-                    </details>
-                  </article>
-                ))}
+                        <span className="audit__id">Evento #{log.id}</span>
+                      </header>
+                      <details>
+                        <summary>Ver detalhes</summary>
+                        {renderDiffSummary(log.diff_json)}
+                      </details>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}

@@ -269,12 +269,19 @@ class ExportJobSerializer(serializers.ModelSerializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
+    usuario_nome = serializers.SerializerMethodField()
+    usuario_email = serializers.SerializerMethodField()
+    usuario_last_login = serializers.SerializerMethodField()
+
     class Meta:
         model = AuditLog
         fields = (
             "id",
             "cliente",
             "usuario_id",
+            "usuario_nome",
+            "usuario_email",
+            "usuario_last_login",
             "entidade",
             "entidade_id",
             "acao",
@@ -282,6 +289,27 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "timestamp",
         )
         read_only_fields = fields
+
+    def get_usuario_nome(self, obj):
+        from core.models import Usuario
+        if not obj.usuario_id:
+            return None
+        usuario = Usuario.objects.filter(pk=obj.usuario_id).only("nome").first()
+        return getattr(usuario, "nome", None)
+
+    def get_usuario_email(self, obj):
+        from core.models import Usuario
+        if not obj.usuario_id:
+            return None
+        usuario = Usuario.objects.filter(pk=obj.usuario_id).only("email").first()
+        return getattr(usuario, "email", None)
+
+    def get_usuario_last_login(self, obj):
+        from core.models import Usuario
+        if not obj.usuario_id:
+            return None
+        usuario = Usuario.objects.filter(pk=obj.usuario_id).only("last_login").first()
+        return getattr(usuario, "last_login", None)
 
 
 class RevisaoSerializer(serializers.ModelSerializer):

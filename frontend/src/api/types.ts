@@ -137,6 +137,9 @@ export interface AuditLog {
   id: number;
   cliente: number;
   usuario_id: number | null;
+  usuario_nome: string | null;
+  usuario_email: string | null;
+  usuario_last_login: string | null;
   entidade: string;
   entidade_id: number;
   acao: string;

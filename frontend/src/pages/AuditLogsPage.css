@@ -218,15 +218,35 @@
   color: #0f172a;
 }
 
-.audit__card pre {
-  margin: 0.75rem 0 0;
-  background-color: #0f172a;
-  color: #e2e8f0;
-  max-height: 240px;
-  overflow: auto;
-  border-radius: 0.6rem;
-  padding: 0.75rem;
-  font-size: 0.8rem;
+.audit__details {
+  margin: 0.6rem 0 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.audit__details-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.audit__details dt {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.audit__details dd {
+  margin: 0;
+  color: #334155;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  word-break: break-word;
+}
+
+.audit__helper {
+  margin: 0.5rem 0 0;
+  color: #475569;
+  font-size: 0.9rem;
 }
 
 .audit__empty {
