@@ -235,6 +235,20 @@ export function AppLayout() {
         }}
       />
       <header className="app-shell__header">
+        <div className="app-shell__brand app-shell__brand--header">
+          {cliente?.tema?.logo_url ? (
+            <img src={cliente.tema.logo_url} alt={cliente.cliente.nome} />
+          ) : (
+            <div className="app-shell__logo-fallback">
+              {cliente?.cliente?.nome?.slice(0, 1) ?? 'R'}
+            </div>
+          )}
+          <div className="app-shell__brand-text">
+            <strong>{cliente?.cliente?.nome ?? 'Referencial Curricular'}</strong>
+            {cliente?.cliente?.slug && <span>{cliente.cliente.slug}</span>}
+          </div>
+        </div>
+        
         <button
           type="button"
           className="app-shell__toggle"

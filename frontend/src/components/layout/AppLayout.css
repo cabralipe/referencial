@@ -416,6 +416,42 @@
   text-overflow: ellipsis;
 }
 
+/* Estilos para a cópia da marca no header */
+.app-shell__brand--header {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .app-shell__brand--header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #0f172a;
+    margin-right: auto;
+  }
+  
+  .app-shell__brand--header img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+  }
+  
+  .app-shell__brand--header .app-shell__logo-fallback {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .app-shell__brand--header .app-shell__brand-text strong {
+    font-size: 0.95rem;
+  }
+  
+  .app-shell__brand--header .app-shell__brand-text span {
+    font-size: 0.75rem;
+  }
+}
+
 .menu__label {
   font-size: clamp(0.85rem, 1vw, 0.95rem);
 }
