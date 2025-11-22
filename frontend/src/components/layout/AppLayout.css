@@ -134,14 +134,31 @@
 }
 
 .app-shell__logo-fallback {
-  width: 40px;
-  height: 40px;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
   border-radius: 0.9rem;
   background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
-  display: grid;
+  display: grid !important;
   place-items: center;
   font-weight: 700;
   color: #fff;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  flex: none !important;
+  align-self: center !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
 }
 
 .app-shell__brand strong {
@@ -424,6 +441,30 @@
 }
 
 /* Estilos para a cópia da marca no header */
+.app-shell__logo-fallback {
+  flex: none !important;
+  align-self: center !important;
+  position: relative !important;
+}
+
+/* Garantir tamanho fixo absoluto para todas as instâncias */
+[class*="logo-fallback"] {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  flex: none !important;
+  box-sizing: border-box !important;
+  contain: strict !important;
+  contain-intrinsic-width: 40px !important;
+  contain-intrinsic-height: 40px !important;
+  resize: none !important;
+  zoom: 1 !important;
+  transform: none !important;
+  scale: none !important;
+}
 .app-shell__brand--header * {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
@@ -485,10 +526,15 @@
   }
   
   .app-shell__brand--header .app-shell__logo-fallback {
-    width: 32px;
-    height: 32px;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
     border-radius: 0.75rem;
     font-size: 0.9rem;
+    flex-shrink: 0;
   }
   
   .app-shell__brand--header .app-shell__brand-text strong {
@@ -556,9 +602,14 @@
   }
   
   .app-shell__brand--header .app-shell__logo-fallback {
-    width: 28px;
-    height: 28px;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
     font-size: 0.8rem;
+    flex-shrink: 0;
   }
   
   /* Aplicar aos textos da sidebar também em telas pequenas */
