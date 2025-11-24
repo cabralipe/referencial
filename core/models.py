@@ -139,3 +139,33 @@ class AuditLog(TenantModel):
             models.Index(fields=["timestamp"]),
         ]
         ordering = ("-timestamp",)
+
+
+class UserSessionLog(TimeStampedModel):
+    usuario = models.ForeignKey(
+        "core.Usuario",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="session_logs",
+    )
+    cliente = models.ForeignKey(
+        "core.Cliente",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="session_logs",
+    )
+    session_key = models.CharField(max_length=64, unique=True)
+    first_seen_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["cliente", "last_seen_at"]),
+            models.Index(fields=["last_seen_at"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        usuario = getattr(self.usuario, "email", "desconhecido")
+        return f"Sessão {self.session_key} ({usuario})"

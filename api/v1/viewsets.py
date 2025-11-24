@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.views import APIView
 
+from core.activity import online_sessions_for_cliente
 from core.models import AuditLog, Cliente
 from core.permissions import (
     HasClientScope,
@@ -42,6 +43,7 @@ from .serializers import (
     AuditLogSerializer,
     CampoDinamicoSerializer,
     ClienteMeSerializer,
+    OnlineUserSerializer,
     PerguntaSerializer,
     GTSerializer,
     ExportJobSerializer,
@@ -432,6 +434,13 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if entidade_id:
             queryset = queryset.filter(entidade_id=entidade_id)
         return queryset.order_by("-timestamp")
+
+    @action(detail=False, methods=["get"], url_path="online")
+    def online(self, request):
+        cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
+        sessions = online_sessions_for_cliente(cliente_id)
+        serializer = OnlineUserSerializer(sessions, many=True)
+        return Response(serializer.data)
 
 
 class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):

@@ -147,6 +147,17 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface OnlineUser {
+  id: number;
+  usuario_id: number | null;
+  usuario_nome: string | null;
+  usuario_email: string | null;
+  usuario_role: string | null;
+  cliente: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
 export interface Comentario {
   id: number;
   alvo_tipo: string;

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
-import type { AuditLog, PaginatedResponse } from '@/api/types';
+import type { AuditLog, OnlineUser, PaginatedResponse } from '@/api/types';
 
 interface UseAuditLogsParams {
   entidade?: string;
@@ -23,5 +23,18 @@ export function useAuditLogs({ entidade, entidadeId }: UseAuditLogsParams = {}) 
       });
       return response.data.results ?? [];
     },
+  });
+}
+
+export function useOnlineUsers() {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['online-users'],
+    queryFn: async () => {
+      const response = await client.get<OnlineUser[]>('/audit/online');
+      return response.data;
+    },
+    refetchInterval: 60_000,
   });
 }

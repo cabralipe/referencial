@@ -6,6 +6,7 @@ from typing import Callable
 
 from django.http import HttpRequest, HttpResponse
 
+from .activity import touch_user_session
 from .threadlocals import set_current_cliente_id, set_current_usuario_id
 
 
@@ -38,6 +39,8 @@ class ClienteScopeMiddleware:
 
         set_current_cliente_id(cliente_id)
         request.cliente_id = cliente_id
+        if request.user.is_authenticated:
+            touch_user_session(request)
 
         response = self.get_response(request)
 

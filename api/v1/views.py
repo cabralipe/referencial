@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from core.activity import touch_user_session
 from core.models import ClienteTema
 from core.permissions import HasClientScope
 
@@ -28,6 +29,8 @@ class SessionLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         login(request, user)
+        request.cliente_id = getattr(user, "cliente_id", None)
+        touch_user_session(request)
         data = {
             "user": {
                 "id": user.id,

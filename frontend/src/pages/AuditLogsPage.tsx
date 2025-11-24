@@ -2,9 +2,9 @@ import { FormEvent, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useAuditLogs } from '@/hooks/useAuditLogs';
+import { useAuditLogs, useOnlineUsers } from '@/hooks/useAuditLogs';
 import { useAuth } from '@/context/AuthContext';
-import type { AuditLog } from '@/api/types';
+import type { AuditLog, OnlineUser } from '@/api/types';
 
 import './AuditLogsPage.css';
 
@@ -102,6 +102,11 @@ export function AuditLogsPage() {
     entidade: entidade || undefined,
     entidadeId: entidadeId ? Number(entidadeId) : undefined,
   });
+  const {
+    data: onlineUsers,
+    isLoading: isLoadingOnline,
+    isFetching: isFetchingOnline,
+  } = useOnlineUsers();
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -124,6 +129,13 @@ export function AuditLogsPage() {
       [] as { date: string; items: typeof logs }[],
     );
   }, [logs]);
+
+  const sortedOnlineUsers = useMemo<OnlineUser[]>(() => {
+    if (!onlineUsers) return [];
+    return [...onlineUsers].sort(
+      (a, b) => new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime(),
+    );
+  }, [onlineUsers]);
 
   const isExtendedAccess = cliente?.flags?.[EXTENDED_ACCESS_FLAG];
   const isAuthorized = !!user && (ADMIN_ROLES.has(user.role) || isExtendedAccess);
@@ -222,6 +234,50 @@ export function AuditLogsPage() {
           </div>
         </div>
       ) : null}
+
+      <section className="audit__online">
+        <div className="audit__online-header">
+          <div>
+            <span className="audit__badge">Presença em tempo real</span>
+            <h2>Quem está online agora</h2>
+            <p>
+              Mostramos quem acessou a plataforma, o horário de entrada e a última atividade para facilitar relatórios
+              rápidos.
+            </p>
+          </div>
+          <div className="audit__online-count">
+            <strong>{sortedOnlineUsers.length}</strong>
+            <span>online</span>
+            <small>{isFetchingOnline ? 'Atualizando...' : 'Atualiza a cada minuto'}</small>
+          </div>
+        </div>
+        {isLoadingOnline ? (
+          <p className="audit__helper">Carregando sessões ativas...</p>
+        ) : sortedOnlineUsers.length > 0 ? (
+          <ul className="audit__online-list">
+            {sortedOnlineUsers.map((session) => (
+              <li key={session.id} className="audit__online-card">
+                <div className="audit__online-main">
+                  <div className="audit__online-name">
+                    <span className="audit__status-dot" aria-hidden="true" />
+                    <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+                  </div>
+                  <span className="audit__muted">{session.usuario_email || 'E-mail não informado'}</span>
+                </div>
+                <div className="audit__online-meta">
+                  <span>Perfil: {session.usuario_role ?? '—'}</span>
+                  <span>Entrou: {formatDate(session.first_seen_at) ?? '—'}</span>
+                  <span>Última atividade: {formatDate(session.last_seen_at) ?? '—'}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="audit__empty audit__empty--inline">
+            <p>Ninguém online agora. Assim que alguém acessar, registramos horário e data aqui.</p>
+          </div>
+        )}
+      </section>
 
       {groupedLogs.length > 0 ? (
         <div className="audit__groups">
