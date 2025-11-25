@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Count, OuterRef, Subquery
@@ -14,6 +15,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.views import APIView
+try:  # botocore é usado apenas quando MEDIA_BACKEND=s3 está ativo
+    from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
+
+    STORAGE_EXCEPTIONS = (BotoCoreError, ClientError, ParamValidationError, OSError)
+except ImportError:  # pragma: no cover
+    STORAGE_EXCEPTIONS = (OSError,)
 
 from core.activity import online_sessions_for_cliente
 from core.models import AuditLog, Cliente, UserSessionLog
@@ -70,6 +77,8 @@ from .serializers import (
     ConsultaPublicaSerializer,
     ManifestacaoPublicaSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PreconditionFailed(APIException):
@@ -175,15 +184,23 @@ class ConsultaPublicaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         _assert_roles(user, {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN})
-        consulta = serializer.save(
-            cliente_id=_get_request_cliente_id(self.request),
-            criada_por=user,
-        )
+        try:
+            consulta = serializer.save(
+                cliente_id=_get_request_cliente_id(self.request),
+                criada_por=user,
+            )
+        except STORAGE_EXCEPTIONS as exc:
+            logger.exception("Erro ao salvar PDF da consulta pública")
+            raise ValidationError({"pdf": "Falha ao salvar o PDF. Verifique a configuração do armazenamento de mídia."}) from exc
         self._created_instance = consulta
 
     def perform_update(self, serializer):
         _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
-        serializer.save()
+        try:
+            serializer.save()
+        except STORAGE_EXCEPTIONS as exc:
+            logger.exception("Erro ao atualizar PDF da consulta pública")
+            raise ValidationError({"pdf": "Falha ao salvar o PDF. Verifique a configuração do armazenamento de mídia."}) from exc
 
     def perform_destroy(self, instance):
         _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})

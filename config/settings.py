@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from django.core.exceptions import ImproperlyConfigured
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse, unquote, parse_qs
@@ -282,12 +283,14 @@ STORAGES = {
 }
 
 if MEDIA_BACKEND == "s3":
+    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+    if not AWS_STORAGE_BUCKET_NAME:
+        raise ImproperlyConfigured("Defina AWS_STORAGE_BUCKET_NAME para usar MEDIA_BACKEND=s3.")
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     }
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
-    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
     AWS_QUERYSTRING_AUTH = False
     AWS_S3_FILE_OVERWRITE = False
 
