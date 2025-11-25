@@ -56,5 +56,6 @@ export function useSessionHistory({ days = 30, limit = 100 }: UseSessionHistoryP
       return response.data;
     },
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

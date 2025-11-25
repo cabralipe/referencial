@@ -2,7 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useAuditLogs, useOnlineUsers } from '@/hooks/useAuditLogs';
+import { useAuditLogs, useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
 import { useAuth } from '@/context/AuthContext';
 import type { AuditLog, OnlineUser } from '@/api/types';
 
@@ -107,6 +107,11 @@ export function AuditLogsPage() {
     isLoading: isLoadingOnline,
     isFetching: isFetchingOnline,
   } = useOnlineUsers();
+  const {
+    data: sessionHistory,
+    isLoading: isLoadingSessions,
+    isFetching: isFetchingSessions,
+  } = useSessionHistory({ days: 30, limit: 200 });
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -136,6 +141,13 @@ export function AuditLogsPage() {
       (a, b) => new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime(),
     );
   }, [onlineUsers]);
+
+  const sortedSessionHistory = useMemo<OnlineUser[]>(() => {
+    if (!sessionHistory) return [];
+    return [...sessionHistory].sort(
+      (a, b) => new Date(b.first_seen_at).getTime() - new Date(a.first_seen_at).getTime(),
+    );
+  }, [sessionHistory]);
 
   const isExtendedAccess = cliente?.flags?.[EXTENDED_ACCESS_FLAG];
   const isAuthorized = !!user && (ADMIN_ROLES.has(user.role) || isExtendedAccess);
@@ -268,6 +280,7 @@ export function AuditLogsPage() {
                   <span>Perfil: {session.usuario_role ?? '—'}</span>
                   <span>Entrou: {formatDate(session.first_seen_at) ?? '—'}</span>
                   <span>Última atividade: {formatDate(session.last_seen_at) ?? '—'}</span>
+                  {session.device_label && <span>Dispositivo: {session.device_label}</span>}
                 </div>
               </li>
             ))}
@@ -275,6 +288,61 @@ export function AuditLogsPage() {
         ) : (
           <div className="audit__empty audit__empty--inline">
             <p>Ninguém online agora. Assim que alguém acessar, registramos horário e data aqui.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="audit__online">
+        <div className="audit__online-header">
+          <div>
+            <span className="audit__badge">Histórico</span>
+            <h2>Logins recentes</h2>
+            <p>Lista dos últimos acessos ao sistema pelo seu cliente.</p>
+          </div>
+          <div className="audit__online-count">
+            <strong>{sortedSessionHistory.length}</strong>
+            <span>registros</span>
+            <small>{isFetchingSessions ? 'Atualizando...' : 'Últimos 30 dias'}</small>
+          </div>
+        </div>
+        {isLoadingSessions ? (
+          <p className="audit__helper">Carregando histórico de logins...</p>
+        ) : sortedSessionHistory.length > 0 ? (
+          <div className="audit__table-wrapper">
+            <table className="audit__table">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>Login</th>
+                  <th>Duração</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedSessionHistory.map((session) => {
+                  const secs = session.session_duration_seconds ?? 0;
+                  const hours = Math.floor(secs / 3600);
+                  const minutes = Math.floor((secs % 3600) / 60);
+                  const durationLabel = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+                  return (
+                    <tr key={`hist-${session.id}`}>
+                      <td>
+                        <div>
+                          <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+                          <div className="audit__muted">{session.usuario_email || 'E-mail não informado'}</div>
+                        </div>
+                      </td>
+                      <td>{formatDate(session.first_seen_at) ?? '—'}</td>
+                      <td>{durationLabel}</td>
+                      
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="audit__empty audit__empty--inline">
+            <p>Nenhum login registrado no período selecionado.</p>
           </div>
         )}
       </section>

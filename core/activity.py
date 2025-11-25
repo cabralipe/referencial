@@ -42,18 +42,30 @@ def touch_user_session(request) -> Optional[UserSessionLog]:
     if existing:
         if existing.last_seen_at >= now - UPDATE_INTERVAL:
             return existing
+        ua = request.META.get("HTTP_USER_AGENT", "")
         existing.last_seen_at = now
         existing.usuario = user
         existing.cliente_id = cliente_id
-        existing.save(update_fields=["last_seen_at", "usuario", "cliente_id", "updated_at"])
+        if ua and (not existing.user_agent or existing.user_agent != ua):
+            existing.user_agent = ua
+            # Heurística simples de dispositivo
+            existing.device = (
+                "mobile" if "Mobi" in ua else "tablet" if "Tablet" in ua else "desktop"
+            )
+            existing.save(update_fields=["last_seen_at", "usuario", "cliente_id", "user_agent", "device", "updated_at"])
+        else:
+            existing.save(update_fields=["last_seen_at", "usuario", "cliente_id", "updated_at"])
         return existing
 
+    ua = request.META.get("HTTP_USER_AGENT", "")
     return UserSessionLog.objects.create(
         session_key=session_key,
         usuario=user,
         cliente_id=cliente_id,
         first_seen_at=now,
         last_seen_at=now,
+        user_agent=ua,
+        device=("mobile" if "Mobi" in ua else "tablet" if "Tablet" in ua else "desktop") if ua else "",
     )
 
 

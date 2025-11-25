@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Count, OuterRef, Subquery
 from django.utils import timezone
+from datetime import timedelta
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
@@ -444,7 +445,7 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     @action(detail=False, methods=["get"], url_path="sessions")
     def sessions(self, request):
-        cliente_id = _get_request_cliente_id(request)
+        cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
         try:
             days_param = int(str(request.query_params.get("days", "30")))
         except ValueError:
@@ -455,11 +456,10 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             limit_param = 100
 
         cutoff = timezone.now() - timedelta(days=days_param)
-        queryset = (
-            UserSessionLog.objects.filter(cliente_id=cliente_id, first_seen_at__gte=cutoff)
-            .select_related("usuario", "cliente")
-            .order_by("-first_seen_at")
-        )
+        queryset = UserSessionLog.objects.filter(first_seen_at__gte=cutoff)
+        if cliente_id is not None:
+            queryset = queryset.filter(cliente_id=cliente_id)
+        queryset = queryset.select_related("usuario", "cliente").order_by("-first_seen_at")
         if limit_param > 0:
             queryset = queryset[:limit_param]
         serializer = OnlineUserSerializer(queryset, many=True)

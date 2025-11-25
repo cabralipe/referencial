@@ -156,6 +156,8 @@ export interface OnlineUser {
   cliente: number | null;
   first_seen_at: string;
   last_seen_at: string;
+  session_duration_seconds?: number;
+  device_label?: string | null;
 }
 
 export interface Comentario {

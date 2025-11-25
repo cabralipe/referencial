@@ -317,6 +317,8 @@ class OnlineUserSerializer(serializers.ModelSerializer):
     usuario_nome = serializers.SerializerMethodField()
     usuario_email = serializers.SerializerMethodField()
     usuario_role = serializers.SerializerMethodField()
+    session_duration_seconds = serializers.SerializerMethodField()
+    device_label = serializers.SerializerMethodField()
 
     class Meta:
         model = UserSessionLog
@@ -329,6 +331,8 @@ class OnlineUserSerializer(serializers.ModelSerializer):
             "cliente",
             "first_seen_at",
             "last_seen_at",
+            "session_duration_seconds",
+            "device_label",
         )
         read_only_fields = fields
 
@@ -346,6 +350,26 @@ class OnlineUserSerializer(serializers.ModelSerializer):
         if obj.usuario:
             return obj.usuario.role
         return None
+
+    def get_session_duration_seconds(self, obj):
+        try:
+            delta = obj.last_seen_at - obj.first_seen_at
+            seconds = int(delta.total_seconds())
+            return max(seconds, 0)
+        except Exception:
+            return 0
+
+    def get_device_label(self, obj):
+        ua = (obj.user_agent or "").lower()
+        if not ua:
+            return None
+        if "mobi" in ua:
+            return "mobile"
+        if "tablet" in ua:
+            return "tablet"
+        if "windows" in ua or "macintosh" in ua or "linux" in ua:
+            return "desktop"
+        return "desconhecido"
 
 
 class RevisaoSerializer(serializers.ModelSerializer):

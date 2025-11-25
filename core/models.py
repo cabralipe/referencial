@@ -159,6 +159,8 @@ class UserSessionLog(TimeStampedModel):
     session_key = models.CharField(max_length=64, unique=True)
     first_seen_at = models.DateTimeField()
     last_seen_at = models.DateTimeField()
+    user_agent = models.TextField(blank=True)
+    device = models.CharField(max_length=100, blank=True)
 
     class Meta:
         indexes = [
