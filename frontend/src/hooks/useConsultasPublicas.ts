@@ -1,0 +1,144 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { useApiClient } from '@/api/client';
+import type {
+  ConsultaPublica,
+  ConsultaPublicaPublic,
+  ManifestacaoPublica,
+  ManifestacaoPublicaPublic,
+  PaginatedResponse,
+} from '@/api/types';
+
+export function useConsultasPublicas() {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['consultas_publicas'],
+    queryFn: async () => {
+      const response = await client.get<PaginatedResponse<ConsultaPublica>>('/consultas_publicas', {
+        query: { page_size: 200 },
+      });
+      return response.data.results ?? [];
+    },
+  });
+}
+
+interface CriarConsultaPublicaInput {
+  titulo: string;
+  slug?: string;
+  descricao?: string;
+  pdf: File;
+  data_publicacao: string;
+  data_validade?: string;
+  data_fechamento?: string;
+  pergunta_votacao?: string;
+  opcoes_votacao?: string[];
+  ativa?: boolean;
+}
+
+export function useCriarConsultaPublica() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CriarConsultaPublicaInput) => {
+      const form = new FormData();
+      form.append('titulo', payload.titulo);
+      if (payload.slug) form.append('slug', payload.slug);
+      if (payload.descricao) form.append('descricao', payload.descricao);
+      form.append('pdf', payload.pdf);
+      form.append('data_publicacao', payload.data_publicacao);
+      if (payload.data_validade) form.append('data_validade', payload.data_validade);
+      if (payload.data_fechamento) form.append('data_fechamento', payload.data_fechamento);
+      if (payload.pergunta_votacao) form.append('pergunta_votacao', payload.pergunta_votacao);
+      if (payload.opcoes_votacao && payload.opcoes_votacao.length > 0) {
+        form.append('opcoes_votacao', JSON.stringify(payload.opcoes_votacao));
+      }
+      form.append('ativa', payload.ativa === false ? 'false' : 'true');
+
+      const response = await client.post<ConsultaPublica>('/consultas_publicas', { body: form });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultas_publicas'] });
+    },
+  });
+}
+
+export function useManifestacoesConsulta(consultaId?: number) {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['consultas_publicas', consultaId, 'manifestacoes'],
+    enabled: Boolean(consultaId),
+    queryFn: async () => {
+      const response = await client.get<ManifestacaoPublica[]>(`/consultas_publicas/${consultaId}/manifestacoes`);
+      return response.data;
+    },
+  });
+}
+
+export function useConsultaPublicaPublic(token?: string) {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['consulta_publica_public', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      const response = await client.get<ConsultaPublicaPublic>(`/consultas_publicas/public/${token}`, {
+        skipAuth: true,
+      });
+      return response.data;
+    },
+  });
+}
+
+export function useManifestacoesPublicas(token?: string) {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['consulta_publica_public', token, 'manifestacoes'],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      const response = await client.get<ManifestacaoPublicaPublic[]>(
+        `/consultas_publicas/public/${token}/manifestacoes`,
+        { skipAuth: true },
+      );
+      return response.data;
+    },
+  });
+}
+
+interface EnviarManifestacaoInput {
+  token: string;
+  pagina?: number | null;
+  comentario?: string;
+  voto?: string;
+  nome_completo: string;
+  cpf: string;
+  cidade: string;
+  estado: string;
+  contato_email?: string;
+}
+
+export function useEnviarManifestacao() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ token, ...payload }: EnviarManifestacaoInput) => {
+      const response = await client.post<ManifestacaoPublicaPublic>(
+        `/consultas_publicas/public/${token}/manifestacoes`,
+        {
+          body: payload,
+          skipAuth: true,
+        },
+      );
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['consulta_publica_public', variables.token, 'manifestacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['consulta_publica_public', variables.token] });
+    },
+  });
+}

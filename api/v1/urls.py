@@ -7,7 +7,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .routers import router
 from .viewsets import ClienteViewSet, DiffView
-from .views import CsrfTokenView, SessionLoginView, MebAvatarUploadView
+from .views import (
+    CsrfTokenView,
+    SessionLoginView,
+    MebAvatarUploadView,
+    ConsultaPublicaPublicView,
+    ManifestacaoPublicaView,
+)
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -18,4 +24,14 @@ urlpatterns = [
     path("auth/jwt", TokenObtainPairView.as_view(), name="token-obtain"),
     path("auth/jwt/refresh", TokenRefreshView.as_view(), name="token-refresh"),
     path("meb/avatar", MebAvatarUploadView.as_view(), name="meb-avatar-upload"),
+    path(
+        "consultas_publicas/public/<str:token>",
+        ConsultaPublicaPublicView.as_view(),
+        name="consulta-publica-public",
+    ),
+    path(
+        "consultas_publicas/public/<str:token>/manifestacoes",
+        ManifestacaoPublicaView.as_view(),
+        name="consulta-publica-manifestacoes",
+    ),
 ]

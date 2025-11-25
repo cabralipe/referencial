@@ -25,6 +25,7 @@ from core.permissions import (
 )
 from core.utils import coletar_contexto_do_cliente, verificar_flag
 from comments.models import Comentario
+from consultas.models import ConsultaPublica, ManifestacaoPublica
 from curriculum.models import Anexo, GT, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -66,6 +67,8 @@ from .serializers import (
     TextoColaborativoSerializer,
     TextoUnicoSerializer,
     UsuarioLookupSerializer,
+    ConsultaPublicaSerializer,
+    ManifestacaoPublicaSerializer,
 )
 
 
@@ -145,6 +148,61 @@ class GTViewSet(viewsets.ReadOnlyModelViewSet):
         }:
             return queryset
         return queryset.filter(membros=user)
+
+
+class ConsultaPublicaViewSet(viewsets.ModelViewSet):
+    serializer_class = ConsultaPublicaSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ("ativa",)
+    search_fields = ("titulo", "slug")
+    ordering = ("-data_publicacao", "-created_at")
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return ConsultaPublica.objects.filter(cliente_id=cliente_id).annotate(
+            manifestacoes_count=Count("manifestacoes")
+        )
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        try:
+            ctx["cliente_id"] = _get_request_cliente_id(self.request)
+        except ValidationError:
+            ctx["cliente_id"] = None
+        return ctx
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        _assert_roles(user, {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN})
+        consulta = serializer.save(
+            cliente_id=_get_request_cliente_id(self.request),
+            criada_por=user,
+        )
+        self._created_instance = consulta
+
+    def perform_update(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
+        super().perform_destroy(instance)
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        instance = getattr(self, "_created_instance", None)
+        if instance:
+            response["ETag"] = f"W/\"consulta-{instance.pk}-v{int(instance.updated_at.timestamp())}\""
+        return response
+
+    @action(detail=True, methods=["get"], url_path="manifestacoes")
+    def manifestacoes(self, request, pk=None):
+        consulta = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN})
+        manifestacoes = ManifestacaoPublica.objects.filter(consulta=consulta)
+        serializer = ManifestacaoPublicaSerializer(manifestacoes, many=True)
+        return Response(serializer.data)
 
 
 class TarefaViewSet(viewsets.ReadOnlyModelViewSet):

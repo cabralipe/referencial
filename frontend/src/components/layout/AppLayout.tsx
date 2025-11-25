@@ -208,6 +208,12 @@ export function AppLayout() {
               <Icon name="bell" className="menu__icon" ariaHidden />
               <span className="menu__label">Notificações</span>
             </NavLink>
+            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
+              <NavLink to="/consultas-publicas">
+                <Icon name="document" className="menu__icon" ariaHidden />
+                <span className="menu__label">Consultas públicas</span>
+              </NavLink>
+            )}
             <NavLink to="/biblioteca">
               <Icon name="library" className="menu__icon" ariaHidden />
               <span className="menu__label">Biblioteca</span>

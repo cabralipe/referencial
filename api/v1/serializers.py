@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
 from django.contrib.auth import authenticate, get_user_model
+from django.utils.text import slugify
 from rest_framework import serializers
 
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, UserSessionLog
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
+from consultas.models import ConsultaPublica, ManifestacaoPublica
 from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -596,6 +600,220 @@ class MebMessageSerializer(serializers.ModelSerializer):
     def _user_can_manage(self, user) -> bool:
         role = getattr(user, "role", "")
         return role in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}
+
+
+class ConsultaPublicaSerializer(serializers.ModelSerializer):
+    pdf_url = serializers.SerializerMethodField()
+    public_url = serializers.SerializerMethodField()
+    total_manifestacoes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConsultaPublica
+        fields = (
+            "id",
+            "titulo",
+            "slug",
+            "token_acesso",
+            "descricao",
+            "pdf",
+            "pdf_url",
+            "data_publicacao",
+            "data_validade",
+            "data_fechamento",
+            "pergunta_votacao",
+            "opcoes_votacao",
+            "ativa",
+            "public_url",
+            "total_manifestacoes",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "token_acesso", "pdf_url", "public_url", "total_manifestacoes", "created_at", "updated_at")
+
+    def get_pdf_url(self, obj):
+        request = self.context.get("request")
+        if not obj.pdf:
+            return None
+        url = obj.pdf.url
+        if request:
+            url = request.build_absolute_uri(url)
+        return url
+
+    def get_public_url(self, obj):
+        request = self.context.get("request")
+        path = f"/consultas-publicas/{obj.token_acesso}"
+        if request:
+            return request.build_absolute_uri(path)
+        return path
+
+    def get_total_manifestacoes(self, obj):
+        if hasattr(obj, "manifestacoes_count"):
+            return obj.manifestacoes_count
+        return obj.manifestacoes.count()
+
+    def validate_opcoes_votacao(self, value):
+        if value in {None, ""}:
+            return []
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                value = [line.strip() for line in value.splitlines() if line.strip()]
+        if not isinstance(value, (list, tuple)):
+            raise serializers.ValidationError("Forneça uma lista de opções de voto (um item por linha).")
+        opcoes = []
+        for item in value:
+            texto = str(item).strip()
+            if not texto:
+                continue
+            opcoes.append(texto)
+        return opcoes
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        cliente_id = self.context.get("cliente_id")
+        instance = getattr(self, "instance", None)
+        slug = attrs.get("slug") or getattr(instance, "slug", "") or ""
+        titulo = attrs.get("titulo") or getattr(instance, "titulo", "")
+        if not slug:
+            slug = slugify(titulo)
+            attrs["slug"] = slug
+        if not slug:
+            raise serializers.ValidationError({"slug": "Informe um título ou slug válido."})
+        if cliente_id:
+            qs = ConsultaPublica.raw_objects.filter(cliente_id=cliente_id, slug=slug)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"slug": "Já existe uma consulta com este slug para o cliente."})
+        return attrs
+
+
+class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
+    pdf_url = serializers.SerializerMethodField()
+    esta_disponivel = serializers.SerializerMethodField()
+    total_manifestacoes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConsultaPublica
+        fields = (
+            "titulo",
+            "descricao",
+            "pdf_url",
+            "data_publicacao",
+            "data_validade",
+            "data_fechamento",
+            "pergunta_votacao",
+            "opcoes_votacao",
+            "esta_disponivel",
+            "total_manifestacoes",
+        )
+        read_only_fields = fields
+
+    def get_pdf_url(self, obj):
+        request = self.context.get("request")
+        if not obj.pdf:
+            return None
+        url = obj.pdf.url
+        if request:
+            url = request.build_absolute_uri(url)
+        return url
+
+    def get_esta_disponivel(self, obj):
+        return obj.esta_disponivel
+
+    def get_total_manifestacoes(self, obj):
+        return obj.manifestacoes.count()
+
+
+class ManifestacaoPublicaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ManifestacaoPublica
+        fields = (
+            "id",
+            "consulta",
+            "pagina",
+            "comentario",
+            "voto",
+            "nome_completo",
+            "cpf",
+            "cidade",
+            "estado",
+            "contato_email",
+            "ip_address",
+            "user_agent",
+            "created_at",
+        )
+        read_only_fields = ("id", "consulta", "ip_address", "user_agent", "created_at")
+
+
+class ManifestacaoPublicaPublicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ManifestacaoPublica
+        fields = (
+            "id",
+            "pagina",
+            "comentario",
+            "voto",
+            "nome_completo",
+            "cidade",
+            "estado",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ManifestacaoPublica
+        fields = (
+            "pagina",
+            "comentario",
+            "voto",
+            "nome_completo",
+            "cpf",
+            "cidade",
+            "estado",
+            "contato_email",
+        )
+
+    def validate_estado(self, value):
+        sigla = (value or "").strip().upper()
+        if len(sigla) != 2:
+            raise serializers.ValidationError("Informe a sigla do estado (ex.: AL).")
+        return sigla
+
+    def validate_cpf(self, value):
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        if len(digits) != 11:
+            raise serializers.ValidationError("CPF deve ter 11 dígitos.")
+        return digits
+
+    def validate_nome_completo(self, value):
+        nome = (value or "").strip()
+        if not nome:
+            raise serializers.ValidationError("Informe seu nome completo.")
+        return nome
+
+    def validate_cidade(self, value):
+        cidade = (value or "").strip()
+        if not cidade:
+            raise serializers.ValidationError("Informe a cidade.")
+        return cidade
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        comentario = (attrs.get("comentario") or "").strip()
+        voto = (attrs.get("voto") or "").strip()
+        attrs["comentario"] = comentario
+        attrs["voto"] = voto
+        if not comentario and not voto:
+            raise serializers.ValidationError("Adicione um comentário ou selecione uma opção de voto.")
+        consulta: ConsultaPublica | None = self.context.get("consulta")
+        if consulta and consulta.pergunta_votacao and consulta.opcoes_votacao:
+            if voto and voto not in consulta.opcoes_votacao:
+                raise serializers.ValidationError({"voto": "Opção inválida para esta votação."})
+        return attrs
 
 
 class LoginSerializer(serializers.Serializer):

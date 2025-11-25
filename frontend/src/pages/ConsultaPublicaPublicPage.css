@@ -1,0 +1,249 @@
+.consulta-publica {
+  min-height: 100vh;
+  background: radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.08), transparent 25%), #f8fafc;
+  padding: 24px 16px 48px;
+  color: #0f172a;
+}
+
+.consulta-publica__hero {
+  max-width: 1080px;
+  margin: 0 auto 18px;
+  padding: 20px;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(14, 165, 233, 0.2);
+  color: #0b1727;
+}
+
+.consulta-publica__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.consulta-publica__chip.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.consulta-publica__chip.neutral {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.consulta-publica__hero h1 {
+  margin: 12px 0 8px;
+  font-size: 28px;
+}
+
+.consulta-publica__hero p {
+  margin: 0 0 10px;
+  max-width: 720px;
+}
+
+.consulta-publica__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.consulta-publica__content {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.consulta-publica__panel {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  padding: 16px;
+}
+
+.consulta-publica__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.consulta-publica__panel-header h2 {
+  margin: 0 0 4px;
+}
+
+.consulta-publica__panel-header p {
+  margin: 0;
+  color: #475569;
+}
+
+.consulta-publica__pdf {
+  width: 100%;
+  min-height: 540px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #0f172a;
+}
+
+.consulta-publica__empty {
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  text-align: center;
+  color: #475569;
+}
+
+.consulta-publica__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.consulta-publica__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.consulta-publica__form input,
+.consulta-publica__form textarea {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font: inherit;
+}
+
+.consulta-publica__form textarea {
+  resize: vertical;
+}
+
+.consulta-publica__form .full {
+  grid-column: 1 / -1;
+}
+
+.consulta-publica__poll {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.consulta-publica__options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.consulta-publica__options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.consulta-publica__options label.is-selected {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+}
+
+.consulta-publica__identificacao {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.consulta-publica__identificacao-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.consulta-publica__form button {
+  grid-column: 1 / -1;
+  padding: 12px 16px;
+  background: linear-gradient(120deg, #0ea5e9, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.consulta-publica__alert {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.consulta-publica__alert.success {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.consulta-publica__alert.danger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.consulta-publica__manifestacoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.manifestacao-publica {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.manifestacao-publica__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+  flex-wrap: wrap;
+}
+
+.manifestacao-publica__voto {
+  display: inline-block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+@media (max-width: 720px) {
+  .consulta-publica {
+    padding: 16px 10px 32px;
+  }
+
+  .consulta-publica__hero {
+    padding: 16px;
+  }
+
+  .consulta-publica__pdf {
+    min-height: 380px;
+  }
+}

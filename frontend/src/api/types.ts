@@ -203,6 +203,66 @@ export interface BlocoTexto {
   etag: string;
 }
 
+export interface ConsultaPublica {
+  id: number;
+  titulo: string;
+  slug: string;
+  token_acesso: string;
+  descricao: string;
+  pdf: string;
+  pdf_url: string | null;
+  data_publicacao: string;
+  data_validade: string | null;
+  data_fechamento: string | null;
+  pergunta_votacao: string | null;
+  opcoes_votacao: string[];
+  ativa: boolean;
+  public_url: string;
+  total_manifestacoes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConsultaPublicaPublic {
+  titulo: string;
+  descricao: string;
+  pdf_url: string | null;
+  data_publicacao: string;
+  data_validade: string | null;
+  data_fechamento: string | null;
+  pergunta_votacao: string | null;
+  opcoes_votacao: string[];
+  esta_disponivel: boolean;
+  total_manifestacoes: number;
+}
+
+export interface ManifestacaoPublica {
+  id: number;
+  consulta: number;
+  pagina: number | null;
+  comentario: string;
+  voto: string | null;
+  nome_completo: string;
+  cpf: string;
+  cidade: string;
+  estado: string;
+  contato_email: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at: string;
+}
+
+export interface ManifestacaoPublicaPublic {
+  id: number;
+  pagina: number | null;
+  comentario: string;
+  voto: string | null;
+  nome_completo: string;
+  cidade: string;
+  estado: string;
+  created_at: string;
+}
+
 export interface DiffResponse {
   html: string;
 }
