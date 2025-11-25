@@ -313,7 +313,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class OnlineUserSerializer(serializers.ModelSerializer):
-    usuario_id = serializers.IntegerField(source="usuario_id", read_only=True)
+    usuario_id = serializers.IntegerField(read_only=True)
     usuario_nome = serializers.SerializerMethodField()
     usuario_email = serializers.SerializerMethodField()
     usuario_role = serializers.SerializerMethodField()

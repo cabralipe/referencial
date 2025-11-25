@@ -14,7 +14,7 @@ from rest_framework.exceptions import APIException, PermissionDenied, Validation
 from rest_framework.views import APIView
 
 from core.activity import online_sessions_for_cliente
-from core.models import AuditLog, Cliente
+from core.models import AuditLog, Cliente, UserSessionLog
 from core.permissions import (
     HasClientScope,
     IsAdminClienteOrReadOnly,
@@ -440,6 +440,29 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
         sessions = online_sessions_for_cliente(cliente_id)
         serializer = OnlineUserSerializer(sessions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="sessions")
+    def sessions(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        try:
+            days_param = int(str(request.query_params.get("days", "30")))
+        except ValueError:
+            days_param = 30
+        try:
+            limit_param = int(str(request.query_params.get("limit", "100")))
+        except ValueError:
+            limit_param = 100
+
+        cutoff = timezone.now() - timedelta(days=days_param)
+        queryset = (
+            UserSessionLog.objects.filter(cliente_id=cliente_id, first_seen_at__gte=cutoff)
+            .select_related("usuario", "cliente")
+            .order_by("-first_seen_at")
+        )
+        if limit_param > 0:
+            queryset = queryset[:limit_param]
+        serializer = OnlineUserSerializer(queryset, many=True)
         return Response(serializer.data)
 
 

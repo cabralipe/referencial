@@ -38,3 +38,23 @@ export function useOnlineUsers() {
     refetchInterval: 60_000,
   });
 }
+
+interface UseSessionHistoryParams {
+  days?: number;
+  limit?: number;
+}
+
+export function useSessionHistory({ days = 30, limit = 100 }: UseSessionHistoryParams = {}) {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['session-history', { days, limit }],
+    queryFn: async () => {
+      const response = await client.get<OnlineUser[]>('/audit/sessions', {
+        query: { days, limit },
+      });
+      return response.data;
+    },
+    staleTime: 60_000,
+  });
+}
