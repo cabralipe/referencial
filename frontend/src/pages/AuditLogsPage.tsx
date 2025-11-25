@@ -3,8 +3,10 @@ import { FormEvent, useMemo, useState } from 'react';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAuditLogs, useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
+import { useUsuariosLookup } from '@/hooks/useUsuariosLookup';
 import { useAuth } from '@/context/AuthContext';
 import type { AuditLog, OnlineUser } from '@/api/types';
+type UsuarioSuggestion = { id: number; nome: string; email: string };
 
 import './AuditLogsPage.css';
 
@@ -96,11 +98,32 @@ function renderDiffSummary(diff: Record<string, unknown> | null | undefined) {
 export function AuditLogsPage() {
   const [entidade, setEntidade] = useState('');
   const [entidadeId, setEntidadeId] = useState('');
+  const [usuarioId, setUsuarioId] = useState('');
+  const [acao, setAcao] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [usuarioQuery, setUsuarioQuery] = useState('');
+  const [pageSize, setPageSize] = useState('4');
+  // Estados aplicados (usados na consulta)
+  const [appliedEntidade, setAppliedEntidade] = useState<string>('');
+  const [appliedEntidadeId, setAppliedEntidadeId] = useState<number | undefined>(undefined);
+  const [appliedUsuarioId, setAppliedUsuarioId] = useState<number | undefined>(undefined);
+  const [appliedAcao, setAppliedAcao] = useState<string>('');
+  const [appliedDateFrom, setAppliedDateFrom] = useState<string>('');
+  const [appliedDateTo, setAppliedDateTo] = useState<string>('');
+  const [appliedPageSize, setAppliedPageSize] = useState<number>(Number('4'));
+  const [dateFromDisplay, setDateFromDisplay] = useState('');
+  const [dateToDisplay, setDateToDisplay] = useState('');
   const { user, cliente } = useAuth();
 
   const { data: logs, isLoading, refetch, isFetching } = useAuditLogs({
-    entidade: entidade || undefined,
-    entidadeId: entidadeId ? Number(entidadeId) : undefined,
+    entidade: appliedEntidade || undefined,
+    entidadeId: appliedEntidadeId,
+    usuarioId: appliedUsuarioId,
+    acao: appliedAcao || undefined,
+    dateFrom: appliedDateFrom || undefined,
+    dateTo: appliedDateTo || undefined,
+    pageSize: appliedPageSize || undefined,
   });
   const {
     data: onlineUsers,
@@ -117,7 +140,13 @@ export function AuditLogsPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    refetch();
+    setAppliedEntidade(entidade || '');
+    setAppliedEntidadeId(entidadeId ? Number(entidadeId) : undefined);
+    setAppliedUsuarioId(usuarioId ? Number(usuarioId) : undefined);
+    setAppliedAcao(acao || '');
+    setAppliedDateFrom(dateFrom || '');
+    setAppliedDateTo(dateTo || '');
+    setAppliedPageSize(pageSize ? Number(pageSize) : 200);
   };
 
   const groupedLogs = useMemo(() => {
@@ -202,53 +231,6 @@ export function AuditLogsPage() {
         ]}
       />
 
-      <section className="audit__filters">
-        <form onSubmit={handleSubmit}>
-          <label>
-            <span>Entidade</span>
-            <select value={entidade} onChange={(event) => setEntidade(event.target.value)}>
-              {ENTIDADE_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Entidade ID (opcional)</span>
-            <input
-              type="number"
-              value={entidadeId}
-              onChange={(event) => setEntidadeId(event.target.value)}
-              placeholder="Ex.: 120"
-            />
-          </label>
-          <button type="submit" className="primary" disabled={isFetching}>
-            {isFetching ? 'Atualizando...' : 'Aplicar filtros'}
-          </button>
-        </form>
-      </section>
-
-      {logs && logs.length > 0 ? (
-        <div className="audit__summary">
-          <div>
-            <span className="audit__badge">Eventos</span>
-            <strong>{logs.length}</strong>
-            <small>total filtrado</small>
-          </div>
-          <div>
-            <span className="audit__badge audit__badge--muted">Entidade</span>
-            <strong>{entidade || 'Todas'}</strong>
-            <small>ID {entidadeId || 'Todos'}</small>
-          </div>
-          <div>
-            <span className="audit__badge audit__badge--muted">Clientes</span>
-            <strong>Inclui cliente {logs[0]?.cliente ? `#${logs[0].cliente}` : 'atual'}</strong>
-            <small>Respeita isolamento por tenant</small>
-          </div>
-        </div>
-      ) : null}
-
       <section className="audit__online">
         <div className="audit__online-header">
           <div>
@@ -324,37 +306,37 @@ export function AuditLogsPage() {
           <p className="audit__helper">Carregando histórico de logins...</p>
         ) : historyExpanded ? (
           sortedSessionHistory.length > 0 ? (
-          <div className="audit__table-wrapper">
-            <table className="audit__table">
-              <thead>
-                <tr>
-                  <th>Usuário</th>
-                  <th>Login</th>
-                  <th>Duração</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSessionHistory.map((session) => {
-                  const secs = session.session_duration_seconds ?? 0;
-                  const hours = Math.floor(secs / 3600);
-                  const minutes = Math.floor((secs % 3600) / 60);
-                  const durationLabel = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
-                  return (
-                    <tr key={`hist-${session.id}`}>
-                      <td>
-                        <div>
-                          <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
-                          <div className="audit__muted">{session.usuario_email || 'E-mail não informado'}</div>
-                        </div>
-                      </td>
-                      <td>{formatDate(session.first_seen_at) ?? '—'}</td>
-                      <td>{durationLabel}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            <div className="audit__table-wrapper">
+              <table className="audit__table">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>Login</th>
+                    <th>Duração</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedSessionHistory.map((session) => {
+                    const secs = session.session_duration_seconds ?? 0;
+                    const hours = Math.floor(secs / 3600);
+                    const minutes = Math.floor((secs % 3600) / 60);
+                    const durationLabel = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+                    return (
+                      <tr key={`hist-${session.id}`}>
+                        <td>
+                          <div>
+                            <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+                            <div className="audit__muted">{session.usuario_email || 'E-mail não informado'}</div>
+                          </div>
+                        </td>
+                        <td>{formatDate(session.first_seen_at) ?? '—'}</td>
+                        <td>{durationLabel}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="audit__empty audit__empty--inline">
               <p>Nenhum login registrado no período selecionado.</p>
@@ -367,6 +349,61 @@ export function AuditLogsPage() {
           </button>
         </div>
       </section>
+
+      <section className="audit__filters">
+        <form onSubmit={handleSubmit}>
+          <label>
+            <span>Entidade</span>
+            <select value={entidade} onChange={(event) => setEntidade(event.target.value)}>
+              {ENTIDADE_OPTIONS.map((option) => (
+                <option key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Usuário</span>
+            <input
+              type="text"
+              value={usuarioQuery}
+              onChange={(event) => setUsuarioQuery(event.target.value)}
+              placeholder="Nome ou e-mail"
+            />
+            {usuarioQuery.trim().length >= 2 && (
+              <UsuarioSuggestions query={usuarioQuery} onPick={(u) => { setUsuarioId(String(u.id)); setUsuarioQuery(`${u.nome} (${u.email})`); }} />
+            )}
+          </label>
+          <label>
+            <span>Ação</span>
+            <select value={acao} onChange={(event) => setAcao(event.target.value)}>
+              <option value="">Todas</option>
+              <option value="created">Criou</option>
+              <option value="updated">Atualizou</option>
+              <option value="deleted">Removeu</option>
+            </select>
+          </label>
+          <button type="submit" className="primary" disabled={isFetching}>
+            {isFetching ? 'Atualizando...' : 'Aplicar filtros'}
+          </button>
+        </form>
+      </section>
+
+      {logs && logs.length > 0 ? (
+        <div className="audit__summary">
+          <div>
+            <span className="audit__badge">Eventos</span>
+            <strong>{logs.length}</strong>
+            <small>total filtrado</small>
+          </div>
+          <div>
+            <span className="audit__badge audit__badge--muted">Clientes</span>
+            <strong>Inclui cliente {logs[0]?.cliente ? `#${logs[0].cliente}` : 'atual'}</strong>
+            <small>Respeita isolamento por tenant</small>
+          </div>
+        </div>
+      ) : null}
+
 
       {groupedLogs.length > 0 ? (
         <div className="audit__groups">
@@ -417,4 +454,50 @@ export function AuditLogsPage() {
       )}
     </div>
   );
+}
+function UsuarioSuggestions({ query, onPick }: { query: string; onPick: (u: UsuarioSuggestion) => void }) {
+  const { data: suggestions = [] } = useUsuariosLookup(query);
+  if (suggestions.length === 0) return null;
+  return (
+    <div className="audit__autocomplete">
+      <ul>
+        {suggestions.slice(0, 6).map((u) => (
+          <li key={u.id}>
+            <button type="button" onClick={() => onPick(u)}>
+              <strong>{u.nome}</strong>
+              <span>{u.email}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+function isoToBr(iso: string): string {
+  if (!iso) return '';
+  const parts = iso.split('-');
+  if (parts.length !== 3) return '';
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return '';
+  return `${d}/${m}/${y}`;
+}
+
+function brToIso(br: string): string {
+  const m = br.match(/^([0-9]{2})\/([0-9]{2})\/([0-9]{4})$/);
+  if (!m) return '';
+  const d = m[1];
+  const mo = m[2];
+  const y = m[3];
+  return `${y}-${mo}-${d}`;
+}
+
+function normalizeBrInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const a = digits.slice(0, 2);
+  const b = digits.slice(2, 4);
+  const c = digits.slice(4, 8);
+  let out = a;
+  if (b) out = `${out}/${b}`;
+  if (c) out = `${out}/${c}`;
+  return out;
 }

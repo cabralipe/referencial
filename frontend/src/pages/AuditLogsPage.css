@@ -498,3 +498,59 @@
 .audit__table tbody tr {
   height: var(--audit-row-height);
 }
+.audit__autocomplete {
+  position: relative;
+}
+
+.audit__autocomplete ul {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0.2rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.5rem;
+  box-shadow: 0 18px 40px -38px rgba(15, 23, 42, 0.45);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.audit__autocomplete li button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.audit__autocomplete li button:hover {
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .audit__autocomplete ul {
+    position: static;
+    width: 100%;
+    max-height: 220px;
+  }
+  .audit__autocomplete li button {
+    font-size: 0.95rem;
+    padding: 0.55rem 0.7rem;
+  }
+  .audit__autocomplete li button strong,
+  .audit__autocomplete li button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 48%;
+  }
+}

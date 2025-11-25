@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Count, OuterRef, Subquery
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime, parse_date
 from datetime import timedelta
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
@@ -64,6 +65,7 @@ from .serializers import (
     TarefaSerializer,
     TextoColaborativoSerializer,
     TextoUnicoSerializer,
+    UsuarioLookupSerializer,
 )
 
 
@@ -428,12 +430,49 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         queryset = AuditLog.objects.all()
-        entidade = self.request.query_params.get("entidade")
-        entidade_id = self.request.query_params.get("entidade_id")
+        qp = self.request.query_params
+        entidade = qp.get("entidade")
+        entidade_id = qp.get("entidade_id")
+        usuario_id = qp.get("usuario_id")
+        acao = qp.get("acao")
+        date_from = qp.get("date_from")
+        date_to = qp.get("date_to")
+
         if entidade:
             queryset = queryset.filter(entidade=entidade)
         if entidade_id:
             queryset = queryset.filter(entidade_id=entidade_id)
+        if usuario_id:
+            try:
+                queryset = queryset.filter(usuario_id=int(usuario_id))
+            except (TypeError, ValueError):
+                pass
+        if acao:
+            queryset = queryset.filter(acao__iexact=acao)
+        if date_from:
+            dt = parse_datetime(date_from) or parse_date(date_from)
+            if dt:
+                try:
+                    # datetime
+                    start = dt
+                except Exception:
+                    # date
+                    from datetime import datetime
+                    start = datetime(dt.year, dt.month, dt.day, 0, 0, 0)
+                if timezone.is_naive(start):
+                    start = timezone.make_aware(start, timezone.get_current_timezone())
+                queryset = queryset.filter(timestamp__gte=start)
+        if date_to:
+            dt = parse_datetime(date_to) or parse_date(date_to)
+            if dt:
+                try:
+                    end = dt
+                except Exception:
+                    from datetime import datetime
+                    end = datetime(dt.year, dt.month, dt.day, 23, 59, 59)
+                if timezone.is_naive(end):
+                    end = timezone.make_aware(end, timezone.get_current_timezone())
+                queryset = queryset.filter(timestamp__lte=end)
         return queryset.order_by("-timestamp")
 
     @action(detail=False, methods=["get"], url_path="online")
@@ -505,6 +544,22 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         if instance:
             response["ETag"] = instance.etag
         return response
+
+
+class UsuarioLookupViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = UsuarioLookupSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ("nome", "email")
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = get_user_model().objects.filter(cliente_id=cliente_id)
+        q = self.request.query_params.get("q")
+        if q:
+            # SearchFilter will still apply; keeping explicit filter for non-standard setups
+            queryset = queryset.filter(models.Q(nome__icontains=q) | models.Q(email__icontains=q))
+        return queryset.order_by("nome")
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", True)

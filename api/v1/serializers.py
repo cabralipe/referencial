@@ -372,6 +372,13 @@ class OnlineUserSerializer(serializers.ModelSerializer):
         return "desconhecido"
 
 
+class UsuarioLookupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ("id", "nome", "email")
+        read_only_fields = fields
+
+
 class RevisaoSerializer(serializers.ModelSerializer):
     etag = serializers.CharField(read_only=True)
 

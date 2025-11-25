@@ -21,6 +21,7 @@ from .viewsets import (
     TextoUnicoViewSet,
     MebThreadViewSet,
     MebMessageViewSet,
+    UsuarioLookupViewSet,
 )
 
 router = DefaultRouter()
@@ -41,5 +42,6 @@ router.register("midias", MidiaViewSet, basename="midia")
 router.register("blocos", BlocoTextoViewSet, basename="bloco")
 router.register("meb/threads", MebThreadViewSet, basename="meb_thread")
 router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
+router.register("usuarios/lookup", UsuarioLookupViewSet, basename="usuario_lookup")
 
 __all__ = ["router"]

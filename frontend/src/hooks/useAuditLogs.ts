@@ -6,19 +6,28 @@ import type { AuditLog, OnlineUser, PaginatedResponse } from '@/api/types';
 interface UseAuditLogsParams {
   entidade?: string;
   entidadeId?: number;
+  usuarioId?: number;
+  acao?: 'created' | 'updated' | 'deleted' | string;
+  dateFrom?: string; // ISO date or datetime
+  dateTo?: string;   // ISO date or datetime
+  pageSize?: number;
 }
 
-export function useAuditLogs({ entidade, entidadeId }: UseAuditLogsParams = {}) {
+export function useAuditLogs({ entidade, entidadeId, usuarioId, acao, dateFrom, dateTo, pageSize }: UseAuditLogsParams = {}) {
   const client = useApiClient();
 
   return useQuery({
-    queryKey: ['audit-logs', { entidade, entidadeId }],
+    queryKey: ['audit-logs', { entidade, entidadeId, usuarioId, acao, dateFrom, dateTo, pageSize }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<AuditLog>>('/audit', {
         query: {
           entidade,
           entidade_id: entidadeId,
-          page_size: 200,
+          usuario_id: usuarioId,
+          acao,
+          date_from: dateFrom,
+          date_to: dateTo,
+          page_size: pageSize ?? 200,
         },
       });
       return response.data.results ?? [];
