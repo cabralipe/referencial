@@ -324,6 +324,33 @@
   }
 }
 
+/* Toggle de seção */
+.audit__toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.audit__toggle button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.6rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.85);
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.audit__toggle button:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.audit__toggle button:active {
+  background: rgba(148, 163, 184, 0.25);
+}
+
 .audit__card header {
   display: flex;
   justify-content: space-between;

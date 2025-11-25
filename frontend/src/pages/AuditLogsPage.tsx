@@ -112,6 +112,8 @@ export function AuditLogsPage() {
     isLoading: isLoadingSessions,
     isFetching: isFetchingSessions,
   } = useSessionHistory({ days: 30, limit: 200 });
+  const [onlineExpanded, setOnlineExpanded] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -252,44 +254,55 @@ export function AuditLogsPage() {
           <div>
             <span className="audit__badge">Presença em tempo real</span>
             <h2>Quem está online agora</h2>
-            <p>
-              Mostramos quem acessou a plataforma, o horário de entrada e a última atividade para facilitar relatórios
-              rápidos.
-            </p>
+            {onlineExpanded && (
+              <p>
+                Mostramos quem acessou a plataforma, o horário de entrada e a última atividade para facilitar relatórios
+                rápidos.
+              </p>
+            )}
           </div>
           <div className="audit__online-count">
             <strong>{sortedOnlineUsers.length}</strong>
             <span>online</span>
-            <small>{isFetchingOnline ? 'Atualizando...' : 'Atualiza a cada minuto'}</small>
+            {onlineExpanded && (
+              <small>{isFetchingOnline ? 'Atualizando...' : 'Atualiza a cada minuto'}</small>
+            )}
           </div>
         </div>
         {isLoadingOnline ? (
           <p className="audit__helper">Carregando sessões ativas...</p>
-        ) : sortedOnlineUsers.length > 0 ? (
-          <ul className="audit__online-list">
-            {sortedOnlineUsers.map((session) => (
-              <li key={session.id} className="audit__online-card">
-                <div className="audit__online-main">
-                  <div className="audit__online-name">
-                    <span className="audit__status-dot" aria-hidden="true" />
-                    <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+        ) : onlineExpanded ? (
+          sortedOnlineUsers.length > 0 ? (
+            <ul className="audit__online-list">
+              {sortedOnlineUsers.map((session) => (
+                <li key={session.id} className="audit__online-card">
+                  <div className="audit__online-main">
+                    <div className="audit__online-name">
+                      <span className="audit__status-dot" aria-hidden="true" />
+                      <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+                    </div>
+                    <span className="audit__muted">{session.usuario_email || 'E-mail não informado'}</span>
                   </div>
-                  <span className="audit__muted">{session.usuario_email || 'E-mail não informado'}</span>
-                </div>
-                <div className="audit__online-meta">
-                  <span>Perfil: {session.usuario_role ?? '—'}</span>
-                  <span>Entrou: {formatDate(session.first_seen_at) ?? '—'}</span>
-                  <span>Última atividade: {formatDate(session.last_seen_at) ?? '—'}</span>
-                  {session.device_label && <span>Dispositivo: {session.device_label}</span>}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="audit__empty audit__empty--inline">
-            <p>Ninguém online agora. Assim que alguém acessar, registramos horário e data aqui.</p>
-          </div>
-        )}
+                  <div className="audit__online-meta">
+                    <span>Perfil: {session.usuario_role ?? '—'}</span>
+                    <span>Entrou: {formatDate(session.first_seen_at) ?? '—'}</span>
+                    <span>Última atividade: {formatDate(session.last_seen_at) ?? '—'}</span>
+                    {session.device_label && <span>Dispositivo: {session.device_label}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="audit__empty audit__empty--inline">
+              <p>Ninguém online agora. Assim que alguém acessar, registramos horário e data aqui.</p>
+            </div>
+          )
+        ) : null}
+        <div className="audit__toggle">
+          <button type="button" onClick={() => setOnlineExpanded((prev) => !prev)}>
+            {onlineExpanded ? '▲ Minimizar' : '▼ Expandir'}
+          </button>
+        </div>
       </section>
 
       <section className="audit__online">
@@ -297,17 +310,20 @@ export function AuditLogsPage() {
           <div>
             <span className="audit__badge">Histórico</span>
             <h2>Logins recentes</h2>
-            <p>Lista dos últimos acessos ao sistema pelo seu cliente.</p>
+            {historyExpanded && <p>Lista dos últimos acessos ao sistema pelo seu cliente.</p>}
           </div>
           <div className="audit__online-count">
             <strong>{sortedSessionHistory.length}</strong>
             <span>registros</span>
-            <small>{isFetchingSessions ? 'Atualizando...' : 'Últimos 30 dias'}</small>
+            {historyExpanded && (
+              <small>{isFetchingSessions ? 'Atualizando...' : 'Últimos 30 dias'}</small>
+            )}
           </div>
         </div>
         {isLoadingSessions ? (
           <p className="audit__helper">Carregando histórico de logins...</p>
-        ) : sortedSessionHistory.length > 0 ? (
+        ) : historyExpanded ? (
+          sortedSessionHistory.length > 0 ? (
           <div className="audit__table-wrapper">
             <table className="audit__table">
               <thead>
@@ -333,18 +349,23 @@ export function AuditLogsPage() {
                       </td>
                       <td>{formatDate(session.first_seen_at) ?? '—'}</td>
                       <td>{durationLabel}</td>
-                      
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="audit__empty audit__empty--inline">
-            <p>Nenhum login registrado no período selecionado.</p>
-          </div>
-        )}
+          ) : (
+            <div className="audit__empty audit__empty--inline">
+              <p>Nenhum login registrado no período selecionado.</p>
+            </div>
+          )
+        ) : null}
+        <div className="audit__toggle">
+          <button type="button" onClick={() => setHistoryExpanded((prev) => !prev)}>
+            {historyExpanded ? '▲ Minimizar' : '▼ Expandir'}
+          </button>
+        </div>
       </section>
 
       {groupedLogs.length > 0 ? (
