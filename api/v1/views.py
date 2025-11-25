@@ -12,13 +12,20 @@ from django.utils.text import slugify
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 from core.activity import touch_user_session
 from core.models import ClienteTema
 from core.permissions import HasClientScope
+from consultas.models import ConsultaPublica, ManifestacaoPublica
 
-from .serializers import ClienteMeSerializer, LoginSerializer
+from .serializers import (
+    ClienteMeSerializer,
+    ConsultaPublicaPublicSerializer,
+    LoginSerializer,
+    ManifestacaoPublicaCreateSerializer,
+    ManifestacaoPublicaPublicSerializer,
+)
 
 
 class SessionLoginView(APIView):
@@ -84,3 +91,49 @@ class MebAvatarUploadView(APIView):
         tema.meb_avatar_url = url
         tema.save(update_fields=["meb_avatar_url", "updated_at"])
         return Response({"url": url})
+
+
+def _consulta_publica_por_token(token: str, require_open: bool = False) -> ConsultaPublica:
+    consulta = ConsultaPublica.raw_objects.filter(token_acesso=token).first()
+    if not consulta:
+        raise NotFound("Consulta pública não encontrada.")
+    if require_open and not consulta.esta_disponivel:
+        raise ValidationError("Esta consulta pública não está recebendo novas contribuições.")
+    return consulta
+
+
+class ConsultaPublicaPublicView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def get(self, request, token: str):
+        consulta = _consulta_publica_por_token(token, require_open=False)
+        serializer = ConsultaPublicaPublicSerializer(consulta, context={"request": request})
+        return Response(serializer.data)
+
+
+class ManifestacaoPublicaView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def get(self, request, token: str):
+        consulta = _consulta_publica_por_token(token, require_open=False)
+        manifestacoes = ManifestacaoPublica.objects.filter(consulta=consulta).order_by("-created_at")[:200]
+        serializer = ManifestacaoPublicaPublicSerializer(manifestacoes, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, token: str):
+        consulta = _consulta_publica_por_token(token, require_open=True)
+        serializer = ManifestacaoPublicaCreateSerializer(
+            data=request.data,
+            context={"consulta": consulta},
+        )
+        serializer.is_valid(raise_exception=True)
+        manifestacao = serializer.save(
+            consulta=consulta,
+            cliente_id=consulta.cliente_id,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.headers.get("User-Agent", "")[:500],
+        )
+        resposta = ManifestacaoPublicaPublicSerializer(manifestacao)
+        return Response(resposta.data, status=201)

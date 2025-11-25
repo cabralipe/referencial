@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "comments",
     "notifications",
     "library",
+    "consultas",
     "api",
     "sockets",
     "tasks",

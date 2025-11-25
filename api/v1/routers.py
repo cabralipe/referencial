@@ -9,6 +9,7 @@ from .viewsets import (
     BlocoTextoViewSet,
     ComentarioViewSet,
     ExportJobViewSet,
+    ConsultaPublicaViewSet,
     GTViewSet,
     FormularioDinamicoViewSet,
     MidiaViewSet,
@@ -41,5 +42,6 @@ router.register("midias", MidiaViewSet, basename="midia")
 router.register("blocos", BlocoTextoViewSet, basename="bloco")
 router.register("meb/threads", MebThreadViewSet, basename="meb_thread")
 router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
+router.register("consultas_publicas", ConsultaPublicaViewSet, basename="consulta_publica")
 
 __all__ = ["router"]

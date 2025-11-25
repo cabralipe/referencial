@@ -16,6 +16,8 @@ import { BibliotecaPage } from './pages/BibliotecaPage';
 import { ExportacoesPage } from './pages/ExportacoesPage';
 import { DiffPage } from './pages/DiffPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
+import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 
 export const router = createBrowserRouter([
   {
@@ -72,6 +74,10 @@ export const router = createBrowserRouter([
         element: <BibliotecaPage />,
       },
       {
+        path: 'consultas-publicas',
+        element: <ConsultasPublicasPage />,
+      },
+      {
         path: 'exportacoes',
         element: <ExportacoesPage />,
       },
@@ -88,5 +94,9 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/consultas-publicas/:token',
+    element: <ConsultaPublicaPublicPage />,
   },
 ]);

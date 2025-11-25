@@ -7,6 +7,7 @@ from typing import Any
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.db.models.fields.files import FieldFile
 
 from .mixins import TenantModel
 from .models import AuditLog
@@ -19,6 +20,8 @@ def _snapshot(instance: TenantModel) -> dict[str, Any]:
         if field.name in {"id", "created_at", "updated_at"}:
             continue
         value = getattr(instance, field.name)
+        if isinstance(value, FieldFile):
+            value = value.name or None
         if isinstance(value, (datetime, date, time)):
             value = value.isoformat()
         if field.many_to_one or field.one_to_one:
