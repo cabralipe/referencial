@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from django.contrib.auth import get_user_model
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, OuterRef, Subquery
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
@@ -34,6 +34,7 @@ from core.utils import coletar_contexto_do_cliente, verificar_flag
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
 from curriculum.models import Anexo, GT, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -95,9 +96,22 @@ def _check_etag(request, instance):
 
 def _get_request_cliente_id(request) -> int:
     cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
-    if cliente_id is None:
-        raise ValidationError("Cliente não associado")
-    return int(cliente_id)
+    if cliente_id:
+        return int(cliente_id)
+
+    # Fallback para cenários em que apenas o GT é informado (ex.: super admin sem cliente associado).
+    gt_lookup = (
+        request.data.get("gt")
+        or request.query_params.get("gt_id")
+        or request.query_params.get("gt")
+        or getattr(request, "gt_id", None)
+    )
+    if gt_lookup:
+        gt = GT.objects.filter(pk=gt_lookup).first()
+        if gt:
+            return int(gt.cliente_id)
+
+    raise ValidationError("Cliente não associado")
 
 
 class FeatureFlagMixin:
@@ -268,28 +282,42 @@ class RespostaViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         gt = serializer.validated_data["gt"]
         pergunta = serializer.validated_data["pergunta"]
-        cliente_id = _get_request_cliente_id(request)
+        cliente_id = gt.cliente_id or _get_request_cliente_id(request)
         resposta = Resposta.objects.filter(gt=gt, pergunta=pergunta).first()
-        if resposta:
-            _check_etag(request, resposta)
-            serializer = self.get_serializer(resposta, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save(cliente_id=cliente_id)
-            headers = {"ETag": resposta.etag}
-            return Response(serializer.data, status=status.HTTP_200_OK, headers=headers)
-        serializer.save(cliente_id=cliente_id)
-        resposta = serializer.instance
-        headers = self.get_success_headers(serializer.data)
-        headers["ETag"] = resposta.etag
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        created_collab = False
+        with transaction.atomic():
+            if resposta:
+                _check_etag(request, resposta)
+                serializer = self.get_serializer(resposta, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save(cliente_id=cliente_id)
+                resposta = serializer.instance
+                status_code = status.HTTP_200_OK
+                headers = {"ETag": resposta.etag}
+            else:
+                serializer.save(cliente_id=cliente_id)
+                resposta = serializer.instance
+                status_code = status.HTTP_201_CREATED
+                headers = self.get_success_headers(serializer.data)
+                headers["ETag"] = resposta.etag
+
+            texto_colab, created_collab = sync_texto_colaborativo_from_resposta(resposta)
+
+        broadcast_texto_colaborativo(texto_colab, created=created_collab)
+        return Response(serializer.data, status=status_code, headers=headers)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
         _check_etag(request, instance)
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(cliente_id=instance.cliente_id)
+        with transaction.atomic():
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(cliente_id=instance.cliente_id)
+            resposta = serializer.instance
+            texto_colab, created_collab = sync_texto_colaborativo_from_resposta(resposta)
+
+        broadcast_texto_colaborativo(texto_colab, created=created_collab)
         response = Response(serializer.data)
         response["ETag"] = serializer.instance.etag
         return response
@@ -354,7 +382,7 @@ class TextoColaborativoViewSet(viewsets.ModelViewSet):
     serializer_class = TextoColaborativoSerializer
     permission_classes = [HasClientScope, IsMemberOfGT]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ("gt",)
+    filterset_fields = ("gt", "pergunta")
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
@@ -362,10 +390,14 @@ class TextoColaborativoViewSet(viewsets.ModelViewSet):
         gt_id = self.request.query_params.get("gt") or self.request.query_params.get("gt_id")
         if gt_id:
             queryset = queryset.filter(gt_id=gt_id)
+        pergunta_id = self.request.query_params.get("pergunta") or self.request.query_params.get("pergunta_id")
+        if pergunta_id:
+            queryset = queryset.filter(pergunta_id=pergunta_id)
         return queryset.order_by("-updated_at")
 
     def perform_create(self, serializer):
-        cliente_id = _get_request_cliente_id(self.request)
+        gt = serializer.validated_data.get("gt")
+        cliente_id = gt.cliente_id if gt else _get_request_cliente_id(self.request)
         instance = serializer.save(cliente_id=cliente_id)
         self._created_instance = instance
         self._broadcast(instance, created=True)
@@ -389,21 +421,57 @@ class TextoColaborativoViewSet(viewsets.ModelViewSet):
         response["ETag"] = texto.etag
         return response
 
+    @action(detail=False, methods=["put"], url_path="lote")
+    def batch_update(self, request, *args, **kwargs):
+        payload = request.data.get("textos")
+        if not isinstance(payload, list):
+            raise ValidationError({"textos": "Envie uma lista de textos para atualizar em lote."})
+
+        updated = []
+        errors = []
+        for entry in payload:
+            texto_id = entry.get("id")
+            etag = entry.get("etag") or entry.get("if_match")
+            if not texto_id:
+                errors.append({"id": None, "error": "ID do texto é obrigatório."})
+                continue
+            if not etag:
+                errors.append({"id": texto_id, "error": "ETag obrigatório para atualização segura."})
+                continue
+
+            instance = TextoColaborativo.objects.filter(pk=texto_id).first()
+            if not instance:
+                errors.append({"id": texto_id, "error": "Texto colaborativo não encontrado."})
+                continue
+
+            try:
+                self.check_object_permissions(request, instance)
+            except PermissionDenied:
+                errors.append({"id": texto_id, "error": "Permissão negada para este texto."})
+                continue
+
+            if etag != instance.etag:
+                errors.append({"id": texto_id, "error": "Versão desatualizada.", "etag": instance.etag})
+                continue
+
+            serializer = self.get_serializer(
+                instance,
+                data={
+                    "titulo": entry.get("titulo", instance.titulo),
+                    "conteudo_html": entry.get("conteudo_html", instance.conteudo_html),
+                },
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            texto_atualizado = serializer.save(cliente_id=instance.cliente_id)
+            updated.append(serializer.data)
+            broadcast_texto_colaborativo(texto_atualizado, created=False)
+
+        status_code = status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
+        return Response({"updated": updated, "errors": errors}, status=status_code)
+
     def _broadcast(self, instance: TextoColaborativo, *, created: bool) -> None:
-        event = "collab_text:created" if created else "collab_text:updated"
-        payload = {
-            "id": instance.id,
-            "gt": instance.gt_id,
-            "titulo": instance.titulo,
-            "conteudo_html": instance.conteudo_html,
-            "version": instance.version,
-            "autor": instance.autor_id,
-            "created_at": instance.created_at.isoformat(),
-            "updated_at": instance.updated_at.isoformat(),
-            "etag": instance.etag,
-        }
-        broadcast_stream_event("texto_colaborativo", instance.id, "collab_text:updated", payload)
-        broadcast_stream_event("texto_colaborativo_list", instance.gt_id, event, payload)
+        broadcast_texto_colaborativo(instance, created=created)
 
 
 class QuadroViewSet(viewsets.ReadOnlyModelViewSet):

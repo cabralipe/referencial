@@ -151,6 +151,7 @@ class TextoColaborativoSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "gt",
+            "pergunta",
             "titulo",
             "conteudo_html",
             "autor",
@@ -160,6 +161,16 @@ class TextoColaborativoSerializer(serializers.ModelSerializer):
             "etag",
         )
         read_only_fields = ("id", "version", "created_at", "updated_at", "autor", "etag")
+
+    def validate(self, attrs):
+        gt = attrs.get("gt") or getattr(self.instance, "gt", None)
+        pergunta = attrs.get("pergunta") or getattr(self.instance, "pergunta", None)
+        if pergunta and gt:
+            if pergunta.cliente_id != gt.cliente_id:
+                raise serializers.ValidationError("Pergunta e GT devem pertencer ao mesmo cliente.")
+            if pergunta.gts.exists() and not pergunta.gts.filter(pk=gt.pk).exists():
+                raise serializers.ValidationError("Pergunta não está vinculada a este GT.")
+        return super().validate(attrs)
 
     def create(self, validated_data):
         request = self.context.get("request")

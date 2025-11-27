@@ -65,6 +65,18 @@ interface UpdateTextoColaborativoInput {
   etag: string;
 }
 
+interface BulkUpdateInputItem {
+  id: number;
+  titulo: string;
+  conteudoHtml: string;
+  etag: string;
+}
+
+interface BulkUpdateResponse {
+  updated: TextoColaborativo[];
+  errors: Array<{ id: number | null; error: string; etag?: string }>;
+}
+
 export function useUpdateTextoColaborativo() {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -86,6 +98,41 @@ export function useUpdateTextoColaborativo() {
         const filtered = previous.filter((item) => item.id !== data.id);
         const next = [data, ...filtered];
         return next.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      });
+    },
+  });
+}
+
+export function useBulkUpdateTextosColaborativos(gtId?: number | null) {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: BulkUpdateInputItem[]) => {
+      const response = await client.put<BulkUpdateResponse>('/textos_colaborativos/lote', {
+        body: {
+          textos: items.map((item) => ({
+            id: item.id,
+            titulo: item.titulo,
+            conteudo_html: item.conteudoHtml,
+            etag: item.etag,
+          })),
+        },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (!gtId) return;
+      queryClient.setQueryData<TextoColaborativo[] | undefined>(['textos-colaborativos', { gtId }], (previous = []) => {
+        const updatedMap = new Map<number, TextoColaborativo>();
+        data.updated.forEach((item) => updatedMap.set(item.id, item));
+        const merged = previous.map((item) => updatedMap.get(item.id) ?? item);
+        data.updated.forEach((item) => {
+          if (!merged.find((existing) => existing.id === item.id)) {
+            merged.push(item);
+          }
+        });
+        return merged.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       });
     },
   });

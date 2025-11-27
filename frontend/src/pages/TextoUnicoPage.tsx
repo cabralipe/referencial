@@ -11,6 +11,7 @@ import {
   useCreateTextoColaborativo,
   useTextosColaborativos,
   useUpdateTextoColaborativo,
+  useBulkUpdateTextosColaborativos,
 } from '@/hooks/useTextosColaborativos';
 import { useGenerateTextoUnico, useTextoUnicos } from '@/hooks/useTextoUnico';
 import { useTarefas } from '@/hooks/useTarefas';
@@ -85,6 +86,7 @@ function normalizePayload(payload: Record<string, unknown>): TextoColaborativo |
   return {
     id,
     gt,
+    pergunta: payload.pergunta == null ? null : Number(payload.pergunta),
     titulo: typeof payload.titulo === 'string' ? payload.titulo : '',
     conteudo_html: typeof payload.conteudo_html === 'string' ? payload.conteudo_html : '',
     autor: autorValue != null && Number.isFinite(autorValue) ? autorValue : null,
@@ -121,6 +123,7 @@ export function TextoUnicoPage() {
   } = useTextosColaborativos({ gtId: selectedGtNumber ?? undefined });
   const createTexto = useCreateTextoColaborativo();
   const updateTexto = useUpdateTextoColaborativo();
+  const bulkUpdateTextos = useBulkUpdateTextosColaborativos(selectedGtNumber);
   const queryClient = useQueryClient();
 
   const [collabDrafts, setCollabDrafts] = useState<
@@ -132,6 +135,7 @@ export function TextoUnicoPage() {
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novoConteudo, setNovoConteudo] = useState('');
   const [createFeedback, setCreateFeedback] = useState<FeedbackEntry | null>(null);
+  const [bulkFeedback, setBulkFeedback] = useState<FeedbackEntry | null>(null);
   const novoStats = getWordStats(novoConteudo);
 
   useEffect(() => {
@@ -232,6 +236,25 @@ export function TextoUnicoPage() {
     },
   });
 
+  const collectDirtyTextos = () => {
+    if (!textosColaborativos) return [] as Array<{ id: number; titulo: string; conteudoHtml: string; etag: string }>;
+    return textosColaborativos
+      .map((texto) => {
+        const draft = collabDrafts[texto.id] ?? { titulo: texto.titulo, conteudo: texto.conteudo_html };
+        const hasChanges = draft.titulo.trim() !== texto.titulo || draft.conteudo !== texto.conteudo_html;
+        if (!hasChanges) return null;
+        const etag = collabEtags[texto.id];
+        if (!etag) return null;
+        return {
+          id: texto.id,
+          titulo: draft.titulo.trim(),
+          conteudoHtml: ensureHtml(draft.conteudo),
+          etag,
+        };
+      })
+      .filter(Boolean) as Array<{ id: number; titulo: string; conteudoHtml: string; etag: string }>;
+  };
+
   const buildErrorMessage = (err: unknown, fallback: string) => {
     if (err instanceof ApiError) {
       return err.message;
@@ -240,6 +263,43 @@ export function TextoUnicoPage() {
       return err.message;
     }
     return fallback;
+  };
+
+  const handleSalvarTodos = async () => {
+    const itens = collectDirtyTextos();
+    if (itens.length === 0) {
+      setBulkFeedback({ type: 'info', message: 'Nenhum texto colaborativo alterado.' });
+      return;
+    }
+    setBulkFeedback(null);
+    try {
+      const result = await bulkUpdateTextos.mutateAsync(itens);
+      setCollabEtags((prev) => {
+        const next = { ...prev };
+        result.updated.forEach((item) => {
+          next[item.id] = item.etag;
+        });
+        return next;
+      });
+      setCollabDrafts((prev) => {
+        const next = { ...prev };
+        result.updated.forEach((item) => {
+          next[item.id] = { titulo: item.titulo, conteudo: item.conteudo_html };
+        });
+        return next;
+      });
+      if (result.errors.length > 0) {
+        setBulkFeedback({
+          type: 'info',
+          message: `Alguns textos não foram salvos (${result.errors.length}). Confira ETags desatualizados.`,
+        });
+      } else {
+        setBulkFeedback({ type: 'success', message: 'Todos os textos alterados foram salvos.' });
+      }
+    } catch (err) {
+      const message = buildErrorMessage(err, 'Falha ao salvar textos em lote.');
+      setBulkFeedback({ type: 'error', message });
+    }
   };
 
   const handleGenerate = async () => {
@@ -445,6 +505,22 @@ export function TextoUnicoPage() {
             <h2>Textos colaborativos</h2>
             <p>Organize ideias em rascunhos que todo o GT pode editar simultaneamente.</p>
           </div>
+          {selectedGtNumber != null && (
+            <div className="texto-colaborativo__header-actions">
+              <button
+                type="button"
+                onClick={handleSalvarTodos}
+                disabled={bulkUpdateTextos.isPending}
+              >
+                {bulkUpdateTextos.isPending ? 'Salvando em lote...' : 'Salvar textos alterados'}
+              </button>
+              {bulkFeedback && (
+                <span className={`texto-colaborativo__feedback texto-colaborativo__feedback--${bulkFeedback.type}`}>
+                  {bulkFeedback.message}
+                </span>
+              )}
+            </div>
+          )}
         </header>
 
         {selectedGtNumber == null ? (
@@ -536,6 +612,11 @@ export function TextoUnicoPage() {
                         />
                         <span>Versão {texto.version}</span>
                       </header>
+                      {texto.pergunta ? (
+                        <div className="texto-colaborativo__tag">
+                          Origem: Pergunta #{texto.pergunta}
+                        </div>
+                      ) : null}
                       <textarea
                         rows={6}
                         value={draft.conteudo}
@@ -556,7 +637,7 @@ export function TextoUnicoPage() {
                               key={template.key}
                               type="button"
                               onClick={() => handleAppendTemplateCollab(texto.id, template.template)}
-                              disabled={saving || updateTexto.isPending}
+                              disabled={saving || updateTexto.isPending || bulkUpdateTextos.isPending}
                             >
                               {template.label}
                             </button>
@@ -576,7 +657,7 @@ export function TextoUnicoPage() {
                         <button
                           type="button"
                           onClick={() => handleSalvarTexto(texto.id)}
-                          disabled={saving || updateTexto.isPending}
+                          disabled={saving || updateTexto.isPending || bulkUpdateTextos.isPending}
                         >
                           {saving ? 'Salvando...' : 'Salvar texto'}
                         </button>

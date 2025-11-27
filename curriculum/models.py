@@ -168,6 +168,13 @@ class TextoUnico(TenantModel):
 
 class TextoColaborativo(TenantModel):
     gt = models.ForeignKey(GT, on_delete=models.CASCADE, related_name="textos_colaborativos")
+    pergunta = models.ForeignKey(
+        Pergunta,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="textos_colaborativos",
+    )
     titulo = models.CharField(max_length=255)
     conteudo_html = models.TextField(blank=True)
     autor = models.ForeignKey(
@@ -183,6 +190,14 @@ class TextoColaborativo(TenantModel):
         ordering = ("-updated_at",)
         indexes = [
             models.Index(fields=["cliente", "gt"]),
+            models.Index(fields=["cliente", "gt", "pergunta"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cliente", "gt", "pergunta"],
+                condition=models.Q(pergunta__isnull=False),
+                name="uniq_texto_colaborativo_por_pergunta",
+            )
         ]
 
     def save(self, *args, **kwargs):  # type: ignore[override]

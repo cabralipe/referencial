@@ -110,28 +110,6 @@ export function useApiClient() {
         headers.set('Accept', 'application/json');
       }
 
-      // Adicionar X-Cliente-ID automaticamente para super_admin quando necessário
-      if (user?.role === 'super_admin' && !headers.has('X-Cliente-ID')) {
-        // Mapeamento GT -> Cliente baseado nos dados do sistema
-        const gtClienteMap: Record<string, string> = {
-          '1': '2', // GT 1 pertence ao Cliente 2 (jeremias da silva)
-          '2': '3', // GT 2 pertence ao Cliente 3 (São miguel dos Campos)
-          '3': '1', // GT 3 pertence ao Cliente 1 (Cliente de Teste)
-        };
-        
-        // Para respostas, verificar se há um gt_id nos parâmetros de query ou no body
-        const gtId = options.query?.gt || options.query?.gt_id || 
-                    (options.body && typeof options.body === 'object' && 
-                     (options.body as any)?.gt);
-        
-        if (gtId && path.includes('/respostas')) {
-          const clienteId = gtClienteMap[String(gtId)];
-          if (clienteId) {
-            headers.set('X-Cliente-ID', clienteId);
-          }
-        }
-      }
-
       // Adicionar token CSRF para métodos que modificam dados
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
         const csrfToken = getCsrfToken();

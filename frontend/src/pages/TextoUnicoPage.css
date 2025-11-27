@@ -77,6 +77,13 @@
   gap: 1rem;
 }
 
+.texto-colaborativo__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
 .texto-colaborativo__header h2 {
   margin: 0;
   font-size: 1.4rem;
@@ -85,6 +92,28 @@
 .texto-colaborativo__header p {
   margin: 0.35rem 0 0;
   color: #475569;
+}
+
+.texto-colaborativo__header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.texto-colaborativo__header-actions button {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.texto-colaborativo__header-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .texto-colaborativo__create {
@@ -216,6 +245,20 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.texto-colaborativo__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  border-radius: 999px;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.85rem;
+  width: fit-content;
+}
+
 .texto-colaborativo__card textarea {
   border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.6);
@@ -260,6 +303,24 @@
 
 .texto-colaborativo__feedback--info {
   color: #2563eb;
+}
+
+.collab-pergunta-bloco {
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  background: rgba(37, 99, 235, 0.02);
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.collab-pergunta-texto {
+  font-size: 0.95rem;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+
+.collab-resposta-texto {
+  border-top: 1px dashed rgba(148, 163, 184, 0.6);
+  padding-top: 0.5rem;
 }
 
 .texto-unico__card {

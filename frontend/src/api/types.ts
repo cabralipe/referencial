@@ -55,6 +55,7 @@ export interface TextoUnico {
 export interface TextoColaborativo {
   id: number;
   gt: number;
+  pergunta: number | null;
   titulo: string;
   conteudo_html: string;
   autor: number | null;
