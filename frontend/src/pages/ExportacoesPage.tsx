@@ -1,8 +1,12 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useCreateExportJob, useExportJobs } from '@/hooks/useExportJobs';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useQuadros } from '@/hooks/useQuadros';
+import { useTextoUnicos } from '@/hooks/useTextoUnico';
+import { useTarefas } from '@/hooks/useTarefas';
 
 import './ExportacoesPage.css';
 
@@ -24,6 +28,7 @@ export function ExportacoesPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
   const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
   const [novoAlvoTipo, setNovoAlvoTipo] = useState(EXPORT_TARGETS[0]?.value ?? 'texto_unico');
+  const [textoUnicoGtId, setTextoUnicoGtId] = useState<number | ''>('');
   const [novoAlvoId, setNovoAlvoId] = useState('');
   const [novoFormato, setNovoFormato] = useState(FORMATS[0]);
 
@@ -32,16 +37,100 @@ export function ExportacoesPage() {
     alvoId: alvoIdFiltro ? Number(alvoIdFiltro) : undefined,
   });
   const criarExportacao = useCreateExportJob();
+  const { gtOptions, isLoading: isLoadingGts } = useAvailableGts({ scope: 'all' });
+  const { data: tarefas } = useTarefas();
+  const { data: quadros, isLoading: isLoadingQuadros } = useQuadros();
+  const { data: textoUnicos, isLoading: isLoadingTextoUnicos, isFetching: isFetchingTextoUnicos } = useTextoUnicos({
+    gtId: novoAlvoTipo === 'texto_unico' && typeof textoUnicoGtId === 'number' ? textoUnicoGtId : undefined,
+  });
 
-  const sugestoesIds = useMemo(() => {
-    if (!exportsJobs || !novoAlvoTipo) return [];
-    const ids = exportsJobs
-      .filter((job) => job.alvo_tipo === novoAlvoTipo)
-      .map((job) => job.alvo_id)
-      .filter((value, index, arr) => arr.indexOf(value) === index)
-      .slice(0, 6);
-    return ids;
-  }, [exportsJobs, novoAlvoTipo]);
+  useEffect(() => {
+    if (novoAlvoTipo !== 'texto_unico') {
+      return;
+    }
+    if (!textoUnicoGtId && gtOptions.length > 0) {
+      setTextoUnicoGtId(gtOptions[0].id);
+    }
+  }, [gtOptions, novoAlvoTipo, textoUnicoGtId]);
+
+  useEffect(() => {
+    setNovoAlvoId('');
+  }, [novoAlvoTipo, textoUnicoGtId]);
+
+  const gtsById = useMemo(() => {
+    const map = new Map<number, string>();
+    gtOptions.forEach((gt) => {
+      map.set(gt.id, gt.displayName);
+    });
+    return map;
+  }, [gtOptions]);
+
+  const tarefasById = useMemo(() => {
+    const map = new Map<number, string>();
+    tarefas?.forEach((tarefa) => {
+      map.set(tarefa.id, tarefa.nome);
+    });
+    return map;
+  }, [tarefas]);
+
+  const textoUnicoOptions = useMemo(() => {
+    if (!textoUnicos) return [];
+    return textoUnicos.map((item) => {
+      const gtLabel = gtsById.get(item.gt) ?? `GT #${item.gt}`;
+      const tarefaLabel = tarefasById.get(item.tarefa);
+      const tarefaText = tarefaLabel ? `${tarefaLabel} (#${item.tarefa})` : `Tarefa #${item.tarefa}`;
+      return {
+        value: String(item.id),
+        label: `Texto único #${item.id} — ${gtLabel} — ${tarefaText}`,
+      };
+    });
+  }, [gtsById, tarefasById, textoUnicos]);
+
+  const quadroOptions = useMemo(() => {
+    if (!quadros) return [];
+    return quadros.map((quadro) => {
+      const gtLabel = gtsById.get(quadro.gt) ?? `GT #${quadro.gt}`;
+      return {
+        value: String(quadro.id),
+        label: `Quadro #${quadro.id} — ${quadro.template} — ${gtLabel}`,
+      };
+    });
+  }, [gtsById, quadros]);
+
+  const alvoOptions = useMemo(() => {
+    if (novoAlvoTipo === 'texto_unico') {
+      return textoUnicoOptions;
+    }
+    if (novoAlvoTipo === 'quadro') {
+      return quadroOptions;
+    }
+    return [];
+  }, [novoAlvoTipo, quadroOptions, textoUnicoOptions]);
+
+  useEffect(() => {
+    if (!novoAlvoId && alvoOptions.length > 0) {
+      setNovoAlvoId(alvoOptions[0].value);
+    }
+  }, [alvoOptions, novoAlvoId]);
+
+  const precisaSelecionarGt = novoAlvoTipo === 'texto_unico' && !textoUnicoGtId;
+  const carregandoAlvos =
+    novoAlvoTipo === 'texto_unico'
+      ? precisaSelecionarGt || isLoadingTextoUnicos || isFetchingTextoUnicos
+      : isLoadingQuadros || !quadros;
+
+  const alvoPlaceholder = (() => {
+    if (precisaSelecionarGt) {
+      return 'Selecione um GT para listar os textos únicos';
+    }
+    if (carregandoAlvos) {
+      return 'Carregando alvos...';
+    }
+    if (alvoOptions.length === 0) {
+      return 'Nenhum registro encontrado para este filtro';
+    }
+    return 'Selecione um registro';
+  })();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -75,7 +164,7 @@ export function ExportacoesPage() {
         items={[
           {
             title: 'Identifique o alvo',
-            description: 'Informe o tipo de entidade (ex.: texto_unico, tarefa) e o ID correspondente.',
+            description: 'Escolha o tipo de entidade (Texto único ou Quadro) e selecione o registro pelo nome.',
           },
           {
             title: 'Escolha o formato',
@@ -122,34 +211,53 @@ export function ExportacoesPage() {
             <select name="alvoTipo" value={novoAlvoTipo} onChange={(e) => setNovoAlvoTipo(e.target.value)} required>
               {EXPORT_TARGETS.map((item) => (
                 <option key={item.value} value={item.value}>
-                  {item.label}
+                {item.label}
+              </option>
+            ))}
+          </select>
+          </label>
+          {novoAlvoTipo === 'texto_unico' && (
+            <label>
+              <span>GT do texto único</span>
+              <select
+                value={textoUnicoGtId === '' ? '' : String(textoUnicoGtId)}
+                onChange={(event) => setTextoUnicoGtId(event.target.value ? Number(event.target.value) : '')}
+                disabled={isLoadingGts || gtOptions.length === 0}
+                required
+              >
+                <option value="" disabled>
+                  {isLoadingGts ? 'Carregando GTs...' : 'Selecione um GT'}
+                </option>
+                {gtOptions.map((gt) => (
+                  <option key={gt.id} value={gt.id}>
+                    {gt.displayName}
+                  </option>
+                ))}
+              </select>
+              <small className="exportacoes__hint">Filtre rapidamente para listar textos únicos do GT selecionado.</small>
+            </label>
+          )}
+          <label className="full">
+            <span>Selecione o alvo</span>
+            <select
+              name="alvoId"
+              value={novoAlvoId}
+              onChange={(e) => setNovoAlvoId(e.target.value)}
+              required
+              disabled={carregandoAlvos || alvoOptions.length === 0}
+            >
+              <option value="" disabled>
+                {alvoPlaceholder}
+              </option>
+              {alvoOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            <span>Alvo ID</span>
-            <input
-              name="alvoId"
-              type="number"
-              min={1}
-              placeholder="Ex.: 12"
-              required
-              value={novoAlvoId}
-              onChange={(e) => setNovoAlvoId(e.target.value)}
-            />
             <small className="exportacoes__hint">
-              Use o ID exibido na listagem do alvo (ex.: Texto único #12). Selecione um sugerido abaixo para preencher.
+              Escolha o registro pelo nome — sem precisar decorar IDs.
             </small>
-            {sugestoesIds.length > 0 && (
-              <div className="exportacoes__suggestions">
-                {sugestoesIds.map((id) => (
-                  <button key={id} type="button" onClick={() => setNovoAlvoId(String(id))}>
-                    #{id}
-                  </button>
-                ))}
-              </div>
-            )}
           </label>
           <label>
             <span>Formato</span>
