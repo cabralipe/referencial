@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
@@ -23,6 +23,9 @@ const STATUS_LABEL: Record<string, string> = {
 export function ExportacoesPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
   const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
+  const [novoAlvoTipo, setNovoAlvoTipo] = useState(EXPORT_TARGETS[0]?.value ?? 'texto_unico');
+  const [novoAlvoId, setNovoAlvoId] = useState('');
+  const [novoFormato, setNovoFormato] = useState(FORMATS[0]);
 
   const { data: exportsJobs, isLoading, refetch, isFetching } = useExportJobs({
     alvoTipo: alvoTipoFiltro || undefined,
@@ -30,17 +33,26 @@ export function ExportacoesPage() {
   });
   const criarExportacao = useCreateExportJob();
 
+  const sugestoesIds = useMemo(() => {
+    if (!exportsJobs || !novoAlvoTipo) return [];
+    const ids = exportsJobs
+      .filter((job) => job.alvo_tipo === novoAlvoTipo)
+      .map((job) => job.alvo_id)
+      .filter((value, index, arr) => arr.indexOf(value) === index)
+      .slice(0, 6);
+    return ids;
+  }, [exportsJobs, novoAlvoTipo]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const alvoTipo = String(form.get('alvoTipo') ?? '').trim();
-    const alvoId = Number(form.get('alvoId'));
-    const formato = String(form.get('formato') ?? '').trim() || 'pdf';
+    const alvoTipo = novoAlvoTipo.trim();
+    const alvoId = Number(novoAlvoId);
+    const formato = novoFormato || 'pdf';
     if (!alvoTipo || !alvoId) {
       return;
     }
     await criarExportacao.mutateAsync({ alvoTipo, alvoId, formato });
-    event.currentTarget.reset();
+    setNovoAlvoId('');
     refetch();
   };
 
@@ -107,7 +119,7 @@ export function ExportacoesPage() {
         <form onSubmit={handleSubmit}>
           <label>
             <span>Alvo tipo</span>
-            <select name="alvoTipo" defaultValue="texto_unico" required>
+            <select name="alvoTipo" value={novoAlvoTipo} onChange={(e) => setNovoAlvoTipo(e.target.value)} required>
               {EXPORT_TARGETS.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
@@ -117,11 +129,31 @@ export function ExportacoesPage() {
           </label>
           <label>
             <span>Alvo ID</span>
-            <input name="alvoId" type="number" min={1} placeholder="Ex.: 12" required />
+            <input
+              name="alvoId"
+              type="number"
+              min={1}
+              placeholder="Ex.: 12"
+              required
+              value={novoAlvoId}
+              onChange={(e) => setNovoAlvoId(e.target.value)}
+            />
+            <small className="exportacoes__hint">
+              Use o ID exibido na listagem do alvo (ex.: Texto único #12). Selecione um sugerido abaixo para preencher.
+            </small>
+            {sugestoesIds.length > 0 && (
+              <div className="exportacoes__suggestions">
+                {sugestoesIds.map((id) => (
+                  <button key={id} type="button" onClick={() => setNovoAlvoId(String(id))}>
+                    #{id}
+                  </button>
+                ))}
+              </div>
+            )}
           </label>
           <label>
             <span>Formato</span>
-            <select name="formato" defaultValue="pdf">
+            <select name="formato" value={novoFormato} onChange={(e) => setNovoFormato(e.target.value)}>
               {FORMATS.map((format) => (
                 <option key={format} value={format}>
                   {format.toUpperCase()}
