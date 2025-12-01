@@ -123,6 +123,9 @@ MIDDLEWARE = [
     "core.middleware.ClienteScopeMiddleware",
 ]
 
+# Permite embed em iframe no mesmo domínio (necessário para exibir PDFs via <iframe>)
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
