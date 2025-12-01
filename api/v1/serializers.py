@@ -663,7 +663,7 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
         return obj.manifestacoes.count()
 
     def validate_opcoes_votacao(self, value):
-        if value in {None, ""}:
+        if value is None or value == "" or value == []:
             return []
         if isinstance(value, str):
             try:
