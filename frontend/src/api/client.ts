@@ -91,6 +91,32 @@ async function extractApiError(response: Response): Promise<unknown> {
   }
 }
 
+function pickErrorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === 'string') {
+    return payload || fallback;
+  }
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+  const detail = (payload as { detail?: unknown }).detail;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail) && detail.length && typeof detail[0] === 'string') {
+    return detail[0];
+  }
+  const values = Object.values(payload as Record<string, unknown>);
+  for (const val of values) {
+    if (typeof val === 'string' && val.trim()) {
+      return val;
+    }
+    if (Array.isArray(val) && val.length && typeof val[0] === 'string') {
+      return val[0];
+    }
+  }
+  return fallback;
+}
+
 export function useApiClient() {
   const { getAccessToken, refreshAccessToken, logout, user } = useAuth();
 
@@ -165,10 +191,7 @@ export function useApiClient() {
 
       if (!response.ok) {
         const payload = await extractApiError(response);
-        const message =
-          typeof payload === 'string'
-            ? payload
-            : (payload as { detail?: string })?.detail ?? 'Erro na requisição';
+        const message = pickErrorMessage(payload, 'Erro na requisição');
         throw new ApiError(message, response.status, payload);
       }
 
