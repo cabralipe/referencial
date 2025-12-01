@@ -224,6 +224,29 @@
   cursor: pointer;
 }
 
+.consultas-admin__alert {
+  border: 1px solid #fecdd3;
+  background: #fef2f2;
+  color: #7f1d1d;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 8px 0 12px;
+}
+
+.consultas-admin__alert p {
+  margin: 4px 0 8px;
+  color: inherit;
+}
+
+.consultas-admin__alert .ghost {
+  border: 1px solid #fca5a5;
+  background: #fff;
+  color: #b91c1c;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 .consultas-admin__manifestacoes {
   display: flex;
   flex-direction: column;

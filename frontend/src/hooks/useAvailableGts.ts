@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
 import type { GT, PaginatedResponse } from '@/api/types';
+import { useAuth } from '@/context/AuthContext';
 
 export interface GtOption extends GT {
   displayName: string;
@@ -16,9 +17,20 @@ interface UseAvailableGtsOptions {
 
 export function useAvailableGts({ scope = 'member' }: UseAvailableGtsOptions = {}) {
   const client = useApiClient();
+  const { user } = useAuth();
+
+  const effectiveScope: GtScope = useMemo(() => {
+    if (scope !== 'member') {
+      return scope;
+    }
+    if (user?.role === 'admin_cliente' || user?.role === 'super_admin') {
+      return 'all';
+    }
+    return scope;
+  }, [scope, user?.role]);
 
   const query = useQuery({
-    queryKey: ['gts', 'available', scope],
+    queryKey: ['gts', 'available', effectiveScope],
     queryFn: async () => {
       const collected: GT[] = [];
       let nextUrl: string | null = null;
@@ -28,7 +40,7 @@ export function useAvailableGts({ scope = 'member' }: UseAvailableGtsOptions = {
       do {
         const response = await client.get<PaginatedResponse<GT>>(currentUrl, {
           query: firstFetch
-            ? { page_size: 200, ...(scope === 'member' ? { only_member: 'true' } : {}) }
+            ? { page_size: 200, ...(effectiveScope === 'member' ? { only_member: 'true' } : {}) }
             : undefined,
         });
         const { results = [], next } = response.data;
