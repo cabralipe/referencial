@@ -214,11 +214,21 @@
 .consultas-admin__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .consultas-admin__actions .ghost {
   border: 1px solid #cbd5e1;
   background: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.consultas-admin__actions .danger {
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;

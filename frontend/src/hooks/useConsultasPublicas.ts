@@ -155,3 +155,21 @@ export function useEnviarManifestacao() {
     },
   });
 }
+
+export function useExcluirConsultaPublica() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
+
+  return useMutation({
+    mutationFn: async (consultaId: number) => {
+      await client.del(`/consultas_publicas/${consultaId}`, {
+        headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultas_publicas', clienteId] });
+    },
+  });
+}

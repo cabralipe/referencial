@@ -3,7 +3,12 @@ import { FormEvent, useMemo, useState } from 'react';
 import { ApiError } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
-import { useConsultasPublicas, useCriarConsultaPublica, useManifestacoesConsulta } from '@/hooks/useConsultasPublicas';
+import {
+  useConsultasPublicas,
+  useCriarConsultaPublica,
+  useExcluirConsultaPublica,
+  useManifestacoesConsulta,
+} from '@/hooks/useConsultasPublicas';
 import type { ConsultaPublica } from '@/api/types';
 
 import './ConsultasPublicasPage.css';
@@ -16,6 +21,7 @@ export function ConsultasPublicasPage() {
     refetch: refetchConsultas,
   } = useConsultasPublicas();
   const criarConsulta = useCriarConsultaPublica();
+  const excluirConsulta = useExcluirConsultaPublica();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [opcoesTexto, setOpcoesTexto] = useState('');
   const [mensagem, setMensagem] = useState<string | null>(null);
@@ -88,6 +94,19 @@ export function ConsultasPublicasPage() {
       setMensagem('Link copiado para a área de transferência.');
     } catch (error) {
       setErro('Não foi possível copiar o link automaticamente.');
+    }
+  };
+
+  const handleDelete = async (consulta: ConsultaPublica) => {
+    const confirmado = window.confirm(`Excluir a consulta pública "${consulta.titulo}"? Esta ação não pode ser desfeita.`);
+    if (!confirmado) return;
+    setErro(null);
+    setMensagem(null);
+    try {
+      await excluirConsulta.mutateAsync(consulta.id);
+      setMensagem('Consulta removida.');
+    } catch (error: any) {
+      setErro(error?.message ?? 'Não foi possível excluir a consulta.');
     }
   };
 
@@ -254,6 +273,14 @@ export function ConsultasPublicasPage() {
                     onClick={() => setConsultaSelecionada((prev) => (prev === consulta.id ? null : consulta.id))}
                   >
                     {consultaSelecionada === consulta.id ? 'Fechar manifestações' : 'Ver manifestações'}
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={excluirConsulta.isPending}
+                    onClick={() => handleDelete(consulta)}
+                  >
+                    {excluirConsulta.isPending ? 'Excluindo...' : 'Excluir'}
                   </button>
                 </div>
                 {consultaSelecionada === consulta.id && (
