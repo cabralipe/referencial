@@ -645,6 +645,11 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not obj.pdf:
             return None
+        try:
+            if not obj.pdf.storage.exists(obj.pdf.name):
+                return None
+        except Exception:
+            return None
         url = str(obj.pdf.url).strip()
         if url.startswith("http"):
             dup_idx = url.find("http", 8)
@@ -728,6 +733,11 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
     def get_pdf_url(self, obj):
         request = self.context.get("request")
         if not obj.pdf:
+            return None
+        try:
+            if not obj.pdf.storage.exists(obj.pdf.name):
+                return None
+        except Exception:
             return None
         url = str(obj.pdf.url).strip()
         if url.startswith("http"):
