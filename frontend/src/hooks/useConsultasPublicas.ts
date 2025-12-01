@@ -12,12 +12,17 @@ import type {
 
 export function useConsultasPublicas() {
   const client = useApiClient();
-  const { cliente, user } = useAuth();
+  const { cliente, user, status } = useAuth();
   const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
+  const enabled = status === 'authenticated' && Boolean(clienteId);
 
   return useQuery({
     queryKey: ['consultas_publicas', clienteId],
+    enabled,
     queryFn: async () => {
+      if (!clienteId) {
+        throw new Error('Cliente não identificado para carregar consultas.');
+      }
       const response = await client.get<PaginatedResponse<ConsultaPublica>>('/consultas_publicas', {
         query: { page_size: 200 },
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
@@ -48,6 +53,9 @@ export function useCriarConsultaPublica() {
 
   return useMutation({
     mutationFn: async (payload: CriarConsultaPublicaInput) => {
+      if (!clienteId) {
+        throw new Error('Cliente não identificado para criar consulta.');
+      }
       const form = new FormData();
       form.append('titulo', payload.titulo);
       if (payload.slug) form.append('slug', payload.slug);
@@ -164,6 +172,9 @@ export function useExcluirConsultaPublica() {
 
   return useMutation({
     mutationFn: async (consultaId: number) => {
+      if (!clienteId) {
+        throw new Error('Cliente não identificado para excluir consulta.');
+      }
       await client.del(`/consultas_publicas/${consultaId}`, {
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
       });
