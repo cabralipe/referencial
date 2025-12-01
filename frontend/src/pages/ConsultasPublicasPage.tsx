@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 
+import { ApiError } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useConsultasPublicas, useCriarConsultaPublica, useManifestacoesConsulta } from '@/hooks/useConsultasPublicas';
@@ -8,7 +9,12 @@ import type { ConsultaPublica } from '@/api/types';
 import './ConsultasPublicasPage.css';
 
 export function ConsultasPublicasPage() {
-  const { data: consultas, isLoading } = useConsultasPublicas();
+  const {
+    data: consultas,
+    isLoading,
+    error: consultasError,
+    refetch: refetchConsultas,
+  } = useConsultasPublicas();
   const criarConsulta = useCriarConsultaPublica();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [opcoesTexto, setOpcoesTexto] = useState('');
@@ -16,6 +22,13 @@ export function ConsultasPublicasPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [consultaSelecionada, setConsultaSelecionada] = useState<number | null>(null);
   const { data: manifestacoes, isLoading: carregandoManifestacoes } = useManifestacoesConsulta(consultaSelecionada ?? undefined);
+
+  const consultaFetchErro = useMemo(() => {
+    if (!consultasError) return null;
+    if (consultasError instanceof ApiError) return consultasError.message;
+    if (consultasError instanceof Error) return consultasError.message;
+    return 'Não foi possível carregar as consultas públicas.';
+  }, [consultasError]);
 
   const opcoesVotacao = useMemo(
     () =>
@@ -172,6 +185,15 @@ export function ConsultasPublicasPage() {
           <h2>Consultas publicadas</h2>
           <p>Compartilhe o link aberto e acompanhe manifestações por página do PDF.</p>
         </div>
+        {consultaFetchErro && (
+          <div className="consultas-admin__alert">
+            <strong>Erro ao carregar consultas.</strong>
+            <p>{consultaFetchErro}</p>
+            <button type="button" className="ghost" onClick={() => refetchConsultas()}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
         {consultas && consultas.length > 0 ? (
           <div className="consultas-admin__grid">
             {consultas.map((consulta) => (

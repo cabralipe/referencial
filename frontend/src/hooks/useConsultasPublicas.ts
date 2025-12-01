@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
+import { useAuth } from '@/context/AuthContext';
 import type {
   ConsultaPublica,
   ConsultaPublicaPublic,
@@ -11,12 +12,15 @@ import type {
 
 export function useConsultasPublicas() {
   const client = useApiClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
 
   return useQuery({
-    queryKey: ['consultas_publicas'],
+    queryKey: ['consultas_publicas', clienteId],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<ConsultaPublica>>('/consultas_publicas', {
         query: { page_size: 200 },
+        headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
       });
       return response.data.results ?? [];
     },
@@ -39,6 +43,8 @@ interface CriarConsultaPublicaInput {
 export function useCriarConsultaPublica() {
   const client = useApiClient();
   const queryClient = useQueryClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
 
   return useMutation({
     mutationFn: async (payload: CriarConsultaPublicaInput) => {
@@ -56,23 +62,30 @@ export function useCriarConsultaPublica() {
       }
       form.append('ativa', payload.ativa === false ? 'false' : 'true');
 
-      const response = await client.post<ConsultaPublica>('/consultas_publicas', { body: form });
+      const response = await client.post<ConsultaPublica>('/consultas_publicas', {
+        body: form,
+        headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
+      });
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['consultas_publicas'] });
+      queryClient.invalidateQueries({ queryKey: ['consultas_publicas', clienteId] });
     },
   });
 }
 
 export function useManifestacoesConsulta(consultaId?: number) {
   const client = useApiClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
 
   return useQuery({
     queryKey: ['consultas_publicas', consultaId, 'manifestacoes'],
     enabled: Boolean(consultaId),
     queryFn: async () => {
-      const response = await client.get<ManifestacaoPublica[]>(`/consultas_publicas/${consultaId}/manifestacoes`);
+      const response = await client.get<ManifestacaoPublica[]>(`/consultas_publicas/${consultaId}/manifestacoes`, {
+        headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
+      });
       return response.data;
     },
   });
