@@ -14,5 +14,8 @@ urlpatterns += [
     re_path(r"^(?!admin/|api/|static/|media/).*", serve_frontend, name="frontend"),
 ]
 
-if settings.DEBUG:
+# Servir mídia local mesmo fora de DEBUG (útil em deploy com volume/pasta persistente)
+if settings.MEDIA_BACKEND == "local":
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
