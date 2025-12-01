@@ -33,6 +33,16 @@ const ENTIDADE_LABELS: Record<string, string> = {
   export: 'Exportação',
 };
 
+const ENTIDADE_VALUE_TO_DB: Record<string, string> = {
+  resposta: 'curriculum.Resposta',
+  texto_unico: 'curriculum.TextoUnico',
+  texto_colaborativo: 'curriculum.TextoColaborativo',
+  quadro: 'workshop.Quadro',
+  comentario: 'comments.Comentario',
+  revisao: 'reviews.Revisao',
+  export: 'export',
+};
+
 const ACTION_LABELS: Record<string, string> = {
   created: 'criou',
   updated: 'atualizou',
@@ -140,7 +150,8 @@ export function AuditLogsPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setAppliedEntidade(entidade || '');
+    const mappedEntidade = entidade ? (ENTIDADE_VALUE_TO_DB[entidade] ?? entidade) : '';
+    setAppliedEntidade(mappedEntidade);
     setAppliedEntidadeId(entidadeId ? Number(entidadeId) : undefined);
     setAppliedUsuarioId(usuarioId ? Number(usuarioId) : undefined);
     setAppliedAcao(acao || '');
