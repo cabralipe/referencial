@@ -41,9 +41,10 @@ export function ConsultasPublicasPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMensagem(null);
     setErro(null);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const titulo = String(form.get('titulo') ?? '').trim();
     const slug = String(form.get('slug') ?? '').trim();
     const descricao = String(form.get('descricao') ?? '').trim();
@@ -74,7 +75,7 @@ export function ConsultasPublicasPage() {
       setMensagem('Consulta criada com sucesso! Compartilhe o link público para iniciar a participação.');
       setOpcoesTexto('');
       setPdfFile(null);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error: any) {
       setErro(error?.message ?? 'Não foi possível criar a consulta.');
     }

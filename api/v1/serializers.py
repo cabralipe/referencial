@@ -645,8 +645,12 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not obj.pdf:
             return None
-        url = obj.pdf.url
-        if request:
+        url = str(obj.pdf.url).strip()
+        if url.startswith("http"):
+            dup_idx = url.find("http", 8)
+            if dup_idx != -1:
+                url = url[:dup_idx]
+        if request and url.startswith("/"):
             url = request.build_absolute_uri(url)
         return url
 
@@ -725,8 +729,12 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not obj.pdf:
             return None
-        url = obj.pdf.url
-        if request:
+        url = str(obj.pdf.url).strip()
+        if url.startswith("http"):
+            dup_idx = url.find("http", 8)
+            if dup_idx != -1:
+                url = url[:dup_idx]
+        if request and url.startswith("/"):
             url = request.build_absolute_uri(url)
         return url
 
