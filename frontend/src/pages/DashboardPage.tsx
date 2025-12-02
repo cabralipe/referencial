@@ -5,6 +5,7 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefas } from '@/hooks/useTarefas';
+import { usePainelRespostas } from '@/hooks/usePainelRespostas';
 
 import './DashboardPage.css';
 
@@ -31,6 +32,13 @@ export function DashboardPage() {
     tipo: tipoFilter || undefined,
     etapa: etapaFilter || undefined,
   });
+  const {
+    data: painelRespostas,
+    isLoading: painelLoading,
+    isError: painelError,
+    error: painelErrorObj,
+    refetch: refetchPainel,
+  } = usePainelRespostas();
 
   const etapas = useMemo(() => {
     if (!tarefas) {
@@ -66,6 +74,46 @@ export function DashboardPage() {
       { total: 0, rascunho: 0, emRevisao: 0, concluidas: 0 },
     );
   }, [tarefas]);
+
+  const painelItens = useMemo(() => {
+    const respostasOrdenadas = (painelRespostas ?? []).slice().sort((a, b) => {
+      const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return dateB - dateA;
+    });
+    return respostasOrdenadas.slice(0, 12);
+  }, [painelRespostas]);
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  };
+
+  const resumirConteudo = (html?: string) => {
+    if (!html) return 'Sem conteúdo enviado.';
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!text) return 'Sem conteúdo enviado.';
+    if (text.length <= 140) {
+      return text;
+    }
+    return `${text.slice(0, 140)}…`;
+  };
+
+  const statusLabel = (status?: string | null) => {
+    if (!status) return 'Concluída';
+    const normalized = status.toLowerCase();
+    if (normalized === 'rascunho') return 'Rascunho';
+    if (normalized === 'em_revisao') return 'Em revisão';
+    if (normalized === 'concluida') return 'Concluída';
+    return status;
+  };
+
+  const statusClass = (status?: string | null) => {
+    if (!status) return 'concluida';
+    return status.toLowerCase();
+  };
 
   if (isLoading) {
     return <FullPageLoader message="Carregando tarefas..." />;
@@ -129,6 +177,75 @@ export function DashboardPage() {
           },
         ]}
       />
+
+      <section className="dashboard__panel">
+        <header className="dashboard__panel-header">
+          <div>
+            <h2>Painel de respostas</h2>
+            <p>GTs que já registraram respostas em tarefas e perguntas marcadas como concluídas.</p>
+          </div>
+          <div className="dashboard__panel-meta">
+            <span className="dashboard__pill">
+              {painelLoading ? 'Carregando...' : `${painelItens.length} registro(s) recentes`}
+            </span>
+            <button type="button" className="dashboard__refresh" onClick={() => refetchPainel()} disabled={painelLoading}>
+              Atualizar
+            </button>
+          </div>
+        </header>
+
+        {painelError ? (
+          <div className="dashboard__panel-error">
+            <p>Não foi possível carregar o painel de respostas.</p>
+            <p>{painelErrorObj instanceof ApiError ? painelErrorObj.message : 'Erro desconhecido'}</p>
+            <button type="button" onClick={() => refetchPainel()}>
+              Tentar novamente
+            </button>
+          </div>
+        ) : painelItens.length === 0 && !painelLoading ? (
+          <div className="dashboard__panel-empty">
+            <h3>Nenhuma resposta registrada</h3>
+            <p>Assim que os clientes enviarem respostas, elas aparecerão aqui com status de conclusão.</p>
+          </div>
+        ) : (
+          <div className="dashboard__panel-table" aria-busy={painelLoading}>
+            <table>
+              <thead>
+                <tr>
+                  <th>GT</th>
+                  <th>Autor</th>
+                  <th>Conteúdo</th>
+                  <th>Atualização</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {painelItens.map((resposta) => (
+                  <tr key={resposta.id}>
+                    <td>
+                      <span className="dashboard__pill">
+                        {resposta.gt_nome ?? `GT #${resposta.gt}`}
+                      </span>
+                    </td>
+                    <td className="dashboard__autor">
+                      {resposta.autor_nome ?? (resposta.autor ? `Usuário #${resposta.autor}` : 'Autor não informado')}
+                    </td>
+                    <td className="dashboard__conteudo" title={resumirConteudo(resposta.conteudo_html)}>
+                      {resumirConteudo(resposta.conteudo_html)}
+                    </td>
+                    <td>{formatDateTime(resposta.updated_at)}</td>
+                    <td>
+                      <span className={`dashboard__status dashboard__status--${statusClass(resposta.tarefa_status)}`}>
+                        {statusLabel(resposta.tarefa_status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="dashboard__filters">
         <label className="dashboard__filter">

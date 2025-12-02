@@ -33,12 +33,15 @@ export interface GT {
 export interface Resposta {
   id: number;
   gt: number;
+  gt_nome?: string | null;
   pergunta: number;
   conteudo_html: string;
   autor: number | null;
+  autor_nome?: string | null;
   version: number;
   updated_at: string;
   etag: string;
+  tarefa_status?: string | null;
 }
 
 export interface TextoUnico {

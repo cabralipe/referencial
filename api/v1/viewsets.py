@@ -268,7 +268,12 @@ class RespostaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
-        queryset = Resposta.objects.select_related("gt", "pergunta").filter(cliente_id=cliente_id)
+        queryset = Resposta.objects.select_related(
+            "gt",
+            "pergunta",
+            "pergunta__tarefa",
+            "autor",
+        ).filter(cliente_id=cliente_id)
         gt_id = self.request.query_params.get("gt_id")
         pergunta_id = self.request.query_params.get("pergunta_id")
         if gt_id:

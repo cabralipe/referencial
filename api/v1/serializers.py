@@ -97,18 +97,24 @@ class AnexoSerializer(serializers.ModelSerializer):
 
 class RespostaSerializer(serializers.ModelSerializer):
     etag = serializers.CharField(read_only=True)
+    gt_nome = serializers.SerializerMethodField()
+    autor_nome = serializers.SerializerMethodField()
+    tarefa_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Resposta
         fields = (
             "id",
             "gt",
+            "gt_nome",
             "pergunta",
             "conteudo_html",
             "autor",
+            "autor_nome",
             "version",
             "updated_at",
             "etag",
+            "tarefa_status",
         )
         read_only_fields = ("id", "version", "updated_at", "autor", "etag")
 
@@ -123,6 +129,24 @@ class RespostaSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             validated_data["autor"] = request.user
         return super().update(instance, validated_data)
+
+    def get_gt_nome(self, obj):
+        if hasattr(obj, "gt") and obj.gt:
+            return obj.gt.nome
+        return None
+
+    def get_autor_nome(self, obj):
+        autor = getattr(obj, "autor", None)
+        if not autor:
+            return None
+        return autor.nome or autor.email
+
+    def get_tarefa_status(self, obj):
+        pergunta = getattr(obj, "pergunta", None)
+        if not pergunta:
+            return None
+        tarefa = getattr(pergunta, "tarefa", None)
+        return getattr(tarefa, "status", None)
 
 
 class TextoUnicoSerializer(serializers.ModelSerializer):
