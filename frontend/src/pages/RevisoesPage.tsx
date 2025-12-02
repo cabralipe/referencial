@@ -5,7 +5,6 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
-import { useStreamSubscription } from '@/hooks/useStreamSubscription';
 import { useApiClient } from '@/api/client';
 
 import './RevisoesPage.css';
@@ -24,9 +23,6 @@ const ALVO_TIPOS = [
 ];
 
 export function RevisoesPage() {
-  const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
-  const [alvoIdFiltroInput, setAlvoIdFiltroInput] = useState('');
-  const [statusFiltro, setStatusFiltro] = useState('');
   const [gtFiltro, setGtFiltro] = useState<number | ''>('');
   const [buscaConteudo, setBuscaConteudo] = useState('');
 
@@ -38,28 +34,12 @@ export function RevisoesPage() {
     return Number.isFinite(num) ? num : undefined;
   };
 
-  const alvoIdFiltroNumber = parseNumericId(alvoIdFiltroInput);
-  const isResposta = alvoTipoFiltro === 'resposta';
-  const isTextoUnico = alvoTipoFiltro === 'texto_unico';
-
-  const { data: revisoes, isLoading, refetch } = useRevisoes({
-    alvoTipo: alvoTipoFiltro || undefined,
-    alvoId: alvoIdFiltroNumber,
-    status: statusFiltro || undefined,
-  });
+  const { data: revisoes, isLoading, refetch } = useRevisoes();
   const { gtOptions } = useAvailableGts({ scope: 'all' });
   const { data: respostas, isLoading: respostasLoading, refetch: refetchRespostas } = useRespostas({
     includeAll: true,
   });
 
-  useStreamSubscription({
-    alvoTipo: alvoTipoFiltro || undefined,
-    alvoId: alvoIdFiltroNumber,
-    enabled: Boolean(alvoTipoFiltro && alvoIdFiltroNumber),
-    onMessage: () => {
-      refetch();
-    },
-  });
   const createRevisao = useCreateRevisao();
   const updateRevisao = useUpdateRevisao();
 
@@ -236,71 +216,6 @@ export function RevisoesPage() {
           },
         ]}
       />
-
-      <div className="revisoes__filters revisoes__panel">
-        <div className="revisoes__filters-header">
-          <div>
-            <h2>Filtrar revisões</h2>
-            <p>Refine por alvo, status ou cole uma URL/ID para ir direto ao ponto.</p>
-          </div>
-          <button type="button" className="revisoes__button revisoes__button--ghost" onClick={() => refetch()}>
-            Recarregar
-          </button>
-        </div>
-        <div className="revisoes__filters-grid">
-          <label>
-            <span>Alvo</span>
-            <select value={alvoTipoFiltro} onChange={(event) => setAlvoTipoFiltro(event.target.value)}>
-              <option value="">Todos</option>
-              {ALVO_TIPOS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="revisoes__filters-inline">
-            <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o registro'}</span>
-            <div className="revisoes__filters-composite">
-              <input
-                type="text"
-                value={alvoIdFiltroInput}
-                onChange={(event) => setAlvoIdFiltroInput(event.target.value)}
-                placeholder={
-                  isResposta
-                    ? 'Cole a URL ou ID da resposta'
-                    : isTextoUnico
-                      ? 'Cole a URL ou ID do texto único'
-                      : 'Cole a URL ou ID'
-                }
-              />
-              <button
-                type="button"
-                className="revisoes__button revisoes__button--ghost"
-                onClick={() => refetch()}
-                disabled={isLoading}
-                aria-label="Aplicar filtro de alvo"
-              >
-                Filtrar
-              </button>
-            </div>
-            <small className="revisoes__hint">
-              Dica: cole a URL ou ID copiado da página de tarefa/texto único — extraímos o número automaticamente.
-            </small>
-          </label>
-          <label>
-            <span>Status</span>
-            <select value={statusFiltro} onChange={(event) => setStatusFiltro(event.target.value)}>
-              <option value="">Todos</option>
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
 
       <section className="revisoes__respostas revisoes__panel">
         <header className="revisoes__respostas-header">
