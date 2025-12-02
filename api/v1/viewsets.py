@@ -288,7 +288,8 @@ class RespostaViewSet(viewsets.ModelViewSet):
         gt = serializer.validated_data["gt"]
         pergunta = serializer.validated_data["pergunta"]
         cliente_id = gt.cliente_id or _get_request_cliente_id(request)
-        resposta = Resposta.objects.filter(gt=gt, pergunta=pergunta).first()
+        # Usar raw_objects para evitar perder registros já existentes por filtros multi-tenant
+        resposta = Resposta.raw_objects.filter(cliente_id=cliente_id, gt_id=gt.pk, pergunta_id=pergunta.pk).first()
         created_collab = False
         with transaction.atomic():
             if resposta:
@@ -300,11 +301,24 @@ class RespostaViewSet(viewsets.ModelViewSet):
                 status_code = status.HTTP_200_OK
                 headers = {"ETag": resposta.etag}
             else:
-                serializer.save(cliente_id=cliente_id)
-                resposta = serializer.instance
-                status_code = status.HTTP_201_CREATED
-                headers = self.get_success_headers(serializer.data)
-                headers["ETag"] = resposta.etag
+                try:
+                    serializer.save(cliente_id=cliente_id)
+                    resposta = serializer.instance
+                    status_code = status.HTTP_201_CREATED
+                    headers = self.get_success_headers(serializer.data)
+                    headers["ETag"] = resposta.etag
+                except Exception as exc:
+                    # Se houver corrida ou registro prévio, faz fallback para update
+                    existing = Resposta.raw_objects.filter(cliente_id=cliente_id, gt_id=gt.pk, pergunta_id=pergunta.pk).first()
+                    if existing is None:
+                        raise
+                    _check_etag(request, existing)
+                    serializer = self.get_serializer(existing, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save(cliente_id=cliente_id)
+                    resposta = serializer.instance
+                    status_code = status.HTTP_200_OK
+                    headers = {"ETag": resposta.etag}
 
             texto_colab, created_collab = sync_texto_colaborativo_from_resposta(resposta)
 

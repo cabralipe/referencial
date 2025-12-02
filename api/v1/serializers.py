@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from django.contrib.auth import authenticate, get_user_model
+from django.db import IntegrityError
 from django.utils.text import slugify
 from rest_framework import serializers
 
@@ -122,7 +124,26 @@ class RespostaSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             validated_data["autor"] = request.user
-        return super().create(validated_data)
+        try:
+            return super().create(validated_data)
+        except IntegrityError:
+            cliente_id = validated_data.get("cliente_id")
+            gt = validated_data.get("gt")
+            pergunta = validated_data.get("pergunta")
+            existing = None
+            if cliente_id and gt and pergunta:
+                existing = Resposta.raw_objects.filter(
+                    cliente_id=cliente_id,
+                    gt_id=getattr(gt, "pk", gt),
+                    pergunta_id=getattr(pergunta, "pk", pergunta),
+                ).first()
+            if not existing:
+                raise
+            for field in ("conteudo_html", "autor"):
+                if field in validated_data:
+                    setattr(existing, field, validated_data[field])
+            existing.save(update_fields=["conteudo_html", "autor", "updated_at"])
+            return existing
 
     def update(self, instance, validated_data):
         request = self.context.get("request")
@@ -671,10 +692,19 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
             return None
         try:
             if not obj.pdf.storage.exists(obj.pdf.name):
+                # Fallback: tenta achar o arquivo apenas pelo nome na raiz do MEDIA_ROOT
+                fallback_name = Path(obj.pdf.name).name
+                if obj.pdf.storage.exists(fallback_name):
+                    url = obj.pdf.storage.url(fallback_name)
+                    return self._build_url(request, url)
                 return None
         except Exception:
             return None
         url = str(obj.pdf.url).strip()
+        return self._build_url(request, url)
+
+    @staticmethod
+    def _build_url(request, url: str) -> str:
         if url.startswith("http"):
             dup_idx = url.find("http", 8)
             if dup_idx != -1:
@@ -760,17 +790,16 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
             return None
         try:
             if not obj.pdf.storage.exists(obj.pdf.name):
+                # Fallback: tenta achar o arquivo apenas pelo nome na raiz do MEDIA_ROOT
+                fallback_name = Path(obj.pdf.name).name
+                if obj.pdf.storage.exists(fallback_name):
+                    url = obj.pdf.storage.url(fallback_name)
+                    return ConsultaPublicaSerializer._build_url(request, url)
                 return None
         except Exception:
             return None
         url = str(obj.pdf.url).strip()
-        if url.startswith("http"):
-            dup_idx = url.find("http", 8)
-            if dup_idx != -1:
-                url = url[:dup_idx]
-        if request and url.startswith("/"):
-            url = request.build_absolute_uri(url)
-        return url
+        return ConsultaPublicaSerializer._build_url(request, url)
 
     def get_esta_disponivel(self, obj):
         return obj.esta_disponivel
