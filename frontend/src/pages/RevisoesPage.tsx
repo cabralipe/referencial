@@ -6,6 +6,7 @@ import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevi
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
+import { useApiClient } from '@/api/client';
 
 import './RevisoesPage.css';
 
@@ -66,6 +67,8 @@ export function RevisoesPage() {
   const [draftStatus, setDraftStatus] = useState<Record<number, string>>({});
   const [draftParecerResposta, setDraftParecerResposta] = useState<Record<number, string>>({});
   const [feedbackResposta, setFeedbackResposta] = useState<Record<number, string>>({});
+  const [draftConteudoResposta, setDraftConteudoResposta] = useState<Record<number, string>>({});
+  const client = useApiClient();
 
   const revisoesOrdenadas = useMemo(() => {
     if (!revisoes) return [];
@@ -341,6 +344,37 @@ export function RevisoesPage() {
                   />
                 </div>
                 <div className="revisoes__resposta-actions">
+                  <label className="full">
+                    <span>Editar resposta (HTML)</span>
+                    <textarea
+                      rows={4}
+                      value={draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? ''}
+                      onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
+                      placeholder="Ajuste a resposta antes de enviar revisão."
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={async () => {
+                      try {
+                        await client.put(`/respostas/${resp.id}`, {
+                          body: {
+                            gt: resp.gt,
+                            pergunta: resp.pergunta,
+                            conteudo_html: draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? '',
+                          },
+                          ifMatch: resp.etag,
+                        });
+                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Resposta atualizada para o cliente.' }));
+                        refetchRespostas();
+                      } catch (err: any) {
+                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao salvar resposta.' }));
+                      }
+                    }}
+                  >
+                    Salvar resposta
+                  </button>
                   <label className="full">
                     <span>Parecer para o cliente (HTML)</span>
                     <textarea

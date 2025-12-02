@@ -7,20 +7,21 @@ interface UseRevisoesParams {
   alvoTipo?: string;
   alvoId?: number;
   status?: string;
+  pageSize?: number;
 }
 
-export function useRevisoes({ alvoId, alvoTipo, status }: UseRevisoesParams = {}) {
+export function useRevisoes({ alvoId, alvoTipo, status, pageSize = 200 }: UseRevisoesParams = {}) {
   const client = useApiClient();
 
   return useQuery({
-    queryKey: ['revisoes', { alvoId, alvoTipo, status }],
+    queryKey: ['revisoes', { alvoId, alvoTipo, status, pageSize }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<Revisao>>('/revisoes', {
         query: {
           alvo_tipo: alvoTipo,
           alvo_id: alvoId,
           status,
-          page_size: 200,
+          page_size: pageSize,
         },
       });
       return response.data.results ?? [];

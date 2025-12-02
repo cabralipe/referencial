@@ -9,6 +9,7 @@ import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
+import { useRevisoes } from '@/hooks/useRevisoes';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
 import type { Pergunta } from '@/api/types';
@@ -92,6 +93,7 @@ export function TaskDetailPage() {
     error: perguntasErrorObj,
   } = usePerguntas(tarefaId);
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
+  const { data: revisoes } = useRevisoes({ alvoTipo: 'resposta', pageSize: 500 });
   const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
 
@@ -298,6 +300,7 @@ export function TaskDetailPage() {
     const isSaving = savingQuestion === pergunta.id || upsertResposta.isPending;
     const cardClassName = alterado ? 'pergunta-card pergunta-card--dirty' : 'pergunta-card';
     const stats = buildTextStats(draft);
+    const revisoesDaResposta = revisoes?.filter((rev) => rev.alvo_id === respostaAtual?.id) ?? [];
 
     const handleCopy = async () => {
       if (!draft) {
@@ -413,6 +416,19 @@ export function TaskDetailPage() {
             <p className={`pergunta-card__feedback pergunta-card__feedback--${feedbackEntry.type}`}>
               {feedbackEntry.message}
             </p>
+          )}
+
+          {revisoesDaResposta.length > 0 && (
+            <div className="pergunta-card__revisoes">
+              <strong>Revisões do articulador:</strong>
+              {revisoesDaResposta.map((rev) => (
+                <div key={rev.id} className="pergunta-card__revisao">
+                  <span className={`pergunta-card__revisao-status status-${rev.status}`}>{rev.status}</span>
+                  <div dangerouslySetInnerHTML={{ __html: rev.parecer_html || '<p>Sem parecer.</p>' }} />
+                  <small>Revisão #{rev.id}</small>
+                </div>
+              ))}
+            </div>
           )}
 
           <details className="pergunta-card__preview">
