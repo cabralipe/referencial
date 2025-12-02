@@ -12,7 +12,11 @@ from .models import Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usu
 def usuario_e_membro_do_gt(usuario: Usuario, gt_id: int) -> bool:
     if not usuario.is_authenticated:
         return False
-    if usuario.role in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}:
+    if usuario.role in {
+        Usuario.Role.ARTICULADOR,
+        Usuario.Role.ADMIN_CLIENTE,
+        Usuario.Role.SUPER_ADMIN,
+    }:
         return True
     from curriculum.models import GT  # importação tardia
 
