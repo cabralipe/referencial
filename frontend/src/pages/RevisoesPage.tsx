@@ -299,37 +299,6 @@ export function RevisoesPage() {
         )}
       </section>
 
-      <section className="revisoes__nova">
-        <h2>Solicitar nova revisão</h2>
-        <form onSubmit={handleSubmitNovaRevisao}>
-          <label>
-            <span>Alvo tipo</span>
-            <select name="alvoTipo" required defaultValue="resposta">
-              {ALVO_TIPOS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>URL ou ID do alvo</span>
-            <input name="alvoId" type="text" placeholder="Cole a URL ou o ID" required />
-          </label>
-          <label>
-            <span>Revisor (opcional)</span>
-            <input name="revisor" type="number" min={1} placeholder="ID do revisor" />
-          </label>
-          <label className="full">
-            <span>Parecer inicial (HTML)</span>
-            <textarea name="parecer" rows={4} placeholder="Contexto da revisão" />
-          </label>
-          <button type="submit" className="revisoes__button" disabled={createRevisao.isPending}>
-            {createRevisao.isPending ? 'Enviando...' : 'Solicitar revisão'}
-          </button>
-        </form>
-      </section>
-
       {revisoesOrdenadas.length > 0 ? (
         <div className="revisoes__lista">
           {revisoesOrdenadas.map((revisao) => (
@@ -393,12 +362,7 @@ export function RevisoesPage() {
             </article>
           ))}
         </div>
-      ) : (
-        <div className="revisoes__empty">
-          <h3>Nenhuma revisão encontrada</h3>
-          <p>Ajuste os filtros ou solicite uma nova revisão para começar.</p>
-        </div>
-      )}
+      ) : null}
 
       {respostaAtiva && (
         <div
