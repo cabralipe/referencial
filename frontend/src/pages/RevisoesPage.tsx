@@ -68,6 +68,7 @@ export function RevisoesPage() {
   const [draftParecerResposta, setDraftParecerResposta] = useState<Record<number, string>>({});
   const [feedbackResposta, setFeedbackResposta] = useState<Record<number, string>>({});
   const [draftConteudoResposta, setDraftConteudoResposta] = useState<Record<number, string>>({});
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
   const client = useApiClient();
 
   const revisoesOrdenadas = useMemo(() => {
@@ -89,6 +90,10 @@ export function RevisoesPage() {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 50);
   }, [buscaConteudo, gtFiltro, respostas]);
+
+  const toggleCard = (id: number) => {
+    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleSubmitNovaRevisao = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -321,103 +326,112 @@ export function RevisoesPage() {
         ) : (
           <div className="revisoes__respostas-grid">
             {respostasFiltradas.map((resp) => (
-              <article key={resp.id} className="revisoes__resposta-card">
+              <article key={resp.id} className={`revisoes__resposta-card ${expandedCards[resp.id] ? 'is-open' : ''}`}>
                 <header>
                   <div>
-                    <h3>GT: {resp.gt_nome ?? `#${resp.gt}`}</h3>
-                    <p>
+                    <h3>{resp.gt_nome ?? `GT #${resp.gt}`}</h3>
+                    <p className="revisoes__meta-line">
                       Pergunta {resp.pergunta_ordem ?? resp.pergunta} · Tarefa {resp.tarefa_id ?? '—'}
                     </p>
                   </div>
-                  <span className="revisoes__badge">Atualizado {new Date(resp.updated_at).toLocaleString('pt-BR')}</span>
-                </header>
-                <div className="revisoes__preview">
-                  {resp.pergunta_texto && (
-                    <div className="revisoes__preview-meta">
-                      <span>Pergunta</span>
-                    </div>
-                  )}
-                  {resp.pergunta_texto && (
-                    <div
-                      className="revisoes__preview-body"
-                      dangerouslySetInnerHTML={{ __html: resp.pergunta_texto }}
-                    />
-                  )}
-                  <div className="revisoes__preview-meta">
-                    <span>Resposta</span>
+                  <div className="revisoes__card-actions">
+                    <span className="revisoes__badge">Atualizado {new Date(resp.updated_at).toLocaleString('pt-BR')}</span>
+                    <button type="button" className="ghost" onClick={() => toggleCard(resp.id)}>
+                      {expandedCards[resp.id] ? 'Recolher' : 'Expandir'}
+                    </button>
                   </div>
-                  <div
-                    className="revisoes__preview-body"
-                    dangerouslySetInnerHTML={{ __html: resp.conteudo_html || '<p>Sem conteúdo.</p>' }}
-                  />
-                </div>
-                <div className="revisoes__resposta-actions">
-                  <label className="full">
-                    <span>Editar resposta (HTML)</span>
-                    <textarea
-                      rows={4}
-                      value={draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? ''}
-                      onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
-                      placeholder="Ajuste a resposta antes de enviar revisão."
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={async () => {
-                      try {
-                        await client.put(`/respostas/${resp.id}`, {
-                          body: {
-                            gt: resp.gt,
-                            pergunta: resp.pergunta,
-                            conteudo_html: draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? '',
-                          },
-                          ifMatch: resp.etag,
-                        });
-                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Resposta atualizada para o cliente.' }));
-                        refetchRespostas();
-                      } catch (err: any) {
-                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao salvar resposta.' }));
-                      }
-                    }}
-                  >
-                    Salvar resposta
-                  </button>
-                  <label className="full">
-                    <span>Parecer para o cliente (HTML)</span>
-                    <textarea
-                      rows={3}
-                      value={draftParecerResposta[resp.id] ?? ''}
-                      onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
-                      placeholder="Explique o ajuste esperado; o cliente verá este comentário."
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await createRevisao.mutateAsync({
-                          alvoTipo: 'resposta',
-                          alvoId: resp.id,
-                          parecerHtml: (draftParecerResposta[resp.id] ?? '').trim() || undefined,
-                        });
-                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Revisão criada e visível para o cliente.' }));
-                        setDraftParecerResposta((prev) => {
-                          const next = { ...prev };
-                          delete next[resp.id];
-                          return next;
-                        });
-                        refetch();
-                      } catch (err: any) {
-                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao criar revisão.' }));
-                      }
-                    }}
-                    disabled={createRevisao.isPending}
-                  >
-                    {createRevisao.isPending ? 'Enviando...' : 'Criar revisão'}
-                  </button>
-                  {feedbackResposta[resp.id] && <p className="revisoes__feedback">{feedbackResposta[resp.id]}</p>}
-                </div>
+                </header>
+
+                {expandedCards[resp.id] && (
+                  <div className="revisoes__card-body">
+                    <div className="revisoes__preview revisoes__preview--card">
+                      {resp.pergunta_texto && (
+                        <div className="revisoes__preview-block">
+                          <div className="revisoes__preview-meta">Pergunta</div>
+                          <div
+                            className="revisoes__preview-body"
+                            dangerouslySetInnerHTML={{ __html: resp.pergunta_texto }}
+                          />
+                        </div>
+                      )}
+                      <div className="revisoes__preview-block">
+                        <div className="revisoes__preview-meta">Resposta</div>
+                        <div
+                          className="revisoes__preview-body"
+                          dangerouslySetInnerHTML={{ __html: resp.conteudo_html || '<p>Sem conteúdo.</p>' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="revisoes__resposta-actions">
+                      <label className="full">
+                        <span>Editar resposta (HTML)</span>
+                        <textarea
+                          rows={4}
+                          value={draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? ''}
+                          onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
+                          placeholder="Ajuste a resposta antes de enviar revisão."
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={async () => {
+                          try {
+                            await client.put(`/respostas/${resp.id}`, {
+                              body: {
+                                gt: resp.gt,
+                                pergunta: resp.pergunta,
+                                conteudo_html: draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? '',
+                              },
+                              ifMatch: resp.etag,
+                            });
+                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Resposta atualizada para o cliente.' }));
+                            refetchRespostas();
+                          } catch (err: any) {
+                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao salvar resposta.' }));
+                          }
+                        }}
+                      >
+                        Salvar resposta
+                      </button>
+                      <label className="full">
+                        <span>Parecer para o cliente (HTML)</span>
+                        <textarea
+                          rows={3}
+                          value={draftParecerResposta[resp.id] ?? ''}
+                          onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
+                          placeholder="Explique o ajuste esperado; o cliente verá este comentário."
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await createRevisao.mutateAsync({
+                              alvoTipo: 'resposta',
+                              alvoId: resp.id,
+                              parecerHtml: (draftParecerResposta[resp.id] ?? '').trim() || undefined,
+                            });
+                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Revisão criada e visível para o cliente.' }));
+                            setDraftParecerResposta((prev) => {
+                              const next = { ...prev };
+                              delete next[resp.id];
+                              return next;
+                            });
+                            refetch();
+                          } catch (err: any) {
+                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao criar revisão.' }));
+                          }
+                        }}
+                        disabled={createRevisao.isPending}
+                      >
+                        {createRevisao.isPending ? 'Enviando...' : 'Criar revisão'}
+                      </button>
+                      {feedbackResposta[resp.id] && <p className="revisoes__feedback">{feedbackResposta[resp.id]}</p>}
+                    </div>
+                  </div>
+                )}
               </article>
             ))}
           </div>
