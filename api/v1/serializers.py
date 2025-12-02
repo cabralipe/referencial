@@ -441,6 +441,7 @@ class UsuarioLookupSerializer(serializers.ModelSerializer):
 
 class RevisaoSerializer(serializers.ModelSerializer):
     etag = serializers.CharField(read_only=True)
+    alvo_preview = serializers.SerializerMethodField()
 
     class Meta:
         model = Revisao
@@ -448,6 +449,7 @@ class RevisaoSerializer(serializers.ModelSerializer):
             "id",
             "alvo_tipo",
             "alvo_id",
+            "alvo_preview",
             "status",
             "parecer_html",
             "revisor",
@@ -457,6 +459,58 @@ class RevisaoSerializer(serializers.ModelSerializer):
             "etag",
         )
         read_only_fields = ("id", "created_at", "updated_at", "solicitante", "etag")
+
+    def _build_resposta_preview(self, alvo_id: str | int):
+        try:
+            resposta = Resposta.raw_objects.select_related("gt", "pergunta", "pergunta__tarefa").get(pk=alvo_id)
+        except Resposta.DoesNotExist:
+            return None
+        return {
+            "type": "resposta",
+            "id": resposta.pk,
+            "gt": resposta.gt_id,
+            "gt_nome": getattr(resposta.gt, "nome", None),
+            "pergunta": resposta.pergunta_id,
+            "pergunta_ordem": getattr(resposta.pergunta, "ordem", None),
+            "tarefa": getattr(getattr(resposta.pergunta, "tarefa", None), "id", None),
+            "conteudo_html": resposta.conteudo_html,
+        }
+
+    def _build_texto_unico_preview(self, alvo_id: str | int):
+        try:
+            texto = TextoUnico.raw_objects.select_related("gt", "tarefa").get(pk=alvo_id)
+        except TextoUnico.DoesNotExist:
+            return None
+        return {
+            "type": "texto_unico",
+            "id": texto.pk,
+            "gt": texto.gt_id,
+            "gt_nome": getattr(texto.gt, "nome", None),
+            "tarefa": texto.tarefa_id,
+            "conteudo_html": texto.conteudo_html,
+        }
+
+    def _build_quadro_preview(self, alvo_id: str | int):
+        try:
+            quadro = Quadro.raw_objects.select_related("gt").get(pk=alvo_id)
+        except Quadro.DoesNotExist:
+            return None
+        return {
+            "type": "quadro",
+            "id": quadro.pk,
+            "gt": quadro.gt_id,
+            "gt_nome": getattr(quadro.gt, "nome", None),
+            "template": quadro.template,
+        }
+
+    def get_alvo_preview(self, obj):
+        if obj.alvo_tipo == Revisao.AlvoTipo.RESPOSTA:
+            return self._build_resposta_preview(obj.alvo_id)
+        if obj.alvo_tipo == Revisao.AlvoTipo.TEXTO_UNICO:
+            return self._build_texto_unico_preview(obj.alvo_id)
+        if obj.alvo_tipo == Revisao.AlvoTipo.QUADRO:
+            return self._build_quadro_preview(obj.alvo_id)
+        return None
 
 
 class ComentarioSerializer(serializers.ModelSerializer):

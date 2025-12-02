@@ -23,9 +23,12 @@ const ALVO_TIPOS = [
 export function RevisoesPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
   const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
+  const [alvoIdFiltroDisplay, setAlvoIdFiltroDisplay] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
 
   const alvoIdFiltroNumber = alvoIdFiltro ? Number(alvoIdFiltro) : undefined;
+  const isResposta = alvoTipoFiltro === 'resposta';
+  const isTextoUnico = alvoTipoFiltro === 'texto_unico';
 
   const { data: revisoes, isLoading, refetch } = useRevisoes({
     alvoTipo: alvoTipoFiltro || undefined,
@@ -96,6 +99,52 @@ export function RevisoesPage() {
     });
   };
 
+  const renderPreview = (preview: any) => {
+    if (!preview) {
+      return <div className="revisoes__preview revisoes__preview--empty">Conteúdo do alvo não encontrado.</div>;
+    }
+    if (preview.type === 'resposta') {
+      return (
+        <div className="revisoes__preview">
+          <div className="revisoes__preview-meta">
+            <span>Resposta #{preview.id}</span>
+            {preview.tarefa && <span>Tarefa #{preview.tarefa}</span>}
+            {preview.pergunta_ordem && <span>Pergunta {preview.pergunta_ordem}</span>}
+            {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
+          </div>
+          <div
+            className="revisoes__preview-body"
+            dangerouslySetInnerHTML={{ __html: preview.conteudo_html || '<p>Sem conteúdo.</p>' }}
+          />
+        </div>
+      );
+    }
+    if (preview.type === 'texto_unico') {
+      return (
+        <div className="revisoes__preview">
+          <div className="revisoes__preview-meta">
+            <span>Texto único #{preview.id}</span>
+            {preview.tarefa && <span>Tarefa #{preview.tarefa}</span>}
+            {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
+          </div>
+          <div
+            className="revisoes__preview-body"
+            dangerouslySetInnerHTML={{ __html: preview.conteudo_html || '<p>Sem conteúdo.</p>' }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="revisoes__preview">
+        <div className="revisoes__preview-meta">
+          <span>Quadro #{preview.id}</span>
+          {preview.template && <span>Template: {preview.template}</span>}
+          {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading && !revisoes) {
     return <FullPageLoader message="Carregando revisões..." />;
   }
@@ -115,11 +164,11 @@ export function RevisoesPage() {
         items={[
           {
             title: 'Filtre por alvo',
-            description: 'Busque revisões vinculadas a uma tarefa, texto único ou outro identificador.',
+            description: 'Busque revisões vinculadas a uma resposta ou texto único para acompanhar o contexto.',
           },
           {
             title: 'Atualize pareceres',
-            description: 'Comunique o status da análise e registre comentários em HTML para orientar o time.',
+            description: 'Comunique o status da análise e registre comentários em HTML — o cliente visualiza e pode corrigir.',
           },
           {
             title: 'Evite conflitos de ETag',
@@ -130,7 +179,7 @@ export function RevisoesPage() {
 
       <div className="revisoes__filters">
         <label>
-          <span>Alvo tipo</span>
+          <span>Alvo</span>
           <select value={alvoTipoFiltro} onChange={(event) => setAlvoTipoFiltro(event.target.value)}>
             <option value="">Todos</option>
             {ALVO_TIPOS.map((item) => (
@@ -140,9 +189,28 @@ export function RevisoesPage() {
             ))}
           </select>
         </label>
-        <label>
-          <span>Alvo ID</span>
-          <input type="number" value={alvoIdFiltro} onChange={(event) => setAlvoIdFiltro(event.target.value)} />
+        <label className="revisoes__filters-inline">
+          <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o ID'}</span>
+          <div className="revisoes__filters-composite">
+            <input
+              type="number"
+              value={alvoIdFiltro}
+              onChange={(event) => setAlvoIdFiltro(event.target.value)}
+              placeholder={isResposta ? 'ID da resposta' : isTextoUnico ? 'ID do texto único' : 'Ex.: 12'}
+            />
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              aria-label="Aplicar filtro de alvo"
+            >
+              Filtrar
+            </button>
+          </div>
+          <small className="revisoes__hint">
+            Dica: abra a página de tarefas ou texto único, copie o ID na URL e cole aqui para revisar.
+          </small>
         </label>
         <label>
           <span>Status</span>
@@ -200,7 +268,10 @@ export function RevisoesPage() {
                   <h3>
                     Revisão #{revisao.id} — {revisao.alvo_tipo} #{revisao.alvo_id}
                   </h3>
-                  <span>Status atual: {revisao.status}</span>
+                  <div className="revisoes__badge-row">
+                    <span className="revisoes__badge">Status: {revisao.status}</span>
+                    <span className="revisoes__badge revisoes__badge--cliente">Visível para o cliente</span>
+                  </div>
                 </div>
                 <div className="revisoes__metas">
                   <span>Solicitante #{revisao.solicitante ?? '—'}</span>
@@ -209,6 +280,8 @@ export function RevisoesPage() {
                   <span>ETag: {revisao.etag}</span>
                 </div>
               </header>
+
+              {renderPreview(revisao.alvo_preview)}
 
               <details>
                 <summary>Parecer atual</summary>

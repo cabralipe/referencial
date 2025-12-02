@@ -72,6 +72,7 @@ export interface Revisao {
   id: number;
   alvo_tipo: string;
   alvo_id: number;
+  alvo_preview?: RevisaoAlvoPreview | null;
   status: string;
   parecer_html: string;
   revisor: number | null;
@@ -80,6 +81,33 @@ export interface Revisao {
   updated_at: string;
   etag: string;
 }
+
+export type RevisaoAlvoPreview =
+  | {
+      type: 'resposta';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      pergunta?: number | null;
+      pergunta_ordem?: number | null;
+      tarefa?: number | null;
+      conteudo_html?: string;
+    }
+  | {
+      type: 'texto_unico';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      tarefa?: number | null;
+      conteudo_html?: string;
+    }
+  | {
+      type: 'quadro';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      template?: string | null;
+    };
 
 export interface CelulaQuadro {
   id: number;
