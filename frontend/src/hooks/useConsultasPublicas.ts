@@ -56,6 +56,14 @@ export function useCriarConsultaPublica() {
       if (!clienteId) {
         throw new Error('Cliente não identificado para criar consulta.');
       }
+      const mime = payload.pdf?.type?.toLowerCase?.() ?? '';
+      const nomeArquivo = payload.pdf?.name?.toLowerCase?.() ?? '';
+      if (!payload.pdf || (!mime.includes('pdf') && !nomeArquivo.endsWith('.pdf'))) {
+        throw new Error('Envie um arquivo PDF válido.');
+      }
+      if (payload.pdf.size === 0) {
+        throw new Error('O PDF está vazio. Tente reenviar o arquivo.');
+      }
       const form = new FormData();
       form.append('titulo', payload.titulo);
       if (payload.slug) form.append('slug', payload.slug);

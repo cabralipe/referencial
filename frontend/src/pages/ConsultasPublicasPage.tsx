@@ -50,6 +50,14 @@ export function ConsultasPublicasPage() {
     const formElement = event.currentTarget;
     setMensagem(null);
     setErro(null);
+    if (pdfFile && !pdfFile.type.toLowerCase().includes('pdf') && !pdfFile.name.toLowerCase().endsWith('.pdf')) {
+      setErro('Envie um arquivo PDF válido (extensão .pdf).');
+      return;
+    }
+    if (pdfFile && pdfFile.size === 0) {
+      setErro('O PDF parece estar vazio. Tente reenviar o arquivo.');
+      return;
+    }
     const form = new FormData(formElement);
     const titulo = String(form.get('titulo') ?? '').trim();
     const slug = String(form.get('slug') ?? '').trim();
