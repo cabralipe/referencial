@@ -20,6 +20,7 @@ env = environ.Env(
     REFERENCIAL_REDIS_URL=(str, "redis://127.0.0.1:6379/0"),
     REFERENCIAL_DATABASE_SSLMODE=(str, "require"),
     MEDIA_BACKEND=(str, "local"),
+    MEDIA_ROOT_PATH=(str, ""),
     ALLOWED_HOSTS=(str, "localhost,127.0.0.1"),
     TIME_ZONE=(str, "America/Maceio"),
     LANGUAGE_CODE=(str, "pt-br"),
@@ -272,7 +273,10 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(
+    env("MEDIA_ROOT_PATH")
+    or ("/opt/render/project/src/media" if os.getenv("RENDER") else BASE_DIR / "media")
+).resolve()
 
 MEDIA_BACKEND = env("MEDIA_BACKEND")
 

@@ -14,8 +14,6 @@ urlpatterns += [
     re_path(r"^(?!admin/|api/|static/|media/).*", serve_frontend, name="frontend"),
 ]
 
-# Servir mídia local mesmo fora de DEBUG (útil em deploy com volume/pasta persistente)
-if settings.MEDIA_BACKEND == "local":
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-elif settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Servir mídia sempre que o storage for local (ou quando DEBUG estiver ativo).
+# Isso mantém a rota /media/ respondendo mesmo em produção para PDF de consulta pública.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
