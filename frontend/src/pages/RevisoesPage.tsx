@@ -213,68 +213,76 @@ export function RevisoesPage() {
         ]}
       />
 
-      <div className="revisoes__filters">
-        <label>
-          <span>Alvo</span>
-          <select value={alvoTipoFiltro} onChange={(event) => setAlvoTipoFiltro(event.target.value)}>
-            <option value="">Todos</option>
-            {ALVO_TIPOS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="revisoes__filters-inline">
-          <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o registro'}</span>
-          <div className="revisoes__filters-composite">
-            <input
-              type="text"
-              value={alvoIdFiltroInput}
-              onChange={(event) => setAlvoIdFiltroInput(event.target.value)}
-              placeholder={
-                isResposta
-                  ? 'Cole a URL ou ID da resposta'
-                  : isTextoUnico
-                    ? 'Cole a URL ou ID do texto único'
-                    : 'Cole a URL ou ID'
-              }
-            />
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => refetch()}
-              disabled={isLoading}
-              aria-label="Aplicar filtro de alvo"
-            >
-              Filtrar
-            </button>
+      <div className="revisoes__filters revisoes__panel">
+        <div className="revisoes__filters-header">
+          <div>
+            <h2>Filtrar revisões</h2>
+            <p>Refine por alvo, status ou cole uma URL/ID para ir direto ao ponto.</p>
           </div>
-          <small className="revisoes__hint">
-            Dica: cole a URL ou ID copiado da página de tarefa/texto único — extraímos o número automaticamente.
-          </small>
-        </label>
-        <label>
-          <span>Status</span>
-          <select value={statusFiltro} onChange={(event) => setStatusFiltro(event.target.value)}>
-            <option value="">Todos</option>
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" className="ghost" onClick={() => refetch()}>
-          Recarregar
-        </button>
+          <button type="button" className="ghost" onClick={() => refetch()}>
+            Recarregar
+          </button>
+        </div>
+        <div className="revisoes__filters-grid">
+          <label>
+            <span>Alvo</span>
+            <select value={alvoTipoFiltro} onChange={(event) => setAlvoTipoFiltro(event.target.value)}>
+              <option value="">Todos</option>
+              {ALVO_TIPOS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="revisoes__filters-inline">
+            <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o registro'}</span>
+            <div className="revisoes__filters-composite">
+              <input
+                type="text"
+                value={alvoIdFiltroInput}
+                onChange={(event) => setAlvoIdFiltroInput(event.target.value)}
+                placeholder={
+                  isResposta
+                    ? 'Cole a URL ou ID da resposta'
+                    : isTextoUnico
+                      ? 'Cole a URL ou ID do texto único'
+                      : 'Cole a URL ou ID'
+                }
+              />
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => refetch()}
+                disabled={isLoading}
+                aria-label="Aplicar filtro de alvo"
+              >
+                Filtrar
+              </button>
+            </div>
+            <small className="revisoes__hint">
+              Dica: cole a URL ou ID copiado da página de tarefa/texto único — extraímos o número automaticamente.
+            </small>
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={statusFiltro} onChange={(event) => setStatusFiltro(event.target.value)}>
+              <option value="">Todos</option>
+              {STATUS_OPTIONS.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
-      <section className="revisoes__respostas">
+      <section className="revisoes__respostas revisoes__panel">
         <header className="revisoes__respostas-header">
           <div>
             <h2>Respostas para revisão</h2>
-            <p>O articulador vê todas as respostas existentes para comentar e pedir ajustes.</p>
+            <p>Edite a resposta e publique um parecer — o cliente verá as duas coisas na tela dele.</p>
           </div>
           <div className="revisoes__respostas-actions">
             <label>

@@ -16,9 +16,14 @@
 
 .revisoes__filters {
   display: flex;
+  flex-direction: column;
   gap: 1rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
+}
+
+.revisoes__filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
 .revisoes__filters label {
@@ -28,7 +33,6 @@
   font-size: 0.9rem;
   color: #334155;
 }
-
 .revisoes__filters input,
 .revisoes__filters select {
   padding: 0.65rem 0.75rem;
@@ -55,6 +59,13 @@
   font-size: 0.8rem;
 }
 
+.revisoes__filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
 .revisoes__filters .ghost {
   border: none;
   border-radius: 0.75rem;
@@ -62,9 +73,10 @@
   background-color: rgba(148, 163, 184, 0.2);
   color: #1f2937;
   cursor: pointer;
+  align-self: flex-start;
 }
 
-.revisoes__respostas {
+.revisoes__panel {
   background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 1rem;
@@ -72,6 +84,10 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.revisoes__respostas {
+  gap: 1.25rem;
 }
 
 .revisoes__respostas-header {
@@ -86,6 +102,16 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: flex-end;
+}
+
+.revisoes__filters .ghost,
+.revisoes__respostas-actions .ghost {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background-color: rgba(148, 163, 184, 0.2);
+  color: #1f2937;
+  cursor: pointer;
 }
 
 .revisoes__respostas-grid {
