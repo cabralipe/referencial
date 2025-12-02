@@ -5,14 +5,15 @@ import type { PaginatedResponse, Resposta } from '@/api/types';
 
 interface UseRespostasParams {
   gtId?: number | null;
+  includeAll?: boolean;
 }
 
-export function useRespostas({ gtId }: UseRespostasParams) {
+export function useRespostas({ gtId, includeAll = false }: UseRespostasParams) {
   const client = useApiClient();
 
   return useQuery({
-    enabled: Boolean(gtId),
-    queryKey: ['respostas', gtId],
+    enabled: includeAll || Boolean(gtId),
+    queryKey: ['respostas', gtId, includeAll],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<Resposta>>('/respostas', {
         query: {

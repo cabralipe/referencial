@@ -102,6 +102,9 @@ class RespostaSerializer(serializers.ModelSerializer):
     gt_nome = serializers.SerializerMethodField()
     autor_nome = serializers.SerializerMethodField()
     tarefa_status = serializers.SerializerMethodField()
+    pergunta_ordem = serializers.SerializerMethodField()
+    pergunta_texto = serializers.SerializerMethodField()
+    tarefa_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Resposta
@@ -110,6 +113,9 @@ class RespostaSerializer(serializers.ModelSerializer):
             "gt",
             "gt_nome",
             "pergunta",
+            "pergunta_ordem",
+            "pergunta_texto",
+            "tarefa_id",
             "conteudo_html",
             "autor",
             "autor_nome",
@@ -168,6 +174,22 @@ class RespostaSerializer(serializers.ModelSerializer):
             return None
         tarefa = getattr(pergunta, "tarefa", None)
         return getattr(tarefa, "status", None)
+
+    def get_pergunta_ordem(self, obj):
+        pergunta = getattr(obj, "pergunta", None)
+        return getattr(pergunta, "ordem", None)
+
+    def get_pergunta_texto(self, obj):
+        pergunta = getattr(obj, "pergunta", None)
+        if not pergunta:
+            return None
+        texto = getattr(pergunta, "texto", "") or ""
+        return texto if len(texto) <= 500 else texto[:500] + "..."
+
+    def get_tarefa_id(self, obj):
+        pergunta = getattr(obj, "pergunta", None)
+        tarefa = getattr(pergunta, "tarefa", None) if pergunta else None
+        return getattr(tarefa, "id", None)
 
 
 class TextoUnicoSerializer(serializers.ModelSerializer):

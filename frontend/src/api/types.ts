@@ -35,6 +35,9 @@ export interface Resposta {
   gt: number;
   gt_nome?: string | null;
   pergunta: number;
+  pergunta_ordem?: number | null;
+  pergunta_texto?: string | null;
+  tarefa_id?: number | null;
   conteudo_html: string;
   autor: number | null;
   autor_nome?: string | null;

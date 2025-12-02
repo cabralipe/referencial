@@ -3,6 +3,8 @@ import { FormEvent, useMemo, useState } from 'react';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
+import { useRespostas } from '@/hooks/useRespostas';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
 
 import './RevisoesPage.css';
@@ -24,6 +26,8 @@ export function RevisoesPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
   const [alvoIdFiltroInput, setAlvoIdFiltroInput] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
+  const [gtFiltro, setGtFiltro] = useState<number | ''>('');
+  const [buscaConteudo, setBuscaConteudo] = useState('');
 
   const parseNumericId = (value: string): number | undefined => {
     if (!value) return undefined;
@@ -42,6 +46,10 @@ export function RevisoesPage() {
     alvoId: alvoIdFiltroNumber,
     status: statusFiltro || undefined,
   });
+  const { gtOptions } = useAvailableGts({ scope: 'all' });
+  const { data: respostas, isLoading: respostasLoading, refetch: refetchRespostas } = useRespostas({
+    includeAll: true,
+  });
 
   useStreamSubscription({
     alvoTipo: alvoTipoFiltro || undefined,
@@ -56,11 +64,28 @@ export function RevisoesPage() {
 
   const [draftParecer, setDraftParecer] = useState<Record<number, string>>({});
   const [draftStatus, setDraftStatus] = useState<Record<number, string>>({});
+  const [draftParecerResposta, setDraftParecerResposta] = useState<Record<number, string>>({});
+  const [feedbackResposta, setFeedbackResposta] = useState<Record<number, string>>({});
 
   const revisoesOrdenadas = useMemo(() => {
     if (!revisoes) return [];
     return revisoes.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [revisoes]);
+
+  const respostasFiltradas = useMemo(() => {
+    if (!respostas) return [];
+    const term = buscaConteudo.trim().toLowerCase();
+    return respostas
+      .filter((resp) => {
+        if (gtFiltro && resp.gt !== gtFiltro) return false;
+        if (!term) return true;
+        const textoPergunta = (resp.pergunta_texto || '').toLowerCase();
+        const textoConteudo = (resp.conteudo_html || '').replace(/<[^>]+>/g, ' ').toLowerCase();
+        return textoPergunta.includes(term) || textoConteudo.includes(term);
+      })
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 50);
+  }, [buscaConteudo, gtFiltro, respostas]);
 
   const handleSubmitNovaRevisao = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -241,6 +266,121 @@ export function RevisoesPage() {
           Recarregar
         </button>
       </div>
+
+      <section className="revisoes__respostas">
+        <header className="revisoes__respostas-header">
+          <div>
+            <h2>Respostas para revisão</h2>
+            <p>O articulador vê todas as respostas existentes para comentar e pedir ajustes.</p>
+          </div>
+          <div className="revisoes__respostas-actions">
+            <label>
+              <span>Filtrar por GT</span>
+              <select value={gtFiltro === '' ? '' : String(gtFiltro)} onChange={(e) => setGtFiltro(e.target.value ? Number(e.target.value) : '')}>
+                <option value="">Todos</option>
+                {gtOptions.map((gt) => (
+                  <option key={gt.id} value={gt.id}>
+                    {gt.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="revisoes__filters-inline">
+              <span>Busca em pergunta ou conteúdo</span>
+              <input
+                type="search"
+                value={buscaConteudo}
+                onChange={(e) => setBuscaConteudo(e.target.value)}
+                placeholder="Palavra-chave da pergunta ou da resposta"
+              />
+            </label>
+            <button type="button" className="ghost" onClick={() => { refetchRespostas(); }} disabled={respostasLoading}>
+              {respostasLoading ? 'Atualizando...' : 'Atualizar lista'}
+            </button>
+          </div>
+        </header>
+
+        {respostasLoading && !respostas ? (
+          <FullPageLoader message="Carregando respostas..." />
+        ) : respostasFiltradas.length === 0 ? (
+          <div className="revisoes__empty">
+            <h3>Nenhuma resposta encontrada</h3>
+            <p>Ajuste filtros ou aguarde novas respostas.</p>
+          </div>
+        ) : (
+          <div className="revisoes__respostas-grid">
+            {respostasFiltradas.map((resp) => (
+              <article key={resp.id} className="revisoes__resposta-card">
+                <header>
+                  <div>
+                    <h3>GT: {resp.gt_nome ?? `#${resp.gt}`}</h3>
+                    <p>
+                      Pergunta {resp.pergunta_ordem ?? resp.pergunta} · Tarefa {resp.tarefa_id ?? '—'}
+                    </p>
+                  </div>
+                  <span className="revisoes__badge">Atualizado {new Date(resp.updated_at).toLocaleString('pt-BR')}</span>
+                </header>
+                <div className="revisoes__preview">
+                  {resp.pergunta_texto && (
+                    <div className="revisoes__preview-meta">
+                      <span>Pergunta</span>
+                    </div>
+                  )}
+                  {resp.pergunta_texto && (
+                    <div
+                      className="revisoes__preview-body"
+                      dangerouslySetInnerHTML={{ __html: resp.pergunta_texto }}
+                    />
+                  )}
+                  <div className="revisoes__preview-meta">
+                    <span>Resposta</span>
+                  </div>
+                  <div
+                    className="revisoes__preview-body"
+                    dangerouslySetInnerHTML={{ __html: resp.conteudo_html || '<p>Sem conteúdo.</p>' }}
+                  />
+                </div>
+                <div className="revisoes__resposta-actions">
+                  <label className="full">
+                    <span>Parecer para o cliente (HTML)</span>
+                    <textarea
+                      rows={3}
+                      value={draftParecerResposta[resp.id] ?? ''}
+                      onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
+                      placeholder="Explique o ajuste esperado; o cliente verá este comentário."
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await createRevisao.mutateAsync({
+                          alvoTipo: 'resposta',
+                          alvoId: resp.id,
+                          parecerHtml: (draftParecerResposta[resp.id] ?? '').trim() || undefined,
+                        });
+                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Revisão criada e visível para o cliente.' }));
+                        setDraftParecerResposta((prev) => {
+                          const next = { ...prev };
+                          delete next[resp.id];
+                          return next;
+                        });
+                        refetch();
+                      } catch (err: any) {
+                        setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao criar revisão.' }));
+                      }
+                    }}
+                    disabled={createRevisao.isPending}
+                  >
+                    {createRevisao.isPending ? 'Enviando...' : 'Criar revisão'}
+                  </button>
+                  {feedbackResposta[resp.id] && <p className="revisoes__feedback">{feedbackResposta[resp.id]}</p>}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="revisoes__nova">
         <h2>Solicitar nova revisão</h2>
