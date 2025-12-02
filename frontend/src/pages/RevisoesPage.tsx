@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
@@ -68,7 +68,7 @@ export function RevisoesPage() {
   const [draftParecerResposta, setDraftParecerResposta] = useState<Record<number, string>>({});
   const [feedbackResposta, setFeedbackResposta] = useState<Record<number, string>>({});
   const [draftConteudoResposta, setDraftConteudoResposta] = useState<Record<number, string>>({});
-  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+  const [modalRespostaId, setModalRespostaId] = useState<number | null>(null);
   const client = useApiClient();
 
   const revisoesOrdenadas = useMemo(() => {
@@ -91,9 +91,28 @@ export function RevisoesPage() {
       .slice(0, 50);
   }, [buscaConteudo, gtFiltro, respostas]);
 
-  const toggleCard = (id: number) => {
-    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  const respostaAtiva = useMemo(
+    () => respostasFiltradas.find((resp) => resp.id === modalRespostaId) ?? null,
+    [modalRespostaId, respostasFiltradas],
+  );
+
+  useEffect(() => {
+    if (modalRespostaId && !respostaAtiva) {
+      setModalRespostaId(null);
+    }
+  }, [modalRespostaId, respostaAtiva]);
+
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setModalRespostaId(null);
+      }
+    };
+    if (modalRespostaId) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [modalRespostaId]);
 
   const handleSubmitNovaRevisao = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -224,7 +243,7 @@ export function RevisoesPage() {
             <h2>Filtrar revisões</h2>
             <p>Refine por alvo, status ou cole uma URL/ID para ir direto ao ponto.</p>
           </div>
-          <button type="button" className="ghost" onClick={() => refetch()}>
+          <button type="button" className="revisoes__button revisoes__button--ghost" onClick={() => refetch()}>
             Recarregar
           </button>
         </div>
@@ -257,7 +276,7 @@ export function RevisoesPage() {
               />
               <button
                 type="button"
-                className="ghost"
+                className="revisoes__button revisoes__button--ghost"
                 onClick={() => refetch()}
                 disabled={isLoading}
                 aria-label="Aplicar filtro de alvo"
@@ -310,7 +329,14 @@ export function RevisoesPage() {
                 placeholder="Palavra-chave da pergunta ou da resposta"
               />
             </label>
-            <button type="button" className="ghost" onClick={() => { refetchRespostas(); }} disabled={respostasLoading}>
+            <button
+              type="button"
+              className="revisoes__button revisoes__button--ghost"
+              onClick={() => {
+                refetchRespostas();
+              }}
+              disabled={respostasLoading}
+            >
               {respostasLoading ? 'Atualizando...' : 'Atualizar lista'}
             </button>
           </div>
@@ -326,7 +352,7 @@ export function RevisoesPage() {
         ) : (
           <div className="revisoes__respostas-grid">
             {respostasFiltradas.map((resp) => (
-              <article key={resp.id} className={`revisoes__resposta-card ${expandedCards[resp.id] ? 'is-open' : ''}`}>
+              <article key={resp.id} className={`revisoes__resposta-card ${resp.id === modalRespostaId ? 'is-open' : ''}`}>
                 <header>
                   <div>
                     <h3>{resp.gt_nome ?? `GT #${resp.gt}`}</h3>
@@ -336,102 +362,22 @@ export function RevisoesPage() {
                   </div>
                   <div className="revisoes__card-actions">
                     <span className="revisoes__badge">Atualizado {new Date(resp.updated_at).toLocaleString('pt-BR')}</span>
-                    <button type="button" className="ghost" onClick={() => toggleCard(resp.id)}>
-                      {expandedCards[resp.id] ? 'Recolher' : 'Expandir'}
+                    <button
+                      type="button"
+                      className="revisoes__button revisoes__button--ghost"
+                      onClick={() => setModalRespostaId(resp.id)}
+                    >
+                      Expandir
                     </button>
                   </div>
                 </header>
-
-                {expandedCards[resp.id] && (
-                  <div className="revisoes__card-body">
-                    <div className="revisoes__preview revisoes__preview--card">
-                      {resp.pergunta_texto && (
-                        <div className="revisoes__preview-block">
-                          <div className="revisoes__preview-meta">Pergunta</div>
-                          <div
-                            className="revisoes__preview-body"
-                            dangerouslySetInnerHTML={{ __html: resp.pergunta_texto }}
-                          />
-                        </div>
-                      )}
-                      <div className="revisoes__preview-block">
-                        <div className="revisoes__preview-meta">Resposta</div>
-                        <div
-                          className="revisoes__preview-body"
-                          dangerouslySetInnerHTML={{ __html: resp.conteudo_html || '<p>Sem conteúdo.</p>' }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="revisoes__resposta-actions">
-                      <label className="full">
-                        <span>Editar resposta (HTML)</span>
-                        <textarea
-                          rows={4}
-                          value={draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? ''}
-                          onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
-                          placeholder="Ajuste a resposta antes de enviar revisão."
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={async () => {
-                          try {
-                            await client.put(`/respostas/${resp.id}`, {
-                              body: {
-                                gt: resp.gt,
-                                pergunta: resp.pergunta,
-                                conteudo_html: draftConteudoResposta[resp.id] ?? resp.conteudo_html ?? '',
-                              },
-                              ifMatch: resp.etag,
-                            });
-                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Resposta atualizada para o cliente.' }));
-                            refetchRespostas();
-                          } catch (err: any) {
-                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao salvar resposta.' }));
-                          }
-                        }}
-                      >
-                        Salvar resposta
-                      </button>
-                      <label className="full">
-                        <span>Parecer para o cliente (HTML)</span>
-                        <textarea
-                          rows={3}
-                          value={draftParecerResposta[resp.id] ?? ''}
-                          onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [resp.id]: e.target.value }))}
-                          placeholder="Explique o ajuste esperado; o cliente verá este comentário."
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await createRevisao.mutateAsync({
-                              alvoTipo: 'resposta',
-                              alvoId: resp.id,
-                              parecerHtml: (draftParecerResposta[resp.id] ?? '').trim() || undefined,
-                            });
-                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: 'Revisão criada e visível para o cliente.' }));
-                            setDraftParecerResposta((prev) => {
-                              const next = { ...prev };
-                              delete next[resp.id];
-                              return next;
-                            });
-                            refetch();
-                          } catch (err: any) {
-                            setFeedbackResposta((prev) => ({ ...prev, [resp.id]: err?.message ?? 'Falha ao criar revisão.' }));
-                          }
-                        }}
-                        disabled={createRevisao.isPending}
-                      >
-                        {createRevisao.isPending ? 'Enviando...' : 'Criar revisão'}
-                      </button>
-                      {feedbackResposta[resp.id] && <p className="revisoes__feedback">{feedbackResposta[resp.id]}</p>}
-                    </div>
-                  </div>
-                )}
+                <div className="revisoes__resposta-snippet">
+                  <span>Prévia</span>
+                  <p title="Clique em expandir para visualizar todo o conteúdo.">
+                    {(resp.conteudo_html ?? '').replace(/<[^>]+>/g, ' ').trim().slice(0, 160) || 'Sem conteúdo.'}
+                    {(resp.conteudo_html ?? '').replace(/<[^>]+>/g, ' ').trim().length > 160 ? '…' : ''}
+                  </p>
+                </div>
               </article>
             ))}
           </div>
@@ -454,7 +400,7 @@ export function RevisoesPage() {
           <label>
             <span>URL ou ID do alvo</span>
             <input name="alvoId" type="text" placeholder="Cole a URL ou o ID" required />
-            </label>
+          </label>
           <label>
             <span>Revisor (opcional)</span>
             <input name="revisor" type="number" min={1} placeholder="ID do revisor" />
@@ -463,7 +409,7 @@ export function RevisoesPage() {
             <span>Parecer inicial (HTML)</span>
             <textarea name="parecer" rows={4} placeholder="Contexto da revisão" />
           </label>
-          <button type="submit" disabled={createRevisao.isPending}>
+          <button type="submit" className="revisoes__button" disabled={createRevisao.isPending}>
             {createRevisao.isPending ? 'Enviando...' : 'Solicitar revisão'}
           </button>
         </form>
@@ -520,7 +466,12 @@ export function RevisoesPage() {
                     onChange={(event) => setDraftParecer((prev) => ({ ...prev, [revisao.id]: event.target.value }))}
                   />
                 </label>
-                <button type="button" onClick={() => handleAtualizar(revisao.id, revisao.etag)} disabled={updateRevisao.isPending}>
+                <button
+                  type="button"
+                  className="revisoes__button"
+                  onClick={() => handleAtualizar(revisao.id, revisao.etag)}
+                  disabled={updateRevisao.isPending}
+                >
                   {updateRevisao.isPending ? 'Salvando...' : 'Salvar alterações'}
                 </button>
               </div>
@@ -531,6 +482,134 @@ export function RevisoesPage() {
         <div className="revisoes__empty">
           <h3>Nenhuma revisão encontrada</h3>
           <p>Ajuste os filtros ou solicite uma nova revisão para começar.</p>
+        </div>
+      )}
+
+      {respostaAtiva && (
+        <div
+          className="revisoes__modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="revisoes-modal-title"
+          onClick={() => setModalRespostaId(null)}
+        >
+          <div className="revisoes__modal" onClick={(event) => event.stopPropagation()}>
+            <header className="revisoes__modal-header">
+              <div>
+                <p className="revisoes__modal-eyebrow">GT {respostaAtiva.gt_nome ?? `#${respostaAtiva.gt}`}</p>
+                <h3 id="revisoes-modal-title">
+                  Pergunta {respostaAtiva.pergunta_ordem ?? respostaAtiva.pergunta} · Tarefa{' '}
+                  {respostaAtiva.tarefa_id ?? '—'}
+                </h3>
+                <div className="revisoes__badge-row">
+                  <span className="revisoes__badge">Atualizado {new Date(respostaAtiva.updated_at).toLocaleString('pt-BR')}</span>
+                  <span className="revisoes__badge revisoes__badge--cliente">ID #{respostaAtiva.id}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="revisoes__button revisoes__button--ghost"
+                onClick={() => setModalRespostaId(null)}
+                aria-label="Fechar modal de resposta"
+              >
+                Fechar
+              </button>
+            </header>
+
+            <div className="revisoes__modal-body">
+              <div className="revisoes__modal-preview">
+                {respostaAtiva.pergunta_texto && (
+                  <div className="revisoes__preview-block">
+                    <div className="revisoes__preview-meta">Pergunta</div>
+                    <div
+                      className="revisoes__preview-body"
+                      dangerouslySetInnerHTML={{ __html: respostaAtiva.pergunta_texto }}
+                    />
+                  </div>
+                )}
+                <div className="revisoes__preview-block">
+                  <div className="revisoes__preview-meta">Resposta</div>
+                  <div
+                    className="revisoes__preview-body"
+                    dangerouslySetInnerHTML={{ __html: respostaAtiva.conteudo_html || '<p>Sem conteúdo.</p>' }}
+                  />
+                </div>
+              </div>
+
+              <div className="revisoes__resposta-actions revisoes__resposta-actions--modal">
+                <label className="full">
+                  <span>Editar resposta (HTML)</span>
+                  <textarea
+                    rows={5}
+                    value={draftConteudoResposta[respostaAtiva.id] ?? respostaAtiva.conteudo_html ?? ''}
+                    onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [respostaAtiva.id]: e.target.value }))}
+                    placeholder="Ajuste a resposta antes de enviar revisão."
+                  />
+                </label>
+                <div className="revisoes__modal-buttons">
+                  <button
+                    type="button"
+                    className="revisoes__button revisoes__button--secondary"
+                    onClick={async () => {
+                      try {
+                        await client.put(`/respostas/${respostaAtiva.id}`, {
+                          body: {
+                            gt: respostaAtiva.gt,
+                            pergunta: respostaAtiva.pergunta,
+                            conteudo_html: draftConteudoResposta[respostaAtiva.id] ?? respostaAtiva.conteudo_html ?? '',
+                          },
+                          ifMatch: respostaAtiva.etag,
+                        });
+                        setFeedbackResposta((prev) => ({ ...prev, [respostaAtiva.id]: 'Resposta atualizada para o cliente.' }));
+                        refetchRespostas();
+                      } catch (err: any) {
+                        setFeedbackResposta((prev) => ({ ...prev, [respostaAtiva.id]: err?.message ?? 'Falha ao salvar resposta.' }));
+                      }
+                    }}
+                  >
+                    Salvar resposta
+                  </button>
+                  <button
+                    type="button"
+                    className="revisoes__button"
+                    onClick={async () => {
+                      try {
+                        await createRevisao.mutateAsync({
+                          alvoTipo: 'resposta',
+                          alvoId: respostaAtiva.id,
+                          parecerHtml: (draftParecerResposta[respostaAtiva.id] ?? '').trim() || undefined,
+                        });
+                        setFeedbackResposta((prev) => ({ ...prev, [respostaAtiva.id]: 'Revisão criada e visível para o cliente.' }));
+                        setDraftParecerResposta((prev) => {
+                          const next = { ...prev };
+                          delete next[respostaAtiva.id];
+                          return next;
+                        });
+                        refetch();
+                      } catch (err: any) {
+                        setFeedbackResposta((prev) => ({ ...prev, [respostaAtiva.id]: err?.message ?? 'Falha ao criar revisão.' }));
+                      }
+                    }}
+                    disabled={createRevisao.isPending}
+                  >
+                    {createRevisao.isPending ? 'Enviando...' : 'Criar revisão'}
+                  </button>
+                </div>
+                <label className="full">
+                  <span>Parecer para o cliente (HTML)</span>
+                  <textarea
+                    rows={4}
+                    value={draftParecerResposta[respostaAtiva.id] ?? ''}
+                    onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [respostaAtiva.id]: e.target.value }))}
+                    placeholder="Explique o ajuste esperado; o cliente verá este comentário."
+                  />
+                </label>
+                {feedbackResposta[respostaAtiva.id] && (
+                  <p className="revisoes__feedback">{feedbackResposta[respostaAtiva.id]}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
