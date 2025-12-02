@@ -14,7 +14,7 @@ const FORMATS = ['pdf', 'docx'];
 
 const EXPORT_TARGETS = [
   { value: 'texto_unico', label: 'Texto único' },
-  { value: 'quadro', label: 'Quadro' },
+  { value: 'quadro', label: 'Perguntas' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -92,7 +92,7 @@ export function ExportacoesPage() {
       const gtLabel = gtsById.get(quadro.gt) ?? `GT #${quadro.gt}`;
       return {
         value: String(quadro.id),
-        label: `Quadro #${quadro.id} — ${quadro.template} — ${gtLabel}`,
+        label: `Perguntas (quadro) #${quadro.id} — ${quadro.template} — ${gtLabel}`,
       };
     });
   }, [gtsById, quadros]);
@@ -163,8 +163,8 @@ export function ExportacoesPage() {
         description="Reúna informações necessárias para configurar a exportação com sucesso."
         items={[
           {
-            title: 'Identifique o alvo',
-            description: 'Escolha o tipo de entidade (Texto único ou Quadro) e selecione o registro pelo nome.',
+            title: 'Escolha o tipo',
+            description: 'Selecione se quer exportar Perguntas ou Texto único e, em seguida, escolha o registro pelo nome.',
           },
           {
             title: 'Escolha o formato',
@@ -207,7 +207,7 @@ export function ExportacoesPage() {
         <h2>Nova exportação</h2>
         <form onSubmit={handleSubmit}>
           <label>
-            <span>Alvo tipo</span>
+            <span>Tipo (Perguntas ou Texto único)</span>
             <select name="alvoTipo" value={novoAlvoTipo} onChange={(e) => setNovoAlvoTipo(e.target.value)} required>
               {EXPORT_TARGETS.map((item) => (
                 <option key={item.value} value={item.value}>
