@@ -22,11 +22,18 @@ const ALVO_TIPOS = [
 
 export function RevisoesPage() {
   const [alvoTipoFiltro, setAlvoTipoFiltro] = useState('');
-  const [alvoIdFiltro, setAlvoIdFiltro] = useState('');
-  const [alvoIdFiltroDisplay, setAlvoIdFiltroDisplay] = useState('');
+  const [alvoIdFiltroInput, setAlvoIdFiltroInput] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
 
-  const alvoIdFiltroNumber = alvoIdFiltro ? Number(alvoIdFiltro) : undefined;
+  const parseNumericId = (value: string): number | undefined => {
+    if (!value) return undefined;
+    const match = value.match(/(\d+)(?!.*\d)/);
+    if (!match) return undefined;
+    const num = Number(match[1]);
+    return Number.isFinite(num) ? num : undefined;
+  };
+
+  const alvoIdFiltroNumber = parseNumericId(alvoIdFiltroInput);
   const isResposta = alvoTipoFiltro === 'resposta';
   const isTextoUnico = alvoTipoFiltro === 'texto_unico';
 
@@ -59,7 +66,8 @@ export function RevisoesPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const alvoTipo = String(form.get('alvoTipo') ?? '').trim();
-    const alvoId = Number(form.get('alvoId'));
+    const alvoIdValue = String(form.get('alvoId') ?? '');
+    const alvoId = parseNumericId(alvoIdValue);
     const parecer = String(form.get('parecer') ?? '');
     const revisor = form.get('revisor') ? Number(form.get('revisor')) : undefined;
     if (!alvoTipo || !alvoId) {
@@ -190,13 +198,19 @@ export function RevisoesPage() {
           </select>
         </label>
         <label className="revisoes__filters-inline">
-          <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o ID'}</span>
+          <span>Selecione {isResposta ? 'a resposta' : isTextoUnico ? 'o texto único' : 'o registro'}</span>
           <div className="revisoes__filters-composite">
             <input
-              type="number"
-              value={alvoIdFiltro}
-              onChange={(event) => setAlvoIdFiltro(event.target.value)}
-              placeholder={isResposta ? 'ID da resposta' : isTextoUnico ? 'ID do texto único' : 'Ex.: 12'}
+              type="text"
+              value={alvoIdFiltroInput}
+              onChange={(event) => setAlvoIdFiltroInput(event.target.value)}
+              placeholder={
+                isResposta
+                  ? 'Cole a URL ou ID da resposta'
+                  : isTextoUnico
+                    ? 'Cole a URL ou ID do texto único'
+                    : 'Cole a URL ou ID'
+              }
             />
             <button
               type="button"
@@ -209,7 +223,7 @@ export function RevisoesPage() {
             </button>
           </div>
           <small className="revisoes__hint">
-            Dica: abra a página de tarefas ou texto único, copie o ID na URL e cole aqui para revisar.
+            Dica: cole a URL ou ID copiado da página de tarefa/texto único — extraímos o número automaticamente.
           </small>
         </label>
         <label>
@@ -242,9 +256,9 @@ export function RevisoesPage() {
             </select>
           </label>
           <label>
-            <span>Alvo ID</span>
-            <input name="alvoId" type="number" min={1} placeholder="Ex.: 42" required />
-          </label>
+            <span>URL ou ID do alvo</span>
+            <input name="alvoId" type="text" placeholder="Cole a URL ou o ID" required />
+            </label>
           <label>
             <span>Revisor (opcional)</span>
             <input name="revisor" type="number" min={1} placeholder="ID do revisor" />
