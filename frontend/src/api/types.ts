@@ -160,7 +160,8 @@ export interface RespostaCampoDinamico {
 export interface ExportJob {
   id: number;
   alvo_tipo: string;
-  alvo_id: number;
+  alvo_id: string;
+  payload_json?: Record<string, unknown> | null;
   formato: string;
   status: string;
   url_resultado: string | null;

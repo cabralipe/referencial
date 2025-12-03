@@ -6,14 +6,15 @@ import type { PaginatedResponse, TextoUnico } from '@/api/types';
 interface UseTextoUnicoParams {
   gtId?: number;
   tarefaId?: number;
+  includeAll?: boolean;
 }
 
-export function useTextoUnicos({ gtId, tarefaId }: UseTextoUnicoParams = {}) {
+export function useTextoUnicos({ gtId, tarefaId, includeAll = false }: UseTextoUnicoParams = {}) {
   const client = useApiClient();
 
   return useQuery({
-    enabled: Boolean(gtId || tarefaId),
-    queryKey: ['texto-unico', { gtId, tarefaId }],
+    enabled: includeAll || Boolean(gtId || tarefaId),
+    queryKey: ['texto-unico', { gtId, tarefaId, includeAll }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<TextoUnico>>('/texto_unico', {
         query: {

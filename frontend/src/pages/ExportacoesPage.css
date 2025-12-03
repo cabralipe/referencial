@@ -62,6 +62,22 @@
   font-size: 12px;
 }
 
+.exportacoes__add {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  height: 100%;
+}
+
+.exportacoes__add:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .exportacoes__nova button {
   grid-column: 1 / -1;
   border: none;
@@ -71,6 +87,71 @@
   background: linear-gradient(135deg, #2563eb, #0ea5e9);
   color: #ffffff;
   cursor: pointer;
+}
+
+.exportacoes__colecao {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  border-radius: 0.9rem;
+  background-color: #f8fafc;
+}
+
+.exportacoes__colecao-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.exportacoes__colecao-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.exportacoes__colecao-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.85rem;
+  background-color: #ffffff;
+}
+
+.exportacoes__colecao-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.exportacoes__colecao-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.exportacoes__colecao-actions button {
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #f8fafc;
+  border-radius: 0.65rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.exportacoes__colecao-actions button:hover {
+  background-color: #e2e8f0;
+}
+
+.exportacoes__colecao-actions button:last-child {
+  background-color: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.4);
 }
 
 .exportacoes__filters {
@@ -94,6 +175,11 @@
   border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.6);
   background-color: #ffffff;
+}
+
+.exportacoes__filters label.wide {
+  flex: 1;
+  min-width: min(420px, 100%);
 }
 
 .exportacoes__filters .ghost {

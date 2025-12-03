@@ -5,7 +5,7 @@ import type { ExportJob, PaginatedResponse } from '@/api/types';
 
 interface UseExportJobsParams {
   alvoTipo?: string;
-  alvoId?: number;
+  alvoId?: number | string;
 }
 
 export function useExportJobs({ alvoId, alvoTipo }: UseExportJobsParams = {}) {
@@ -29,8 +29,9 @@ export function useExportJobs({ alvoId, alvoTipo }: UseExportJobsParams = {}) {
 
 interface CreateExportJobInput {
   alvoTipo: string;
-  alvoId: number;
+  alvoId: number | string;
   formato: string;
+  payloadJson?: Record<string, unknown>;
 }
 
 export function useCreateExportJob() {
@@ -38,12 +39,13 @@ export function useCreateExportJob() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ alvoTipo, alvoId, formato }: CreateExportJobInput) => {
+    mutationFn: async ({ alvoTipo, alvoId, formato, payloadJson }: CreateExportJobInput) => {
       const response = await client.post<ExportJob>('/exports', {
         body: {
           alvo_tipo: alvoTipo,
           alvo_id: alvoId,
           formato,
+          payload_json: payloadJson,
         },
       });
       return response.data;

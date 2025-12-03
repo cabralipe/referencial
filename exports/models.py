@@ -11,6 +11,8 @@ class ExportJob(TenantModel):
     class AlvoTipo(models.TextChoices):
         TEXTO_UNICO = "texto_unico", "Texto Único"
         QUADRO = "quadro", "Quadro"
+        RESPOSTA = "resposta", "Resposta"
+        COLECAO = "colecao", "Coleção"
 
     class Formato(models.TextChoices):
         PDF = "pdf", "PDF"
@@ -24,6 +26,7 @@ class ExportJob(TenantModel):
 
     alvo_tipo = models.CharField(max_length=20, choices=AlvoTipo.choices)
     alvo_id = models.CharField(max_length=36)
+    payload_json = models.JSONField(default=dict, blank=True)
     formato = models.CharField(max_length=10, choices=Formato.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.QUEUED)
     url_resultado = models.URLField(blank=True)

@@ -312,6 +312,7 @@ class ExportJobSerializer(serializers.ModelSerializer):
             "id",
             "alvo_tipo",
             "alvo_id",
+            "payload_json",
             "formato",
             "status",
             "url_resultado",
@@ -328,25 +329,56 @@ class ExportJobSerializer(serializers.ModelSerializer):
 
         alvo_tipo = attrs.get("alvo_tipo")
         alvo_id = attrs.get("alvo_id")
-        if not alvo_tipo or not alvo_id:
+        if not alvo_tipo:
+            return attrs
+        if alvo_tipo != ExportJob.AlvoTipo.COLECAO and not alvo_id:
             return attrs
 
         modelo_por_tipo = {
             ExportJob.AlvoTipo.TEXTO_UNICO: TextoUnico,
             ExportJob.AlvoTipo.QUADRO: Quadro,
+            ExportJob.AlvoTipo.RESPOSTA: Resposta,
         }
-        modelo = modelo_por_tipo.get(alvo_tipo)
-        if not modelo:
-            raise serializers.ValidationError({"alvo_tipo": "Tipo de alvo inválido."})
+        if alvo_tipo == ExportJob.AlvoTipo.COLECAO:
+            secoes = (attrs.get("payload_json") or {}).get("secoes", [])
+            if not secoes:
+                raise serializers.ValidationError({"payload_json": "Informe ao menos uma seção para exportar."})
+            modelo_por_secao = {**modelo_por_tipo}
+            secoes_limpa = []
+            for idx, secao in enumerate(secoes):
+                tipo = (secao or {}).get("tipo")
+                try:
+                    secao_id = int((secao or {}).get("id"))
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError({"payload_json": f"ID inválido na seção {idx + 1}."})
+                modelo = modelo_por_secao.get(tipo)
+                if not modelo:
+                    raise serializers.ValidationError({"payload_json": f"Tipo de seção inválido na posição {idx + 1}."})
+                lookup = {"cliente_id": cliente_id, "pk": secao_id}
+                if any(field.attname == "is_deleted" for field in modelo._meta.fields):
+                    lookup["is_deleted"] = False
+                if not modelo.raw_objects.filter(**lookup).exists():
+                    raise serializers.ValidationError(
+                        {"payload_json": f"Registro {secao_id} não encontrado para o cliente."}
+                    )
+                secoes_limpa.append({"tipo": tipo, "id": secao_id, "titulo": (secao or {}).get("titulo")})
+            payload = attrs.get("payload_json") or {}
+            payload["secoes"] = secoes_limpa
+            attrs["payload_json"] = payload
+            attrs["alvo_id"] = attrs.get("alvo_id") or "colecao"
+        else:
+            modelo = modelo_por_tipo.get(alvo_tipo)
+            if not modelo:
+                raise serializers.ValidationError({"alvo_tipo": "Tipo de alvo inválido."})
 
-        lookup = {"cliente_id": cliente_id, "pk": alvo_id}
-        if any(field.attname == "is_deleted" for field in modelo._meta.fields):
-            lookup["is_deleted"] = False
+            lookup = {"cliente_id": cliente_id, "pk": alvo_id}
+            if any(field.attname == "is_deleted" for field in modelo._meta.fields):
+                lookup["is_deleted"] = False
 
-        if not modelo.raw_objects.filter(**lookup).exists():
-            raise serializers.ValidationError({"alvo_id": "Alvo não encontrado para este cliente."})
+            if not modelo.raw_objects.filter(**lookup).exists():
+                raise serializers.ValidationError({"alvo_id": "Alvo não encontrado para este cliente."})
 
-        attrs["alvo_id"] = str(alvo_id)
+            attrs["alvo_id"] = str(alvo_id)
         return attrs
 
 

@@ -573,12 +573,19 @@ class FormularioDinamicoViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data, status=status_code)
 
 
-class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = ExportJobSerializer
     permission_classes = [HasClientScope]
 
     def get_queryset(self):
-        return ExportJob.objects.all()
+        queryset = ExportJob.objects.all()
+        alvo_tipo = self.request.query_params.get("alvo_tipo")
+        alvo_id = self.request.query_params.get("alvo_id")
+        if alvo_tipo:
+            queryset = queryset.filter(alvo_tipo=alvo_tipo)
+        if alvo_id:
+            queryset = queryset.filter(alvo_id=str(alvo_id))
+        return queryset
 
     def perform_create(self, serializer):
         cliente_id = _get_request_cliente_id(self.request)
