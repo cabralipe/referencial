@@ -114,6 +114,12 @@ def _get_request_cliente_id(request) -> int:
     raise ValidationError("Cliente não associado")
 
 
+def _get_user_gt_ids(user) -> list[int]:
+    if not getattr(user, "is_authenticated", False):
+        return []
+    return list(GT.objects.filter(membros=user).values_list("id", flat=True))
+
+
 class FeatureFlagMixin:
     feature_flag: str | None = None
 
@@ -244,6 +250,16 @@ class TarefaViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = Tarefa.objects.all().order_by("ordem")
+        user = self.request.user
+        if getattr(user, "role", None) == user.Role.MEMBRO_GT:
+            user_gt_ids = _get_user_gt_ids(user)
+            if not user_gt_ids:
+                return queryset.none()
+            queryset = queryset.filter(
+                models.Q(perguntas__gts__id__in=user_gt_ids)
+                | models.Q(perguntas__gts__isnull=True)
+                | models.Q(perguntas__isnull=True)
+            ).distinct()
         etapa = self.request.query_params.get("etapa")
         gt_id = self.request.query_params.get("gt_id")
         if etapa:
@@ -274,6 +290,12 @@ class RespostaViewSet(viewsets.ModelViewSet):
             "pergunta__tarefa",
             "autor",
         ).filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) == user.Role.MEMBRO_GT:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            queryset = queryset.filter(gt_id__in=gt_ids)
         gt_id = self.request.query_params.get("gt_id")
         pergunta_id = self.request.query_params.get("pergunta_id")
         if gt_id:
