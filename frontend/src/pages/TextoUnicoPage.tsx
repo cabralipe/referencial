@@ -435,8 +435,8 @@ export function TextoUnicoPage() {
             description: 'Qualquer membro do GT pode editar simultaneamente, com atualização em tempo real.',
           },
           {
-            title: 'Selecione GT e tarefa',
-            description: 'As gerações de texto único continuam vinculadas a uma tarefa específica.',
+            title: 'Selecione GT e trilha',
+            description: 'As gerações de texto único continuam vinculadas a uma trilha específica.',
           },
           {
             title: 'Monitore versões e ETags',
@@ -465,7 +465,7 @@ export function TextoUnicoPage() {
         </label>
 
         <label>
-          <span>Tarefa</span>
+          <span>Trilha</span>
           <select
             value={selectedTarefa}
             onChange={(event) =>
@@ -475,7 +475,7 @@ export function TextoUnicoPage() {
             <option value="">Selecione</option>
             {tarefasOptions.map((tarefa) => (
               <option key={tarefa.id} value={tarefa.id}>
-                {tarefa.ordem} — {tarefa.tipo === 'OFICINA' ? 'Oficina' : 'Questionário'}
+                Trilha {tarefa.ordem} — {tarefa.tipo === 'OFICINA' ? 'Oficina' : 'Questionário'}
               </option>
             ))}
           </select>
@@ -614,7 +614,7 @@ export function TextoUnicoPage() {
                       </header>
                       {texto.pergunta ? (
                         <div className="texto-colaborativo__tag">
-                          Origem: Pergunta #{texto.pergunta}
+                          Origem: Missão #{texto.pergunta}
                         </div>
                       ) : null}
                       <textarea
@@ -689,7 +689,7 @@ export function TextoUnicoPage() {
             <article key={texto.id} className="texto-unico__card">
               <header>
                 <h2>
-                  GT {texto.gt} · Tarefa {texto.tarefa}
+                  GT {texto.gt} · Trilha {texto.tarefa}
                 </h2>
                 <span>Versão {texto.version}</span>
               </header>
@@ -708,7 +708,7 @@ export function TextoUnicoPage() {
       ) : (
         <div className="texto-unico__empty">
           <h3>Nenhum texto único encontrado</h3>
-          <p>Selecione um GT e tarefa ou gere um novo conteúdo para iniciar.</p>
+          <p>Selecione um GT e trilha ou gere um novo conteúdo para iniciar.</p>
         </div>
       )}
     </div>

@@ -182,7 +182,7 @@ export function AppLayout() {
             </NavLink>
             <NavLink to="/tarefas">
               <Icon name="tasks" className="menu__icon" ariaHidden />
-              <span className="menu__label">Tarefas</span>
+              <span className="menu__label">Trilhas pedagógicas</span>
             </NavLink>
             <NavLink to="/texto-unico">
               <Icon name="document" className="menu__icon" ariaHidden />
@@ -204,10 +204,12 @@ export function AppLayout() {
               <Icon name="comment" className="menu__icon" ariaHidden />
               <span className="menu__label">Comentários</span>
             </NavLink>
-            <NavLink to="/notificacoes">
-              <Icon name="bell" className="menu__icon" ariaHidden />
-              <span className="menu__label">Notificações</span>
-            </NavLink>
+            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
+              <NavLink to="/relatorios">
+                <Icon name="document" className="menu__icon" ariaHidden />
+                <span className="menu__label">Relatórios</span>
+              </NavLink>
+            )}
             {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
               <NavLink to="/consultas-publicas">
                 <Icon name="document" className="menu__icon" ariaHidden />
@@ -230,6 +232,12 @@ export function AppLayout() {
               <Icon name="audit" className="menu__icon" ariaHidden />
               <span className="menu__label">Auditoria</span>
             </NavLink>
+            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
+              <NavLink to="/gamificacao">
+                <Icon name="tasks" className="menu__icon" ariaHidden />
+                <span className="menu__label">Gamificação</span>
+              </NavLink>
+            )}
           </nav>
         </div>
       </aside>

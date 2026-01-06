@@ -103,7 +103,7 @@ export function ExportacoesPage() {
     return textoUnicosPorGt.map((item) => {
       const gtLabel = gtsById.get(item.gt) ?? `GT #${item.gt}`;
       const tarefaLabel = tarefasById.get(item.tarefa);
-      const tarefaText = tarefaLabel ? `${tarefaLabel} (#${item.tarefa})` : `Tarefa #${item.tarefa}`;
+      const tarefaText = tarefaLabel ? `${tarefaLabel} (Trilha #${item.tarefa})` : `Trilha #${item.tarefa}`;
       return {
         value: String(item.id),
         label: `Texto único #${item.id} — ${gtLabel} — ${tarefaText}`,
@@ -117,7 +117,7 @@ export function ExportacoesPage() {
     return todosTextoUnicos.map((item) => {
       const gtLabel = gtsById.get(item.gt) ?? `GT #${item.gt}`;
       const tarefaLabel = tarefasById.get(item.tarefa);
-      const tarefaText = tarefaLabel ? `${tarefaLabel} (#${item.tarefa})` : `Tarefa #${item.tarefa}`;
+      const tarefaText = tarefaLabel ? `${tarefaLabel} (Trilha #${item.tarefa})` : `Trilha #${item.tarefa}`;
       return {
         value: String(item.id),
         label: `Texto único #${item.id} — ${gtLabel} — ${tarefaText}`,
@@ -130,7 +130,7 @@ export function ExportacoesPage() {
     if (!respostas) return [];
     return respostas.map((resp) => {
       const gtLabel = gtsById.get(resp.gt) ?? `GT #${resp.gt}`;
-      const pergunta = resp.pergunta_texto || `Pergunta #${resp.pergunta}`;
+      const pergunta = resp.pergunta_texto || `Missão #${resp.pergunta}`;
       const prefixo = resp.pergunta_ordem ? `${resp.pergunta_ordem}. ` : '';
       return {
         value: String(resp.id),

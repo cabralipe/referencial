@@ -6,6 +6,7 @@ interface TaskStatusBadgeProps {
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   rascunho: { label: 'Rascunho', className: 'status-badge--draft' },
+  em_desenvolvimento: { label: 'Em desenvolvimento', className: 'status-badge--progress' },
   em_revisao: { label: 'Em revisão', className: 'status-badge--review' },
   concluida: { label: 'Concluída', className: 'status-badge--done' },
 };

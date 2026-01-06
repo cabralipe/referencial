@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from django.db.models import Count, OuterRef, Subquery
@@ -23,17 +25,17 @@ except ImportError:  # pragma: no cover
     STORAGE_EXCEPTIONS = (OSError,)
 
 from core.activity import online_sessions_for_cliente
-from core.models import AuditLog, Cliente, UserSessionLog
+from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, UserSessionLog
 from core.permissions import (
     HasClientScope,
     IsAdminClienteOrReadOnly,
     IsArticuladorForGT,
     IsMemberOfGT,
 )
-from core.utils import coletar_contexto_do_cliente, verificar_flag
+from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Anexo, GT, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -54,7 +56,9 @@ from .serializers import (
     AuditLogSerializer,
     CampoDinamicoSerializer,
     ClienteMeSerializer,
+    AiAssistSerializer,
     OnlineUserSerializer,
+    PerguntaWriteSerializer,
     PerguntaSerializer,
     GTSerializer,
     ExportJobSerializer,
@@ -135,6 +139,137 @@ def _assert_roles(user, allowed_roles):
     raise PermissionDenied("Ação não permitida para o seu perfil")
 
 
+SCORE_CONFIG_KEY = "score.config"
+DEFAULT_SCORE_CONFIG = {
+    "monthly_limit": 300,
+    "default_points": 10,
+    "tarefa_points": {},
+}
+
+
+def _normalize_score_config(payload):
+    config = {
+        "monthly_limit": DEFAULT_SCORE_CONFIG["monthly_limit"],
+        "default_points": DEFAULT_SCORE_CONFIG["default_points"],
+        "tarefa_points": {},
+    }
+    if not payload:
+        return config
+    raw = payload
+    if isinstance(payload, str):
+        try:
+            raw = json.loads(payload)
+        except json.JSONDecodeError:
+            return config
+    if isinstance(raw, dict):
+        monthly_limit = raw.get("monthly_limit")
+        default_points = raw.get("default_points")
+        tarefa_points = raw.get("tarefa_points") or {}
+        if monthly_limit is not None:
+            try:
+                config["monthly_limit"] = max(int(monthly_limit), 0)
+            except (TypeError, ValueError):
+                pass
+        if default_points is not None:
+            try:
+                config["default_points"] = max(int(default_points), 0)
+            except (TypeError, ValueError):
+                pass
+        if isinstance(tarefa_points, dict):
+            sanitized = {}
+            for key, value in tarefa_points.items():
+                try:
+                    pontos = int(value)
+                except (TypeError, ValueError):
+                    continue
+                sanitized[str(key)] = max(pontos, 0)
+            config["tarefa_points"] = sanitized
+    return config
+
+
+def _get_score_config(cliente_id: int):
+    cliente = Cliente.objects.filter(pk=cliente_id).first()
+    if not cliente:
+        return _normalize_score_config(None)
+    raw = obter_config(cliente, SCORE_CONFIG_KEY)
+    return _normalize_score_config(raw)
+
+
+def _save_score_config(cliente_id: int, payload):
+    config = _normalize_score_config(payload)
+    ClienteConfig.raw_objects.update_or_create(
+        cliente_id=cliente_id,
+        chave=SCORE_CONFIG_KEY,
+        defaults={
+            "valor_texto": json.dumps(config, ensure_ascii=True),
+            "is_deleted": False,
+        },
+    )
+    return config
+
+
+def _registrar_score(request, cliente_id: int, tarefa_id: int | None, origem_tipo: str, origem_id: str | int, descricao: str = ""):
+    user = request.user
+    if not user or not user.is_authenticated:
+        return
+    if user.role not in {user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return
+    config = _get_score_config(cliente_id)
+    pontos = config.get("default_points", DEFAULT_SCORE_CONFIG["default_points"])
+    if tarefa_id:
+        pontos = config.get("tarefa_points", {}).get(str(tarefa_id), pontos)
+    try:
+        pontos = int(pontos)
+    except (TypeError, ValueError):
+        pontos = DEFAULT_SCORE_CONFIG["default_points"]
+    if pontos <= 0:
+        return
+    ScoreEntry.objects.create(
+        cliente_id=cliente_id,
+        usuario_id=user.id,
+        origem_tipo=origem_tipo,
+        origem_id=str(origem_id),
+        tarefa_id=tarefa_id,
+        pontos=pontos,
+        descricao=descricao,
+    )
+
+
+def _atualizar_status_tarefa(tarefa: Tarefa, novo_status: str) -> None:
+    if tarefa.status == Tarefa.Status.CONCLUIDA:
+        return
+    if tarefa.status == novo_status:
+        return
+    tarefa.status = novo_status
+    tarefa.save(update_fields=["status", "updated_at"])
+
+
+def _build_gemini_prompt(mode: str, text: str, context: str) -> str:
+    base = "Responda em portugues do Brasil, com clareza e objetividade."
+    if mode == "draft":
+        return (
+            f"{base}\n"
+            "Tarefa: gerar um rascunho para uma missao.\n"
+            f"Contexto: {context}\n"
+            f"Entrada: {text}\n"
+            "Saida: rascunho direto, sem markdown."
+        )
+    if mode == "grammar":
+        return (
+            f"{base}\n"
+            "Tarefa: corrigir gramatica e melhorar fluidez sem mudar o sentido.\n"
+            f"Texto: {text}\n"
+            "Saida: texto revisado, sem markdown."
+        )
+    return (
+        f"{base}\n"
+        "Tarefa: produzir um parecer de revisao curto, indicando ajustes e pontos fortes.\n"
+        f"Contexto: {context}\n"
+        f"Texto: {text}\n"
+        "Saida: parecer objetivo, com sugestoes praticas."
+    )
+
+
 class ClienteViewSet(viewsets.ViewSet):
     permission_classes = [HasClientScope]
 
@@ -148,6 +283,90 @@ class ClienteViewSet(viewsets.ViewSet):
             raise ValidationError("Cliente não associado ao usuário")
         serializer = ClienteMeSerializer.from_cliente(cliente)
         return Response(serializer.data)
+
+
+class ScoreViewSet(viewsets.ViewSet):
+    permission_classes = [HasClientScope]
+
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        config = _get_score_config(cliente_id)
+        now = timezone.now()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        total = (
+            ScoreEntry.objects.filter(
+                cliente_id=cliente_id,
+                usuario_id=request.user.id,
+                created_at__gte=start_of_month,
+            )
+            .aggregate(total=models.Sum("pontos"))
+            .get("total")
+            or 0
+        )
+        monthly_limit = config.get("monthly_limit") or 0
+        progress = (total / monthly_limit) if monthly_limit else 0
+        return Response(
+            {
+                "current_points": total,
+                "monthly_limit": monthly_limit,
+                "progress": progress,
+                "default_points": config.get("default_points"),
+            }
+        )
+
+    @action(
+        detail=False,
+        methods=["get", "patch"],
+        url_path="config",
+        permission_classes=[HasClientScope, IsAdminClienteOrReadOnly],
+    )
+    def config(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        if request.method == "PATCH":
+            _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+            config = _save_score_config(cliente_id, request.data)
+            return Response(config)
+        return Response(_get_score_config(cliente_id))
+
+
+class AiAssistViewSet(viewsets.ViewSet):
+    permission_classes = [HasClientScope]
+
+    def create(self, request):
+        _assert_roles(
+            request.user,
+            {
+                request.user.Role.MEMBRO_GT,
+                request.user.Role.ARTICULADOR,
+                request.user.Role.ADMIN_CLIENTE,
+            },
+        )
+        serializer = AiAssistSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mode = serializer.validated_data["mode"]
+        text = serializer.validated_data["text"]
+        context = serializer.validated_data.get("context") or ""
+
+        if not os.environ.get("GEMINI_API_KEY"):
+            raise ValidationError("GEMINI_API_KEY nao configurada no ambiente.")
+
+        try:
+            from google import genai
+        except ImportError as exc:
+            raise ValidationError("Biblioteca google-genai nao instalada.") from exc
+
+        prompt = _build_gemini_prompt(mode, text, context)
+        client = genai.Client()
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+        except Exception as exc:  # pragma: no cover
+            raise ValidationError("Falha ao gerar resposta com IA.") from exc
+        output = getattr(response, "text", None) or ""
+        return Response({"output": output})
 
 
 class GTViewSet(viewsets.ReadOnlyModelViewSet):
@@ -242,7 +461,7 @@ class ConsultaPublicaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TarefaViewSet(viewsets.ReadOnlyModelViewSet):
+class TarefaViewSet(viewsets.ModelViewSet):
     serializer_class = TarefaSerializer
     permission_classes = [HasClientScope]
     filter_backends = [DjangoFilterBackend]
@@ -274,6 +493,45 @@ class TarefaViewSet(viewsets.ReadOnlyModelViewSet):
         perguntas = tarefa.perguntas.order_by("ordem")
         serializer = PerguntaSerializer(perguntas, many=True)
         return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save(cliente_id=_get_request_cliente_id(self.request))
+
+    def perform_update(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        super().perform_destroy(instance)
+
+
+class PerguntaViewSet(viewsets.ModelViewSet):
+    permission_classes = [HasClientScope]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ("tarefa",)
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return Pergunta.objects.filter(cliente_id=cliente_id).order_by("tarefa_id", "ordem")
+
+    def get_serializer_class(self):
+        if self.action in {"create", "update", "partial_update"}:
+            return PerguntaWriteSerializer
+        return PerguntaSerializer
+
+    def perform_create(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save(cliente_id=_get_request_cliente_id(self.request))
+
+    def perform_update(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
+        super().perform_destroy(instance)
 
 
 class RespostaViewSet(viewsets.ModelViewSet):
@@ -345,6 +603,16 @@ class RespostaViewSet(viewsets.ModelViewSet):
             texto_colab, created_collab = sync_texto_colaborativo_from_resposta(resposta)
 
         broadcast_texto_colaborativo(texto_colab, created=created_collab)
+        if getattr(request.user, "role", None) == request.user.Role.MEMBRO_GT and resposta.pergunta_id:
+            _atualizar_status_tarefa(resposta.pergunta.tarefa, Tarefa.Status.EM_DESENVOLVIMENTO)
+        _registrar_score(
+            request,
+            cliente_id,
+            tarefa_id=resposta.pergunta.tarefa_id if resposta.pergunta_id else None,
+            origem_tipo="revisao_texto",
+            origem_id=resposta.id,
+            descricao="Revisão de texto",
+        )
         return Response(serializer.data, status=status_code, headers=headers)
 
     def update(self, request, *args, **kwargs):
@@ -359,6 +627,16 @@ class RespostaViewSet(viewsets.ModelViewSet):
             texto_colab, created_collab = sync_texto_colaborativo_from_resposta(resposta)
 
         broadcast_texto_colaborativo(texto_colab, created=created_collab)
+        if getattr(request.user, "role", None) == request.user.Role.MEMBRO_GT and resposta.pergunta_id:
+            _atualizar_status_tarefa(resposta.pergunta.tarefa, Tarefa.Status.EM_DESENVOLVIMENTO)
+        _registrar_score(
+            request,
+            instance.cliente_id,
+            tarefa_id=resposta.pergunta.tarefa_id if resposta.pergunta_id else None,
+            origem_tipo="revisao_texto",
+            origem_id=resposta.id,
+            descricao="Revisão de texto",
+        )
         response = Response(serializer.data)
         response["ETag"] = serializer.instance.etag
         return response
@@ -728,6 +1006,27 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             "revisao_id": revisao.id,
             "status": revisao.status,
         })
+        tarefa_id = None
+        if revisao.alvo_tipo == revisao.AlvoTipo.RESPOSTA:
+            resposta = Resposta.objects.select_related("pergunta__tarefa").filter(pk=revisao.alvo_id).first()
+            if resposta and resposta.pergunta_id:
+                tarefa_id = resposta.pergunta.tarefa_id
+        elif revisao.alvo_tipo == revisao.AlvoTipo.TEXTO_UNICO:
+            texto = TextoUnico.objects.filter(pk=revisao.alvo_id).first()
+            if texto:
+                tarefa_id = texto.tarefa_id
+        _registrar_score(
+            self.request,
+            revisao.cliente_id,
+            tarefa_id=tarefa_id,
+            origem_tipo="parecer",
+            origem_id=revisao.id,
+            descricao="Parecer de revisão",
+        )
+        if tarefa_id:
+            tarefa = Tarefa.objects.filter(pk=tarefa_id).first()
+            if tarefa:
+                _atualizar_status_tarefa(tarefa, Tarefa.Status.EM_REVISAO)
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)

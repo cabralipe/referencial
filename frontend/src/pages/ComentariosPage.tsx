@@ -229,7 +229,7 @@ export function ComentariosPage() {
                   name="anchorLocal"
                   value={anchorLocal}
                   onChange={(event) => setAnchorLocal(event.target.value)}
-                  placeholder="Ex.: Introdução · Pergunta 3"
+                  placeholder="Ex.: Introdução · Missão 3"
                 />
               </label>
               <label>

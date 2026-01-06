@@ -44,6 +44,64 @@
   background: rgba(59, 130, 246, 0.08);
 }
 
+.task-detail__create {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.task-detail__create summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.task-detail__create form {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.task-detail__create label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.task-detail__create input,
+.task-detail__create select,
+.task-detail__create textarea {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+  font-size: 0.95rem;
+}
+
+.task-detail__create .full {
+  grid-column: 1 / -1;
+}
+
+.task-detail__create button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-detail__feedback {
+  grid-column: 1 / -1;
+  color: #2563eb;
+  font-weight: 600;
+}
+
 .task-detail__presence {
   padding: 0.75rem 1rem;
   border-radius: 0.85rem;

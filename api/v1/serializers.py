@@ -75,7 +75,7 @@ class GTSerializer(serializers.ModelSerializer):
 
 class PerguntaSerializer(serializers.ModelSerializer):
     gts = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-    
+
     class Meta:
         model = Pergunta
         fields = (
@@ -88,6 +88,36 @@ class PerguntaSerializer(serializers.ModelSerializer):
             "gts",
         )
         read_only_fields = ("tarefa",)
+
+
+class PerguntaWriteSerializer(serializers.ModelSerializer):
+    gts = serializers.PrimaryKeyRelatedField(many=True, queryset=GT.objects.all(), required=False)
+
+    class Meta:
+        model = Pergunta
+        fields = (
+            "id",
+            "tarefa",
+            "ordem",
+            "texto",
+            "permite_upload",
+            "obrigatoria",
+            "gts",
+        )
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if not request:
+            return attrs
+        cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
+        tarefa = attrs.get("tarefa")
+        if tarefa and getattr(tarefa, "cliente_id", None) != cliente_id:
+            raise serializers.ValidationError("Tarefa não pertence ao cliente.")
+        gts = attrs.get("gts") or []
+        for gt in gts:
+            if gt.cliente_id != cliente_id:
+                raise serializers.ValidationError("GT não pertence ao cliente.")
+        return attrs
 
 
 class AnexoSerializer(serializers.ModelSerializer):
@@ -1022,3 +1052,9 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Credenciais inválidas")
         attrs["user"] = user
         return attrs
+
+
+class AiAssistSerializer(serializers.Serializer):
+    mode = serializers.ChoiceField(choices=["draft", "grammar", "review"])
+    text = serializers.CharField()
+    context = serializers.CharField(required=False, allow_blank=True)

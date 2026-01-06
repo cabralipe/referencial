@@ -15,7 +15,7 @@ import type { MebThread } from '@/api/types';
 import './MebAssistant.css';
 
 const QUICK_QUESTIONS = [
-  'Como envio minhas tarefas?',
+  'Como envio minhas missões?',
   'Esqueci minha senha de login',
   'Onde vejo os prazos?',
 ];

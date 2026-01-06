@@ -5,6 +5,7 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useAiAssist } from '@/hooks/useAiAssist';
 import { useApiClient } from '@/api/client';
 
 import './RevisoesPage.css';
@@ -49,7 +50,12 @@ export function RevisoesPage() {
   const [feedbackResposta, setFeedbackResposta] = useState<Record<number, string>>({});
   const [draftConteudoResposta, setDraftConteudoResposta] = useState<Record<number, string>>({});
   const [modalRespostaId, setModalRespostaId] = useState<number | null>(null);
+  const [iaFeedback, setIaFeedback] = useState<string | null>(null);
   const client = useApiClient();
+  const aiAssist = useAiAssist();
+
+  const stripHtml = (value?: string | null) =>
+    (value ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   const revisoesOrdenadas = useMemo(() => {
     if (!revisoes) return [];
@@ -148,8 +154,8 @@ export function RevisoesPage() {
         <div className="revisoes__preview">
           <div className="revisoes__preview-meta">
             <span>Resposta #{preview.id}</span>
-            {preview.tarefa && <span>Tarefa #{preview.tarefa}</span>}
-            {preview.pergunta_ordem && <span>Pergunta {preview.pergunta_ordem}</span>}
+            {preview.tarefa && <span>Trilha #{preview.tarefa}</span>}
+            {preview.pergunta_ordem && <span>Missão {preview.pergunta_ordem}</span>}
             {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
           </div>
           <div
@@ -164,7 +170,7 @@ export function RevisoesPage() {
         <div className="revisoes__preview">
           <div className="revisoes__preview-meta">
             <span>Texto único #{preview.id}</span>
-            {preview.tarefa && <span>Tarefa #{preview.tarefa}</span>}
+            {preview.tarefa && <span>Trilha #{preview.tarefa}</span>}
             {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
           </div>
           <div
@@ -236,12 +242,12 @@ export function RevisoesPage() {
               </select>
             </label>
             <label className="revisoes__filters-inline">
-              <span>Busca em pergunta ou conteúdo</span>
+              <span>Busca em missão ou conteúdo</span>
               <input
                 type="search"
                 value={buscaConteudo}
                 onChange={(e) => setBuscaConteudo(e.target.value)}
-                placeholder="Palavra-chave da pergunta ou da resposta"
+                placeholder="Palavra-chave da missão ou da resposta"
               />
             </label>
             <button
@@ -272,7 +278,7 @@ export function RevisoesPage() {
                   <div>
                     <h3>{resp.gt_nome ?? `GT #${resp.gt}`}</h3>
                     <p className="revisoes__meta-line">
-                      Pergunta {resp.pergunta_ordem ?? resp.pergunta} · Tarefa {resp.tarefa_id ?? '—'}
+                      Missão {resp.pergunta_ordem ?? resp.pergunta} · Trilha {resp.tarefa_id ?? '—'}
                     </p>
                   </div>
                   <div className="revisoes__card-actions">
@@ -377,7 +383,7 @@ export function RevisoesPage() {
               <div>
                 <p className="revisoes__modal-eyebrow">GT {respostaAtiva.gt_nome ?? `#${respostaAtiva.gt}`}</p>
                 <h3 id="revisoes-modal-title">
-                  Pergunta {respostaAtiva.pergunta_ordem ?? respostaAtiva.pergunta} · Tarefa{' '}
+                  Missão {respostaAtiva.pergunta_ordem ?? respostaAtiva.pergunta} · Trilha{' '}
                   {respostaAtiva.tarefa_id ?? '—'}
                 </h3>
                 <div className="revisoes__badge-row">
@@ -399,7 +405,7 @@ export function RevisoesPage() {
               <div className="revisoes__modal-preview">
                 {respostaAtiva.pergunta_texto && (
                   <div className="revisoes__preview-block">
-                    <div className="revisoes__preview-meta">Pergunta</div>
+                    <div className="revisoes__preview-meta">Missão</div>
                     <div
                       className="revisoes__preview-body"
                       dangerouslySetInnerHTML={{ __html: respostaAtiva.pergunta_texto }}
@@ -416,6 +422,34 @@ export function RevisoesPage() {
               </div>
 
               <div className="revisoes__resposta-actions revisoes__resposta-actions--modal">
+                <div className="revisoes__ia-actions">
+                  <button
+                    type="button"
+                    className="revisoes__button revisoes__button--ghost"
+                    onClick={async () => {
+                      if (!respostaAtiva) return;
+                      setIaFeedback(null);
+                      try {
+                        const response = await aiAssist.mutateAsync({
+                          mode: 'review',
+                          text: stripHtml(respostaAtiva.conteudo_html),
+                          context: stripHtml(respostaAtiva.pergunta_texto),
+                        });
+                        setDraftParecerResposta((prev) => ({
+                          ...prev,
+                          [respostaAtiva.id]: response.output,
+                        }));
+                        setIaFeedback('Sugestao gerada. Revise antes de enviar.');
+                      } catch (err: any) {
+                        setIaFeedback('Nao foi possivel gerar o parecer com IA.');
+                      }
+                    }}
+                    disabled={aiAssist.isPending}
+                  >
+                    {aiAssist.isPending ? 'IA em andamento...' : 'IA: sugerir parecer'}
+                  </button>
+                  {iaFeedback && <span className="revisoes__feedback">{iaFeedback}</span>}
+                </div>
                 <label className="full">
                   <span>Editar resposta (HTML)</span>
                   <textarea

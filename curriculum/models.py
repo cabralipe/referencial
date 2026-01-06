@@ -33,6 +33,7 @@ class Tarefa(TenantModel):
 
     class Status(models.TextChoices):
         RASCUNHO = "rascunho", "Rascunho"
+        EM_DESENVOLVIMENTO = "em_desenvolvimento", "Em desenvolvimento"
         EM_REVISAO = "em_revisao", "Em revisão"
         CONCLUIDA = "concluida", "Concluída"
 

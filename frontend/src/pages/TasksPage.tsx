@@ -1,17 +1,21 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 
-import { ApiError } from '@/api/client';
+import { ApiError, useApiClient } from '@/api/client';
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefas } from '@/hooks/useTarefas';
+import { useAuth } from '@/context/AuthContext';
+import type { Tarefa } from '@/api/types';
 
 import './TasksPage.css';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'rascunho', label: 'Rascunho' },
+  { value: 'em_desenvolvimento', label: 'Em desenvolvimento' },
   { value: 'em_revisao', label: 'Em revisão' },
   { value: 'concluida', label: 'Concluída' },
 ];
@@ -28,15 +32,42 @@ const TipoLabel: Record<string, string> = {
 };
 
 export function TasksPage() {
+  const { user } = useAuth();
+  const client = useApiClient();
   const [statusFilter, setStatusFilter] = useState('');
   const [tipoFilter, setTipoFilter] = useState('');
   const [etapaFilter, setEtapaFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [newNome, setNewNome] = useState('');
+  const [newOrdem, setNewOrdem] = useState('');
+  const [newEtapa, setNewEtapa] = useState('');
+  const [newTipo, setNewTipo] = useState('PERGUNTAS');
+  const [feedback, setFeedback] = useState('');
 
   const { data: tarefas, isLoading, isError, error, refetch } = useTarefas({
     status: statusFilter || undefined,
     tipo: tipoFilter || undefined,
     etapa: etapaFilter || undefined,
+  });
+
+  const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
+
+  const createTarefa = useMutation({
+    mutationFn: async (payload: Omit<Tarefa, 'id' | 'status'>) => {
+      const response = await client.post<Tarefa>('/tarefas', { body: payload });
+      return response.data;
+    },
+    onSuccess: () => {
+      setNewNome('');
+      setNewOrdem('');
+      setNewEtapa('');
+      setNewTipo('PERGUNTAS');
+      setFeedback('Trilha criada com sucesso.');
+      refetch();
+    },
+    onError: () => {
+      setFeedback('Nao foi possivel criar a trilha.');
+    },
   });
 
   const etapas = useMemo(() => {
@@ -70,14 +101,14 @@ export function TasksPage() {
   }, [tarefas, searchTerm]);
 
   if (isLoading) {
-    return <FullPageLoader message="Carregando lista de tarefas..." />;
+    return <FullPageLoader message="Carregando lista de trilhas pedagógicas..." />;
   }
 
   if (isError) {
-    const message = error instanceof ApiError ? error.message : 'Erro ao carregar tarefas';
+    const message = error instanceof ApiError ? error.message : 'Erro ao carregar trilhas pedagógicas';
     return (
       <div className="tasks__error">
-        <h2>Não foi possível carregar as tarefas</h2>
+        <h2>Não foi possível carregar as trilhas pedagógicas</h2>
         <p>{message}</p>
         <button type="button" onClick={() => refetch()}>
           Tentar novamente
@@ -90,29 +121,87 @@ export function TasksPage() {
     <div className="tasks">
       <header className="tasks__header">
         <div>
-          <h1>Tarefas</h1>
-          <p>Acesse o detalhamento de cada tarefa e organize as entregas por GT.</p>
+          <h1>Trilhas pedagógicas</h1>
+          <p>Acesse o detalhamento de cada trilha e organize as entregas por GT.</p>
         </div>
       </header>
 
+      {canManage && (
+        <section className="tasks__create">
+          <div>
+            <h2>Criar trilha</h2>
+            <p>Cadastre uma nova trilha diretamente pela plataforma.</p>
+          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setFeedback('');
+              const ordemNumber = Number(newOrdem);
+              if (!newNome.trim() || !Number.isFinite(ordemNumber) || ordemNumber <= 0) {
+                setFeedback('Informe nome e ordem valida para criar a trilha.');
+                return;
+              }
+              createTarefa.mutate({
+                nome: newNome.trim(),
+                ordem: ordemNumber,
+                etapa: newEtapa.trim(),
+                tipo: newTipo,
+              });
+            }}
+          >
+            <label>
+              <span>Nome da trilha</span>
+              <input value={newNome} onChange={(event) => setNewNome(event.target.value)} />
+            </label>
+            <label>
+              <span>Ordem</span>
+              <input
+                type="number"
+                min={1}
+                value={newOrdem}
+                onChange={(event) => setNewOrdem(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Etapa</span>
+              <input value={newEtapa} onChange={(event) => setNewEtapa(event.target.value)} />
+            </label>
+            <label>
+              <span>Tipo</span>
+              <select value={newTipo} onChange={(event) => setNewTipo(event.target.value)}>
+                {TIPO_OPTIONS.filter((option) => option.value).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" disabled={createTarefa.isPending}>
+              {createTarefa.isPending ? 'Criando...' : 'Criar trilha'}
+            </button>
+            {feedback && <span className="tasks__feedback">{feedback}</span>}
+          </form>
+        </section>
+      )}
+
       <PageInstructions
-        title="Como encontrar a tarefa certa"
+        title="Como encontrar a trilha certa"
         description="Combine filtros com a busca livre para chegar rapidamente ao conteúdo desejado."
         items={[
           {
             title: 'Filtre por status',
-            description: 'Isolar tarefas em revisão ou concluídas ajuda a organizar mutirões de acompanhamento.',
+            description: 'Isolar trilhas em revisão ou concluídas ajuda a organizar mutirões de acompanhamento.',
           },
           {
             title: 'Busque por nome ou etapa',
-            description: 'Digite o nome da tarefa, etapa ou número da tarefa no campo de busca para reduzir a lista.',
+            description: 'Digite o nome da trilha, etapa ou número da trilha no campo de busca para reduzir a lista.',
           },
           {
             title: 'Abra o detalhe',
-            description: 'Use o link “Abrir” para navegar até a página de perguntas e editar as respostas do GT.',
+            description: 'Use o link “Abrir” para navegar até a página de missões e editar as respostas do GT.',
           },
         ]}
-        footer="A lista retorna no máximo 200 tarefas por vez. Ajuste os filtros caso não encontre o que procura."
+        footer="A lista retorna no máximo 200 trilhas por vez. Ajuste os filtros caso não encontre o que procura."
       />
 
       <div className="tasks__controls">
@@ -156,7 +245,7 @@ export function TasksPage() {
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Ex.: Ordem, Tarefa ou Etapa"
+            placeholder="Ex.: Ordem, Trilha ou Etapa"
           />
         </label>
       </div>
@@ -164,7 +253,7 @@ export function TasksPage() {
       {filteredTarefas.length === 0 ? (
         <div className="tasks__empty">
           <h3>Nenhum resultado</h3>
-          <p>Ajuste os filtros ou refine a busca para encontrar outras tarefas.</p>
+          <p>Ajuste os filtros ou refine a busca para encontrar outras trilhas.</p>
         </div>
       ) : (
         <div className="tasks__table-wrapper">
@@ -172,7 +261,7 @@ export function TasksPage() {
             <thead>
               <tr>
                 <th>Ordem</th>
-                <th>Tarefa</th>
+                <th>Trilha</th>
                 <th>Tipo</th>
                 <th>Etapa</th>
                 <th>Status</th>

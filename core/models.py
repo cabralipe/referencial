@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
@@ -139,6 +140,34 @@ class AuditLog(TenantModel):
             models.Index(fields=["timestamp"]),
         ]
         ordering = ("-timestamp",)
+
+
+class ScoreEntry(TenantModel):
+    """Registra pontos de gamificação por usuário."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="score_entries",
+    )
+    origem_tipo = models.CharField(max_length=50)
+    origem_id = models.CharField(max_length=64, blank=True)
+    tarefa_id = models.IntegerField(null=True, blank=True)
+    pontos = models.IntegerField(default=0)
+    descricao = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["cliente", "usuario", "created_at"]),
+            models.Index(fields=["cliente", "origem_tipo", "origem_id"]),
+        ]
+        verbose_name = "Score"
+        verbose_name_plural = "Scores"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.usuario_id} +{self.pontos} ({self.origem_tipo})"
 
 
 class UserSessionLog(TimeStampedModel):

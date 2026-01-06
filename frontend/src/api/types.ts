@@ -4,7 +4,7 @@ export interface Tarefa {
   ordem: number;
   etapa: string;
   tipo: 'PERGUNTAS' | 'OFICINA' | string;
-  status: 'rascunho' | 'em_revisao' | 'concluida' | string;
+  status: 'rascunho' | 'em_desenvolvimento' | 'em_revisao' | 'concluida' | string;
 }
 
 export interface PaginatedResponse<T> {

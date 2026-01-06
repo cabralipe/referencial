@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { ApiError } from '@/api/client';
+import { ApiError, useApiClient } from '@/api/client';
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
@@ -9,6 +10,7 @@ import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
+import { useAiAssist } from '@/hooks/useAiAssist';
 import { useRevisoes } from '@/hooks/useRevisoes';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
@@ -73,6 +75,10 @@ const ensureHtml = (value: string) => {
   return paragraphs || `<p>${text}</p>`;
 };
 
+const stripHtml = (value: string) => {
+  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
 export function TaskDetailPage() {
   const { tarefaId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,11 +97,57 @@ export function TaskDetailPage() {
     isLoading: perguntasLoading,
     isError: perguntasError,
     error: perguntasErrorObj,
+    refetch: refetchPerguntas,
   } = usePerguntas(tarefaId);
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes } = useRevisoes({ alvoTipo: 'resposta', pageSize: 500 });
   const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  const aiAssist = useAiAssist();
+  const [aiLoadingQuestion, setAiLoadingQuestion] = useState<number | null>(null);
+
+  const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const [novaOrdem, setNovaOrdem] = useState('');
+  const [novaTexto, setNovaTexto] = useState('');
+  const [novaObrigatoria, setNovaObrigatoria] = useState(true);
+  const [novaUpload, setNovaUpload] = useState(false);
+  const [novaGts, setNovaGts] = useState<number[]>([]);
+  const [novaFeedback, setNovaFeedback] = useState('');
+
+  const createPergunta = useMutation({
+    mutationFn: async () => {
+      const ordemNumber = Number(novaOrdem);
+      if (!tarefaId || !Number.isFinite(ordemNumber) || ordemNumber <= 0) {
+        throw new Error('ordem-invalida');
+      }
+      const response = await client.post<Pergunta>('/perguntas', {
+        body: {
+          tarefa: Number(tarefaId),
+          ordem: ordemNumber,
+          texto: novaTexto,
+          permite_upload: novaUpload,
+          obrigatoria: novaObrigatoria,
+          gts: novaGts.length > 0 ? novaGts : undefined,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      setNovaOrdem('');
+      setNovaTexto('');
+      setNovaObrigatoria(true);
+      setNovaUpload(false);
+      setNovaGts([]);
+      setNovaFeedback('Missao criada com sucesso.');
+      queryClient.invalidateQueries({ queryKey: ['tarefas', tarefaId, 'perguntas'] });
+      refetchPerguntas();
+    },
+    onError: () => {
+      setNovaFeedback('Nao foi possivel criar a missao.');
+    },
+  });
 
   const presence = usePresence({
     docType: 'tarefa',
@@ -267,19 +319,19 @@ export function TaskDetailPage() {
   };
 
   if (tarefaLoading || perguntasLoading) {
-    return <FullPageLoader message="Carregando tarefa..." />;
+    return <FullPageLoader message="Carregando trilha..." />;
   }
 
   if (tarefaError || perguntasError) {
     const message = buildErrorMessage(
       tarefaError ? tarefaErrorObj : perguntasErrorObj,
-      'Erro ao carregar detalhes da tarefa.',
+      'Erro ao carregar detalhes da trilha.',
     );
     return (
       <div className="task-detail__error">
         <h2>Algo deu errado</h2>
         <p>{message}</p>
-        <Link to="/tarefas">Voltar à lista</Link>
+        <Link to="/tarefas">Voltar às trilhas</Link>
       </div>
     );
   }
@@ -289,6 +341,7 @@ export function TaskDetailPage() {
   }
 
   const etapaLabel = tarefa.etapa ? `Etapa ${tarefa.etapa}` : 'Etapa não informada';
+  const tipoLabel = tarefa.tipo === 'OFICINA' ? 'Oficina' : 'Questionário';
 
   const renderPergunta = (pergunta: Pergunta) => {
     const respostaAtual = respostas?.find((item) => item.pergunta === pergunta.id);
@@ -330,12 +383,58 @@ export function TaskDetailPage() {
       }
     };
 
+    const handleAiDraft = async () => {
+      if (!pergunta.texto) return;
+      setAiLoadingQuestion(pergunta.id);
+      try {
+        const response = await aiAssist.mutateAsync({
+          mode: 'draft',
+          text: stripHtml(pergunta.texto),
+          context: tarefa.nome,
+        });
+        setDrafts((prev) => ({ ...prev, [pergunta.id]: response.output || '' }));
+      } catch (err) {
+        setFeedback((prev) => ({
+          ...prev,
+          [pergunta.id]: {
+            type: 'error',
+            message: 'Nao foi possivel gerar rascunho com IA.',
+          },
+        }));
+      } finally {
+        setAiLoadingQuestion(null);
+      }
+    };
+
+    const handleAiGrammar = async () => {
+      const current = drafts[pergunta.id] ?? '';
+      if (!current.trim()) return;
+      setAiLoadingQuestion(pergunta.id);
+      try {
+        const response = await aiAssist.mutateAsync({
+          mode: 'grammar',
+          text: current,
+        });
+        setDrafts((prev) => ({ ...prev, [pergunta.id]: response.output || current }));
+      } catch (err) {
+        setFeedback((prev) => ({
+          ...prev,
+          [pergunta.id]: {
+            type: 'error',
+            message: 'Nao foi possivel revisar a gramatica.',
+          },
+        }));
+      } finally {
+        setAiLoadingQuestion(null);
+      }
+    };
+
     return (
       <article key={pergunta.id} className={cardClassName}>
         <header className="pergunta-card__header">
           <div>
             <h2>
-              Pergunta {pergunta.ordem}
+              Missão {pergunta.ordem}
               {pergunta.obrigatoria ? <span className="pergunta-card__badge">Obrigatória</span> : null}
               {pergunta.permite_upload ? (
                 <span className="pergunta-card__badge pergunta-card__badge--upload">
@@ -376,6 +475,20 @@ export function TaskDetailPage() {
                   {snippet.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={handleAiDraft}
+                disabled={!selectedGtId || aiLoadingQuestion === pergunta.id}
+              >
+                {aiLoadingQuestion === pergunta.id ? 'IA em andamento...' : 'IA: rascunho'}
+              </button>
+              <button
+                type="button"
+                onClick={handleAiGrammar}
+                disabled={!selectedGtId || aiLoadingQuestion === pergunta.id}
+              >
+                {aiLoadingQuestion === pergunta.id ? 'IA em andamento...' : 'IA: corrigir'}
+              </button>
             </div>
             <div className="pergunta-card__stats">
               <span>{stats.words} palavra(s)</span>
@@ -444,21 +557,21 @@ export function TaskDetailPage() {
   return (
     <div className="task-detail">
       <div className="task-detail__breadcrumb">
-        <Link to="/tarefas">← Voltar</Link>
+        <Link to="/tarefas">← Voltar às trilhas</Link>
         <span>/</span>
-        <span>Tarefa #{tarefa.ordem}</span>
+        <span>Trilha #{tarefa.ordem}</span>
       </div>
 
       <header className="task-detail__header">
         <div>
-          <h1>{tarefa.tipo === 'OFICINA' ? 'Oficina' : 'Questionário'} #{tarefa.ordem}</h1>
-          <p>{etapaLabel}</p>
+          <h1>Trilha pedagógica #{tarefa.ordem}</h1>
+          <p>{etapaLabel} · {tipoLabel}</p>
         </div>
         <TaskStatusBadge status={tarefa.status} />
       </header>
 
       <PageInstructions
-        title="Como trabalhar nesta tarefa"
+        title="Como trabalhar nesta trilha"
         description="Selecione o GT e registre as respostas mantendo versões atualizadas."
         items={[
           {
@@ -466,15 +579,93 @@ export function TaskDetailPage() {
             description: 'Use o campo ou atalhos para carregar as respostas do grupo antes de editar.',
           },
           {
-            title: 'Edite e revise cada pergunta',
+            title: 'Edite e revise cada missão',
             description: 'Atualize o texto, salve para persistir no servidor e use a visualização para conferir o HTML.',
           },
           {
             title: 'Acompanhe feedbacks',
-            description: 'Mensagens de sucesso ou erro aparecem abaixo do editor para cada pergunta.',
+            description: 'Mensagens de sucesso ou erro aparecem abaixo do editor para cada missão.',
           },
         ]}
       />
+
+      {canManage && (
+        <section className="task-detail__create">
+          <details>
+            <summary>Criar missao</summary>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setNovaFeedback('');
+                if (!novaTexto.trim()) {
+                  setNovaFeedback('Informe o texto da missao.');
+                  return;
+                }
+                createPergunta.mutate();
+              }}
+            >
+              <label>
+                <span>Ordem</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={novaOrdem}
+                  onChange={(event) => setNovaOrdem(event.target.value)}
+                />
+              </label>
+              <label className="full">
+                <span>Texto da missao</span>
+                <textarea
+                  rows={4}
+                  value={novaTexto}
+                  onChange={(event) => setNovaTexto(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Obrigatoria</span>
+                <select
+                  value={novaObrigatoria ? 'sim' : 'nao'}
+                  onChange={(event) => setNovaObrigatoria(event.target.value === 'sim')}
+                >
+                  <option value="sim">Sim</option>
+                  <option value="nao">Nao</option>
+                </select>
+              </label>
+              <label>
+                <span>Permite upload</span>
+                <select
+                  value={novaUpload ? 'sim' : 'nao'}
+                  onChange={(event) => setNovaUpload(event.target.value === 'sim')}
+                >
+                  <option value="nao">Nao</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </label>
+              <label className="full">
+                <span>GTs (opcional)</span>
+                <select
+                  multiple
+                  value={novaGts.map(String)}
+                  onChange={(event) => {
+                    const values = Array.from(event.target.selectedOptions).map((opt) => Number(opt.value));
+                    setNovaGts(values);
+                  }}
+                >
+                  {gtOptions.map((gt) => (
+                    <option key={gt.id} value={gt.id}>
+                      {gt.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" disabled={createPergunta.isPending}>
+                {createPergunta.isPending ? 'Criando...' : 'Criar missao'}
+              </button>
+              {novaFeedback && <span className="task-detail__feedback">{novaFeedback}</span>}
+            </form>
+          </details>
+        </section>
+      )}
 
       {selectedGtId && (
         <div className="task-detail__presence">
@@ -543,7 +734,7 @@ export function TaskDetailPage() {
       {!selectedGtId && (
         <div className="task-detail__empty">
           <h3>Nenhum GT selecionado</h3>
-          <p>Informe um GT para começar a editar as respostas desta tarefa.</p>
+          <p>Informe um GT para começar a editar as respostas desta trilha.</p>
         </div>
       )}
 
@@ -553,8 +744,8 @@ export function TaskDetailPage() {
 
       {selectedGtId && filteredPerguntas.length === 0 && !respostasFetching && (
         <div className="task-detail__empty">
-          <h3>Nenhuma pergunta disponível</h3>
-          <p>Não há perguntas associadas a este GT para esta tarefa.</p>
+          <h3>Nenhuma missão disponível</h3>
+          <p>Não há missões associadas a este GT para esta trilha.</p>
         </div>
       )}
 

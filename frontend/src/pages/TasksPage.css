@@ -20,6 +20,66 @@
   gap: 1rem;
 }
 
+.tasks__create {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 1.25rem;
+  background: rgba(248, 250, 252, 0.9);
+  display: grid;
+  gap: 1rem;
+}
+
+.tasks__create h2 {
+  margin: 0 0 0.35rem 0;
+  color: #0f172a;
+}
+
+.tasks__create p {
+  margin: 0;
+  color: #475569;
+}
+
+.tasks__create form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.tasks__create label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.tasks__create input,
+.tasks__create select {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background-color: #ffffff;
+  font-size: 0.95rem;
+}
+
+.tasks__create button {
+  align-self: end;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tasks__feedback {
+  grid-column: 1 / -1;
+  color: #2563eb;
+  font-weight: 600;
+}
+
 .tasks__controls label {
   display: flex;
   flex-direction: column;

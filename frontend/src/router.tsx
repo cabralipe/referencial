@@ -16,8 +16,10 @@ import { BibliotecaPage } from './pages/BibliotecaPage';
 import { ExportacoesPage } from './pages/ExportacoesPage';
 import { DiffPage } from './pages/DiffPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
+import { ScoreConfigPage } from './pages/ScoreConfigPage';
 
 export const router = createBrowserRouter([
   {
@@ -88,6 +90,14 @@ export const router = createBrowserRouter([
       {
         path: 'auditoria',
         element: <AuditLogsPage />,
+      },
+      {
+        path: 'relatorios',
+        element: <ReportsPage />,
+      },
+      {
+        path: 'gamificacao',
+        element: <ScoreConfigPage />,
       },
     ],
   },

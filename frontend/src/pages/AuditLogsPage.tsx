@@ -24,7 +24,7 @@ const ENTIDADE_OPTIONS = [
 ];
 
 const ENTIDADE_LABELS: Record<string, string> = {
-  'curriculum.Resposta': 'Resposta de tarefa',
+  'curriculum.Resposta': 'Resposta de trilha',
   'curriculum.TextoUnico': 'Texto Único',
   'curriculum.TextoColaborativo': 'Texto colaborativo',
   'workshop.Quadro': 'Quadro',
