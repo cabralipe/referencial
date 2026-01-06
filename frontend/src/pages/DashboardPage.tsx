@@ -563,6 +563,7 @@ function ArticuladorDashboard() {
   const [gtSearch, setGtSearch] = useState('');
   const [trilhaSearch, setTrilhaSearch] = useState('');
   const [selectedGtId, setSelectedGtId] = useState<number | null>(null);
+  const { data: respostasDoGt, isLoading: respostasLoading } = useRespostas({ gtId: selectedGtId });
 
   useEffect(() => {
     if (!selectedGtId && gtOptions.length > 0) {
@@ -607,7 +608,7 @@ function ArticuladorDashboard() {
     return painelRespostas.filter((resp) => gtIdSet.has(resp.gt));
   }, [painelRespostas, gtIdSet]);
 
-  const respostasPorGt = useMemo(() => {
+  const respostasPorGtMap = useMemo(() => {
     const map = new Map<number, number>();
     painelRespostasFiltradas.forEach((resp) => {
       map.set(resp.gt, (map.get(resp.gt) ?? 0) + 1);
@@ -645,7 +646,36 @@ function ArticuladorDashboard() {
     return base.filter((tarefa) => (perguntasByTarefa.get(tarefa.id) ?? 0) > 0);
   }, [tarefas, trilhaSearch, perguntasByTarefa, selectedGtId]);
 
-  if (isLoading || gtsLoading) {
+  const tarefasRespondidas = useMemo(() => {
+    if (!respostasDoGt) {
+      return new Set<number>();
+    }
+    const ids = new Set<number>();
+    respostasDoGt.forEach((resp) => {
+      if (resp.tarefa_id) {
+        ids.add(resp.tarefa_id);
+      }
+    });
+    return ids;
+  }, [respostasDoGt]);
+
+  const tarefasOrdenadas = useMemo(() => {
+    if (!selectedGtId) {
+      return tarefasFiltradas;
+    }
+    return tarefasFiltradas
+      .slice()
+      .sort((a, b) => {
+        const aRespondida = tarefasRespondidas.has(a.id);
+        const bRespondida = tarefasRespondidas.has(b.id);
+        if (aRespondida === bRespondida) {
+          return a.ordem - b.ordem;
+        }
+        return aRespondida ? -1 : 1;
+      });
+  }, [tarefasFiltradas, tarefasRespondidas, selectedGtId]);
+
+  if (isLoading || gtsLoading || respostasLoading) {
     return <FullPageLoader message="Carregando painel do redator..." />;
   }
 
@@ -714,7 +744,7 @@ function ArticuladorDashboard() {
         </div>
         <div className="dashboard__gt-grid">
           {filteredGts.map((gt) => {
-            const responses = respostasPorGt.get(gt.id) ?? 0;
+            const responses = respostasPorGtMap.get(gt.id) ?? 0;
             return (
               <button
                 key={gt.id}
@@ -751,10 +781,15 @@ function ArticuladorDashboard() {
           </div>
           {selectedGtId ? (
             <div className="dashboard__trilhas">
-              {tarefasFiltradas.map((tarefa) => (
+              {tarefasOrdenadas.map((tarefa) => (
                 <div key={tarefa.id} className="dashboard__trilha-card">
                   <div>
-                    <strong>Trilha #{tarefa.ordem}</strong>
+                    <strong>
+                      Trilha #{tarefa.ordem}
+                      {tarefasRespondidas.has(tarefa.id) && (
+                        <span className="dashboard__trilha-badge">Respondida ✓</span>
+                      )}
+                    </strong>
                     <span>{tarefa.nome}</span>
                     <small>{tarefa.etapa ? `Etapa ${tarefa.etapa}` : 'Etapa não informada'}</small>
                   </div>
@@ -766,7 +801,7 @@ function ArticuladorDashboard() {
                   </div>
                 </div>
               ))}
-              {tarefasFiltradas.length === 0 && (
+              {tarefasOrdenadas.length === 0 && (
                 <div className="dashboard__empty-inline">Nenhuma trilha encontrada.</div>
               )}
             </div>

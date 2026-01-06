@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useTarefas } from '@/hooks/useTarefas';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useRespostas } from '@/hooks/useRespostas';
 import { useAuth } from '@/context/AuthContext';
-import type { Tarefa } from '@/api/types';
+import type { Pergunta, Tarefa } from '@/api/types';
 
 import './TasksPage.css';
 
@@ -38,6 +40,7 @@ export function TasksPage() {
   const [tipoFilter, setTipoFilter] = useState('');
   const [etapaFilter, setEtapaFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [gtFilter, setGtFilter] = useState<number | null>(null);
   const [newNome, setNewNome] = useState('');
   const [newOrdem, setNewOrdem] = useState('');
   const [newEtapa, setNewEtapa] = useState('');
@@ -49,8 +52,26 @@ export function TasksPage() {
     tipo: tipoFilter || undefined,
     etapa: etapaFilter || undefined,
   });
+  const { gtOptions } = useAvailableGts();
+  const { data: respostas, isLoading: respostasLoading } = useRespostas({
+    gtId: gtFilter,
+    includeAll: !gtFilter,
+  });
 
   const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const perguntasSummaryQuery = useQuery({
+    queryKey: ['tarefas', 'perguntas', 'summary', tarefas?.map((tarefa) => tarefa.id), gtFilter],
+    enabled: Boolean(tarefas?.length && gtFilter),
+    queryFn: async () => {
+      const results = await Promise.all(
+        (tarefas ?? []).map(async (tarefa) => {
+          const response = await client.get<Pergunta[]>(`/tarefas/${tarefa.id}/perguntas`);
+          return { tarefaId: tarefa.id, perguntas: response.data ?? [] };
+        }),
+      );
+      return results;
+    },
+  });
 
   const createTarefa = useMutation({
     mutationFn: async (payload: Omit<Tarefa, 'id' | 'status'>) => {
@@ -91,16 +112,40 @@ export function TasksPage() {
     if (!term) {
       return tarefas;
     }
-    return tarefas.filter((tarefa) => {
+    const base = tarefas.filter((tarefa) => {
       const nome = tarefa.nome?.toLowerCase() ?? '';
       const etapa = tarefa.etapa?.toLowerCase() ?? '';
       const tipo = TipoLabel[tarefa.tipo] ?? tarefa.tipo;
       const ordem = String(tarefa.ordem);
       return nome.includes(term) || etapa.includes(term) || tipo.toLowerCase().includes(term) || ordem.includes(term);
     });
-  }, [tarefas, searchTerm]);
+    if (!gtFilter || !perguntasSummaryQuery.data) {
+      return base;
+    }
+    const tarefasPorGt = new Map<number, number>();
+    (perguntasSummaryQuery.data ?? []).forEach((item) => {
+      const count = (item.perguntas ?? []).filter((pergunta) => {
+        return !pergunta.gts || pergunta.gts.length === 0 || pergunta.gts.includes(gtFilter);
+      }).length;
+      tarefasPorGt.set(item.tarefaId, count);
+    });
+    return base.filter((tarefa) => (tarefasPorGt.get(tarefa.id) ?? 0) > 0);
+  }, [tarefas, searchTerm, gtFilter, perguntasSummaryQuery.data]);
 
-  if (isLoading) {
+  const tarefasRespondidas = useMemo(() => {
+    if (!respostas) {
+      return new Set<number>();
+    }
+    const ids = new Set<number>();
+    respostas.forEach((resp) => {
+      if (resp.tarefa_id) {
+        ids.add(resp.tarefa_id);
+      }
+    });
+    return ids;
+  }, [respostas]);
+
+  if (isLoading || respostasLoading) {
     return <FullPageLoader message="Carregando lista de trilhas pedagógicas..." />;
   }
 
@@ -206,6 +251,20 @@ export function TasksPage() {
 
       <div className="tasks__controls">
         <label>
+          <span>GT</span>
+          <select
+            value={gtFilter ? String(gtFilter) : ''}
+            onChange={(event) => setGtFilter(event.target.value ? Number(event.target.value) : null)}
+          >
+            <option value="">Todos</option>
+            {gtOptions.map((gt) => (
+              <option key={gt.id} value={gt.id}>
+                {gt.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           <span>Status</span>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             {STATUS_OPTIONS.map((option) => (
@@ -272,14 +331,21 @@ export function TasksPage() {
               {filteredTarefas.map((tarefa) => (
                 <tr key={tarefa.id}>
                   <td>{tarefa.ordem}</td>
-                  <td>{tarefa.nome}</td>
+                  <td>
+                    <span className="tasks__trilha-label">
+                      {tarefa.nome}
+                      {tarefasRespondidas.has(tarefa.id) && (
+                        <span className="tasks__trilha-badge">Respondida ✓</span>
+                      )}
+                    </span>
+                  </td>
                   <td>{TipoLabel[tarefa.tipo] ?? tarefa.tipo}</td>
                   <td>{tarefa.etapa}</td>
                   <td>
                     <TaskStatusBadge status={tarefa.status} />
                   </td>
                   <td>
-                    <Link to={`/tarefas/${tarefa.id}`}>Abrir</Link>
+                    <Link to={`/tarefas/${tarefa.id}${gtFilter ? `?gt=${gtFilter}` : ''}`}>Abrir</Link>
                   </td>
                 </tr>
               ))}

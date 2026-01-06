@@ -391,8 +391,24 @@
 }
 
 .dashboard__trilha-card strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   color: #0f172a;
+}
+
+.dashboard__trilha-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.15);
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .dashboard__trilha-card span {

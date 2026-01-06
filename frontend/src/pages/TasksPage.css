@@ -144,6 +144,26 @@
   font-weight: 600;
 }
 
+.tasks__trilha-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tasks__trilha-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.15);
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .tasks__empty,
 .tasks__error {
   display: flex;

@@ -487,8 +487,8 @@
   background: #ffffff;
   border-radius: 1.2rem;
   border: 1px solid rgba(148, 163, 184, 0.3);
-  width: min(1100px, 100%);
-  max-height: 90vh;
+  width: min(1280px, 100%);
+  max-height: 94vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
@@ -519,7 +519,7 @@
 
 .revisoes__modal-body {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1.35fr 1fr;
   gap: 1rem;
   padding: 1.1rem 1.35rem 1.35rem;
   background: linear-gradient(135deg, rgba(248, 250, 252, 0.7), rgba(226, 232, 240, 0.5));
@@ -536,7 +536,7 @@
   gap: 0.85rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   overflow: auto;
-  max-height: 60vh;
+  max-height: 70vh;
 }
 
 .revisoes__resposta-actions--modal {
