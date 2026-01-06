@@ -428,6 +428,36 @@
   line-height: 1.6;
 }
 
+.pergunta-card__parecer {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pergunta-card__parecer label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.pergunta-card__parecer-actions button {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+}
+
+.pergunta-card__parecer-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .task-detail__header {
     flex-direction: column;

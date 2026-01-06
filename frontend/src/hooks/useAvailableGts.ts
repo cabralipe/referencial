@@ -23,7 +23,7 @@ export function useAvailableGts({ scope = 'member' }: UseAvailableGtsOptions = {
     if (scope !== 'member') {
       return scope;
     }
-    if (user?.role === 'admin_cliente' || user?.role === 'super_admin') {
+    if (user?.role === 'admin_cliente' || user?.role === 'articulador' || user?.role === 'super_admin') {
       return 'all';
     }
     return scope;

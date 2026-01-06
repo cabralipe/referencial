@@ -556,7 +556,7 @@ function AdminDashboard() {
 function ArticuladorDashboard() {
   const client = useApiClient();
   const { data: tarefas, isLoading, isError, error, refetch } = useTarefas();
-  const { gtOptions, isLoading: gtsLoading } = useAvailableGts({ scope: 'all' });
+  const { gtOptions, isLoading: gtsLoading } = useAvailableGts({ scope: 'member' });
   const { data: painelRespostas, isLoading: painelLoading, refetch: refetchPainel } = usePainelRespostas();
   const { data: scoreSummary, isLoading: scoreLoading, refetch: refetchScore } = useScoreSummary();
 
@@ -587,18 +587,33 @@ function ArticuladorDashboard() {
   const perguntasByTarefa = useMemo(() => {
     const map = new Map<number, number>();
     (perguntasSummaryQuery.data ?? []).forEach((item) => {
-      map.set(item.tarefaId, item.perguntas.length);
+      const count = (item.perguntas ?? []).filter((pergunta) => {
+        if (!selectedGtId) {
+          return true;
+        }
+        return !pergunta.gts || pergunta.gts.length === 0 || pergunta.gts.includes(selectedGtId);
+      }).length;
+      map.set(item.tarefaId, count);
     });
     return map;
-  }, [perguntasSummaryQuery.data]);
+  }, [perguntasSummaryQuery.data, selectedGtId]);
+
+  const gtIdSet = useMemo(() => new Set(gtOptions.map((gt) => gt.id)), [gtOptions]);
+
+  const painelRespostasFiltradas = useMemo(() => {
+    if (!painelRespostas || gtIdSet.size === 0) {
+      return [];
+    }
+    return painelRespostas.filter((resp) => gtIdSet.has(resp.gt));
+  }, [painelRespostas, gtIdSet]);
 
   const respostasPorGt = useMemo(() => {
     const map = new Map<number, number>();
-    (painelRespostas ?? []).forEach((resp) => {
+    painelRespostasFiltradas.forEach((resp) => {
       map.set(resp.gt, (map.get(resp.gt) ?? 0) + 1);
     });
     return map;
-  }, [painelRespostas]);
+  }, [painelRespostasFiltradas]);
 
   const filteredGts = useMemo(() => {
     const term = gtSearch.trim().toLowerCase();
@@ -617,13 +632,18 @@ function ArticuladorDashboard() {
   const tarefasFiltradas = useMemo(() => {
     const term = trilhaSearch.trim().toLowerCase();
     const ordered = (tarefas ?? []).slice().sort((a, b) => a.ordem - b.ordem);
-    if (!term) return ordered;
-    return ordered.filter((tarefa) => {
-      const nome = tarefa.nome?.toLowerCase() ?? '';
-      const etapa = tarefa.etapa?.toLowerCase() ?? '';
-      return nome.includes(term) || etapa.includes(term) || String(tarefa.ordem).includes(term);
-    });
-  }, [tarefas, trilhaSearch]);
+    const base = term
+      ? ordered.filter((tarefa) => {
+          const nome = tarefa.nome?.toLowerCase() ?? '';
+          const etapa = tarefa.etapa?.toLowerCase() ?? '';
+          return nome.includes(term) || etapa.includes(term) || String(tarefa.ordem).includes(term);
+        })
+      : ordered;
+    if (!selectedGtId) {
+      return base;
+    }
+    return base.filter((tarefa) => (perguntasByTarefa.get(tarefa.id) ?? 0) > 0);
+  }, [tarefas, trilhaSearch, perguntasByTarefa, selectedGtId]);
 
   if (isLoading || gtsLoading) {
     return <FullPageLoader message="Carregando painel do redator..." />;
@@ -761,13 +781,13 @@ function ArticuladorDashboard() {
               <h2>Respostas recentes</h2>
               <p>Acesso rápido aos últimos envios.</p>
             </div>
-            <span className="dashboard__pill">{painelRespostas?.length ?? 0} registros</span>
+            <span className="dashboard__pill">{painelRespostasFiltradas.length} registros</span>
           </div>
           {painelLoading ? (
             <p className="dashboard__helper">Carregando respostas...</p>
-          ) : (painelRespostas ?? []).length > 0 ? (
+          ) : painelRespostasFiltradas.length > 0 ? (
             <div className="dashboard__list">
-              {painelRespostas?.slice(0, 6).map((resp) => (
+              {painelRespostasFiltradas.slice(0, 6).map((resp) => (
                 <div key={resp.id} className="dashboard__list-item">
                   <div>
                     <strong>{resp.gt_nome ?? `GT #${resp.gt}`}</strong>

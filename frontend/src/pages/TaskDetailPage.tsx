@@ -11,7 +11,7 @@ import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
 import { useAiAssist } from '@/hooks/useAiAssist';
-import { useRevisoes } from '@/hooks/useRevisoes';
+import { useCreateRevisao, useRevisoes } from '@/hooks/useRevisoes';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
 import type { Pergunta } from '@/api/types';
@@ -89,6 +89,8 @@ export function TaskDetailPage() {
 
   const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, FeedbackEntry>>({});
+  const [parecerDrafts, setParecerDrafts] = useState<Record<number, string>>({});
+  const [parecerFeedback, setParecerFeedback] = useState<Record<number, FeedbackEntry>>({});
 
   const { data: tarefa, isLoading: tarefaLoading, isError: tarefaError, error: tarefaErrorObj } =
     useTarefa(tarefaId);
@@ -101,6 +103,7 @@ export function TaskDetailPage() {
   } = usePerguntas(tarefaId);
   const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes } = useRevisoes({ alvoTipo: 'resposta', pageSize: 500 });
+  const createRevisao = useCreateRevisao();
   const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
   const client = useApiClient();
@@ -109,6 +112,7 @@ export function TaskDetailPage() {
   const [aiLoadingQuestion, setAiLoadingQuestion] = useState<number | null>(null);
 
   const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const canReview = canManage;
   const [novaOrdem, setNovaOrdem] = useState('');
   const [novaTexto, setNovaTexto] = useState('');
   const [novaObrigatoria, setNovaObrigatoria] = useState(true);
@@ -354,6 +358,13 @@ export function TaskDetailPage() {
     const cardClassName = alterado ? 'pergunta-card pergunta-card--dirty' : 'pergunta-card';
     const stats = buildTextStats(draft);
     const revisoesDaResposta = revisoes?.filter((rev) => rev.alvo_id === respostaAtual?.id) ?? [];
+    const respostaId = respostaAtual?.id;
+    const lastParecer =
+      revisoesDaResposta
+        .filter((rev) => rev.parecer_html)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]?.parecer_html ?? '';
+    const parecerDraft = respostaId ? (parecerDrafts[respostaId] ?? lastParecer) : '';
+    const parecerFeedbackEntry = respostaId ? parecerFeedback[respostaId] : undefined;
 
     const handleCopy = async () => {
       if (!draft) {
@@ -548,6 +559,84 @@ export function TaskDetailPage() {
             <summary>Pré-visualização</summary>
             <div dangerouslySetInnerHTML={{ __html: draft || '<p>Sem conteúdo para exibir ainda.</p>' }} />
           </details>
+
+          {canReview && (
+            <div className="pergunta-card__parecer">
+              <label>
+                <span>Parecer do redator (HTML)</span>
+                <textarea
+                  rows={4}
+                  value={parecerDraft}
+                  onChange={(event) => {
+                    if (!respostaId) {
+                      return;
+                    }
+                    const value = event.target.value;
+                    setParecerDrafts((prev) => ({ ...prev, [respostaId]: value }));
+                  }}
+                  placeholder="Registre aqui o parecer para o cliente."
+                  disabled={!respostaId}
+                />
+              </label>
+              <div className="pergunta-card__parecer-actions">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!respostaId) {
+                      return;
+                    }
+                    const parecerHtml = ensureHtml(parecerDraft);
+                    if (!parecerHtml.trim()) {
+                      setParecerFeedback((prev) => ({
+                        ...prev,
+                        [respostaId]: {
+                          type: 'error',
+                          message: 'Informe o parecer antes de enviar.',
+                        },
+                      }));
+                      return;
+                    }
+                    try {
+                      await createRevisao.mutateAsync({
+                        alvoTipo: 'resposta',
+                        alvoId: respostaId,
+                        parecerHtml,
+                      });
+                      setParecerFeedback((prev) => ({
+                        ...prev,
+                        [respostaId]: {
+                          type: 'success',
+                          message: 'Parecer enviado e visível para o cliente.',
+                        },
+                      }));
+                      setParecerDrafts((prev) => {
+                        const next = { ...prev };
+                        delete next[respostaId];
+                        return next;
+                      });
+                    } catch (err) {
+                      const message = buildErrorMessage(err, 'Não foi possível enviar o parecer.');
+                      setParecerFeedback((prev) => ({
+                        ...prev,
+                        [respostaId]: {
+                          type: 'error',
+                          message,
+                        },
+                      }));
+                    }
+                  }}
+                  disabled={!respostaId || createRevisao.isPending}
+                >
+                  {createRevisao.isPending ? 'Enviando parecer...' : 'Enviar parecer'}
+                </button>
+              </div>
+              {parecerFeedbackEntry && (
+                <p className={`pergunta-card__feedback pergunta-card__feedback--${parecerFeedbackEntry.type}`}>
+                  {parecerFeedbackEntry.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
       </article>
