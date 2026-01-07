@@ -11,7 +11,7 @@
 
 .formularios__header p {
   margin: 0.35rem 0 0;
-  color: #475569;
+  color: var(--color-muted);
 }
 
 .formularios__layout {
@@ -21,9 +21,9 @@
 }
 
 .formularios__layout aside {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -47,10 +47,10 @@
   width: 100%;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 0.9rem;
+  border-radius: var(--radius-md);
   padding: 0.75rem;
-  background-color: rgba(148, 163, 184, 0.1);
-  color: #0f172a;
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -58,8 +58,8 @@
 }
 
 .formularios__layout aside button.active {
-  border-color: rgba(37, 99, 235, 0.35);
-  background-color: rgba(37, 99, 235, 0.12);
+  border-color: var(--color-primary-soft);
+  background-color: var(--color-primary-soft);
 }
 
 .formularios__layout aside button strong {
@@ -68,13 +68,13 @@
 
 .formularios__layout aside button span {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--color-muted);
 }
 
 .formularios__main {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   padding: 1.5rem;
   min-height: 360px;
 }
@@ -97,7 +97,7 @@
   flex-direction: column;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #334155;
+  color: var(--color-text);
 }
 
 .formularios__campo em {
@@ -114,23 +114,23 @@
 .formularios__campo textarea,
 .formularios__campo select {
   padding: 0.7rem 0.75rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
   font-size: 0.95rem;
-  background-color: #f8fafc;
+  background-color: var(--color-surface-muted);
 }
 
 .formularios__campo textarea {
   resize: vertical;
   min-height: 120px;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
 }
 
 .formularios__feedback {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text);
   background-color: rgba(16, 185, 129, 0.12);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
 }
@@ -142,10 +142,10 @@
 
 .formularios__actions button {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.75rem 1.5rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
   color: #ffffff;
   cursor: pointer;
 }
@@ -160,10 +160,10 @@
 }
 
 .formularios__criar {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  background: #ffffff;
+  background: var(--color-surface);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -176,7 +176,7 @@
 
 .formularios__criar header p {
   margin: 0.35rem 0 0;
-  color: #475569;
+  color: var(--color-muted);
 }
 
 .formularios__criar form {
@@ -190,27 +190,27 @@
   flex-direction: column;
   gap: 0.45rem;
   font-size: 0.9rem;
-  color: #334155;
+  color: var(--color-text);
 }
 
 .formularios__criar input,
 .formularios__criar textarea,
 .formularios__criar select {
   padding: 0.6rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background-color: #ffffff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
 }
 
 .formularios__campos {
   grid-column: 1 / -1;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  background: rgba(248, 250, 252, 0.9);
+  background: var(--color-surface-muted);
 }
 
 .formularios__campos-header {
@@ -221,17 +221,17 @@
 
 .formularios__campos-header button {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.45rem 0.9rem;
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
   font-weight: 600;
   cursor: pointer;
 }
 
 .formularios__campos-empty {
   margin: 0;
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .formularios__campo-row {
@@ -240,9 +240,9 @@
   gap: 0.75rem;
   align-items: end;
   padding: 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px dashed rgba(148, 163, 184, 0.5);
-  background: #ffffff;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
 }
 
 .formularios__campo-row .full {
@@ -252,8 +252,8 @@
 .formularios__campo-row button.ghost {
   border: none;
   background: rgba(248, 113, 113, 0.12);
-  color: #b91c1c;
-  border-radius: 999px;
+  color: var(--color-danger);
+  border-radius: var(--radius-pill);
   padding: 0.4rem 0.85rem;
   cursor: pointer;
   justify-self: flex-start;

@@ -1,9 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap');
+
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Manrope', 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Manrope', sans-serif;
+
+  --color-bg: #eef2f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-border: rgba(148, 163, 184, 0.35);
+  --color-border-strong: rgba(148, 163, 184, 0.6);
+  --color-text: #0f172a;
+  --color-muted: #475569;
+  --color-primary: #1d4ed8;
+  --color-primary-strong: #2563eb;
+  --color-primary-soft: rgba(37, 99, 235, 0.12);
+  --color-success: #047857;
+  --color-danger: #b91c1c;
+
+  --radius-sm: 0.65rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1rem;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 8px 20px -20px rgba(15, 23, 42, 0.45);
+  --shadow-md: 0 18px 45px -30px rgba(15, 23, 42, 0.4);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
-  background-color: #f8fafc;
+  color: var(--color-text);
+  background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -17,7 +51,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f1f5f9;
+  background-color: var(--color-bg);
 }
 
 a {
@@ -27,6 +61,47 @@ a {
 
 button {
   font: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+
+input,
+select,
+textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
+  padding: 0.65rem 0.75rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+button {
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
 }
 
 @keyframes spin {

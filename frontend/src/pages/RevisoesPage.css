@@ -642,3 +642,59 @@
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
+
+/* Harmonized theme overrides */
+.revisoes__header p,
+.revisoes__filters label,
+.revisoes__respostas-header p,
+.revisoes__preview-meta {
+  color: var(--color-muted);
+}
+
+.revisoes__panel,
+.revisoes__card,
+.revisoes__resposta-card,
+.revisoes__modal,
+.revisoes__nova form,
+.revisoes__editar {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.revisoes__filters input,
+.revisoes__filters select,
+.revisoes__respostas-actions input,
+.revisoes__respostas-actions select,
+.revisoes__editar textarea,
+.revisoes__editar select,
+.revisoes__resposta-actions textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
+}
+
+.revisoes__button {
+  border-radius: var(--radius-pill);
+}
+
+.revisoes__button:not(.revisoes__button--ghost):not(.revisoes__button--secondary) {
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
+}
+
+.revisoes__badge {
+  border-radius: var(--radius-pill);
+}
+
+.revisoes__preview,
+.revisoes__preview-body,
+.revisoes__preview-block {
+  color: var(--color-text);
+}
+
+.revisoes__empty,
+.revisoes__preview--empty {
+  border-radius: var(--radius-lg);
+  border-color: var(--color-border-strong);
+  color: var(--color-muted);
+}

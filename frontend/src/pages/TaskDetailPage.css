@@ -479,3 +479,214 @@
     padding: 1.25rem;
   }
 }
+
+/* Harmonized theme overrides */
+.task-detail__breadcrumb {
+  color: var(--color-muted);
+}
+
+.task-detail__breadcrumb a {
+  color: var(--color-primary-strong);
+}
+
+.task-detail__header h1 {
+  color: var(--color-text);
+}
+
+.task-detail__header p {
+  color: var(--color-muted);
+}
+
+.task-detail__selector {
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-soft);
+}
+
+.task-detail__create {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
+.task-detail__create summary,
+.task-detail__create label {
+  color: var(--color-text);
+}
+
+.task-detail__create input,
+.task-detail__create select,
+.task-detail__create textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
+}
+
+.task-detail__create button {
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
+}
+
+.task-detail__feedback {
+  color: var(--color-primary-strong);
+}
+
+.task-detail__presence {
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  color: var(--color-text);
+}
+
+.gt-selector label,
+.gt-selector__suggestions {
+  color: var(--color-text);
+}
+
+.gt-selector input,
+.gt-selector select {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+}
+
+.gt-selector__suggestions button {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  border-radius: var(--radius-pill);
+}
+
+.gt-selector__suggestions button.active {
+  background: var(--color-primary-strong);
+}
+
+.task-detail__empty {
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-muted);
+}
+
+.task-detail__loading {
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+}
+
+.task-detail__error {
+  border-radius: var(--radius-lg);
+}
+
+.task-detail__error a {
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-strong);
+}
+
+.pergunta-card {
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.pergunta-card--dirty {
+  box-shadow: var(--shadow-md);
+}
+
+.pergunta-card__badge {
+  border-radius: var(--radius-pill);
+}
+
+.pergunta-card__badge--upload {
+  color: var(--color-primary-strong);
+}
+
+.pergunta-card__badge--pendente {
+  color: var(--color-danger);
+}
+
+.pergunta-card__texto {
+  color: var(--color-text);
+}
+
+.pergunta-card__meta {
+  color: var(--color-muted);
+}
+
+.pergunta-card__editor textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+}
+
+.pergunta-card__chips button {
+  border-radius: var(--radius-pill);
+  color: var(--color-primary-strong);
+}
+
+.pergunta-card__stats {
+  color: var(--color-muted);
+}
+
+.pergunta-card__actions button {
+  border-radius: var(--radius-sm);
+}
+
+.pergunta-card__actions button.secondary {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.pergunta-card__actions button.ghost {
+  color: var(--color-primary-strong);
+}
+
+.pergunta-card__actions button:not(.secondary):not(.ghost) {
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
+}
+
+.pergunta-card__feedback--success {
+  color: var(--color-success);
+}
+
+.pergunta-card__feedback--error {
+  color: var(--color-danger);
+}
+
+.pergunta-card__feedback--info {
+  color: var(--color-primary-strong);
+}
+
+.pergunta-card__revisoes {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.pergunta-card__revisao {
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.pergunta-card__revisao-status {
+  border-radius: var(--radius-pill);
+}
+
+.pergunta-card__revisao-status.status-reprovado {
+  color: var(--color-danger);
+}
+
+.pergunta-card__preview {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-muted);
+}
+
+.pergunta-card__preview summary,
+.pergunta-card__preview div {
+  color: var(--color-text);
+}
+
+.pergunta-card__parecer label {
+  color: var(--color-muted);
+}
+
+.pergunta-card__parecer-actions button {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
+}

@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f1f5f9;
+  background-color: var(--color-bg);
 }
 
 /* Layout desktop fixo dentro do container */
@@ -77,7 +77,7 @@
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .app-shell--sidebar-compact .app-shell__sidenav-inner {
@@ -109,8 +109,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  background-color: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -125,7 +125,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .app-shell__brand img {
@@ -169,7 +169,7 @@
 
 .app-shell__brand span {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .app-shell__sidenav {
@@ -178,8 +178,8 @@
   left: 0;
   height: 100vh;
   width: 250px;
-  background-color: #ffffff;
-  border-right: 1px solid rgba(148, 163, 184, 0.2);
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   box-shadow: 0 0 20px rgba(2, 6, 23, 0.06);
   transform: translateX(0);
   transition: transform 300ms ease, width 300ms ease;
@@ -214,7 +214,7 @@
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .app-shell__sidenav-inner .app-shell__user-info {
@@ -233,8 +233,8 @@
     width: 36px;
     height: 36px;
     border-radius: 0.75rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    background-color: #ffffff;
+    border: 1px solid var(--color-border-strong);
+    background-color: var(--color-surface);
     margin-left: auto;
     margin-bottom: 0;
   }
@@ -255,31 +255,31 @@
   gap: 0.75rem;
   padding: 0.6rem 0.8rem;
   border-radius: 0.75rem;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
   text-decoration: none;
   transition: background-color 200ms ease, color 200ms ease;
 }
 
 .app-shell__nav-vertical a:hover {
-  background-color: rgba(148, 163, 184, 0.16);
+  background-color: var(--color-surface-muted);
 }
 
 .app-shell__nav-vertical a.active {
-  background-color: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-strong);
 }
 
 .menu__icon {
   width: 18px;
   height: 18px;
   display: inline-block;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .app-shell__nav-vertical a:hover .menu__icon,
 .app-shell__nav-vertical a.active .menu__icon {
-  color: #2563eb;
+  color: var(--color-primary-strong);
 }
 
 .app-shell__overlay {
@@ -305,8 +305,8 @@
   width: 40px;
   height: 40px;
   border-radius: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background-color: #ffffff;
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
 }
 
 .toggle__bars::before {
@@ -314,7 +314,8 @@
   display: block;
   width: 20px;
   height: 14px;
-  background-image: linear-gradient(#0f172a 0 0), linear-gradient(#0f172a 0 0), linear-gradient(#0f172a 0 0);
+  background-image: linear-gradient(var(--color-text) 0 0), linear-gradient(var(--color-text) 0 0),
+    linear-gradient(var(--color-text) 0 0);
   background-size: 100% 2px, 100% 2px, 100% 2px;
   background-repeat: no-repeat;
   background-position: 0 0, 0 6px, 0 12px;
@@ -332,11 +333,11 @@
   flex-direction: column;
   align-items: flex-end;
   font-size: 0.85rem;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .app-shell__user-info small {
-  color: #64748b;
+  color: var(--color-muted);
   text-transform: capitalize;
 }
 
@@ -364,8 +365,8 @@
 
 .app-shell__footer {
   padding: 1.5rem 2rem;
-  background-color: #ffffff;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 1023px) {
@@ -424,7 +425,7 @@
   }
 .app-shell__sidenav-inner {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 .app-shell__sidenav-inner::-webkit-scrollbar {
@@ -436,7 +437,7 @@
 }
 
 .app-shell__sidenav-inner::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.6);
+  background-color: var(--color-border-strong);
   border-radius: 8px;
   border: 2px solid transparent;
 }
