@@ -7,6 +7,7 @@ interface UseTarefasParams {
   etapa?: string;
   tipo?: string;
   status?: string;
+  gtId?: number | null;
 }
 
 export function useTarefas(params: UseTarefasParams = {}) {
@@ -18,6 +19,7 @@ export function useTarefas(params: UseTarefasParams = {}) {
       const response = await client.get<PaginatedResponse<Tarefa>>('/tarefas', {
         query: {
           ...params,
+          gt_id: params.gtId ?? undefined,
           page_size: 200,
         },
       });

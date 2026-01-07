@@ -601,6 +601,7 @@ class ComentarioSerializer(serializers.ModelSerializer):
     etag = serializers.CharField(read_only=True)
     mentions = serializers.ListField(child=serializers.IntegerField(), required=False, allow_empty=True, write_only=True)
     mentions_ids = serializers.SerializerMethodField(read_only=True)
+    alvo_preview = serializers.SerializerMethodField()
 
     class Meta:
         model = Comentario
@@ -608,6 +609,7 @@ class ComentarioSerializer(serializers.ModelSerializer):
             "id",
             "alvo_tipo",
             "alvo_id",
+            "alvo_preview",
             "anchor_json",
             "conteudo_html",
             "autor",
@@ -616,6 +618,7 @@ class ComentarioSerializer(serializers.ModelSerializer):
             "resolved_at",
             "mentions",
             "mentions_ids",
+            "alvo_preview",
             "created_at",
             "updated_at",
             "etag",
@@ -630,6 +633,70 @@ class ComentarioSerializer(serializers.ModelSerializer):
             "updated_at",
             "etag",
         )
+
+    def _shorten(self, value: str | None, limit: int = 240) -> str | None:
+        if not value:
+            return None
+        text = value.strip()
+        if len(text) <= limit:
+            return text
+        return text[:limit].rstrip() + "..."
+
+    def _build_resposta_preview(self, alvo_id: str | int):
+        try:
+            resposta = Resposta.raw_objects.select_related("gt", "pergunta", "pergunta__tarefa").get(pk=alvo_id)
+        except Resposta.DoesNotExist:
+            return None
+        pergunta = getattr(resposta, "pergunta", None)
+        tarefa = getattr(pergunta, "tarefa", None) if pergunta else None
+        return {
+            "type": "resposta",
+            "id": resposta.pk,
+            "gt": resposta.gt_id,
+            "gt_nome": getattr(resposta.gt, "nome", None),
+            "tarefa": getattr(tarefa, "id", None),
+            "tarefa_nome": getattr(tarefa, "nome", None),
+            "pergunta": resposta.pergunta_id,
+            "pergunta_ordem": getattr(pergunta, "ordem", None),
+            "pergunta_texto": self._shorten(getattr(pergunta, "texto", None)),
+        }
+
+    def _build_texto_unico_preview(self, alvo_id: str | int):
+        try:
+            texto = TextoUnico.raw_objects.select_related("gt", "tarefa").get(pk=alvo_id)
+        except TextoUnico.DoesNotExist:
+            return None
+        tarefa = getattr(texto, "tarefa", None)
+        return {
+            "type": "texto_unico",
+            "id": texto.pk,
+            "gt": texto.gt_id,
+            "gt_nome": getattr(texto.gt, "nome", None),
+            "tarefa": texto.tarefa_id,
+            "tarefa_nome": getattr(tarefa, "nome", None),
+        }
+
+    def _build_quadro_preview(self, alvo_id: str | int):
+        try:
+            quadro = Quadro.raw_objects.select_related("gt").get(pk=alvo_id)
+        except Quadro.DoesNotExist:
+            return None
+        return {
+            "type": "quadro",
+            "id": quadro.pk,
+            "gt": quadro.gt_id,
+            "gt_nome": getattr(quadro.gt, "nome", None),
+            "template": quadro.template,
+        }
+
+    def get_alvo_preview(self, obj):
+        if obj.alvo_tipo == Comentario.AlvoTipo.RESPOSTA:
+            return self._build_resposta_preview(obj.alvo_id)
+        if obj.alvo_tipo == Comentario.AlvoTipo.TEXTO_UNICO:
+            return self._build_texto_unico_preview(obj.alvo_id)
+        if obj.alvo_tipo == Comentario.AlvoTipo.QUADRO:
+            return self._build_quadro_preview(obj.alvo_id)
+        return None
 
     def get_mentions_ids(self, obj):
         return list(obj.mentions.values_list("id", flat=True))

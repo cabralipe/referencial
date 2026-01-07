@@ -7,6 +7,7 @@ import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useAiAssist } from '@/hooks/useAiAssist';
 import { useApiClient } from '@/api/client';
+import { useAuth } from '@/context/AuthContext';
 
 import './RevisoesPage.css';
 
@@ -36,7 +37,7 @@ export function RevisoesPage() {
   };
 
   const { data: revisoes, isLoading, refetch } = useRevisoes();
-  const { gtOptions } = useAvailableGts({ scope: 'all' });
+  const { gtOptions, isLoading: gtsLoading } = useAvailableGts({ scope: 'member' });
   const { data: respostas, isLoading: respostasLoading, refetch: refetchRespostas } = useRespostas({
     includeAll: true,
   });
@@ -53,6 +54,7 @@ export function RevisoesPage() {
   const [iaFeedback, setIaFeedback] = useState<string | null>(null);
   const client = useApiClient();
   const aiAssist = useAiAssist();
+  const { user } = useAuth();
 
   const stripHtml = (value?: string | null) =>
     (value ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -74,20 +76,35 @@ export function RevisoesPage() {
     return revisoes.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [revisoes]);
 
+  const gtsPermitidos = useMemo(() => {
+    if (user?.role !== 'articulador') {
+      return null;
+    }
+    return new Set(gtOptions.map((gt) => gt.id));
+  }, [gtOptions, user?.role]);
+
   const respostasFiltradas = useMemo(() => {
     if (!respostas) return [];
     const term = buscaConteudo.trim().toLowerCase();
     return respostas
       .filter((resp) => {
+        if (gtsPermitidos && !gtsPermitidos.has(resp.gt)) return false;
         if (gtFiltro && resp.gt !== gtFiltro) return false;
         if (!term) return true;
         const textoPergunta = (resp.pergunta_texto || '').toLowerCase();
         const textoConteudo = (resp.conteudo_html || '').replace(/<[^>]+>/g, ' ').toLowerCase();
         return textoPergunta.includes(term) || textoConteudo.includes(term);
       })
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .sort((a, b) => {
+        const perguntaA = a.pergunta ?? Number.MAX_SAFE_INTEGER;
+        const perguntaB = b.pergunta ?? Number.MAX_SAFE_INTEGER;
+        if (perguntaA !== perguntaB) {
+          return perguntaA - perguntaB;
+        }
+        return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+      })
       .slice(0, 50);
-  }, [buscaConteudo, gtFiltro, respostas]);
+  }, [buscaConteudo, gtFiltro, respostas, gtsPermitidos]);
 
   const respostaAtiva = useMemo(
     () => respostasFiltradas.find((resp) => resp.id === modalRespostaId) ?? null,
@@ -275,7 +292,7 @@ export function RevisoesPage() {
           </div>
         </header>
 
-        {respostasLoading && !respostas ? (
+        {((user?.role === 'articulador' && gtsLoading) || (respostasLoading && !respostas)) ? (
           <FullPageLoader message="Carregando respostas..." />
         ) : respostasFiltradas.length === 0 ? (
           <div className="revisoes__empty">

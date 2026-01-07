@@ -1,9 +1,14 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useComentarios, useCreateComentario, useUpdateComentario } from '@/hooks/useComentarios';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useTarefas } from '@/hooks/useTarefas';
+import { usePerguntas } from '@/hooks/usePerguntas';
+import { useApiClient } from '@/api/client';
+import type { Comentario, PaginatedResponse, Resposta } from '@/api/types';
 
 import './ComentariosPage.css';
 
@@ -19,6 +24,13 @@ export function ComentariosPage() {
   const [mostrarResolvidos, setMostrarResolvidos] = useState<'todos' | 'abertos' | 'fechados'>('todos');
   const [anchorLocal, setAnchorLocal] = useState('');
   const [anchorTrecho, setAnchorTrecho] = useState('');
+  const [alvoTipoNovo, setAlvoTipoNovo] = useState('resposta');
+  const [alvoIdNovo, setAlvoIdNovo] = useState('');
+  const [gtSelecionado, setGtSelecionado] = useState<number | ''>('');
+  const [tarefaSelecionada, setTarefaSelecionada] = useState<number | ''>('');
+  const [perguntaSelecionada, setPerguntaSelecionada] = useState<number | ''>('');
+  const [respostaSelecionada, setRespostaSelecionada] = useState<Resposta | null>(null);
+  const [respostaFeedback, setRespostaFeedback] = useState<string | null>(null);
 
   const alvoIdNumero = useMemo(() => {
     if (!alvoIdFiltro) {
@@ -40,6 +52,13 @@ export function ComentariosPage() {
   });
   const criarComentario = useCreateComentario();
   const atualizarComentario = useUpdateComentario();
+  const { gtOptions } = useAvailableGts({ scope: 'member' });
+  const gtSelecionadoNumero = typeof gtSelecionado === 'number' ? gtSelecionado : null;
+  const tarefaSelecionadaNumero = typeof tarefaSelecionada === 'number' ? tarefaSelecionada : null;
+  const perguntaSelecionadaNumero = typeof perguntaSelecionada === 'number' ? perguntaSelecionada : null;
+  const tarefasQuery = useTarefas({ gtId: gtSelecionadoNumero ?? undefined });
+  const perguntasQuery = usePerguntas(tarefaSelecionadaNumero ?? undefined);
+  const client = useApiClient();
 
   useStreamSubscription({
     alvoTipo: alvoTipoFiltro || undefined,
@@ -72,6 +91,21 @@ export function ComentariosPage() {
     return paragraphs || `<p>${text}</p>`;
   };
 
+  const normalizeAnchor = (anchor: unknown) => {
+    if (!anchor) return null;
+    if (typeof anchor === 'string') {
+      try {
+        return JSON.parse(anchor) as { local?: string; trecho?: string };
+      } catch (err) {
+        return null;
+      }
+    }
+    if (typeof anchor === 'object') {
+      return anchor as { local?: string; trecho?: string };
+    }
+    return null;
+  };
+
   const anchorJsonPreview = useMemo(() => {
     if (!anchorLocal.trim() && !anchorTrecho.trim()) {
       return '';
@@ -86,11 +120,81 @@ export function ComentariosPage() {
     );
   }, [anchorLocal, anchorTrecho]);
 
+  const perguntasFiltradas = useMemo(() => {
+    const perguntas = perguntasQuery.data ?? [];
+    if (!gtSelecionadoNumero) {
+      return perguntas;
+    }
+    return perguntas
+      .filter((pergunta) => pergunta.gts.length === 0 || pergunta.gts.includes(gtSelecionadoNumero))
+      .sort((a, b) => a.ordem - b.ordem);
+  }, [gtSelecionadoNumero, perguntasQuery.data]);
+
+  useEffect(() => {
+    setTarefaSelecionada('');
+    setPerguntaSelecionada('');
+    setRespostaSelecionada(null);
+    setRespostaFeedback(null);
+  }, [gtSelecionado]);
+
+  useEffect(() => {
+    setPerguntaSelecionada('');
+    setRespostaSelecionada(null);
+    setRespostaFeedback(null);
+  }, [tarefaSelecionada]);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchResposta = async () => {
+      if (alvoTipoNovo !== 'resposta') {
+        setRespostaSelecionada(null);
+        setRespostaFeedback(null);
+        return;
+      }
+      if (!gtSelecionadoNumero || !perguntaSelecionadaNumero) {
+        setRespostaSelecionada(null);
+        setRespostaFeedback(null);
+        return;
+      }
+      setRespostaFeedback('Buscando resposta vinculada...');
+      try {
+        const response = await client.get<PaginatedResponse<Resposta>>('/respostas', {
+          query: {
+            gt_id: gtSelecionadoNumero,
+            pergunta_id: perguntaSelecionadaNumero,
+            page_size: 1,
+          },
+        });
+        if (!active) return;
+        const resposta = response.data?.results?.[0] ?? null;
+        setRespostaSelecionada(resposta);
+        if (resposta) {
+          setAlvoTipoNovo('resposta');
+          setAlvoIdNovo(String(resposta.id));
+          setRespostaFeedback('Resposta encontrada e selecionada.');
+        } else {
+          setAlvoIdNovo('');
+          setRespostaFeedback('Nenhuma resposta encontrada para esse GT e missão.');
+        }
+      } catch (err: any) {
+        if (!active) return;
+        setRespostaSelecionada(null);
+        setRespostaFeedback('Falha ao buscar a resposta selecionada.');
+      }
+    };
+
+    fetchResposta();
+    return () => {
+      active = false;
+    };
+  }, [alvoTipoNovo, client, gtSelecionadoNumero, perguntaSelecionadaNumero]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const alvoTipo = String(form.get('alvoTipo') ?? '').trim();
-    const alvoId = Number(form.get('alvoId'));
+    const alvoTipo = alvoTipoNovo.trim();
+    const alvoId = Number(alvoIdNovo);
     const conteudo = String(form.get('conteudo') ?? '').trim();
     const mentions = String(form.get('mentions') ?? '')
       .split(',')
@@ -118,6 +222,65 @@ export function ComentariosPage() {
     event.currentTarget.reset();
     setAnchorLocal('');
     setAnchorTrecho('');
+    setAlvoIdNovo('');
+    setRespostaSelecionada(null);
+    setRespostaFeedback(null);
+  };
+
+  const renderContextoComentario = (comentario: Comentario) => {
+    const preview = comentario.alvo_preview;
+    if (!preview) return null;
+    const anchor = normalizeAnchor(comentario.anchor_json);
+    if (preview.type === 'resposta') {
+      return (
+        <div className="comentarios__contexto">
+          <div className="comentarios__contexto-line">
+            <span>GT: {preview.gt_nome ?? `#${preview.gt ?? '—'}`}</span>
+            <span>Trilha: {preview.tarefa_nome ?? `#${preview.tarefa ?? '—'}`}</span>
+            <span>Missão: {preview.pergunta_ordem ?? preview.pergunta ?? '—'}</span>
+          </div>
+          {preview.pergunta_texto && <p className="comentarios__contexto-texto">{preview.pergunta_texto}</p>}
+          {anchor && (anchor.local || anchor.trecho) && (
+            <div className="comentarios__contexto-anchor">
+              {anchor.local && <span>Local: {anchor.local}</span>}
+              {anchor.trecho && <span>Trecho: {anchor.trecho}</span>}
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (preview.type === 'texto_unico') {
+      return (
+        <div className="comentarios__contexto">
+          <div className="comentarios__contexto-line">
+            <span>GT: {preview.gt_nome ?? `#${preview.gt ?? '—'}`}</span>
+            <span>Trilha: {preview.tarefa_nome ?? `#${preview.tarefa ?? '—'}`}</span>
+            <span>Texto único #{preview.id}</span>
+          </div>
+          {anchor && (anchor.local || anchor.trecho) && (
+            <div className="comentarios__contexto-anchor">
+              {anchor.local && <span>Local: {anchor.local}</span>}
+              {anchor.trecho && <span>Trecho: {anchor.trecho}</span>}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="comentarios__contexto">
+        <div className="comentarios__contexto-line">
+          <span>GT: {preview.gt_nome ?? `#${preview.gt ?? '—'}`}</span>
+          <span>Template: {preview.template ?? '—'}</span>
+          <span>Quadro #{preview.id}</span>
+        </div>
+        {anchor && (anchor.local || anchor.trecho) && (
+          <div className="comentarios__contexto-anchor">
+            {anchor.local && <span>Local: {anchor.local}</span>}
+            {anchor.trecho && <span>Trecho: {anchor.trecho}</span>}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleAtualizar = async (comentarioId: number, etag: string) => {
@@ -199,8 +362,53 @@ export function ComentariosPage() {
         <h2>Novo comentário</h2>
         <form onSubmit={handleSubmit}>
           <label>
+            <span>GT</span>
+            <select
+              value={gtSelecionado === '' ? '' : String(gtSelecionado)}
+              onChange={(event) => setGtSelecionado(event.target.value ? Number(event.target.value) : '')}
+              disabled={alvoTipoNovo !== 'resposta'}
+            >
+              <option value="">Selecione</option>
+              {gtOptions.map((gt) => (
+                <option key={gt.id} value={gt.id}>
+                  {gt.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Tarefa</span>
+            <select
+              value={tarefaSelecionada === '' ? '' : String(tarefaSelecionada)}
+              onChange={(event) => setTarefaSelecionada(event.target.value ? Number(event.target.value) : '')}
+              disabled={alvoTipoNovo !== 'resposta' || !gtSelecionadoNumero || tarefasQuery.isLoading}
+            >
+              <option value="">{gtSelecionadoNumero ? 'Selecione' : 'Escolha um GT'}</option>
+              {(tarefasQuery.data ?? []).map((tarefa) => (
+                <option key={tarefa.id} value={tarefa.id}>
+                  {tarefa.ordem}. {tarefa.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Pergunta</span>
+            <select
+              value={perguntaSelecionada === '' ? '' : String(perguntaSelecionada)}
+              onChange={(event) => setPerguntaSelecionada(event.target.value ? Number(event.target.value) : '')}
+              disabled={alvoTipoNovo !== 'resposta' || !tarefaSelecionadaNumero || perguntasQuery.isLoading}
+            >
+              <option value="">{tarefaSelecionadaNumero ? 'Selecione' : 'Escolha uma tarefa'}</option>
+              {perguntasFiltradas.map((pergunta) => (
+                <option key={pergunta.id} value={pergunta.id}>
+                  Missão {pergunta.ordem}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             <span>Alvo tipo</span>
-            <select name="alvoTipo" required defaultValue="resposta">
+            <select name="alvoTipo" required value={alvoTipoNovo} onChange={(event) => setAlvoTipoNovo(event.target.value)}>
               {COMMENT_TARGETS.map((target) => (
                 <option key={target.value} value={target.value}>
                   {target.label}
@@ -210,8 +418,33 @@ export function ComentariosPage() {
           </label>
           <label>
             <span>Alvo ID</span>
-            <input name="alvoId" type="number" min={1} placeholder="Ex.: 120" required />
+            <input
+              name="alvoId"
+              type="number"
+              min={1}
+              placeholder="Ex.: 120"
+              required
+              value={alvoIdNovo}
+              onChange={(event) => setAlvoIdNovo(event.target.value)}
+            />
           </label>
+          <div className="comentarios__hint">
+            {alvoTipoNovo === 'resposta'
+              ? respostaFeedback || 'Selecione GT, tarefa e missão para preencher automaticamente o alvo.'
+              : 'Selecione um alvo diferente de resposta usando o ID manualmente.'}
+          </div>
+          {respostaSelecionada && (
+            <div className="comentarios__contexto comentarios__contexto--form">
+              <div className="comentarios__contexto-line">
+                <span>Resposta #{respostaSelecionada.id}</span>
+                <span>GT: {respostaSelecionada.gt_nome ?? `#${respostaSelecionada.gt}`}</span>
+                <span>Missão: {respostaSelecionada.pergunta_ordem ?? respostaSelecionada.pergunta}</span>
+              </div>
+              {respostaSelecionada.pergunta_texto && (
+                <p className="comentarios__contexto-texto">{respostaSelecionada.pergunta_texto}</p>
+              )}
+            </div>
+          )}
           <label>
             <span>Mentions (IDs separados por vírgula)</span>
             <input name="mentions" type="text" placeholder="Ex.: 3, 18" />
@@ -282,6 +515,8 @@ export function ComentariosPage() {
                   <span>ETag: {comentario.etag}</span>
                 </div>
               </header>
+
+              {renderContextoComentario(comentario)}
 
               <details>
                 <summary>Conteúdo atual</summary>

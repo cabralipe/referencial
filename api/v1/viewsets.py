@@ -985,7 +985,21 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
-        return Revisao.objects.filter(cliente_id=cliente_id)
+        queryset = Revisao.objects.filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) == user.Role.ARTICULADOR:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).values("id")
+            texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).values("id")
+            quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).values("id")
+            queryset = queryset.filter(
+                models.Q(alvo_tipo=Revisao.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
+                | models.Q(alvo_tipo=Revisao.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
+                | models.Q(alvo_tipo=Revisao.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
+            )
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user

@@ -200,6 +200,7 @@ export interface Comentario {
   id: number;
   alvo_tipo: string;
   alvo_id: number;
+  alvo_preview?: ComentarioAlvoPreview | null;
   anchor_json: string;
   conteudo_html: string;
   autor: number | null;
@@ -211,6 +212,34 @@ export interface Comentario {
   updated_at: string;
   etag: string;
 }
+
+export type ComentarioAlvoPreview =
+  | {
+      type: 'resposta';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      tarefa?: number | null;
+      tarefa_nome?: string | null;
+      pergunta?: number | null;
+      pergunta_ordem?: number | null;
+      pergunta_texto?: string | null;
+    }
+  | {
+      type: 'texto_unico';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      tarefa?: number | null;
+      tarefa_nome?: string | null;
+    }
+  | {
+      type: 'quadro';
+      id: number;
+      gt?: number | null;
+      gt_nome?: string | null;
+      template?: string | null;
+    };
 
 export interface Notificacao {
   id: number;
