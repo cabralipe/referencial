@@ -826,18 +826,60 @@ class QuadroViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class FormularioDinamicoViewSet(viewsets.ReadOnlyModelViewSet):
+class FormularioDinamicoViewSet(viewsets.ModelViewSet):
     serializer_class = FormularioDinamicoSerializer
     permission_classes = [HasClientScope]
 
     def get_queryset(self):
-        return FormularioDinamico.objects.filter(ativo=True)
+        queryset = FormularioDinamico.objects.filter(ativo=True)
+        user = self.request.user
+        if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.ARTICULADOR, user.Role.SUPER_ADMIN}:
+            return FormularioDinamico.objects.all()
+        return queryset
+
+    def perform_create(self, serializer):
+        _assert_roles(
+            self.request.user,
+            {
+                self.request.user.Role.ADMIN_CLIENTE,
+                self.request.user.Role.ARTICULADOR,
+                self.request.user.Role.MEMBRO_GT,
+            },
+        )
+        serializer.save(cliente_id=_get_request_cliente_id(self.request))
+
+    def perform_update(self, serializer):
+        _assert_roles(
+            self.request.user,
+            {
+                self.request.user.Role.ADMIN_CLIENTE,
+                self.request.user.Role.ARTICULADOR,
+                self.request.user.Role.MEMBRO_GT,
+            },
+        )
+        serializer.save()
 
     @action(detail=True, methods=["get"], url_path="campos")
     def campos(self, request, pk=None):
         formulario = self.get_object()
         serializer = CampoDinamicoSerializer(formulario.campos.order_by("ordem"), many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="campos")
+    def criar_campo(self, request, pk=None):
+        formulario = self.get_object()
+        _assert_roles(
+            request.user,
+            {
+                request.user.Role.ADMIN_CLIENTE,
+                request.user.Role.ARTICULADOR,
+                request.user.Role.MEMBRO_GT,
+            },
+        )
+        serializer = CampoDinamicoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        campo = serializer.save(formulario=formulario, cliente_id=formulario.cliente_id)
+        return Response(CampoDinamicoSerializer(campo).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="respostas")
     def respostas(self, request, pk=None):
@@ -857,6 +899,13 @@ class FormularioDinamicoViewSet(viewsets.ReadOnlyModelViewSet):
         owner_id = data.get("owner_id")
         if owner_id is None:
             raise ValidationError({"owner_id": "Identificador do proprietário é obrigatório"})
+        if owner_type == RespostaCampoDinamico.OwnerType.GT:
+            user = request.user
+            if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+                pass
+            else:
+                if not GT.objects.filter(pk=owner_id, membros=user).exists():
+                    raise PermissionDenied("Permissão negada para este GT.")
 
         instance = RespostaCampoDinamico.objects.filter(
             formulario=formulario,

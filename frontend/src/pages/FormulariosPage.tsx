@@ -1,34 +1,151 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useCamposFormulario, useFormularios, useSubmitFormulario } from '@/hooks/useFormularios';
+import {
+  useCamposFormulario,
+  useCreateCampoFormulario,
+  useCreateFormulario,
+  useFormularios,
+  useSubmitFormulario,
+} from '@/hooks/useFormularios';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useAuth } from '@/context/AuthContext';
 
 import './FormulariosPage.css';
 
 type ValorCampo = string | number | boolean | null;
 
+type CampoDraft = {
+  chave: string;
+  tipo: string;
+  obrigatorio: boolean;
+  ordem: number;
+  configJson: string;
+};
+
+const FIELD_TYPES = [
+  { value: 'texto', label: 'Texto' },
+  { value: 'select', label: 'Seleção' },
+  { value: 'upload', label: 'Upload' },
+  { value: 'inteiro', label: 'Inteiro' },
+  { value: 'decimal', label: 'Decimal' },
+  { value: 'bool', label: 'Booleano' },
+];
+
 export function FormulariosPage() {
-  const { data: formularios, isLoading } = useFormularios();
+  const { data: formularios, isLoading, refetch } = useFormularios();
   const [selectedFormulario, setSelectedFormulario] = useState<number | null>(null);
   const [ownerType, setOwnerType] = useState('');
   const [ownerId, setOwnerId] = useState('');
+  const [gtDestino, setGtDestino] = useState<number | ''>('');
   const [values, setValues] = useState<Record<number, ValorCampo>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [createFeedback, setCreateFeedback] = useState<string | null>(null);
+  const [novoNome, setNovoNome] = useState('');
+  const [novoDescricao, setNovoDescricao] = useState('');
+  const [novoAtivo, setNovoAtivo] = useState(true);
+  const [camposDraft, setCamposDraft] = useState<CampoDraft[]>([]);
 
   const { data: campos, isFetching: camposLoading } = useCamposFormulario(selectedFormulario ?? undefined);
   const submitFormulario = useSubmitFormulario();
+  const createFormulario = useCreateFormulario();
+  const createCampo = useCreateCampoFormulario();
+  const { gtOptions } = useAvailableGts({ scope: 'member' });
+  const { user } = useAuth();
+
+  const canCreate =
+    user?.role === 'admin_cliente' ||
+    user?.role === 'super_admin' ||
+    user?.role === 'articulador' ||
+    user?.role === 'membro_gt';
 
   const formularioSelecionado = useMemo(
     () => formularios?.find((item) => item.id === selectedFormulario) ?? null,
     [formularios, selectedFormulario],
   );
 
+  useEffect(() => {
+    if (typeof gtDestino === 'number') {
+      setOwnerType('gt');
+      setOwnerId(String(gtDestino));
+    }
+  }, [gtDestino]);
+
   const handleChange = (campoId: number, valor: ValorCampo) => {
     setValues((prev) => ({
       ...prev,
       [campoId]: valor,
     }));
+  };
+
+  const handleAddCampo = () => {
+    setCamposDraft((prev) => [
+      ...prev,
+      {
+        chave: '',
+        tipo: 'texto',
+        obrigatorio: false,
+        ordem: prev.length + 1,
+        configJson: '',
+      },
+    ]);
+  };
+
+  const handleUpdateCampo = (index: number, patch: Partial<CampoDraft>) => {
+    setCamposDraft((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  const handleRemoveCampo = (index: number) => {
+    setCamposDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreateFormulario = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateFeedback(null);
+    if (!novoNome.trim()) {
+      setCreateFeedback('Informe o nome do formulário.');
+      return;
+    }
+    if (camposDraft.length === 0) {
+      setCreateFeedback('Adicione ao menos um campo.');
+      return;
+    }
+    const camposValidos = camposDraft.every((campo) => campo.chave.trim() && campo.tipo.trim());
+    if (!camposValidos) {
+      setCreateFeedback('Preencha chave e tipo para todos os campos.');
+      return;
+    }
+    try {
+      const formulario = await createFormulario.mutateAsync({
+        nome: novoNome.trim(),
+        descricao: novoDescricao.trim() || undefined,
+        ativo: novoAtivo,
+      });
+      for (const campo of camposDraft) {
+        let configJson: Record<string, unknown> | undefined;
+        if (campo.configJson.trim()) {
+          configJson = JSON.parse(campo.configJson);
+        }
+        await createCampo.mutateAsync({
+          formularioId: formulario.id,
+          chave: campo.chave.trim(),
+          tipo: campo.tipo,
+          obrigatorio: campo.obrigatorio,
+          ordem: campo.ordem,
+          ...(configJson ? { config_json: configJson } : {}),
+        });
+      }
+      setCreateFeedback('Formulário criado e disponível para envio.');
+      setNovoNome('');
+      setNovoDescricao('');
+      setNovoAtivo(true);
+      setCamposDraft([]);
+      refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível criar o formulário.';
+      setCreateFeedback(message);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -114,12 +231,27 @@ export function FormulariosPage() {
             <form onSubmit={handleSubmit} className="formularios__form">
               <div className="formularios__contexto">
                 <label>
+                  <span>Enviar para GT</span>
+                  <select
+                    value={gtDestino === '' ? '' : String(gtDestino)}
+                    onChange={(event) => setGtDestino(event.target.value ? Number(event.target.value) : '')}
+                  >
+                    <option value="">Selecione um GT</option>
+                    {gtOptions.map((gt) => (
+                      <option key={gt.id} value={gt.id}>
+                        {gt.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   <span>Owner type</span>
                   <input
                     type="text"
                     value={ownerType}
                     onChange={(event) => setOwnerType(event.target.value)}
                     placeholder="Ex.: tarefa"
+                    disabled={typeof gtDestino === 'number'}
                   />
                 </label>
                 <label>
@@ -129,6 +261,7 @@ export function FormulariosPage() {
                     value={ownerId}
                     onChange={(event) => setOwnerId(event.target.value)}
                     placeholder="Ex.: 12"
+                    disabled={typeof gtDestino === 'number'}
                   />
                 </label>
               </div>
@@ -207,6 +340,107 @@ export function FormulariosPage() {
           )}
         </section>
       </div>
+
+      {canCreate && (
+        <section className="formularios__criar">
+          <header>
+            <h2>Criar formulário dinâmico</h2>
+            <p>Defina campos e publique rapidamente para os GTs.</p>
+          </header>
+          <form onSubmit={handleCreateFormulario}>
+            <label>
+              <span>Nome</span>
+              <input value={novoNome} onChange={(event) => setNovoNome(event.target.value)} />
+            </label>
+            <label>
+              <span>Descrição</span>
+              <input value={novoDescricao} onChange={(event) => setNovoDescricao(event.target.value)} />
+            </label>
+            <label>
+              <span>Ativo</span>
+              <select value={novoAtivo ? 'true' : 'false'} onChange={(event) => setNovoAtivo(event.target.value === 'true')}>
+                <option value="true">Sim</option>
+                <option value="false">Não</option>
+              </select>
+            </label>
+
+            <div className="formularios__campos">
+              <div className="formularios__campos-header">
+                <strong>Campos</strong>
+                <button type="button" onClick={handleAddCampo}>
+                  Adicionar campo
+                </button>
+              </div>
+              {camposDraft.length === 0 ? (
+                <p className="formularios__campos-empty">Adicione campos para compor o formulário.</p>
+              ) : (
+                camposDraft.map((campo, index) => (
+                  <div key={`campo-${index}`} className="formularios__campo-row">
+                    <label>
+                      <span>Chave</span>
+                      <input
+                        value={campo.chave}
+                        onChange={(event) => handleUpdateCampo(index, { chave: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>Tipo</span>
+                      <select
+                        value={campo.tipo}
+                        onChange={(event) => handleUpdateCampo(index, { tipo: event.target.value })}
+                      >
+                        {FIELD_TYPES.map((tipo) => (
+                          <option key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Ordem</span>
+                      <input
+                        type="number"
+                        value={campo.ordem}
+                        onChange={(event) => handleUpdateCampo(index, { ordem: Number(event.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>Obrigatório</span>
+                      <select
+                        value={campo.obrigatorio ? 'true' : 'false'}
+                        onChange={(event) => handleUpdateCampo(index, { obrigatorio: event.target.value === 'true' })}
+                      >
+                        <option value="false">Não</option>
+                        <option value="true">Sim</option>
+                      </select>
+                    </label>
+                    <label className="full">
+                      <span>Config JSON</span>
+                      <textarea
+                        rows={2}
+                        value={campo.configJson}
+                        onChange={(event) => handleUpdateCampo(index, { configJson: event.target.value })}
+                        placeholder='{"options":["A","B"]}'
+                      />
+                    </label>
+                    <button type="button" className="ghost" onClick={() => handleRemoveCampo(index)}>
+                      Remover
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {createFeedback && <p className="formularios__feedback">{createFeedback}</p>}
+
+            <div className="formularios__actions">
+              <button type="submit" disabled={createFormulario.isPending || createCampo.isPending}>
+                {createFormulario.isPending ? 'Criando...' : 'Criar formulário'}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
     </div>
   );
 }

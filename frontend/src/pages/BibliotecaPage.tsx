@@ -9,6 +9,8 @@ import './BibliotecaPage.css';
 export function BibliotecaPage() {
   const [filtroPalavra, setFiltroPalavra] = useState('');
   const [filtroTags, setFiltroTags] = useState('');
+  const [blocoSelecionadoId, setBlocoSelecionadoId] = useState<number | ''>('');
+  const [midiaSelecionadaId, setMidiaSelecionadaId] = useState<number | ''>('');
 
   const tagsList = useMemo(
     () =>
@@ -28,6 +30,27 @@ export function BibliotecaPage() {
   const atualizarBloco = useUpdateBloco();
 
   const [draftBlocos, setDraftBlocos] = useState<Record<number, string>>({});
+
+  const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const blocoSelecionado = useMemo(() => {
+    if (typeof blocoSelecionadoId !== 'number') {
+      return null;
+    }
+    return (blocos ?? []).find((bloco) => bloco.id === blocoSelecionadoId) ?? null;
+  }, [blocos, blocoSelecionadoId]);
+
+  const midiaSelecionada = useMemo(() => {
+    if (typeof midiaSelecionadaId !== 'number') {
+      return null;
+    }
+    return (midias ?? []).find((midia) => midia.id === midiaSelecionadaId) ?? null;
+  }, [midias, midiaSelecionadaId]);
+
+  const isImageUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /\.(png|jpe?g|gif|webp|svg)$/i.test(url);
+  };
 
   const handleCriarBloco = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -136,6 +159,43 @@ export function BibliotecaPage() {
             <header>
               <h2>Blocos de texto ({blocos?.length ?? 0})</h2>
             </header>
+            <div className="biblioteca__selector">
+              <label>
+                <span>Selecionar bloco</span>
+                <select
+                  value={blocoSelecionadoId === '' ? '' : String(blocoSelecionadoId)}
+                  onChange={(event) =>
+                    setBlocoSelecionadoId(event.target.value ? Number(event.target.value) : '')
+                  }
+                >
+                  <option value="">Escolha um bloco para visualizar</option>
+                  {(blocos ?? []).map((bloco) => (
+                    <option key={bloco.id} value={bloco.id}>
+                      {bloco.titulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {blocoSelecionado && (
+                <div className="biblioteca__preview">
+                  <div className="biblioteca__preview-meta">
+                    <strong>{blocoSelecionado.titulo}</strong>
+                    <span>Atualizado em {new Date(blocoSelecionado.updated_at).toLocaleString('pt-BR')}</span>
+                    {blocoSelecionado.tags && blocoSelecionado.tags.length > 0 && (
+                      <ul className="biblioteca__tags">
+                        {blocoSelecionado.tags.map((tag) => (
+                          <li key={tag}>#{tag}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div
+                    className="biblioteca__preview-html"
+                    dangerouslySetInnerHTML={{ __html: blocoSelecionado.conteudo_html }}
+                  />
+                </div>
+              )}
+            </div>
             {blocos && blocos.length > 0 ? (
               <div className="biblioteca__cards">
                 {blocos.map((bloco) => (
@@ -144,6 +204,10 @@ export function BibliotecaPage() {
                       <div>
                         <h3>{bloco.titulo}</h3>
                         <span>Atualizado em {new Date(bloco.updated_at).toLocaleString('pt-BR')}</span>
+                        <p className="biblioteca__snippet">
+                          {stripHtml(bloco.conteudo_html).slice(0, 140) || 'Sem conteúdo.'}
+                          {stripHtml(bloco.conteudo_html).length > 140 ? '…' : ''}
+                        </p>
                       </div>
                       {bloco.tags && bloco.tags.length > 0 && (
                         <ul className="biblioteca__tags">
@@ -188,6 +252,45 @@ export function BibliotecaPage() {
             <header>
               <h2>Mídias cadastradas ({midias?.length ?? 0})</h2>
             </header>
+            <div className="biblioteca__selector">
+              <label>
+                <span>Selecionar mídia</span>
+                <select
+                  value={midiaSelecionadaId === '' ? '' : String(midiaSelecionadaId)}
+                  onChange={(event) =>
+                    setMidiaSelecionadaId(event.target.value ? Number(event.target.value) : '')
+                  }
+                >
+                  <option value="">Escolha uma mídia para visualizar</option>
+                  {(midias ?? []).map((midia) => (
+                    <option key={midia.id} value={midia.id}>
+                      {midia.legenda ? `${midia.legenda} (${midia.id})` : `Mídia #${midia.id}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {midiaSelecionada && (
+                <div className="biblioteca__preview biblioteca__preview--media">
+                  <div className="biblioteca__preview-meta">
+                    <strong>{midiaSelecionada.legenda ?? `Mídia #${midiaSelecionada.id}`}</strong>
+                    <span>Registrada em {new Date(midiaSelecionada.created_at).toLocaleString('pt-BR')}</span>
+                    {midiaSelecionada.tags && midiaSelecionada.tags.length > 0 && (
+                      <ul className="biblioteca__tags">
+                        {midiaSelecionada.tags.map((tag) => (
+                          <li key={tag}>#{tag}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <a href={midiaSelecionada.url} target="_blank" rel="noreferrer">
+                      {midiaSelecionada.url}
+                    </a>
+                  </div>
+                  {isImageUrl(midiaSelecionada.url) && (
+                    <img className="biblioteca__thumb" src={midiaSelecionada.url} alt={midiaSelecionada.legenda ?? 'Mídia'} />
+                  )}
+                </div>
+              )}
+            </div>
             {midias && midias.length > 0 ? (
               <ul className="biblioteca__midias">
                 {midias.map((midia) => (

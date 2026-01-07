@@ -37,6 +37,59 @@ export function useCamposFormulario(formularioId?: number) {
   });
 }
 
+interface CreateFormularioInput {
+  nome: string;
+  descricao?: string;
+  ativo?: boolean;
+}
+
+export function useCreateFormulario() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ nome, descricao, ativo }: CreateFormularioInput) => {
+      const response = await client.post<FormularioDinamico>('/formularios', {
+        body: {
+          nome,
+          descricao,
+          ativo,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['formularios'] });
+    },
+  });
+}
+
+interface CreateCampoInput {
+  formularioId: number;
+  chave: string;
+  tipo: string;
+  obrigatorio?: boolean;
+  ordem?: number;
+  config_json?: Record<string, unknown>;
+}
+
+export function useCreateCampoFormulario() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ formularioId, ...payload }: CreateCampoInput) => {
+      const response = await client.post<CampoDinamico>(`/formularios/${formularioId}/campos`, {
+        body: payload,
+      });
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['formularios', variables.formularioId, 'campos'] });
+    },
+  });
+}
+
 interface SubmitFormularioInput {
   formularioId: number;
   respostas: Array<{

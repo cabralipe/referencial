@@ -50,6 +50,7 @@ class RespostaCampoDinamico(TenantModel):
         RESPOSTA = "resposta", "Resposta"
         TEXTO_UNICO = "texto_unico", "Texto Único"
         QUADRO = "quadro", "Quadro"
+        GT = "gt", "GT"
 
     formulario = models.ForeignKey(
         FormularioDinamico,

@@ -113,6 +113,7 @@ export function TaskDetailPage() {
 
   const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
   const canReview = canManage;
+  const isGtMember = user?.role === 'membro_gt';
   const [novaOrdem, setNovaOrdem] = useState('');
   const [novaTexto, setNovaTexto] = useState('');
   const [novaObrigatoria, setNovaObrigatoria] = useState(true);
@@ -351,6 +352,9 @@ export function TaskDetailPage() {
     const respostaAtual = respostas?.find((item) => item.pergunta === pergunta.id);
     const draft = drafts[pergunta.id] ?? '';
     const salvo = respostaAtual?.conteudo_html ?? '';
+    const pendente = Boolean(
+      isGtMember && selectedGtId && (!respostaAtual || !respostaAtual.conteudo_html?.trim()),
+    );
     const alterado = draft !== salvo;
     const feedbackEntry = feedback[pergunta.id];
     const atualizacao = lastUpdated[pergunta.id];
@@ -450,6 +454,11 @@ export function TaskDetailPage() {
               {pergunta.permite_upload ? (
                 <span className="pergunta-card__badge pergunta-card__badge--upload">
                   Permite upload
+                </span>
+              ) : null}
+              {pendente ? (
+                <span className="pergunta-card__badge pergunta-card__badge--pendente">
+                  Pendente
                 </span>
               ) : null}
             </h2>
