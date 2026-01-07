@@ -282,6 +282,25 @@
   font-size: 0.85rem;
   color: #475569;
   text-align: right;
+  align-items: flex-end;
+}
+
+.dashboard__inline-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard__inline-action:hover {
+  background: #e2e8f0;
 }
 
 .dashboard__table table {
@@ -483,6 +502,88 @@
   text-align: center;
 }
 
+.dashboard__modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.dashboard__modal {
+  width: min(920px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dashboard__modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.dashboard__modal-header h3 {
+  margin: 0.35rem 0 0.5rem;
+  color: #0f172a;
+}
+
+.dashboard__modal-eyebrow {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.dashboard__modal-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.dashboard__modal-body {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.dashboard__modal-block {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.dashboard__modal-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard__modal-content {
+  color: #0f172a;
+  line-height: 1.6;
+}
+
+.dashboard__modal-content--plain {
+  white-space: pre-wrap;
+}
+
 .dashboard__error,
 .dashboard-error {
   margin-top: 4rem;
@@ -523,6 +624,7 @@
 
   .dashboard__list-meta {
     text-align: left;
+    align-items: flex-start;
   }
 
   .dashboard__trilha-card {

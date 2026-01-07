@@ -57,6 +57,18 @@ export function RevisoesPage() {
   const stripHtml = (value?: string | null) =>
     (value ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
+  const htmlToPlainText = (value?: string | null) => {
+    if (!value) return '';
+    const normalized = value
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n');
+    return normalized
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n\s+/g, '\n')
+      .trim();
+  };
+
   const revisoesOrdenadas = useMemo(() => {
     if (!revisoes) return [];
     return revisoes.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -352,6 +364,7 @@ export function RevisoesPage() {
                   <span>Atualizar parecer (HTML)</span>
                   <textarea
                     rows={4}
+                    className="revisoes__parecer-field"
                     value={draftParecer[revisao.id] ?? revisao.parecer_html ?? ''}
                     onChange={(event) => setDraftParecer((prev) => ({ ...prev, [revisao.id]: event.target.value }))}
                   />
@@ -414,10 +427,9 @@ export function RevisoesPage() {
                 )}
                 <div className="revisoes__preview-block">
                   <div className="revisoes__preview-meta">Resposta</div>
-                  <div
-                    className="revisoes__preview-body"
-                    dangerouslySetInnerHTML={{ __html: respostaAtiva.conteudo_html || '<p>Sem conteúdo.</p>' }}
-                  />
+                  <p className="revisoes__preview-body revisoes__preview-body--plain">
+                    {htmlToPlainText(respostaAtiva.conteudo_html) || 'Sem conteúdo.'}
+                  </p>
                 </div>
               </div>
 
@@ -512,6 +524,7 @@ export function RevisoesPage() {
                   <span>Parecer para o cliente (HTML)</span>
                   <textarea
                     rows={4}
+                    className="revisoes__parecer-field"
                     value={draftParecerResposta[respostaAtiva.id] ?? ''}
                     onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [respostaAtiva.id]: e.target.value }))}
                     placeholder="Explique o ajuste esperado; o cliente verá este comentário."

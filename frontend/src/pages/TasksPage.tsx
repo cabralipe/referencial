@@ -60,8 +60,8 @@ export function TasksPage() {
 
   const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
   const perguntasSummaryQuery = useQuery({
-    queryKey: ['tarefas', 'perguntas', 'summary', tarefas?.map((tarefa) => tarefa.id), gtFilter],
-    enabled: Boolean(tarefas?.length && gtFilter),
+    queryKey: ['tarefas', 'perguntas', 'summary', tarefas?.map((tarefa) => tarefa.id)],
+    enabled: Boolean(tarefas?.length),
     queryFn: async () => {
       const results = await Promise.all(
         (tarefas ?? []).map(async (tarefa) => {
@@ -104,7 +104,7 @@ export function TasksPage() {
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [tarefas]);
 
-  const filteredTarefas = useMemo(() => {
+  const tarefasBase = useMemo(() => {
     if (!tarefas) {
       return [];
     }
@@ -112,34 +112,56 @@ export function TasksPage() {
     if (!term) {
       return tarefas;
     }
-    const base = tarefas.filter((tarefa) => {
+    return tarefas.filter((tarefa) => {
       const nome = tarefa.nome?.toLowerCase() ?? '';
       const etapa = tarefa.etapa?.toLowerCase() ?? '';
       const tipo = TipoLabel[tarefa.tipo] ?? tarefa.tipo;
       const ordem = String(tarefa.ordem);
       return nome.includes(term) || etapa.includes(term) || tipo.toLowerCase().includes(term) || ordem.includes(term);
     });
-    if (!gtFilter || !perguntasSummaryQuery.data) {
-      return base;
-    }
-    const tarefasPorGt = new Map<number, number>();
+  }, [tarefas, searchTerm]);
+
+  const tarefasPorGt = useMemo(() => {
+    const map = new Map<number, Set<number>>();
+    const gtsDisponiveis = gtOptions.map((gt) => gt.id);
     (perguntasSummaryQuery.data ?? []).forEach((item) => {
-      const count = (item.perguntas ?? []).filter((pergunta) => {
-        return !pergunta.gts || pergunta.gts.length === 0 || pergunta.gts.includes(gtFilter);
-      }).length;
-      tarefasPorGt.set(item.tarefaId, count);
+      const gtSet = new Set<number>();
+      (item.perguntas ?? []).forEach((pergunta) => {
+        if (!pergunta.gts || pergunta.gts.length === 0) {
+          gtsDisponiveis.forEach((gtId) => gtSet.add(gtId));
+        } else {
+          pergunta.gts.forEach((gtId) => gtSet.add(gtId));
+        }
+      });
+      map.set(item.tarefaId, gtSet);
     });
-    return base.filter((tarefa) => (tarefasPorGt.get(tarefa.id) ?? 0) > 0);
-  }, [tarefas, searchTerm, gtFilter, perguntasSummaryQuery.data]);
+    return map;
+  }, [perguntasSummaryQuery.data, gtOptions]);
+
+  const tarefasOrganizadas = useMemo(() => {
+    const gtMap = new Map(gtOptions.map((gt) => [gt.id, gt]));
+    const lista = tarefasBase.flatMap((tarefa) => {
+      const gtSet = tarefasPorGt.get(tarefa.id) ?? new Set(gtOptions.map((gt) => gt.id));
+      const gtIds = Array.from(gtSet).filter((gtId) => gtMap.has(gtId));
+      const selected = gtFilter ? gtIds.filter((gtId) => gtId === gtFilter) : gtIds;
+      return selected.map((gtId) => ({ tarefa, gt: gtMap.get(gtId)! }));
+    });
+    return lista.sort((a, b) => {
+      if (a.tarefa.ordem !== b.tarefa.ordem) {
+        return a.tarefa.ordem - b.tarefa.ordem;
+      }
+      return a.gt.displayName.localeCompare(b.gt.displayName, 'pt-BR');
+    });
+  }, [tarefasBase, tarefasPorGt, gtOptions, gtFilter]);
 
   const tarefasRespondidas = useMemo(() => {
     if (!respostas) {
-      return new Set<number>();
+      return new Set<string>();
     }
-    const ids = new Set<number>();
+    const ids = new Set<string>();
     respostas.forEach((resp) => {
-      if (resp.tarefa_id) {
-        ids.add(resp.tarefa_id);
+      if (resp.tarefa_id && resp.gt) {
+        ids.add(`${resp.tarefa_id}-${resp.gt}`);
       }
     });
     return ids;
@@ -309,7 +331,7 @@ export function TasksPage() {
         </label>
       </div>
 
-      {filteredTarefas.length === 0 ? (
+      {tarefasOrganizadas.length === 0 ? (
         <div className="tasks__empty">
           <h3>Nenhum resultado</h3>
           <p>Ajuste os filtros ou refine a busca para encontrar outras trilhas.</p>
@@ -319,6 +341,7 @@ export function TasksPage() {
           <table className="tasks__table">
             <thead>
               <tr>
+                <th>GT</th>
                 <th>Ordem</th>
                 <th>Trilha</th>
                 <th>Tipo</th>
@@ -328,13 +351,14 @@ export function TasksPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredTarefas.map((tarefa) => (
-                <tr key={tarefa.id}>
+              {tarefasOrganizadas.map(({ tarefa, gt }) => (
+                <tr key={`${tarefa.id}-${gt.id}`}>
+                  <td>{gt.displayName}</td>
                   <td>{tarefa.ordem}</td>
                   <td>
                     <span className="tasks__trilha-label">
                       {tarefa.nome}
-                      {tarefasRespondidas.has(tarefa.id) && (
+                      {tarefasRespondidas.has(`${tarefa.id}-${gt.id}`) && (
                         <span className="tasks__trilha-badge">Respondida ✓</span>
                       )}
                     </span>
@@ -345,7 +369,7 @@ export function TasksPage() {
                     <TaskStatusBadge status={tarefa.status} />
                   </td>
                   <td>
-                    <Link to={`/tarefas/${tarefa.id}${gtFilter ? `?gt=${gtFilter}` : ''}`}>Abrir</Link>
+                    <Link to={`/tarefas/${tarefa.id}?gt=${gt.id}`}>Abrir</Link>
                   </td>
                 </tr>
               ))}

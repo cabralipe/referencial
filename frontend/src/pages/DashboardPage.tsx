@@ -36,6 +36,25 @@ const stripHtml = (html?: string | null) => {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
+const htmlToPlainText = (html?: string | null) => {
+  if (!html) return '';
+  const normalized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n');
+  return normalized
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+};
+
+const buildPreview = (html?: string | null, limit = 160) => {
+  const text = stripHtml(html);
+  if (!text) return 'Sem conteúdo.';
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}…`;
+};
+
 export function DashboardPage() {
   const { user } = useAuth();
 
@@ -563,6 +582,7 @@ function ArticuladorDashboard() {
   const [gtSearch, setGtSearch] = useState('');
   const [trilhaSearch, setTrilhaSearch] = useState('');
   const [selectedGtId, setSelectedGtId] = useState<number | null>(null);
+  const [modalRespostaId, setModalRespostaId] = useState<number | null>(null);
   const { data: respostasDoGt, isLoading: respostasLoading } = useRespostas({ gtId: selectedGtId });
 
   useEffect(() => {
@@ -607,6 +627,11 @@ function ArticuladorDashboard() {
     }
     return painelRespostas.filter((resp) => gtIdSet.has(resp.gt));
   }, [painelRespostas, gtIdSet]);
+
+  const respostaAtiva = useMemo(() => {
+    if (!modalRespostaId) return null;
+    return painelRespostasFiltradas.find((resp) => resp.id === modalRespostaId) ?? null;
+  }, [modalRespostaId, painelRespostasFiltradas]);
 
   const respostasPorGtMap = useMemo(() => {
     const map = new Map<number, number>();
@@ -826,11 +851,18 @@ function ArticuladorDashboard() {
                 <div key={resp.id} className="dashboard__list-item">
                   <div>
                     <strong>{resp.gt_nome ?? `GT #${resp.gt}`}</strong>
-                    <span>{stripHtml(resp.conteudo_html || 'Sem conteúdo.') || 'Sem conteúdo.'}</span>
+                    <span>{buildPreview(resp.conteudo_html)}</span>
                   </div>
                   <div className="dashboard__list-meta">
                     <span>Atualizado {formatDateTime(resp.updated_at)}</span>
                     <span>{resp.autor_nome ?? (resp.autor ? `Usuário #${resp.autor}` : 'Autor não informado')}</span>
+                    <button
+                      type="button"
+                      className="dashboard__inline-action"
+                      onClick={() => setModalRespostaId(resp.id)}
+                    >
+                      Expandir
+                    </button>
                   </div>
                 </div>
               ))}
@@ -840,6 +872,57 @@ function ArticuladorDashboard() {
           )}
         </div>
       </section>
+
+      {respostaAtiva && (
+        <div
+          className="dashboard__modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="dashboard-modal-title"
+          onClick={() => setModalRespostaId(null)}
+        >
+          <div className="dashboard__modal" onClick={(event) => event.stopPropagation()}>
+            <header className="dashboard__modal-header">
+              <div>
+                <p className="dashboard__modal-eyebrow">{respostaAtiva.gt_nome ?? `GT #${respostaAtiva.gt}`}</p>
+                <h3 id="dashboard-modal-title">
+                  Missão {respostaAtiva.pergunta_ordem ?? respostaAtiva.pergunta} · Trilha{' '}
+                  {respostaAtiva.tarefa_id ?? '—'}
+                </h3>
+                <div className="dashboard__modal-meta">
+                  <span>Atualizado {formatDateTime(respostaAtiva.updated_at)}</span>
+                  <span>{respostaAtiva.autor_nome ?? (respostaAtiva.autor ? `Usuário #${respostaAtiva.autor}` : 'Autor não informado')}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="dashboard__inline-action"
+                onClick={() => setModalRespostaId(null)}
+                aria-label="Fechar modal de resposta"
+              >
+                Fechar
+              </button>
+            </header>
+            <div className="dashboard__modal-body">
+              {respostaAtiva.pergunta_texto && (
+                <div className="dashboard__modal-block">
+                  <div className="dashboard__modal-label">Missão</div>
+                  <div
+                    className="dashboard__modal-content"
+                    dangerouslySetInnerHTML={{ __html: respostaAtiva.pergunta_texto }}
+                  />
+                </div>
+              )}
+              <div className="dashboard__modal-block">
+                <div className="dashboard__modal-label">Resposta</div>
+                <p className="dashboard__modal-content dashboard__modal-content--plain">
+                  {htmlToPlainText(respostaAtiva.conteudo_html) || 'Sem conteúdo.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
