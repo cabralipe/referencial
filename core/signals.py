@@ -10,7 +10,7 @@ from django.dispatch import receiver
 from django.db.models.fields.files import FieldFile
 
 from .mixins import TenantModel
-from .models import AuditLog
+from .models import AuditLog, Cliente, ClienteFeatureFlag
 from .threadlocals import get_current_usuario_id
 
 
@@ -47,3 +47,22 @@ def registrar_auditoria(sender, instance, created, **kwargs):
         acao=acao,
         diff_json={"current": _snapshot(instance)},
     )
+
+
+@receiver(post_save, sender=Cliente)
+def garantir_flags_padrao(sender, instance, created, **kwargs):
+    if not created:
+        return
+    flags = [
+        "ff.reviews.enabled",
+        "ff.comments.enabled",
+        "ff.notifications.enabled",
+        "ff.diff.enabled",
+        "ff.library.enabled",
+    ]
+    for flag in flags:
+        ClienteFeatureFlag.objects.update_or_create(
+            cliente=instance,
+            flag=flag,
+            defaults={"ativo": True},
+        )
