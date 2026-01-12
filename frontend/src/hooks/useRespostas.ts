@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
+import { fetchAllPaginated } from '@/utils/pagination';
 import type { PaginatedResponse, Resposta } from '@/api/types';
 
 interface UseRespostasParams {
@@ -15,10 +16,17 @@ export function useRespostas({ gtId, includeAll = false }: UseRespostasParams) {
     enabled: includeAll || Boolean(gtId),
     queryKey: ['respostas', gtId, includeAll],
     queryFn: async () => {
+      if (gtId) {
+        return fetchAllPaginated<Resposta>(client.get, '/respostas', {
+          query: {
+            gt: gtId,
+            gt_id: gtId,
+            page_size: 200,
+          },
+        });
+      }
       const response = await client.get<PaginatedResponse<Resposta>>('/respostas', {
         query: {
-          gt: gtId ?? undefined,
-          gt_id: gtId ?? undefined,
           page_size: 200,
         },
       });
