@@ -10,6 +10,7 @@ import { TextoUnicoPage } from './pages/TextoUnicoPage';
 import { QuadrosPage } from './pages/QuadrosPage';
 import { FormulariosPage } from './pages/FormulariosPage';
 import { RevisoesPage } from './pages/RevisoesPage';
+import { PareceresPage } from './pages/PareceresPage';
 import { ComentariosPage } from './pages/ComentariosPage';
 import { NotificacoesPage } from './pages/NotificacoesPage';
 import { BibliotecaPage } from './pages/BibliotecaPage';
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
       {
         path: 'revisoes',
         element: <RevisoesPage />,
+      },
+      {
+        path: 'pareceres',
+        element: <PareceresPage />,
       },
       {
         path: 'comentarios',

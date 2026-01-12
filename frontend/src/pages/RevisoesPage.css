@@ -45,6 +45,28 @@
   box-shadow: none;
 }
 
+.revisoes__button--danger {
+  background: #b91c1c;
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(185, 28, 28, 0.2);
+}
+
+.revisoes__button--danger:hover {
+  background: #991b1b;
+  box-shadow: 0 14px 36px rgba(185, 28, 28, 0.28);
+}
+
+.revisoes__button--danger.revisoes__button--ghost {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.3);
+  box-shadow: none;
+}
+
+.revisoes__button--danger.revisoes__button--ghost:hover {
+  background: rgba(185, 28, 28, 0.08);
+}
+
 .revisoes__header h1 {
   margin: 0;
   font-size: 2rem;
@@ -381,6 +403,14 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   align-items: end;
+}
+
+.revisoes__editar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  grid-column: 1 / -1;
 }
 
 .revisoes__editar label {

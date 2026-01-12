@@ -1,0 +1,235 @@
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { PageInstructions } from '@/components/common/PageInstructions';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useRespostas } from '@/hooks/useRespostas';
+import { useRevisoes } from '@/hooks/useRevisoes';
+import { useAuth } from '@/context/AuthContext';
+import type { Resposta, Revisao } from '@/api/types';
+
+import './PareceresPage.css';
+
+const STATUS_LABELS: Record<string, string> = {
+  rascunho: 'Rascunho',
+  em_revisao: 'Em revisão',
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+};
+
+const stripHtml = (html?: string | null) => {
+  if (!html) return '';
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const htmlToPlainText = (html?: string | null) => {
+  if (!html) return '';
+  const normalized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n');
+  return normalized
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+};
+
+export function PareceresPage() {
+  const { user } = useAuth();
+  const [gtFiltro, setGtFiltro] = useState<number | ''>('');
+  const [buscaConteudo, setBuscaConteudo] = useState('');
+
+  const { gtOptions, isLoading: gtsLoading } = useAvailableGts();
+  const { data: respostas, isLoading: respostasLoading, refetch: refetchRespostas } = useRespostas({ includeAll: true });
+  const { data: revisoes, isLoading: revisoesLoading, refetch: refetchRevisoes } = useRevisoes({
+    alvoTipo: 'resposta',
+    pageSize: 500,
+  });
+
+  const respostasDoUsuario = useMemo(() => {
+    if (!respostas || !user) return [];
+    return respostas.filter((resp) => resp.autor === user.id);
+  }, [respostas, user]);
+
+  const respostasFiltradas = useMemo(() => {
+    const term = buscaConteudo.trim().toLowerCase();
+    return respostasDoUsuario.filter((resp) => {
+      if (gtFiltro && resp.gt !== gtFiltro) return false;
+      if (!term) return true;
+      const textoPergunta = (resp.pergunta_texto || '').toLowerCase();
+      const textoConteudo = stripHtml(resp.conteudo_html).toLowerCase();
+      return textoPergunta.includes(term) || textoConteudo.includes(term);
+    });
+  }, [buscaConteudo, gtFiltro, respostasDoUsuario]);
+
+  const respostasById = useMemo(() => {
+    return new Map(respostasDoUsuario.map((resp) => [resp.id, resp]));
+  }, [respostasDoUsuario]);
+
+  const respostaIdsFiltradas = useMemo(
+    () => new Set(respostasFiltradas.map((resp) => resp.id)),
+    [respostasFiltradas],
+  );
+
+  const pareceresFiltrados = useMemo(() => {
+    if (!revisoes) return [];
+    return revisoes
+      .filter((rev) => rev.alvo_tipo === 'resposta' && respostaIdsFiltradas.has(rev.alvo_id))
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }, [revisoes, respostaIdsFiltradas]);
+
+  if (!user) {
+    return <FullPageLoader message="Carregando pareceres..." />;
+  }
+
+  if (gtsLoading || respostasLoading || revisoesLoading) {
+    return <FullPageLoader message="Carregando pareceres..." />;
+  }
+
+  if (user.role !== 'membro_gt') {
+    return (
+      <div className="pareceres">
+        <header className="pareceres__header">
+          <div>
+            <h1>Pareceres</h1>
+            <p>Esta tela está disponível apenas para membros dos GTs.</p>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pareceres">
+      <header className="pareceres__header">
+        <div>
+          <h1>Pareceres</h1>
+          <p>Veja os pareceres enviados para as suas respostas e acompanhe os ajustes solicitados.</p>
+        </div>
+        <button
+          type="button"
+          className="pareceres__button"
+          onClick={() => {
+            refetchRespostas();
+            refetchRevisoes();
+          }}
+        >
+          Atualizar pareceres
+        </button>
+      </header>
+
+      <PageInstructions
+        title="Como usar"
+        description="Organize seus pareceres por GT e encontre rapidamente as missões que precisam de ajuste."
+        items={[
+          {
+            title: 'Use os filtros',
+            description: 'Filtre por GT e palavra-chave para localizar a missão correta.',
+          },
+          {
+            title: 'Leia o parecer',
+            description: 'O texto destacado abaixo mostra o feedback do redator para sua resposta.',
+          },
+          {
+            title: 'Volte para a trilha',
+            description: 'Abra a trilha para revisar a missão e aplicar os ajustes solicitados.',
+          },
+        ]}
+      />
+
+      <section className="pareceres__filters">
+        <label>
+          <span>Filtrar por GT</span>
+          <select
+            value={gtFiltro === '' ? '' : String(gtFiltro)}
+            onChange={(e) => setGtFiltro(e.target.value ? Number(e.target.value) : '')}
+          >
+            <option value="">Todos</option>
+            {gtOptions.map((gt) => (
+              <option key={gt.id} value={gt.id}>
+                {gt.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="pareceres__filters-search">
+          <span>Busca em missão ou resposta</span>
+          <input
+            type="search"
+            value={buscaConteudo}
+            onChange={(e) => setBuscaConteudo(e.target.value)}
+            placeholder="Palavra-chave da missão ou do texto"
+          />
+        </label>
+      </section>
+
+      {pareceresFiltrados.length > 0 ? (
+        <div className="pareceres__list">
+          {pareceresFiltrados.map((rev) => {
+            const resposta = respostasById.get(rev.alvo_id);
+            const preview = rev.alvo_preview as Revisao['alvo_preview'];
+            const gtNome = resposta?.gt_nome ?? (preview && 'gt_nome' in preview ? preview.gt_nome : null);
+            const tarefaId = resposta?.tarefa_id ?? (preview && 'tarefa' in preview ? preview.tarefa : null);
+            const gtId = resposta?.gt ?? (preview && 'gt' in preview ? preview.gt : null);
+            const linkTo = tarefaId && gtId ? `/tarefas/${tarefaId}?gt=${gtId}` : null;
+            const statusLabel = STATUS_LABELS[rev.status] ?? rev.status;
+
+            return (
+              <article key={rev.id} className="pareceres__card">
+                <header className="pareceres__card-header">
+                  <div>
+                    <h2>Parecer #{rev.id}</h2>
+                    <p>
+                      {gtNome ? `${gtNome} · ` : ''}
+                      Missão {resposta?.pergunta_ordem ?? resposta?.pergunta ?? '—'} · Trilha {tarefaId ?? '—'}
+                    </p>
+                  </div>
+                  <div className="pareceres__card-meta">
+                    <span className="pareceres__badge">Status: {statusLabel}</span>
+                    <span className="pareceres__badge">Atualizado {new Date(rev.updated_at).toLocaleString('pt-BR')}</span>
+                    {linkTo && (
+                      <Link to={linkTo} className="pareceres__button pareceres__button--ghost">
+                        Abrir trilha
+                      </Link>
+                    )}
+                  </div>
+                </header>
+
+                {resposta?.pergunta_texto && (
+                  <div className="pareceres__preview">
+                    <div className="pareceres__preview-label">Missão</div>
+                    <div
+                      className="pareceres__preview-body"
+                      dangerouslySetInnerHTML={{ __html: resposta.pergunta_texto }}
+                    />
+                  </div>
+                )}
+
+                <div className="pareceres__preview">
+                  <div className="pareceres__preview-label">Sua resposta</div>
+                  <p className="pareceres__preview-body pareceres__preview-body--plain">
+                    {htmlToPlainText(resposta?.conteudo_html) || 'Sem conteúdo.'}
+                  </p>
+                </div>
+
+                <div className="pareceres__parecer">
+                  <div className="pareceres__preview-label">Parecer do redator</div>
+                  <div
+                    className="pareceres__parecer-body"
+                    dangerouslySetInnerHTML={{ __html: rev.parecer_html || '<p>Sem parecer registrado.</p>' }}
+                  />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="pareceres__empty">
+          <h2>Nenhum parecer encontrado</h2>
+          <p>Assim que o redator publicar um parecer, ele aparecerá aqui para você.</p>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -2,12 +2,13 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
+import { useCreateRevisao, useDeleteRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useAiAssist } from '@/hooks/useAiAssist';
 import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import type { Resposta } from '@/api/types';
 
 import './RevisoesPage.css';
 
@@ -44,6 +45,7 @@ export function RevisoesPage() {
 
   const createRevisao = useCreateRevisao();
   const updateRevisao = useUpdateRevisao();
+  const deleteRevisao = useDeleteRevisao();
 
   const [draftParecer, setDraftParecer] = useState<Record<number, string>>({});
   const [draftStatus, setDraftStatus] = useState<Record<number, string>>({});
@@ -52,6 +54,8 @@ export function RevisoesPage() {
   const [draftConteudoResposta, setDraftConteudoResposta] = useState<Record<number, string>>({});
   const [modalRespostaId, setModalRespostaId] = useState<number | null>(null);
   const [iaFeedback, setIaFeedback] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<Record<number, string>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const client = useApiClient();
   const aiAssist = useAiAssist();
   const { user } = useAuth();
@@ -75,6 +79,11 @@ export function RevisoesPage() {
     if (!revisoes) return [];
     return revisoes.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [revisoes]);
+
+  const respostasById = useMemo(() => {
+    if (!respostas) return new Map<number, Resposta>();
+    return new Map(respostas.map((resp) => [resp.id, resp]));
+  }, [respostas]);
 
   const gtsPermitidos = useMemo(() => {
     if (user?.role !== 'articulador') {
@@ -174,11 +183,29 @@ export function RevisoesPage() {
     });
   };
 
+  const handleExcluir = async (revisaoId: number) => {
+    const confirmacao = window.confirm('Excluir este parecer? Esta ação não pode ser desfeita.');
+    if (!confirmacao) return;
+    setDeletingId(revisaoId);
+    setDeleteFeedback((prev) => ({ ...prev, [revisaoId]: '' }));
+    try {
+      await deleteRevisao.mutateAsync({ revisaoId });
+      setDeleteFeedback((prev) => ({ ...prev, [revisaoId]: 'Parecer excluído com sucesso.' }));
+      refetch();
+    } catch (err: any) {
+      setDeleteFeedback((prev) => ({ ...prev, [revisaoId]: err?.message ?? 'Falha ao excluir parecer.' }));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const renderPreview = (preview: any) => {
     if (!preview) {
       return <div className="revisoes__preview revisoes__preview--empty">Conteúdo do alvo não encontrado.</div>;
     }
     if (preview.type === 'resposta') {
+      const resposta = respostasById.get(preview.id);
+      const perguntaTexto = resposta?.pergunta_texto;
       return (
         <div className="revisoes__preview">
           <div className="revisoes__preview-meta">
@@ -187,6 +214,12 @@ export function RevisoesPage() {
             {preview.pergunta_ordem && <span>Missão {preview.pergunta_ordem}</span>}
             {preview.gt_nome && <span>GT: {preview.gt_nome}</span>}
           </div>
+          {perguntaTexto && (
+            <div
+              className="revisoes__preview-body"
+              dangerouslySetInnerHTML={{ __html: perguntaTexto }}
+            />
+          )}
           <div
             className="revisoes__preview-body"
             dangerouslySetInnerHTML={{ __html: preview.conteudo_html || '<p>Sem conteúdo.</p>' }}
@@ -386,14 +419,27 @@ export function RevisoesPage() {
                     onChange={(event) => setDraftParecer((prev) => ({ ...prev, [revisao.id]: event.target.value }))}
                   />
                 </label>
-                <button
-                  type="button"
-                  className="revisoes__button"
-                  onClick={() => handleAtualizar(revisao.id, revisao.etag)}
-                  disabled={updateRevisao.isPending}
-                >
-                  {updateRevisao.isPending ? 'Salvando...' : 'Salvar alterações'}
-                </button>
+                <div className="revisoes__editar-actions">
+                  <button
+                    type="button"
+                    className="revisoes__button"
+                    onClick={() => handleAtualizar(revisao.id, revisao.etag)}
+                    disabled={updateRevisao.isPending}
+                  >
+                    {updateRevisao.isPending ? 'Salvando...' : 'Salvar alterações'}
+                  </button>
+                  <button
+                    type="button"
+                    className="revisoes__button revisoes__button--ghost revisoes__button--danger"
+                    onClick={() => handleExcluir(revisao.id)}
+                    disabled={deletingId === revisao.id}
+                  >
+                    {deletingId === revisao.id ? 'Excluindo...' : 'Excluir parecer'}
+                  </button>
+                </div>
+                {deleteFeedback[revisao.id] && (
+                  <p className="revisoes__feedback">{deleteFeedback[revisao.id]}</p>
+                )}
               </div>
             </article>
           ))}

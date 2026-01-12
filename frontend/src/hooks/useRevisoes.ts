@@ -88,3 +88,22 @@ export function useUpdateRevisao() {
     },
   });
 }
+
+interface DeleteRevisaoInput {
+  revisaoId: number;
+}
+
+export function useDeleteRevisao() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ revisaoId }: DeleteRevisaoInput) => {
+      await client.del(`/revisoes/${revisaoId}`);
+      return revisaoId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['revisoes'] });
+    },
+  });
+}
