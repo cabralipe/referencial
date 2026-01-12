@@ -10,6 +10,7 @@ import { useTarefas } from '@/hooks/useTarefas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAuth } from '@/context/AuthContext';
+import { fetchAllPaginated } from '@/utils/pagination';
 import type { Pergunta, Tarefa } from '@/api/types';
 
 import './TasksPage.css';
@@ -60,16 +61,31 @@ export function TasksPage() {
 
   const canManage = user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
   const perguntasSummaryQuery = useQuery({
-    queryKey: ['tarefas', 'perguntas', 'summary', tarefas?.map((tarefa) => tarefa.id)],
+    queryKey: ['perguntas', 'summary', tarefas?.map((tarefa) => tarefa.id)],
     enabled: Boolean(tarefas?.length),
+    refetchOnWindowFocus: false,
+    staleTime: 10 * 60 * 1000,
     queryFn: async () => {
-      const results = await Promise.all(
-        (tarefas ?? []).map(async (tarefa) => {
-          const response = await client.get<Pergunta[]>(`/tarefas/${tarefa.id}/perguntas`);
-          return { tarefaId: tarefa.id, perguntas: response.data ?? [] };
-        }),
-      );
-      return results;
+      if (!tarefas?.length) {
+        return [];
+      }
+      const tarefaIdSet = new Set(tarefas.map((tarefa) => tarefa.id));
+      const todasPerguntas = await fetchAllPaginated<Pergunta>(client.get, '/perguntas', {
+        query: { page_size: 500 },
+      });
+      const agrupadas = new Map<number, Pergunta[]>();
+      todasPerguntas.forEach((pergunta) => {
+        if (!tarefaIdSet.has(pergunta.tarefa)) {
+          return;
+        }
+        const lista = agrupadas.get(pergunta.tarefa) ?? [];
+        lista.push(pergunta);
+        agrupadas.set(pergunta.tarefa, lista);
+      });
+      return Array.from(agrupadas.entries()).map(([tarefaId, perguntas]) => ({
+        tarefaId,
+        perguntas,
+      }));
     },
   });
 
