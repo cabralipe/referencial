@@ -142,6 +142,39 @@ class AuditLog(TenantModel):
         ordering = ("-timestamp",)
 
 
+class ThrottleBlock(models.Model):
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="throttle_blocks",
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="throttle_blocks",
+    )
+    scope = models.CharField(max_length=100)
+    ident = models.CharField(max_length=255, blank=True)
+    cache_key = models.CharField(max_length=255, unique=True)
+    wait_seconds = models.IntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["cliente", "blocked_until"]),
+            models.Index(fields=["blocked_until"]),
+        ]
+        ordering = ("-blocked_until", "-created_at")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.scope}:{self.ident or 'anon'}"
+
+
 class ScoreEntry(TenantModel):
     """Registra pontos de gamificação por usuário."""
 

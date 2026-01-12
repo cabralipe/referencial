@@ -21,6 +21,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
+import { ThrottleBlocksPage } from './pages/ThrottleBlocksPage';
 
 export const router = createBrowserRouter([
   {
@@ -103,6 +104,10 @@ export const router = createBrowserRouter([
       {
         path: 'gamificacao',
         element: <ScoreConfigPage />,
+      },
+      {
+        path: 'bloqueios',
+        element: <ThrottleBlocksPage />,
       },
     ],
   },

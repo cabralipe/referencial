@@ -10,7 +10,7 @@ from django.db import IntegrityError
 from django.utils.text import slugify
 from rest_framework import serializers
 
-from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, UserSessionLog
+from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, UserSessionLog
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
@@ -454,6 +454,37 @@ class AuditLogSerializer(serializers.ModelSerializer):
             return None
         usuario = Usuario.objects.filter(pk=obj.usuario_id).only("last_login").first()
         return getattr(usuario, "last_login", None)
+
+
+class ThrottleBlockSerializer(serializers.ModelSerializer):
+    usuario_nome = serializers.SerializerMethodField()
+    usuario_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ThrottleBlock
+        fields = (
+            "id",
+            "cliente",
+            "usuario",
+            "usuario_nome",
+            "usuario_email",
+            "scope",
+            "ident",
+            "wait_seconds",
+            "blocked_until",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_usuario_nome(self, obj):
+        if obj.usuario:
+            return obj.usuario.nome
+        return None
+
+    def get_usuario_email(self, obj):
+        if obj.usuario:
+            return obj.usuario.email
+        return None
 
 
 class OnlineUserSerializer(serializers.ModelSerializer):

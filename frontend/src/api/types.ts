@@ -58,6 +58,19 @@ export interface TextoUnico {
   etag: string;
 }
 
+export interface ThrottleBlock {
+  id: number;
+  cliente: number | null;
+  usuario: number | null;
+  usuario_nome?: string | null;
+  usuario_email?: string | null;
+  scope: string;
+  ident: string;
+  wait_seconds: number;
+  blocked_until: string | null;
+  created_at: string;
+}
+
 export interface TextoColaborativo {
   id: number;
   gt: number;

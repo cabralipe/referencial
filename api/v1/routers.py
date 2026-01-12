@@ -7,6 +7,7 @@ from rest_framework.routers import DefaultRouter
 from .viewsets import (
     AiAssistViewSet,
     AuditLogViewSet,
+    ThrottleBlockViewSet,
     BlocoTextoViewSet,
     ComentarioViewSet,
     ExportJobViewSet,
@@ -41,6 +42,7 @@ router.register("quadro", QuadroViewSet, basename="quadro")
 router.register("formularios", FormularioDinamicoViewSet, basename="formulario")
 router.register("exports", ExportJobViewSet, basename="export")
 router.register("audit", AuditLogViewSet, basename="audit")
+router.register("throttle_blocks", ThrottleBlockViewSet, basename="throttle_block")
 router.register("score", ScoreViewSet, basename="score")
 router.register("revisoes", RevisaoViewSet, basename="revisao")
 router.register("comentarios", ComentarioViewSet, basename="comentario")

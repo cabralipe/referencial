@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover
     STORAGE_EXCEPTIONS = (OSError,)
 
 from core.activity import online_sessions_for_cliente
-from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, UserSessionLog
+from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, ThrottleBlock, UserSessionLog
 from core.permissions import (
     HasClientScope,
     IsAdminClienteOrReadOnly,
@@ -54,6 +54,7 @@ from workshop.models import CelulaQuadro, Quadro
 from .serializers import (
     AnexoSerializer,
     AuditLogSerializer,
+    ThrottleBlockSerializer,
     CampoDinamicoSerializer,
     ClienteMeSerializer,
     AiAssistSerializer,
@@ -1021,6 +1022,31 @@ class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             queryset = queryset[:limit_param]
         serializer = OnlineUserSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class ThrottleBlockViewSet(mixins.ListModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    serializer_class = ThrottleBlockSerializer
+    permission_classes = [HasClientScope]
+    pagination_class = None
+
+    def get_queryset(self):
+        user = self.request.user
+        _assert_roles(user, {user.Role.ADMIN_CLIENTE})
+        queryset = ThrottleBlock.objects.select_related("usuario", "cliente")
+        if not getattr(user, "is_super_admin", False):
+            queryset = queryset.filter(cliente_id=getattr(user, "cliente_id", None))
+        show_all = str(self.request.query_params.get("show_all", "")).lower() in {"1", "true", "sim"}
+        if not show_all:
+            queryset = queryset.filter(blocked_until__gt=timezone.now())
+        return queryset.order_by("-blocked_until", "-created_at")
+
+    def destroy(self, request, *args, **kwargs):
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        instance = self.get_object()
+        if instance.cache_key:
+            from django.core.cache import cache
+            cache.delete(instance.cache_key)
+        return super().destroy(request, *args, **kwargs)
 
 
 class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):

@@ -239,6 +239,12 @@ export function AppLayout() {
               <span className="menu__label">Auditoria</span>
             </NavLink>
             {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
+              <NavLink to="/bloqueios">
+                <Icon name="audit" className="menu__icon" ariaHidden />
+                <span className="menu__label">Bloqueios</span>
+              </NavLink>
+            )}
+            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
               <NavLink to="/gamificacao">
                 <Icon name="tasks" className="menu__icon" ariaHidden />
                 <span className="menu__label">Gamificação</span>

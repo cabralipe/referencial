@@ -318,9 +318,9 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
     ),
     "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.ScopedRateThrottle",
+        "api.v1.throttling.LoggingUserRateThrottle",
+        "api.v1.throttling.LoggingAnonRateThrottle",
+        "api.v1.throttling.LoggingScopedRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "user": env("DEFAULT_THROTTLE_RATES_USER"),
