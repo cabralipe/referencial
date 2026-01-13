@@ -137,6 +137,8 @@ export function BibliotecaPage() {
 
   const carregando = midiasLoading || blocosLoading;
   const requiresGt = user?.role !== 'admin_cliente' && user?.role !== 'super_admin';
+  const canManageBiblioteca =
+    user?.role === 'articulador' || user?.role === 'admin_cliente' || user?.role === 'super_admin';
   const handleChangeGt = (value: string) => {
     const selected = value ? Number(value) : '';
     setGtSelecionadoId(selected);
@@ -242,53 +244,57 @@ export function BibliotecaPage() {
         </label>
       </div>
 
-      <section className="biblioteca__novo-bloco">
-        <h2>Nova referência bibliográfica</h2>
-        <p className="biblioteca__hint">
-          Esta referência será vinculada ao GT e à pergunta selecionados nos filtros acima.
-        </p>
-        <form onSubmit={handleCriarBloco}>
-          <label>
-            <span>Título</span>
-            <input name="titulo" type="text" placeholder="Ex.: Diretrizes para avaliação" required />
-          </label>
-          <label>
-            <span>Tags</span>
-            <input name="tags" type="text" placeholder="Ex.: base,competencias" />
-          </label>
-          <label className="full">
-            <span>Referência (HTML ou texto)</span>
-            <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
-          </label>
-          <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
-            {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
-          </button>
-        </form>
-      </section>
+      {canManageBiblioteca && (
+        <>
+          <section className="biblioteca__novo-bloco">
+            <h2>Nova referência bibliográfica</h2>
+            <p className="biblioteca__hint">
+              Esta referência será vinculada ao GT e à pergunta selecionados nos filtros acima.
+            </p>
+            <form onSubmit={handleCriarBloco}>
+              <label>
+                <span>Título</span>
+                <input name="titulo" type="text" placeholder="Ex.: Diretrizes para avaliação" required />
+              </label>
+              <label>
+                <span>Tags</span>
+                <input name="tags" type="text" placeholder="Ex.: base,competencias" />
+              </label>
+              <label className="full">
+                <span>Referência (HTML ou texto)</span>
+                <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
+              </label>
+              <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
+                {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
+              </button>
+            </form>
+          </section>
 
-      <section className="biblioteca__novo-bloco">
-        <h2>Novo link ou anexo</h2>
-        <p className="biblioteca__hint">
-          O link ficará disponível para os membros do GT selecionado nos filtros.
-        </p>
-        <form onSubmit={handleCriarMidia}>
-          <label>
-            <span>URL do material</span>
-            <input name="url" type="url" placeholder="https://..." required />
-          </label>
-          <label>
-            <span>Legenda</span>
-            <input name="legenda" type="text" placeholder="Ex.: Livro base - capítulo 2" />
-          </label>
-          <label>
-            <span>Tags</span>
-            <input name="tags" type="text" placeholder="Ex.: leitura,avaliacao" />
-          </label>
-          <button type="submit" disabled={criarMidia.isPending || (requiresGt && !gtId)}>
-            {criarMidia.isPending ? 'Salvando...' : 'Adicionar link'}
-          </button>
-        </form>
-      </section>
+          <section className="biblioteca__novo-bloco">
+            <h2>Novo link ou anexo</h2>
+            <p className="biblioteca__hint">
+              O link ficará disponível para os membros do GT selecionado nos filtros.
+            </p>
+            <form onSubmit={handleCriarMidia}>
+              <label>
+                <span>URL do material</span>
+                <input name="url" type="url" placeholder="https://..." required />
+              </label>
+              <label>
+                <span>Legenda</span>
+                <input name="legenda" type="text" placeholder="Ex.: Livro base - capítulo 2" />
+              </label>
+              <label>
+                <span>Tags</span>
+                <input name="tags" type="text" placeholder="Ex.: leitura,avaliacao" />
+              </label>
+              <button type="submit" disabled={criarMidia.isPending || (requiresGt && !gtId)}>
+                {criarMidia.isPending ? 'Salvando...' : 'Adicionar link'}
+              </button>
+            </form>
+          </section>
+        </>
+      )}
 
       {carregando ? (
         <FullPageLoader message="Buscando referências..." />
