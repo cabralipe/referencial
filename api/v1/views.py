@@ -52,6 +52,25 @@ class SessionLoginView(APIView):
         return Response(data)
 
 
+class AuthMeView(APIView):
+    permission_classes = [HasClientScope]
+
+    def get(self, request):
+        user = request.user
+        data = {
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "nome": getattr(user, "nome", ""),
+                "role": user.role,
+                "cliente_id": user.cliente_id,
+            }
+        }
+        if user.cliente:
+            data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
+        return Response(data)
+
+
 class CsrfTokenView(APIView):
     permission_classes = [AllowAny]
 

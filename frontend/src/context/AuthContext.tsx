@@ -186,6 +186,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refreshAccessToken, state.tokens.accessToken],
   );
 
+  const fetchAuthMe = useCallback(
+    async (tokenOverride?: string) => {
+      const response = await authenticatedFetch('/auth/me', undefined, tokenOverride);
+      if (!response.ok) {
+        const message = await extractErrorMessage(response);
+        throw new Error(message);
+      }
+      return (await response.json()) as { user: any; cliente?: ClienteContextPayload };
+    },
+    [authenticatedFetch],
+  );
+
   const fetchCliente = useCallback(
     async (tokenOverride?: string) => {
       const response = await authenticatedFetch('/cliente/me', undefined, tokenOverride);
@@ -273,9 +285,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           refreshToken: jwtData.refresh,
         };
         saveTokens(tokens);
-        saveUser(user);
+        const authMe = await fetchAuthMe(jwtData.access);
+        const serverUser = mapUser(authMe.user);
+        if (
+          serverUser.id !== user.id ||
+          serverUser.email !== user.email ||
+          serverUser.role !== user.role
+        ) {
+          throw new Error('Falha ao validar o usuário autenticado.');
+        }
+        saveUser(serverUser);
 
-        let cliente = sessionData.cliente ?? null;
+        let cliente = authMe.cliente ?? sessionData.cliente ?? null;
         if (!cliente) {
           try {
             cliente = await fetchCliente(jwtData.access);
@@ -286,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setState({
           status: 'authenticated',
-          user,
+          user: serverUser,
           cliente,
           tokens,
           error: null,
@@ -307,7 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [fetchCliente],
+    [fetchAuthMe, fetchCliente],
   );
 
   useEffect(() => {
@@ -320,14 +341,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       state.tokens.refreshToken
     ) {
       bootstrapInFlight.current = true;
-      fetchCliente()
-        .then((cliente) => {
+      fetchAuthMe()
+        .then(async (payload) => {
+          const serverUser = mapUser(payload.user);
+          saveUser(serverUser);
           setState((prev) => ({
             ...prev,
-            cliente,
+            user: serverUser,
+            cliente: payload.cliente ?? prev.cliente,
             status: 'authenticated',
             error: null,
           }));
+          if (!payload.cliente) {
+            const cliente = await fetchCliente();
+            setState((prev) => ({
+              ...prev,
+              cliente,
+              status: 'authenticated',
+              error: null,
+            }));
+          }
         })
         .catch(async (error) => {
           console.warn('Sessão inválida, limpando credenciais', error);
@@ -337,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           bootstrapInFlight.current = false;
         });
     }
-  }, [fetchCliente, logout, state.status, state.tokens.accessToken, state.tokens.refreshToken]);
+  }, [fetchAuthMe, fetchCliente, logout, state.status, state.tokens.accessToken, state.tokens.refreshToken]);
 
   const getAccessToken = useCallback(() => state.tokens.accessToken, [state.tokens.accessToken]);
 

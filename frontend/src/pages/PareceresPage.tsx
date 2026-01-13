@@ -82,7 +82,7 @@ export function PareceresPage() {
       (rev) => rev.alvo_tipo === 'resposta' && respostaIdsFiltradas.has(rev.alvo_id),
     );
     if (isRedator && user) {
-      filtradas = filtradas.filter((rev) => rev.revisor === user.id);
+      filtradas = filtradas.filter((rev) => rev.revisor === user.id || rev.solicitante === user.id);
     }
     return filtradas
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());

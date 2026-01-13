@@ -7,6 +7,7 @@ import logging
 import os
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
+from django.db.models.functions import Cast
 from django.db.models import Count, OuterRef, Subquery
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
@@ -1063,12 +1064,19 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         queryset = Revisao.objects.filter(cliente_id=cliente_id)
         user = self.request.user
         if getattr(user, "role", None) == user.Role.ARTICULADOR:
+            queryset = queryset.filter(models.Q(revisor_id=user.id) | models.Q(solicitante_id=user.id))
             gt_ids = _get_user_gt_ids(user)
             if not gt_ids:
                 return queryset.none()
-            resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).values("id")
-            texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).values("id")
-            quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).values("id")
+            resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
             queryset = queryset.filter(
                 models.Q(alvo_tipo=Revisao.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
                 | models.Q(alvo_tipo=Revisao.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
