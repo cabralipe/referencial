@@ -125,6 +125,12 @@
   color: var(--color-muted);
 }
 
+.biblioteca__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #c2410c;
+}
+
 .biblioteca__novo-bloco h2 {
   margin: 0;
   font-size: 1.2rem;

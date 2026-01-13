@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.db import IntegrityError
 from django.utils.text import slugify
 from rest_framework import serializers
+from urllib.parse import urlparse
 
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, UserSessionLog
 from core.utils import coletar_contexto_do_cliente
@@ -758,6 +759,12 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 
 
 class MidiaSerializer(serializers.ModelSerializer):
+    def validate_url(self, value):
+        parsed = urlparse(value)
+        if not parsed.scheme:
+            value = f"https://{value}"
+        return value
+
     class Meta:
         model = Midia
         fields = ("id", "url", "legenda", "tags", "gt", "pergunta", "uploaded_by", "created_at")

@@ -14,6 +14,8 @@ export function BibliotecaPage() {
   const { user } = useAuth();
   const [filtroPalavra, setFiltroPalavra] = useState('');
   const [filtroTags, setFiltroTags] = useState('');
+  const [blocoError, setBlocoError] = useState<string | null>(null);
+  const [midiaError, setMidiaError] = useState<string | null>(null);
   const [gtSelecionadoId, setGtSelecionadoId] = useState<number | ''>('');
   const [tarefaSelecionadaId, setTarefaSelecionadaId] = useState<number | ''>('');
   const [perguntaSelecionadaId, setPerguntaSelecionadaId] = useState<number | ''>('');
@@ -82,7 +84,9 @@ export function BibliotecaPage() {
 
   const handleCriarBloco = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setBlocoError(null);
     if (requiresGt && !gtId) {
+      setBlocoError('Selecione um GT nos filtros para cadastrar referências.');
       return;
     }
     const form = new FormData(event.currentTarget);
@@ -95,14 +99,20 @@ export function BibliotecaPage() {
     if (!titulo || !conteudo) {
       return;
     }
-    await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags, gt: gtId, pergunta: perguntaId });
-    event.currentTarget.reset();
-    refetchBlocos();
+    try {
+      await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags, gt: gtId, pergunta: perguntaId });
+      event.currentTarget.reset();
+      refetchBlocos();
+    } catch (error) {
+      setBlocoError('Não foi possível salvar a referência. Verifique os dados e tente novamente.');
+    }
   };
 
   const handleCriarMidia = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setMidiaError(null);
     if (requiresGt && !gtId) {
+      setMidiaError('Selecione um GT nos filtros para cadastrar links.');
       return;
     }
     const form = new FormData(event.currentTarget);
@@ -115,14 +125,18 @@ export function BibliotecaPage() {
     if (!url) {
       return;
     }
-    await criarMidia.mutateAsync({
-      url,
-      legenda: legenda || null,
-      tags,
-      gt: gtId,
-      pergunta: perguntaId,
-    });
-    event.currentTarget.reset();
+    try {
+      await criarMidia.mutateAsync({
+        url,
+        legenda: legenda || null,
+        tags,
+        gt: gtId,
+        pergunta: perguntaId,
+      });
+      event.currentTarget.reset();
+    } catch (error) {
+      setMidiaError('Não foi possível salvar o link. Verifique o endereço e tente novamente.');
+    }
   };
 
   const handleAtualizarBloco = async (id: number, etag: string, tags: string[] | null) => {
@@ -264,11 +278,12 @@ export function BibliotecaPage() {
                 <span>Referência (HTML ou texto)</span>
                 <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
               </label>
-              <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
-                {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
-              </button>
-            </form>
-          </section>
+          <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
+            {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
+          </button>
+          {blocoError && <p className="biblioteca__error">{blocoError}</p>}
+        </form>
+      </section>
 
           <section className="biblioteca__novo-bloco">
             <h2>Novo link ou anexo</h2>
@@ -278,7 +293,7 @@ export function BibliotecaPage() {
             <form onSubmit={handleCriarMidia}>
               <label>
                 <span>URL do material</span>
-                <input name="url" type="url" placeholder="https://..." required />
+                <input name="url" type="text" placeholder="Ex.: site.com/arquivo" required />
               </label>
               <label>
                 <span>Legenda</span>
@@ -291,6 +306,7 @@ export function BibliotecaPage() {
               <button type="submit" disabled={criarMidia.isPending || (requiresGt && !gtId)}>
                 {criarMidia.isPending ? 'Salvando...' : 'Adicionar link'}
               </button>
+              {midiaError && <p className="biblioteca__error">{midiaError}</p>}
             </form>
           </section>
         </>
