@@ -6,10 +6,13 @@ import { useApiClient } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useAuditLogs, useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useAiAssist } from '@/hooks/useAiAssist';
+import { useRespostas } from '@/hooks/useRespostas';
 import { useUsuariosLookup } from '@/hooks/useUsuariosLookup';
 import { useAuth } from '@/context/AuthContext';
-import type { PaginatedResponse, Resposta, Revisao } from '@/api/types';
+import { fetchAllPaginated } from '@/utils/pagination';
+import type { Pergunta, Revisao } from '@/api/types';
 
 import './ReportsPage.css';
 
@@ -27,8 +30,10 @@ export function ReportsPage() {
   const [actionFilter, setActionFilter] = useState('');
   const [detailLines, setDetailLines] = useState(10);
   const [aiTemplate, setAiTemplate] = useState<'curto' | 'executivo' | 'detalhado'>('curto');
+  const [selectedGtId, setSelectedGtId] = useState<number | null>(null);
 
   const { data: redatorSuggestions = [] } = useUsuariosLookup(redatorQuery);
+  const { gtOptions } = useAvailableGts();
 
   const dateFrom = useMemo(() => {
     const date = new Date();
@@ -43,24 +48,20 @@ export function ReportsPage() {
     pageSize: 200,
   });
 
-  const respostasCountQuery = useQuery({
-    queryKey: ['respostas', 'count', 'report'],
-    queryFn: async () => {
-      const response = await client.get<PaginatedResponse<Resposta>>('/respostas', {
-        query: { page_size: 1 },
-      });
-      return response.data.count ?? 0;
-    },
+  const { data: respostas = [], isLoading: respostasLoading } = useRespostas({ includeAll: true });
+  const perguntasQuery = useQuery({
+    queryKey: ['perguntas', 'report'],
+    queryFn: async () =>
+      fetchAllPaginated<Pergunta>(client.get, '/perguntas', {
+        query: { page_size: 500 },
+      }),
   });
-
-  const revisoesCountQuery = useQuery({
-    queryKey: ['revisoes', 'count', 'report'],
-    queryFn: async () => {
-      const response = await client.get<PaginatedResponse<Revisao>>('/revisoes', {
-        query: { page_size: 1 },
-      });
-      return response.data.count ?? 0;
-    },
+  const revisoesQuery = useQuery({
+    queryKey: ['revisoes', 'report'],
+    queryFn: async () =>
+      fetchAllPaginated<Revisao>(client.get, '/revisoes', {
+        query: { page_size: 200 },
+      }),
   });
 
   const [message, setMessage] = useState('');
@@ -69,10 +70,10 @@ export function ReportsPage() {
   const summary = useMemo(() => {
     const online = onlineUsers?.length ?? 0;
     const logins = sessionHistory?.length ?? 0;
-    const respostas = respostasCountQuery.data ?? 0;
-    const pareceres = revisoesCountQuery.data ?? 0;
-    return { online, logins, respostas, pareceres };
-  }, [onlineUsers, sessionHistory, respostasCountQuery.data, revisoesCountQuery.data]);
+    const respostasTotal = respostas.length;
+    const pareceresTotal = revisoesQuery.data?.length ?? 0;
+    return { online, logins, respostas: respostasTotal, pareceres: pareceresTotal };
+  }, [onlineUsers, sessionHistory, respostas.length, revisoesQuery.data?.length]);
 
   const auditSummary = useMemo(() => {
     const byAction = new Map<string, number>();
@@ -93,6 +94,38 @@ export function ReportsPage() {
     return { total: auditLogs.length, topActions, topEntities, details };
   }, [auditLogs, detailLines]);
 
+  const gtSummary = useMemo(() => {
+    const perguntas = perguntasQuery.data ?? [];
+    const revisoes = revisoesQuery.data ?? [];
+    const gtId = selectedGtId;
+    const perguntasDoGt = gtId
+      ? perguntas.filter((pergunta) => !pergunta.gts?.length || pergunta.gts.includes(gtId))
+      : perguntas;
+    const respostasDoGt = gtId ? respostas.filter((resp) => resp.gt === gtId) : respostas;
+    const respostasComConteudo = respostasDoGt.filter((resp) => resp.conteudo_html?.trim().length);
+    const totalPerguntas = perguntasDoGt.length;
+    const totalRespostas = respostasComConteudo.length;
+    const revisoesRespostas = revisoes.filter((rev) => rev.alvo_tipo === 'resposta');
+    const revisoesDoGt = gtId
+      ? revisoesRespostas.filter((rev) => rev.alvo_preview?.gt === gtId)
+      : revisoesRespostas;
+    const respostasComParecer = new Set(revisoesDoGt.map((rev) => rev.alvo_id));
+    const pareceresEmitidos = respostasComParecer.size;
+    const pareceresPendentes = Math.max(totalRespostas - pareceresEmitidos, 0);
+    const faltamResponder = Math.max(totalPerguntas - totalRespostas, 0);
+    const taxaConclusao = totalPerguntas > 0 ? Math.round((totalRespostas / totalPerguntas) * 100) : 0;
+
+    return {
+      totalPerguntas,
+      totalRespostas,
+      faltamResponder,
+      taxaConclusao,
+      pareceresEmitidos,
+      pareceresPendentes,
+      revisoesEmitidas: revisoesDoGt.length,
+    };
+  }, [perguntasQuery.data, revisoesQuery.data, respostas, selectedGtId]);
+
   if (!user) {
     return <FullPageLoader message="Carregando relatorios..." />;
   }
@@ -112,15 +145,23 @@ export function ReportsPage() {
     const periodoLabel = `${periodDays} dias`;
     const actionLabel = actionFilter ? actionFilter : 'todas';
     const detalhesLabel = auditSummary.details.length > 0 ? auditSummary.details.join(' | ') : 'sem dados';
+    const gtLabel = selectedGtId ? gtOptions.find((gt) => gt.id === selectedGtId)?.displayName || 'GT selecionado' : 'Todos os GTs';
     const text =
       `Resumo rapido - ${today}\n` +
       `Periodo: ${periodoLabel}\n` +
       `Filtro redator: ${redatorLabel}\n` +
+      `Filtro GT: ${gtLabel}\n` +
       `Filtro acao: ${actionLabel}\n` +
       `Online agora: ${summary.online}\n` +
       `Logins (${periodoLabel}): ${summary.logins}\n` +
       `Respostas registradas: ${summary.respostas}\n` +
       `Pareceres emitidos: ${summary.pareceres}\n` +
+      `Perguntas (GT): ${gtSummary.totalPerguntas}\n` +
+      `Respostas com conteudo (GT): ${gtSummary.totalRespostas}\n` +
+      `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%\n` +
+      `Pendentes responder (GT): ${gtSummary.faltamResponder}\n` +
+      `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}\n` +
+      `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}\n` +
       `Auditoria (${periodoLabel}): ${auditSummary.total} acao(oes)\n` +
       (includeAuditDetails
         ? `Top acoes: ${auditSummary.topActions.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
@@ -137,15 +178,23 @@ export function ReportsPage() {
     const periodoLabel = `${periodDays} dias`;
     const actionLabel = actionFilter ? actionFilter : 'todas';
     const detalhesLabel = auditSummary.details.length > 0 ? auditSummary.details.join(' | ') : 'sem dados';
+    const gtLabel = selectedGtId ? gtOptions.find((gt) => gt.id === selectedGtId)?.displayName || 'GT selecionado' : 'Todos os GTs';
     const context = [
       `Data: ${today}`,
       `Periodo: ${periodoLabel}`,
       `Filtro redator: ${redatorLabel}`,
+      `Filtro GT: ${gtLabel}`,
       `Filtro acao: ${actionLabel}`,
       `Online agora: ${summary.online}`,
       `Logins (${periodoLabel}): ${summary.logins}`,
       `Respostas registradas: ${summary.respostas}`,
       `Pareceres emitidos: ${summary.pareceres}`,
+      `Perguntas (GT): ${gtSummary.totalPerguntas}`,
+      `Respostas com conteudo (GT): ${gtSummary.totalRespostas}`,
+      `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%`,
+      `Pendentes responder (GT): ${gtSummary.faltamResponder}`,
+      `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}`,
+      `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}`,
       `Auditoria (${periodoLabel}): ${auditSummary.total}`,
       `Top acoes: ${auditSummary.topActions.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}`,
       `Top entidades: ${auditSummary.topEntities.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}`,
@@ -230,11 +279,51 @@ export function ReportsPage() {
         </div>
         <div className="reports__card">
           <span>Respostas registradas</span>
-          <strong>{respostasCountQuery.isLoading ? '...' : summary.respostas}</strong>
+          <strong>{respostasLoading ? '...' : summary.respostas}</strong>
         </div>
         <div className="reports__card">
           <span>Pareceres emitidos</span>
-          <strong>{revisoesCountQuery.isLoading ? '...' : summary.pareceres}</strong>
+          <strong>{revisoesQuery.isLoading ? '...' : summary.pareceres}</strong>
+        </div>
+      </section>
+
+      <section className="reports__gt">
+        <div className="reports__gt-header">
+          <div>
+            <h2>Indicadores por GT</h2>
+            <p>Filtre um grupo para acompanhar respostas, pendencias e pareceres.</p>
+          </div>
+          <span className="reports__pill">
+            {selectedGtId
+              ? gtOptions.find((gt) => gt.id === selectedGtId)?.displayName || 'GT selecionado'
+              : 'Todos os GTs'}
+          </span>
+        </div>
+        <div className="reports__cards reports__cards--gt">
+          <div className="reports__card">
+            <span>Perguntas do GT</span>
+            <strong>{perguntasQuery.isLoading ? '...' : gtSummary.totalPerguntas}</strong>
+          </div>
+          <div className="reports__card">
+            <span>Respostas com conteudo</span>
+            <strong>{respostasLoading ? '...' : gtSummary.totalRespostas}</strong>
+          </div>
+          <div className="reports__card">
+            <span>Taxa de conclusao</span>
+            <strong>{respostasLoading || perguntasQuery.isLoading ? '...' : `${gtSummary.taxaConclusao}%`}</strong>
+          </div>
+          <div className="reports__card">
+            <span>Faltam responder</span>
+            <strong>{respostasLoading || perguntasQuery.isLoading ? '...' : gtSummary.faltamResponder}</strong>
+          </div>
+          <div className="reports__card">
+            <span>Pareceres emitidos</span>
+            <strong>{revisoesQuery.isLoading ? '...' : gtSummary.pareceresEmitidos}</strong>
+          </div>
+          <div className="reports__card">
+            <span>Pareceres pendentes</span>
+            <strong>{revisoesQuery.isLoading || respostasLoading ? '...' : gtSummary.pareceresPendentes}</strong>
+          </div>
         </div>
       </section>
 
@@ -257,6 +346,25 @@ export function ReportsPage() {
               <option value="created">created</option>
               <option value="updated">updated</option>
               <option value="deleted">deleted</option>
+            </select>
+          </label>
+        </div>
+        <div className="reports__filter">
+          <label>
+            <span>Filtro de GT (indicadores)</span>
+            <select
+              value={selectedGtId ?? ''}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSelectedGtId(value ? Number(value) : null);
+              }}
+            >
+              <option value="">Todos</option>
+              {gtOptions.map((gt) => (
+                <option key={gt.id} value={gt.id}>
+                  {gt.displayName}
+                </option>
+              ))}
             </select>
           </label>
         </div>

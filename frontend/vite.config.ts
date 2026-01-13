@@ -6,6 +6,9 @@ export default defineConfig(({ command }) => ({
   // Base diferente para desenvolvimento e build
   base: command === "build" ? "/static/frontend/" : "/",
   appType: "spa",
+  define: {
+    __BUILD_ID__: JSON.stringify(process.env.RENDER_GIT_COMMIT || new Date().toISOString()),
+  },
   plugins: [react()],
   resolve: {
     alias: {
