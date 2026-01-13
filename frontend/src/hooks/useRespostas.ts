@@ -25,12 +25,11 @@ export function useRespostas({ gtId, includeAll = false }: UseRespostasParams) {
           },
         });
       }
-      const response = await client.get<PaginatedResponse<Resposta>>('/respostas', {
+      return fetchAllPaginated<Resposta>(client.get, '/respostas', {
         query: {
           page_size: 200,
         },
       });
-      return response.data.results ?? [];
     },
   });
 }

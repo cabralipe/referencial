@@ -101,7 +101,11 @@ export function TaskDetailPage() {
     error: perguntasErrorObj,
     refetch: refetchPerguntas,
   } = usePerguntas(tarefaId);
-  const { data: respostas, isFetching: respostasFetching } = useRespostas({ gtId: selectedGtId ?? undefined });
+  const {
+    data: respostas,
+    isFetching: respostasFetching,
+    isFetched: respostasFetched,
+  } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes } = useRevisoes({ alvoTipo: 'resposta', pageSize: 500 });
   const createRevisao = useCreateRevisao();
   const { gtOptions } = useAvailableGts();
@@ -171,7 +175,7 @@ export function TaskDetailPage() {
   const [lastUpdated, setLastUpdated] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    if (!perguntas) {
+    if (!perguntas || !respostasFetched) {
       return;
     }
     setDrafts((prev) => {
@@ -195,7 +199,7 @@ export function TaskDetailPage() {
       });
       return next;
     });
-  }, [perguntas, respostas]);
+  }, [perguntas, respostas, respostasFetched]);
 
   useEffect(() => {
     if (gtOptions.length === 0) {
