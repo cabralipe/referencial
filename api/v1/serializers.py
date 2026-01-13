@@ -353,9 +353,15 @@ class ExportJobSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        cliente_id = getattr(getattr(request, "user", None), "cliente_id", None)
+        user = getattr(request, "user", None)
+        cliente_id = getattr(user, "cliente_id", None)
         if not cliente_id:
             raise serializers.ValidationError("Cliente do usuário não encontrado.")
+        allowed_gt_ids = None
+        if user and getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            allowed_gt_ids = set(GT.objects.filter(membros=user).values_list("id", flat=True))
+            if not allowed_gt_ids:
+                raise serializers.ValidationError("Usuário sem GT vinculado.")
 
         alvo_tipo = attrs.get("alvo_tipo")
         alvo_id = attrs.get("alvo_id")
@@ -375,6 +381,7 @@ class ExportJobSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"payload_json": "Informe ao menos uma seção para exportar."})
             modelo_por_secao = {**modelo_por_tipo}
             secoes_limpa = []
+            gt_ids = set()
             for idx, secao in enumerate(secoes):
                 tipo = (secao or {}).get("tipo")
                 try:
@@ -387,13 +394,20 @@ class ExportJobSerializer(serializers.ModelSerializer):
                 lookup = {"cliente_id": cliente_id, "pk": secao_id}
                 if any(field.attname == "is_deleted" for field in modelo._meta.fields):
                     lookup["is_deleted"] = False
-                if not modelo.raw_objects.filter(**lookup).exists():
+                alvo = modelo.raw_objects.filter(**lookup).values_list("gt_id", flat=True).first()
+                if alvo is None:
                     raise serializers.ValidationError(
                         {"payload_json": f"Registro {secao_id} não encontrado para o cliente."}
                     )
+                if allowed_gt_ids is not None and alvo not in allowed_gt_ids:
+                    raise serializers.ValidationError(
+                        {"payload_json": f"Registro {secao_id} não pertence aos seus GTs."}
+                    )
+                gt_ids.add(int(alvo))
                 secoes_limpa.append({"tipo": tipo, "id": secao_id, "titulo": (secao or {}).get("titulo")})
             payload = attrs.get("payload_json") or {}
             payload["secoes"] = secoes_limpa
+            payload["gt_ids"] = sorted(gt_ids)
             attrs["payload_json"] = payload
             attrs["alvo_id"] = attrs.get("alvo_id") or "colecao"
         else:
@@ -405,8 +419,11 @@ class ExportJobSerializer(serializers.ModelSerializer):
             if any(field.attname == "is_deleted" for field in modelo._meta.fields):
                 lookup["is_deleted"] = False
 
-            if not modelo.raw_objects.filter(**lookup).exists():
+            alvo = modelo.raw_objects.filter(**lookup).values_list("gt_id", flat=True).first()
+            if alvo is None:
                 raise serializers.ValidationError({"alvo_id": "Alvo não encontrado para este cliente."})
+            if allowed_gt_ids is not None and alvo not in allowed_gt_ids:
+                raise serializers.ValidationError({"alvo_id": "Alvo não pertence aos seus GTs."})
 
             attrs["alvo_id"] = str(alvo_id)
         return attrs

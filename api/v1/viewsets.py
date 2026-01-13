@@ -393,7 +393,6 @@ class GTViewSet(viewsets.ReadOnlyModelViewSet):
 
         if getattr(user, "role", None) in {
             user.Role.ADMIN_CLIENTE,
-            user.Role.ARTICULADOR,
             user.Role.SUPER_ADMIN,
         }:
             return queryset
@@ -472,7 +471,7 @@ class TarefaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Tarefa.objects.all().order_by("ordem")
         user = self.request.user
-        if getattr(user, "role", None) == user.Role.MEMBRO_GT:
+        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
             user_gt_ids = _get_user_gt_ids(user)
             if not user_gt_ids:
                 return queryset.none()
@@ -516,7 +515,16 @@ class PerguntaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
-        return Pergunta.objects.filter(cliente_id=cliente_id).order_by("tarefa_id", "ordem")
+        queryset = Pergunta.objects.filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+            user_gt_ids = _get_user_gt_ids(user)
+            if not user_gt_ids:
+                return queryset.none()
+            queryset = queryset.filter(
+                models.Q(gts__id__in=user_gt_ids) | models.Q(gts__isnull=True)
+            ).distinct()
+        return queryset.order_by("tarefa_id", "ordem")
 
     def get_serializer_class(self):
         if self.action in {"create", "update", "partial_update"}:
@@ -551,7 +559,7 @@ class RespostaViewSet(viewsets.ModelViewSet):
             "autor",
         ).filter(cliente_id=cliente_id)
         user = self.request.user
-        if getattr(user, "role", None) == user.Role.MEMBRO_GT:
+        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
             gt_ids = _get_user_gt_ids(user)
             if not gt_ids:
                 return queryset.none()
@@ -661,7 +669,14 @@ class TextoUnicoViewSet(viewsets.ModelViewSet):
     filterset_fields = ("gt", "tarefa")
 
     def get_queryset(self):
-        queryset = TextoUnico.objects.select_related("gt", "tarefa")
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = TextoUnico.objects.select_related("gt", "tarefa").filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            queryset = queryset.filter(gt_id__in=gt_ids)
         gt_id = self.request.query_params.get("gt_id")
         tarefa_id = self.request.query_params.get("tarefa_id")
         if gt_id:
@@ -800,7 +815,14 @@ class QuadroViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [HasClientScope, IsMemberOfGT]
 
     def get_queryset(self):
-        queryset = Quadro.objects.select_related("gt")
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = Quadro.objects.select_related("gt").filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            queryset = queryset.filter(gt_id__in=gt_ids)
         gt_id = self.request.query_params.get("gt_id")
         template = self.request.query_params.get("template")
         if gt_id:
@@ -929,13 +951,35 @@ class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixin
     permission_classes = [HasClientScope]
 
     def get_queryset(self):
-        queryset = ExportJob.objects.all()
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = ExportJob.objects.filter(cliente_id=cliente_id)
+        user = self.request.user
         alvo_tipo = self.request.query_params.get("alvo_tipo")
         alvo_id = self.request.query_params.get("alvo_id")
         if alvo_tipo:
             queryset = queryset.filter(alvo_tipo=alvo_tipo)
         if alvo_id:
             queryset = queryset.filter(alvo_id=str(alvo_id))
+        if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            return queryset
+        gt_ids = _get_user_gt_ids(user)
+        if not gt_ids:
+            return queryset.none()
+        resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).annotate(
+            id_text=Cast("id", models.CharField()),
+        ).values("id_text")
+        texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).annotate(
+            id_text=Cast("id", models.CharField()),
+        ).values("id_text")
+        quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).annotate(
+            id_text=Cast("id", models.CharField()),
+        ).values("id_text")
+        queryset = queryset.filter(
+            models.Q(alvo_tipo=ExportJob.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
+            | models.Q(alvo_tipo=ExportJob.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
+            | models.Q(alvo_tipo=ExportJob.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
+            | models.Q(alvo_tipo=ExportJob.AlvoTipo.COLECAO, payload_json__gt_ids__contained_by=gt_ids)
+        )
         return queryset
 
     def perform_create(self, serializer):

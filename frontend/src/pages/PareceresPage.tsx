@@ -35,6 +35,11 @@ const htmlToPlainText = (html?: string | null) => {
     .trim();
 };
 
+const toNumberId = (value: number | string | null | undefined) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 export function PareceresPage() {
   const { user } = useAuth();
   const isRedator = user?.role === 'articulador';
@@ -49,12 +54,16 @@ export function PareceresPage() {
     pageSize: 500,
   });
 
+  const gtsPermitidos = useMemo(() => new Set(gtOptions.map((gt) => gt.id)), [gtOptions]);
+
   const respostasBase = useMemo(() => {
     if (!respostas || !user) return [];
-    if (isRedator) return respostas;
+    if (isRedator) {
+      return respostas.filter((resp) => gtsPermitidos.has(resp.gt));
+    }
     if (isMembroGt) return respostas.filter((resp) => resp.autor === user.id);
     return [];
-  }, [isRedator, isMembroGt, respostas, user]);
+  }, [gtsPermitidos, isRedator, isMembroGt, respostas, user]);
 
   const respostasFiltradas = useMemo(() => {
     const term = buscaConteudo.trim().toLowerCase();
@@ -78,9 +87,12 @@ export function PareceresPage() {
 
   const pareceresFiltrados = useMemo(() => {
     if (!revisoes) return [];
-    let filtradas = revisoes.filter(
-      (rev) => rev.alvo_tipo === 'resposta' && respostaIdsFiltradas.has(rev.alvo_id),
-    );
+    let filtradas = revisoes.filter((rev) => {
+      if (rev.alvo_tipo !== 'resposta') return false;
+      const alvoId = toNumberId(rev.alvo_id);
+      if (alvoId === null) return false;
+      return respostaIdsFiltradas.has(alvoId);
+    });
     if (isRedator && user) {
       filtradas = filtradas.filter((rev) => rev.revisor === user.id || rev.solicitante === user.id);
     }
@@ -188,7 +200,8 @@ export function PareceresPage() {
       {pareceresFiltrados.length > 0 ? (
         <div className="pareceres__list">
           {pareceresFiltrados.map((rev) => {
-            const resposta = respostasById.get(rev.alvo_id);
+            const alvoId = toNumberId(rev.alvo_id);
+            const resposta = alvoId === null ? undefined : respostasById.get(alvoId);
             const preview = rev.alvo_preview as Revisao['alvo_preview'];
             const gtNome = resposta?.gt_nome ?? (preview && 'gt_nome' in preview ? preview.gt_nome : null);
             const tarefaId = resposta?.tarefa_id ?? (preview && 'tarefa' in preview ? preview.tarefa : null);

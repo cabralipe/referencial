@@ -50,7 +50,7 @@ export function ExportacoesPage() {
     alvoId: alvoIdFiltro || undefined,
   });
   const criarExportacao = useCreateExportJob();
-  const { gtOptions, isLoading: isLoadingGts } = useAvailableGts({ scope: 'all' });
+  const { gtOptions, isLoading: isLoadingGts } = useAvailableGts({ scope: 'member' });
   const { data: tarefas } = useTarefas();
   const { data: quadros, isLoading: isLoadingQuadros } = useQuadros();
   const {
