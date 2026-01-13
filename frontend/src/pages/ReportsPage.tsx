@@ -67,13 +67,19 @@ export function ReportsPage() {
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
 
+  const revisoesFiltradas = useMemo(() => {
+    const revisoes = revisoesQuery.data ?? [];
+    if (!selectedRedator) return revisoes;
+    return revisoes.filter((rev) => rev.revisor === selectedRedator.id);
+  }, [revisoesQuery.data, selectedRedator]);
+
   const summary = useMemo(() => {
     const online = onlineUsers?.length ?? 0;
     const logins = sessionHistory?.length ?? 0;
     const respostasTotal = respostas.length;
-    const pareceresTotal = revisoesQuery.data?.length ?? 0;
+    const pareceresTotal = revisoesFiltradas.length;
     return { online, logins, respostas: respostasTotal, pareceres: pareceresTotal };
-  }, [onlineUsers, sessionHistory, respostas.length, revisoesQuery.data?.length]);
+  }, [onlineUsers, sessionHistory, respostas.length, revisoesFiltradas.length]);
 
   const auditSummary = useMemo(() => {
     const byAction = new Map<string, number>();
@@ -96,7 +102,7 @@ export function ReportsPage() {
 
   const gtSummary = useMemo(() => {
     const perguntas = perguntasQuery.data ?? [];
-    const revisoes = revisoesQuery.data ?? [];
+    const revisoes = revisoesFiltradas;
     const gtId = selectedGtId;
     const perguntasDoGt = gtId
       ? perguntas.filter((pergunta) => !pergunta.gts?.length || pergunta.gts.includes(gtId))
@@ -124,7 +130,7 @@ export function ReportsPage() {
       pareceresPendentes,
       revisoesEmitidas: revisoesDoGt.length,
     };
-  }, [perguntasQuery.data, revisoesQuery.data, respostas, selectedGtId]);
+  }, [perguntasQuery.data, revisoesFiltradas, respostas, selectedGtId]);
 
   if (!user) {
     return <FullPageLoader message="Carregando relatorios..." />;

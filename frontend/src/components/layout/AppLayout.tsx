@@ -200,7 +200,7 @@ export function AppLayout() {
               <Icon name="review" className="menu__icon" ariaHidden />
               <span className="menu__label">Revisões</span>
             </NavLink>
-            {user?.role === 'membro_gt' && (
+            {(user?.role === 'membro_gt' || user?.role === 'articulador') && (
               <NavLink to="/pareceres">
                 <Icon name="review" className="menu__icon" ariaHidden />
                 <span className="menu__label">Pareceres</span>

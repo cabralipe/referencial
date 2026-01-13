@@ -37,6 +37,8 @@ const htmlToPlainText = (html?: string | null) => {
 
 export function PareceresPage() {
   const { user } = useAuth();
+  const isRedator = user?.role === 'articulador';
+  const isMembroGt = user?.role === 'membro_gt';
   const [gtFiltro, setGtFiltro] = useState<number | ''>('');
   const [buscaConteudo, setBuscaConteudo] = useState('');
 
@@ -47,25 +49,27 @@ export function PareceresPage() {
     pageSize: 500,
   });
 
-  const respostasDoUsuario = useMemo(() => {
+  const respostasBase = useMemo(() => {
     if (!respostas || !user) return [];
-    return respostas.filter((resp) => resp.autor === user.id);
-  }, [respostas, user]);
+    if (isRedator) return respostas;
+    if (isMembroGt) return respostas.filter((resp) => resp.autor === user.id);
+    return [];
+  }, [isRedator, isMembroGt, respostas, user]);
 
   const respostasFiltradas = useMemo(() => {
     const term = buscaConteudo.trim().toLowerCase();
-    return respostasDoUsuario.filter((resp) => {
+    return respostasBase.filter((resp) => {
       if (gtFiltro && resp.gt !== gtFiltro) return false;
       if (!term) return true;
       const textoPergunta = (resp.pergunta_texto || '').toLowerCase();
       const textoConteudo = stripHtml(resp.conteudo_html).toLowerCase();
       return textoPergunta.includes(term) || textoConteudo.includes(term);
     });
-  }, [buscaConteudo, gtFiltro, respostasDoUsuario]);
+  }, [buscaConteudo, gtFiltro, respostasBase]);
 
   const respostasById = useMemo(() => {
-    return new Map(respostasDoUsuario.map((resp) => [resp.id, resp]));
-  }, [respostasDoUsuario]);
+    return new Map(respostasBase.map((resp) => [resp.id, resp]));
+  }, [respostasBase]);
 
   const respostaIdsFiltradas = useMemo(
     () => new Set(respostasFiltradas.map((resp) => resp.id)),
@@ -74,10 +78,15 @@ export function PareceresPage() {
 
   const pareceresFiltrados = useMemo(() => {
     if (!revisoes) return [];
-    return revisoes
-      .filter((rev) => rev.alvo_tipo === 'resposta' && respostaIdsFiltradas.has(rev.alvo_id))
+    let filtradas = revisoes.filter(
+      (rev) => rev.alvo_tipo === 'resposta' && respostaIdsFiltradas.has(rev.alvo_id),
+    );
+    if (isRedator && user) {
+      filtradas = filtradas.filter((rev) => rev.revisor === user.id);
+    }
+    return filtradas
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-  }, [revisoes, respostaIdsFiltradas]);
+  }, [isRedator, revisoes, respostaIdsFiltradas, user]);
 
   if (!user) {
     return <FullPageLoader message="Carregando pareceres..." />;
@@ -87,13 +96,13 @@ export function PareceresPage() {
     return <FullPageLoader message="Carregando pareceres..." />;
   }
 
-  if (user.role !== 'membro_gt') {
+  if (!isMembroGt && !isRedator) {
     return (
       <div className="pareceres">
         <header className="pareceres__header">
           <div>
             <h1>Pareceres</h1>
-            <p>Esta tela está disponível apenas para membros dos GTs.</p>
+            <p>Esta tela está disponível apenas para membros de GT e redatores.</p>
           </div>
         </header>
       </div>
@@ -105,7 +114,11 @@ export function PareceresPage() {
       <header className="pareceres__header">
         <div>
           <h1>Pareceres</h1>
-          <p>Veja os pareceres enviados para as suas respostas e acompanhe os ajustes solicitados.</p>
+          <p>
+            {isRedator
+              ? 'Acompanhe os pareceres que você publicou e os ajustes solicitados.'
+              : 'Veja os pareceres enviados para as suas respostas e acompanhe os ajustes solicitados.'}
+          </p>
         </div>
         <button
           type="button"
@@ -121,19 +134,27 @@ export function PareceresPage() {
 
       <PageInstructions
         title="Como usar"
-        description="Organize seus pareceres por GT e encontre rapidamente as missões que precisam de ajuste."
+        description={
+          isRedator
+            ? 'Organize seus pareceres por GT e encontre rapidamente as missões revisadas.'
+            : 'Organize seus pareceres por GT e encontre rapidamente as missões que precisam de ajuste.'
+        }
         items={[
           {
             title: 'Use os filtros',
             description: 'Filtre por GT e palavra-chave para localizar a missão correta.',
           },
           {
-            title: 'Leia o parecer',
-            description: 'O texto destacado abaixo mostra o feedback do redator para sua resposta.',
+            title: isRedator ? 'Revise seu parecer' : 'Leia o parecer',
+            description: isRedator
+              ? 'O texto destacado abaixo mostra o parecer que você publicou.'
+              : 'O texto destacado abaixo mostra o feedback do redator para sua resposta.',
           },
           {
             title: 'Volte para a trilha',
-            description: 'Abra a trilha para revisar a missão e aplicar os ajustes solicitados.',
+            description: isRedator
+              ? 'Abra a trilha para revisar a missão quando precisar atualizar o parecer.'
+              : 'Abra a trilha para revisar a missão e aplicar os ajustes solicitados.',
           },
         ]}
       />
@@ -207,14 +228,14 @@ export function PareceresPage() {
                 )}
 
                 <div className="pareceres__preview">
-                  <div className="pareceres__preview-label">Sua resposta</div>
+                  <div className="pareceres__preview-label">{isRedator ? 'Resposta revisada' : 'Sua resposta'}</div>
                   <p className="pareceres__preview-body pareceres__preview-body--plain">
                     {htmlToPlainText(resposta?.conteudo_html) || 'Sem conteúdo.'}
                   </p>
                 </div>
 
                 <div className="pareceres__parecer">
-                  <div className="pareceres__preview-label">Parecer do redator</div>
+                  <div className="pareceres__preview-label">{isRedator ? 'Seu parecer' : 'Parecer do redator'}</div>
                   <div
                     className="pareceres__parecer-body"
                     dangerouslySetInnerHTML={{ __html: rev.parecer_html || '<p>Sem parecer registrado.</p>' }}
@@ -227,7 +248,11 @@ export function PareceresPage() {
       ) : (
         <div className="pareceres__empty">
           <h2>Nenhum parecer encontrado</h2>
-          <p>Assim que o redator publicar um parecer, ele aparecerá aqui para você.</p>
+          <p>
+            {isRedator
+              ? 'Assim que você publicar um parecer, ele aparecerá aqui.'
+              : 'Assim que o redator publicar um parecer, ele aparecerá aqui para você.'}
+          </p>
         </div>
       )}
     </div>
