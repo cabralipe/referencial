@@ -1464,6 +1464,10 @@ class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
         queryset = Midia.objects.filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            gt_ids = _get_user_gt_ids(user)
+            queryset = queryset.filter(models.Q(gt_id__in=gt_ids) | models.Q(gt__isnull=True))
         query = self.request.query_params.get("query")
         if query:
             queryset = queryset.filter(models.Q(url__icontains=query) | models.Q(legenda__icontains=query))
@@ -1475,18 +1479,68 @@ class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             items = list(queryset)
             matches = [item.id for item in items if tags_set.issubset(set(item.tags or []))]
             queryset = queryset.filter(id__in=matches)
+        gt_id = self.request.query_params.get("gt_id") or self.request.query_params.get("gt")
+        if gt_id:
+            queryset = queryset.filter(gt_id=gt_id)
+        pergunta_id = self.request.query_params.get("pergunta_id") or self.request.query_params.get("pergunta")
+        if pergunta_id:
+            queryset = queryset.filter(pergunta_id=pergunta_id)
         return queryset.order_by("-created_at")
 
+    def _validate_biblioteca_relations(self, gt_id, pergunta_id):
+        cliente_id = _get_request_cliente_id(self.request)
+        if gt_id:
+            gt = GT.objects.filter(pk=gt_id, cliente_id=cliente_id).first()
+            if not gt:
+                raise ValidationError({"gt": "GT inválido para este cliente."})
+            if self.request.user.role not in {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN}:
+                if not gt.membros.filter(pk=self.request.user.pk).exists():
+                    raise PermissionDenied("GT não disponível para o usuário.")
+        else:
+            gt = None
+        if pergunta_id:
+            pergunta = Pergunta.objects.filter(pk=pergunta_id, cliente_id=cliente_id).first()
+            if not pergunta:
+                raise ValidationError({"pergunta": "Pergunta inválida para este cliente."})
+            if gt and pergunta.gts.exists() and not pergunta.gts.filter(pk=gt.pk).exists():
+                raise ValidationError({"pergunta": "Pergunta não associada ao GT selecionado."})
+
     def perform_create(self, serializer):
-        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(
+            self.request.user,
+            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+        )
+        gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
+        pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
+            serializer.validated_data.get("pergunta"), "id", None
+        )
+        if self.request.user.role not in {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN}:
+            if not gt_id:
+                raise ValidationError({"gt": "Selecione um GT para vincular a referência."})
+        self._validate_biblioteca_relations(gt_id, pergunta_id)
         serializer.save(cliente_id=_get_request_cliente_id(self.request), uploaded_by=self.request.user)
 
     def perform_update(self, serializer):
-        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(
+            self.request.user,
+            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+        )
+        gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
+        pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
+            serializer.validated_data.get("pergunta"), "id", None
+        )
+        if self.request.user.role not in {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN}:
+            gt_id = gt_id or getattr(serializer.instance.gt, "id", None)
+            if not gt_id:
+                raise ValidationError({"gt": "Selecione um GT para vincular a referência."})
+        self._validate_biblioteca_relations(gt_id, pergunta_id)
         serializer.save()
 
     def perform_destroy(self, instance):
-        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(
+            self.request.user,
+            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+        )
         instance.delete()
 
 
@@ -1500,6 +1554,10 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
         queryset = BlocoTexto.objects.filter(cliente_id=cliente_id)
+        user = self.request.user
+        if getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            gt_ids = _get_user_gt_ids(user)
+            queryset = queryset.filter(models.Q(gt_id__in=gt_ids) | models.Q(gt__isnull=True))
         query = self.request.query_params.get("query")
         if query:
             queryset = queryset.filter(models.Q(titulo__icontains=query) | models.Q(conteudo_html__icontains=query))
@@ -1511,10 +1569,45 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             items = list(queryset)
             matches = [item.id for item in items if tags_set.issubset(set(item.tags or []))]
             queryset = queryset.filter(id__in=matches)
+        gt_id = self.request.query_params.get("gt_id") or self.request.query_params.get("gt")
+        if gt_id:
+            queryset = queryset.filter(gt_id=gt_id)
+        pergunta_id = self.request.query_params.get("pergunta_id") or self.request.query_params.get("pergunta")
+        if pergunta_id:
+            queryset = queryset.filter(pergunta_id=pergunta_id)
         return queryset
 
+    def _validate_biblioteca_relations(self, gt_id, pergunta_id):
+        cliente_id = _get_request_cliente_id(self.request)
+        if gt_id:
+            gt = GT.objects.filter(pk=gt_id, cliente_id=cliente_id).first()
+            if not gt:
+                raise ValidationError({"gt": "GT inválido para este cliente."})
+            if self.request.user.role not in {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN}:
+                if not gt.membros.filter(pk=self.request.user.pk).exists():
+                    raise PermissionDenied("GT não disponível para o usuário.")
+        else:
+            gt = None
+        if pergunta_id:
+            pergunta = Pergunta.objects.filter(pk=pergunta_id, cliente_id=cliente_id).first()
+            if not pergunta:
+                raise ValidationError({"pergunta": "Pergunta inválida para este cliente."})
+            if gt and pergunta.gts.exists() and not pergunta.gts.filter(pk=gt.pk).exists():
+                raise ValidationError({"pergunta": "Pergunta não associada ao GT selecionado."})
+
     def perform_create(self, serializer):
-        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(
+            self.request.user,
+            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+        )
+        gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
+        pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
+            serializer.validated_data.get("pergunta"), "id", None
+        )
+        if self.request.user.role not in {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN}:
+            if not gt_id:
+                raise ValidationError({"gt": "Selecione um GT para vincular a referência."})
+        self._validate_biblioteca_relations(gt_id, pergunta_id)
         bloco = serializer.save(cliente_id=_get_request_cliente_id(self.request), created_by=self.request.user)
         self._created_instance = bloco
 
@@ -1528,17 +1621,29 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.ARTICULADOR})
         _check_etag(request, instance)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
+        pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
+            serializer.validated_data.get("pergunta"), "id", None
+        )
+        if request.user.role not in {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN}:
+            gt_id = gt_id or getattr(instance.gt, "id", None)
+            if not gt_id:
+                raise ValidationError({"gt": "Selecione um GT para vincular a referência."})
+        self._validate_biblioteca_relations(gt_id, pergunta_id)
         serializer.save()
         response = Response(serializer.data)
         response["ETag"] = serializer.instance.etag
         return response
 
     def perform_destroy(self, instance):
-        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE})
+        _assert_roles(
+            self.request.user,
+            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+        )
         instance.delete()
 
 

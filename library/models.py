@@ -12,6 +12,20 @@ class Midia(TenantModel):
     url = models.URLField()
     legenda = models.CharField(max_length=255, blank=True)
     tags = models.JSONField(default=list, blank=True)
+    gt = models.ForeignKey(
+        "curriculum.GT",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="midias_biblioteca",
+    )
+    pergunta = models.ForeignKey(
+        "curriculum.Pergunta",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="midias_biblioteca",
+    )
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -23,6 +37,8 @@ class Midia(TenantModel):
     class Meta:
         indexes = [
             models.Index(fields=["cliente", "created_at"]),
+            models.Index(fields=["cliente", "gt"]),
+            models.Index(fields=["cliente", "pergunta"]),
         ]
         ordering = ("-created_at",)
 
@@ -34,6 +50,20 @@ class BlocoTexto(TenantModel):
     titulo = models.CharField(max_length=255)
     conteudo_html = models.TextField()
     tags = models.JSONField(default=list, blank=True)
+    gt = models.ForeignKey(
+        "curriculum.GT",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blocos_biblioteca",
+    )
+    pergunta = models.ForeignKey(
+        "curriculum.Pergunta",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blocos_biblioteca",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -45,6 +75,8 @@ class BlocoTexto(TenantModel):
     class Meta:
         indexes = [
             models.Index(fields=["cliente", "titulo"]),
+            models.Index(fields=["cliente", "gt"]),
+            models.Index(fields=["cliente", "pergunta"]),
         ]
         ordering = ("titulo",)
 

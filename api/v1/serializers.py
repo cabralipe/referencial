@@ -760,7 +760,7 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 class MidiaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Midia
-        fields = ("id", "url", "legenda", "tags", "uploaded_by", "created_at")
+        fields = ("id", "url", "legenda", "tags", "gt", "pergunta", "uploaded_by", "created_at")
         read_only_fields = ("id", "uploaded_by", "created_at")
 
 
@@ -769,7 +769,7 @@ class BlocoTextoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BlocoTexto
-        fields = ("id", "titulo", "conteudo_html", "tags", "created_by", "updated_at", "etag")
+        fields = ("id", "titulo", "conteudo_html", "tags", "gt", "pergunta", "created_by", "updated_at", "etag")
         read_only_fields = ("id", "created_by", "updated_at", "etag")
 
 

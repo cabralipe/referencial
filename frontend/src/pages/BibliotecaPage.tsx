@@ -2,15 +2,27 @@ import { FormEvent, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useBlocos, useCreateBloco, useMidias, useUpdateBloco } from '@/hooks/useBiblioteca';
+import { useAuth } from '@/context/AuthContext';
+import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useBlocos, useCreateBloco, useCreateMidia, useMidias, useUpdateBloco } from '@/hooks/useBiblioteca';
+import { usePerguntas } from '@/hooks/usePerguntas';
+import { useTarefas } from '@/hooks/useTarefas';
 
 import './BibliotecaPage.css';
 
 export function BibliotecaPage() {
+  const { user } = useAuth();
   const [filtroPalavra, setFiltroPalavra] = useState('');
   const [filtroTags, setFiltroTags] = useState('');
+  const [gtSelecionadoId, setGtSelecionadoId] = useState<number | ''>('');
+  const [tarefaSelecionadaId, setTarefaSelecionadaId] = useState<number | ''>('');
+  const [perguntaSelecionadaId, setPerguntaSelecionadaId] = useState<number | ''>('');
   const [blocoSelecionadoId, setBlocoSelecionadoId] = useState<number | ''>('');
   const [midiaSelecionadaId, setMidiaSelecionadaId] = useState<number | ''>('');
+
+  const gtId = typeof gtSelecionadoId === 'number' ? gtSelecionadoId : null;
+  const tarefaId = typeof tarefaSelecionadaId === 'number' ? tarefaSelecionadaId : null;
+  const perguntaId = typeof perguntaSelecionadaId === 'number' ? perguntaSelecionadaId : null;
 
   const tagsList = useMemo(
     () =>
@@ -21,17 +33,33 @@ export function BibliotecaPage() {
     [filtroTags],
   );
 
-  const { data: midias, isLoading: midiasLoading } = useMidias({ query: filtroPalavra || undefined, tags: tagsList });
+  const { gtOptions } = useAvailableGts();
+  const { data: tarefas } = useTarefas({ gtId: gtId ?? undefined, tipo: 'PERGUNTAS' });
+  const { data: perguntas } = usePerguntas(tarefaId ?? undefined);
+  const { data: midias, isLoading: midiasLoading } = useMidias({
+    query: filtroPalavra || undefined,
+    tags: tagsList,
+    gtId,
+    perguntaId,
+  });
   const { data: blocos, isLoading: blocosLoading, refetch: refetchBlocos } = useBlocos({
     query: filtroPalavra || undefined,
     tags: tagsList,
+    gtId,
+    perguntaId,
   });
   const criarBloco = useCreateBloco();
+  const criarMidia = useCreateMidia();
   const atualizarBloco = useUpdateBloco();
 
   const [draftBlocos, setDraftBlocos] = useState<Record<number, string>>({});
 
   const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const gtLookup = useMemo(() => new Map(gtOptions.map((gt) => [gt.id, gt.displayName])), [gtOptions]);
+  const perguntasLookup = useMemo(
+    () => new Map((perguntas ?? []).map((pergunta) => [pergunta.id, pergunta.texto])),
+    [perguntas],
+  );
 
   const blocoSelecionado = useMemo(() => {
     if (typeof blocoSelecionadoId !== 'number') {
@@ -54,6 +82,9 @@ export function BibliotecaPage() {
 
   const handleCriarBloco = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (requiresGt && !gtId) {
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const titulo = String(form.get('titulo') ?? '').trim();
     const conteudo = String(form.get('conteudo') ?? '').trim();
@@ -64,9 +95,34 @@ export function BibliotecaPage() {
     if (!titulo || !conteudo) {
       return;
     }
-    await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags });
+    await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags, gt: gtId, pergunta: perguntaId });
     event.currentTarget.reset();
     refetchBlocos();
+  };
+
+  const handleCriarMidia = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (requiresGt && !gtId) {
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const url = String(form.get('url') ?? '').trim();
+    const legenda = String(form.get('legenda') ?? '').trim();
+    const tags = String(form.get('tags') ?? '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    if (!url) {
+      return;
+    }
+    await criarMidia.mutateAsync({
+      url,
+      legenda: legenda || null,
+      tags,
+      gt: gtId,
+      pergunta: perguntaId,
+    });
+    event.currentTarget.reset();
   };
 
   const handleAtualizarBloco = async (id: number, etag: string, tags: string[] | null) => {
@@ -80,36 +136,92 @@ export function BibliotecaPage() {
   };
 
   const carregando = midiasLoading || blocosLoading;
+  const requiresGt = user?.role !== 'admin_cliente' && user?.role !== 'super_admin';
+  const handleChangeGt = (value: string) => {
+    const selected = value ? Number(value) : '';
+    setGtSelecionadoId(selected);
+    setTarefaSelecionadaId('');
+    setPerguntaSelecionadaId('');
+  };
+  const handleChangeTarefa = (value: string) => {
+    const selected = value ? Number(value) : '';
+    setTarefaSelecionadaId(selected);
+    setPerguntaSelecionadaId('');
+  };
 
   return (
     <div className="biblioteca">
       <header className="biblioteca__header">
         <div>
-          <h1>Biblioteca de Apoio</h1>
-          <p>Armazene blocos reutilizáveis e mídias para enriquecer os referenciais curriculares.</p>
+          <h1>Central bibliográfica</h1>
+          <p>Compartilhe referências, links e anexos que apoiam as respostas dos GTs.</p>
         </div>
       </header>
 
       <PageInstructions
-        title="Como aproveitar a biblioteca"
-        description="Centralize textos e links para acelerar a construção do material final."
+        title="Como organizar as referências"
+        description="Disponibilize materiais por GT e conecte cada item às perguntas que ele responde."
         items={[
           {
-            title: 'Filtre por tags',
-            description: 'Combine palavras-chave com hashtags para encontrar blocos específicos.',
+            title: 'Selecione o GT',
+            description: 'Escolha o grupo de trabalho para definir quem verá as referências.',
           },
           {
-            title: 'Reaproveite conteúdo',
-            description: 'Copie o HTML de blocos validados e cole diretamente nas respostas dos GTs.',
+            title: 'Vincule à pergunta',
+            description: 'Associe cada livro, link ou anexo à pergunta que ele ajuda a responder.',
           },
           {
-            title: 'Mantenha versões',
-            description: 'Atualize blocos existentes para preservar histórico e manter consistência.',
+            title: 'Use tags estratégicas',
+            description: 'Padronize tags para facilitar o encontro de materiais nas revisões.',
           },
         ]}
       />
 
       <div className="biblioteca__filters">
+        <label>
+          <span>GT</span>
+          <select
+            value={gtSelecionadoId === '' ? '' : String(gtSelecionadoId)}
+            onChange={(event) => handleChangeGt(event.target.value)}
+          >
+            <option value="">Todos os GTs disponíveis</option>
+            {gtOptions.map((gt) => (
+              <option key={gt.id} value={gt.id}>
+                {gt.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Tarefa</span>
+          <select
+            value={tarefaSelecionadaId === '' ? '' : String(tarefaSelecionadaId)}
+            onChange={(event) => handleChangeTarefa(event.target.value)}
+            disabled={!tarefas || tarefas.length === 0}
+          >
+            <option value="">Todas as tarefas</option>
+            {(tarefas ?? []).map((tarefa) => (
+              <option key={tarefa.id} value={tarefa.id}>
+                {tarefa.nome || `Tarefa #${tarefa.id}`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Pergunta</span>
+          <select
+            value={perguntaSelecionadaId === '' ? '' : String(perguntaSelecionadaId)}
+            onChange={(event) => setPerguntaSelecionadaId(event.target.value ? Number(event.target.value) : '')}
+            disabled={!perguntas || perguntas.length === 0}
+          >
+            <option value="">Todas as perguntas</option>
+            {(perguntas ?? []).map((pergunta) => (
+              <option key={pergunta.id} value={pergunta.id}>
+                {pergunta.ordem}. {pergunta.texto}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           <span>Busca textual</span>
           <input
@@ -131,44 +243,71 @@ export function BibliotecaPage() {
       </div>
 
       <section className="biblioteca__novo-bloco">
-        <h2>Novo bloco reutilizável</h2>
+        <h2>Nova referência bibliográfica</h2>
+        <p className="biblioteca__hint">
+          Esta referência será vinculada ao GT e à pergunta selecionados nos filtros acima.
+        </p>
         <form onSubmit={handleCriarBloco}>
           <label>
             <span>Título</span>
-            <input name="titulo" type="text" placeholder="Ex.: Princípios gerais" required />
+            <input name="titulo" type="text" placeholder="Ex.: Diretrizes para avaliação" required />
           </label>
           <label>
             <span>Tags</span>
             <input name="tags" type="text" placeholder="Ex.: base,competencias" />
           </label>
           <label className="full">
-            <span>Conteúdo HTML</span>
-            <textarea name="conteudo" rows={4} placeholder="Cole o conteúdo em HTML" required />
+            <span>Referência (HTML ou texto)</span>
+            <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
           </label>
-          <button type="submit" disabled={criarBloco.isPending}>
-            {criarBloco.isPending ? 'Salvando...' : 'Adicionar bloco'}
+          <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
+            {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
+          </button>
+        </form>
+      </section>
+
+      <section className="biblioteca__novo-bloco">
+        <h2>Novo link ou anexo</h2>
+        <p className="biblioteca__hint">
+          O link ficará disponível para os membros do GT selecionado nos filtros.
+        </p>
+        <form onSubmit={handleCriarMidia}>
+          <label>
+            <span>URL do material</span>
+            <input name="url" type="url" placeholder="https://..." required />
+          </label>
+          <label>
+            <span>Legenda</span>
+            <input name="legenda" type="text" placeholder="Ex.: Livro base - capítulo 2" />
+          </label>
+          <label>
+            <span>Tags</span>
+            <input name="tags" type="text" placeholder="Ex.: leitura,avaliacao" />
+          </label>
+          <button type="submit" disabled={criarMidia.isPending || (requiresGt && !gtId)}>
+            {criarMidia.isPending ? 'Salvando...' : 'Adicionar link'}
           </button>
         </form>
       </section>
 
       {carregando ? (
-        <FullPageLoader message="Buscando itens da biblioteca..." />
+        <FullPageLoader message="Buscando referências..." />
       ) : (
         <div className="biblioteca__grid">
           <section>
             <header>
-              <h2>Blocos de texto ({blocos?.length ?? 0})</h2>
+              <h2>Referências textuais ({blocos?.length ?? 0})</h2>
             </header>
             <div className="biblioteca__selector">
               <label>
-                <span>Selecionar bloco</span>
+                <span>Selecionar referência</span>
                 <select
                   value={blocoSelecionadoId === '' ? '' : String(blocoSelecionadoId)}
                   onChange={(event) =>
                     setBlocoSelecionadoId(event.target.value ? Number(event.target.value) : '')
                   }
                 >
-                  <option value="">Escolha um bloco para visualizar</option>
+                  <option value="">Escolha uma referência para visualizar</option>
                   {(blocos ?? []).map((bloco) => (
                     <option key={bloco.id} value={bloco.id}>
                       {bloco.titulo}
@@ -181,6 +320,17 @@ export function BibliotecaPage() {
                   <div className="biblioteca__preview-meta">
                     <strong>{blocoSelecionado.titulo}</strong>
                     <span>Atualizado em {new Date(blocoSelecionado.updated_at).toLocaleString('pt-BR')}</span>
+                    {(blocoSelecionado.gt || blocoSelecionado.pergunta) && (
+                      <ul className="biblioteca__meta">
+                        {blocoSelecionado.gt && <li>GT: {gtLookup.get(blocoSelecionado.gt) ?? `GT #${blocoSelecionado.gt}`}</li>}
+                        {blocoSelecionado.pergunta && (
+                          <li>
+                            Pergunta:{' '}
+                            {perguntasLookup.get(blocoSelecionado.pergunta) ?? `Pergunta #${blocoSelecionado.pergunta}`}
+                          </li>
+                        )}
+                      </ul>
+                    )}
                     {blocoSelecionado.tags && blocoSelecionado.tags.length > 0 && (
                       <ul className="biblioteca__tags">
                         {blocoSelecionado.tags.map((tag) => (
@@ -204,6 +354,16 @@ export function BibliotecaPage() {
                       <div>
                         <h3>{bloco.titulo}</h3>
                         <span>Atualizado em {new Date(bloco.updated_at).toLocaleString('pt-BR')}</span>
+                        {(bloco.gt || bloco.pergunta) && (
+                          <ul className="biblioteca__meta">
+                            {bloco.gt && <li>GT: {gtLookup.get(bloco.gt) ?? `GT #${bloco.gt}`}</li>}
+                            {bloco.pergunta && (
+                              <li>
+                                Pergunta: {perguntasLookup.get(bloco.pergunta) ?? `Pergunta #${bloco.pergunta}`}
+                              </li>
+                            )}
+                          </ul>
+                        )}
                         <p className="biblioteca__snippet">
                           {stripHtml(bloco.conteudo_html).slice(0, 140) || 'Sem conteúdo.'}
                           {stripHtml(bloco.conteudo_html).length > 140 ? '…' : ''}
@@ -243,25 +403,25 @@ export function BibliotecaPage() {
               </div>
             ) : (
               <div className="biblioteca__empty">
-                <p>Nenhum bloco encontrado com os filtros atuais.</p>
+                <p>Nenhuma referência encontrada com os filtros atuais.</p>
               </div>
             )}
           </section>
 
           <section>
             <header>
-              <h2>Mídias cadastradas ({midias?.length ?? 0})</h2>
+              <h2>Links e anexos ({midias?.length ?? 0})</h2>
             </header>
             <div className="biblioteca__selector">
               <label>
-                <span>Selecionar mídia</span>
+                <span>Selecionar link</span>
                 <select
                   value={midiaSelecionadaId === '' ? '' : String(midiaSelecionadaId)}
                   onChange={(event) =>
                     setMidiaSelecionadaId(event.target.value ? Number(event.target.value) : '')
                   }
                 >
-                  <option value="">Escolha uma mídia para visualizar</option>
+                  <option value="">Escolha um link para visualizar</option>
                   {(midias ?? []).map((midia) => (
                     <option key={midia.id} value={midia.id}>
                       {midia.legenda ? `${midia.legenda} (${midia.id})` : `Mídia #${midia.id}`}
@@ -274,6 +434,19 @@ export function BibliotecaPage() {
                   <div className="biblioteca__preview-meta">
                     <strong>{midiaSelecionada.legenda ?? `Mídia #${midiaSelecionada.id}`}</strong>
                     <span>Registrada em {new Date(midiaSelecionada.created_at).toLocaleString('pt-BR')}</span>
+                    {(midiaSelecionada.gt || midiaSelecionada.pergunta) && (
+                      <ul className="biblioteca__meta">
+                        {midiaSelecionada.gt && (
+                          <li>GT: {gtLookup.get(midiaSelecionada.gt) ?? `GT #${midiaSelecionada.gt}`}</li>
+                        )}
+                        {midiaSelecionada.pergunta && (
+                          <li>
+                            Pergunta:{' '}
+                            {perguntasLookup.get(midiaSelecionada.pergunta) ?? `Pergunta #${midiaSelecionada.pergunta}`}
+                          </li>
+                        )}
+                      </ul>
+                    )}
                     {midiaSelecionada.tags && midiaSelecionada.tags.length > 0 && (
                       <ul className="biblioteca__tags">
                         {midiaSelecionada.tags.map((tag) => (
@@ -298,6 +471,14 @@ export function BibliotecaPage() {
                     <div>
                       <strong>{midia.url}</strong>
                       <span>Registrada em {new Date(midia.created_at).toLocaleString('pt-BR')}</span>
+                      {(midia.gt || midia.pergunta) && (
+                        <ul className="biblioteca__meta">
+                          {midia.gt && <li>GT: {gtLookup.get(midia.gt) ?? `GT #${midia.gt}`}</li>}
+                          {midia.pergunta && (
+                            <li>Pergunta: {perguntasLookup.get(midia.pergunta) ?? `Pergunta #${midia.pergunta}`}</li>
+                          )}
+                        </ul>
+                      )}
                       {midia.legenda && <p>{midia.legenda}</p>}
                       {midia.tags && midia.tags.length > 0 && (
                         <ul className="biblioteca__tags">
@@ -312,7 +493,7 @@ export function BibliotecaPage() {
               </ul>
             ) : (
               <div className="biblioteca__empty">
-                <p>Nenhuma mídia encontrada. Ajuste os filtros ou realize uploads via API.</p>
+                <p>Nenhum link encontrado. Ajuste os filtros ou cadastre um novo material.</p>
               </div>
             )}
           </section>

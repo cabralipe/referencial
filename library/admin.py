@@ -5,13 +5,13 @@ from .models import BlocoTexto, Midia
 
 @admin.register(Midia)
 class MidiaAdmin(admin.ModelAdmin):
-    list_display = ("url", "uploaded_by", "created_at")
+    list_display = ("url", "gt", "pergunta", "uploaded_by", "created_at")
     search_fields = ("url", "legenda")
-    list_filter = ("uploaded_by",)
+    list_filter = ("uploaded_by", "gt")
 
 
 @admin.register(BlocoTexto)
 class BlocoTextoAdmin(admin.ModelAdmin):
-    list_display = ("titulo", "created_by", "updated_at")
+    list_display = ("titulo", "gt", "pergunta", "created_by", "updated_at")
     search_fields = ("titulo", "conteudo_html")
-    list_filter = ("created_by",)
+    list_filter = ("created_by", "gt")

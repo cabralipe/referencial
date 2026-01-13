@@ -267,6 +267,8 @@ export interface Midia {
   url: string;
   legenda: string | null;
   tags: string[] | null;
+  gt?: number | null;
+  pergunta?: number | null;
   uploaded_by: number | null;
   created_at: string;
 }
@@ -276,6 +278,8 @@ export interface BlocoTexto {
   titulo: string;
   conteudo_html: string;
   tags: string[] | null;
+  gt?: number | null;
+  pergunta?: number | null;
   created_by: number | null;
   updated_at: string;
   etag: string;

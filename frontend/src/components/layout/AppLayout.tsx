@@ -224,7 +224,7 @@ export function AppLayout() {
             )}
             <NavLink to="/biblioteca">
               <Icon name="library" className="menu__icon" ariaHidden />
-              <span className="menu__label">Biblioteca</span>
+              <span className="menu__label">Referências</span>
             </NavLink>
             <NavLink to="/exportacoes">
               <Icon name="export" className="menu__icon" ariaHidden />
