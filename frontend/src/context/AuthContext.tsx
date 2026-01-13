@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { API_BASE_URL } from '@/config/env';
 import { appendCsrfHeader, ensureCsrfToken, CSRF_HEADER } from '@/api/csrf';
@@ -98,8 +99,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<InternalState>(initialState);
   const bootstrapInFlight = useRef(false);
+  const queryClient = useQueryClient();
 
   const logout = useCallback(async () => {
+    queryClient.clear();
     clearAuthStorage();
     setState({
       status: 'idle',
@@ -111,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       error: null,
     });
-  }, []);
+  }, [queryClient]);
 
   const refreshAccessToken = useCallback(async () => {
     const refreshToken = state.tokens.refreshToken;
@@ -226,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async ({ email, password }: LoginCredentials) => {
+      queryClient.clear();
       setState((prev) => ({
         ...prev,
         status: 'loading',
@@ -328,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [fetchAuthMe, fetchCliente],
+    [fetchAuthMe, fetchCliente, queryClient],
   );
 
   useEffect(() => {

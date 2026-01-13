@@ -1,5 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
 import { APP_TITLE } from '@/config/env';
@@ -9,6 +10,7 @@ import { PageInstructions } from '@/components/common/PageInstructions';
 import './LoginPage.css';
 
 export function LoginPage() {
+  const queryClient = useQueryClient();
   const { isAuthenticated, login, status, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +18,10 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    queryClient.clear();
+  }, [queryClient]);
 
   const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? '/';
 

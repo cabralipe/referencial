@@ -175,6 +175,44 @@
   color: #0f172a;
 }
 
+.pareceres__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem;
+  background: #ffffff;
+}
+
+.pareceres__parecer-field {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.pareceres__parecer-field:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.pareceres__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.pareceres__feedback {
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
 .pareceres__empty {
   border: 1px dashed rgba(148, 163, 184, 0.6);
   border-radius: 1rem;

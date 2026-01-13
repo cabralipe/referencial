@@ -5,7 +5,7 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useRespostas } from '@/hooks/useRespostas';
-import { useRevisoes } from '@/hooks/useRevisoes';
+import { useDeleteRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { useAuth } from '@/context/AuthContext';
 import type { Resposta, Revisao } from '@/api/types';
 
@@ -46,6 +46,9 @@ export function PareceresPage() {
   const isMembroGt = user?.role === 'membro_gt';
   const [gtFiltro, setGtFiltro] = useState<number | ''>('');
   const [buscaConteudo, setBuscaConteudo] = useState('');
+  const [draftParecer, setDraftParecer] = useState<Record<number, string>>({});
+  const [feedbackParecer, setFeedbackParecer] = useState<Record<number, string>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const { gtOptions, isLoading: gtsLoading } = useAvailableGts();
   const { data: respostas, isLoading: respostasLoading, refetch: refetchRespostas } = useRespostas({ includeAll: true });
@@ -53,6 +56,8 @@ export function PareceresPage() {
     alvoTipo: 'resposta',
     pageSize: 500,
   });
+  const updateRevisao = useUpdateRevisao();
+  const deleteRevisao = useDeleteRevisao();
 
   const gtsPermitidos = useMemo(() => new Set(gtOptions.map((gt) => gt.id)), [gtOptions]);
 
@@ -99,6 +104,44 @@ export function PareceresPage() {
     return filtradas
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }, [isRedator, revisoes, respostaIdsFiltradas, user]);
+
+  const handleAtualizarParecer = async (revisao: Revisao) => {
+    const valor = draftParecer[revisao.id];
+    if (valor === undefined) return;
+    setFeedbackParecer((prev) => ({ ...prev, [revisao.id]: '' }));
+    try {
+      await updateRevisao.mutateAsync({
+        revisaoId: revisao.id,
+        payload: { parecer_html: valor },
+        etag: revisao.etag,
+      });
+      setFeedbackParecer((prev) => ({ ...prev, [revisao.id]: 'Parecer atualizado com sucesso.' }));
+      setDraftParecer((prev) => {
+        const next = { ...prev };
+        delete next[revisao.id];
+        return next;
+      });
+      refetchRevisoes();
+    } catch (err: any) {
+      setFeedbackParecer((prev) => ({ ...prev, [revisao.id]: err?.message ?? 'Falha ao atualizar parecer.' }));
+    }
+  };
+
+  const handleExcluirParecer = async (revisaoId: number) => {
+    const confirmacao = window.confirm('Excluir este parecer? Esta ação não pode ser desfeita.');
+    if (!confirmacao) return;
+    setDeletingId(revisaoId);
+    setFeedbackParecer((prev) => ({ ...prev, [revisaoId]: '' }));
+    try {
+      await deleteRevisao.mutateAsync({ revisaoId });
+      setFeedbackParecer((prev) => ({ ...prev, [revisaoId]: 'Parecer excluído com sucesso.' }));
+      refetchRevisoes();
+    } catch (err: any) {
+      setFeedbackParecer((prev) => ({ ...prev, [revisaoId]: err?.message ?? 'Falha ao excluir parecer.' }));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (!user) {
     return <FullPageLoader message="Carregando pareceres..." />;
@@ -208,6 +251,7 @@ export function PareceresPage() {
             const gtId = resposta?.gt ?? (preview && 'gt' in preview ? preview.gt : null);
             const linkTo = tarefaId && gtId ? `/tarefas/${tarefaId}?gt=${gtId}` : null;
             const statusLabel = STATUS_LABELS[rev.status] ?? rev.status;
+            const canEdit = isRedator && user && (rev.revisor === user.id || rev.solicitante === user.id);
 
             return (
               <article key={rev.id} className="pareceres__card">
@@ -254,6 +298,35 @@ export function PareceresPage() {
                     dangerouslySetInnerHTML={{ __html: rev.parecer_html || '<p>Sem parecer registrado.</p>' }}
                   />
                 </div>
+                {canEdit && (
+                  <div className="pareceres__edit">
+                    <span className="pareceres__preview-label">Editar parecer (HTML)</span>
+                    <textarea
+                      className="pareceres__parecer-field"
+                      value={draftParecer[rev.id] ?? rev.parecer_html ?? ''}
+                      onChange={(event) =>
+                        setDraftParecer((prev) => ({ ...prev, [rev.id]: event.target.value }))
+                      }
+                      rows={6}
+                    />
+                    <div className="pareceres__actions">
+                      <button type="button" className="pareceres__button" onClick={() => handleAtualizarParecer(rev)}>
+                        {updateRevisao.isPending ? 'Salvando...' : 'Salvar parecer'}
+                      </button>
+                      <button
+                        type="button"
+                        className="pareceres__button pareceres__button--ghost"
+                        onClick={() => handleExcluirParecer(rev.id)}
+                        disabled={deletingId === rev.id}
+                      >
+                        {deletingId === rev.id ? 'Excluindo...' : 'Excluir parecer'}
+                      </button>
+                      {feedbackParecer[rev.id] && (
+                        <span className="pareceres__feedback">{feedbackParecer[rev.id]}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </article>
             );
           })}
