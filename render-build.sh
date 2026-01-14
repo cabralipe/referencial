@@ -11,5 +11,8 @@ pip install -r requirements.txt
 npm install --prefix frontend
 npm run build --prefix frontend
 
+# Apply migrations on deploy so new columns exist in production DB.
+python manage.py migrate --noinput
+
 # Collect static assets for WhiteNoise
 python manage.py collectstatic --noinput

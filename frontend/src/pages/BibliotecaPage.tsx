@@ -278,7 +278,7 @@ export function BibliotecaPage() {
                 <span>Referência (HTML ou texto)</span>
                 <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
               </label>
-          <button type="submit" disabled={criarBloco.isPending || (requiresGt && !gtId)}>
+          <button type="submit" disabled={criarBloco.isPending}>
             {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}
           </button>
           {blocoError && <p className="biblioteca__error">{blocoError}</p>}
@@ -303,7 +303,7 @@ export function BibliotecaPage() {
                 <span>Tags</span>
                 <input name="tags" type="text" placeholder="Ex.: leitura,avaliacao" />
               </label>
-              <button type="submit" disabled={criarMidia.isPending || (requiresGt && !gtId)}>
+              <button type="submit" disabled={criarMidia.isPending}>
                 {criarMidia.isPending ? 'Salvando...' : 'Adicionar link'}
               </button>
               {midiaError && <p className="biblioteca__error">{midiaError}</p>}
