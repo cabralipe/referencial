@@ -10,12 +10,12 @@
     }
     .quadro-admin-table th,
     .quadro-admin-table td {
-      border: 1px solid #d6dbe2;
+      border: 1px solid var(--hairline-color, #d6dbe2);
       padding: 0.5rem;
       vertical-align: top;
     }
     .quadro-admin-table th {
-      background: #f5f7fa;
+      background: var(--header-bg, #f5f7fa);
       text-align: left;
       font-weight: 600;
     }
@@ -28,7 +28,7 @@
       position: sticky;
       left: 0;
       z-index: 1;
-      background: #f5f7fa;
+      background: var(--header-bg, #f5f7fa);
     }
     .quadro-admin-table input[type="text"] {
       width: 100%;
@@ -62,7 +62,7 @@
       gap: 0.25rem;
       font-size: 0.75rem;
       font-weight: 400;
-      color: #4b5563;
+      color: var(--body-quiet-color, #4b5563);
     }
     .quadro-admin-actions {
       display: grid;
@@ -79,9 +79,9 @@
     .quadro-admin-section {
       margin-top: 1rem;
       padding: 0.75rem;
-      border: 1px dashed #d6dbe2;
+      border: 1px dashed var(--hairline-color, #d6dbe2);
       border-radius: 0.5rem;
-      background: #fafafa;
+      background: var(--body-bg, #fafafa);
     }
   </style>
 {% endblock %}

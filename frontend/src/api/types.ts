@@ -142,9 +142,22 @@ export interface CelulaQuadro {
 export interface Quadro {
   id: number;
   gt: number;
+  area: number | null;
   template: string;
   version: number;
   celulas: CelulaQuadro[];
+  linhas: {
+    id: number;
+    linha: number;
+    nome: string;
+    ordem: number;
+  }[];
+  colunas: {
+    id: number;
+    coluna: number;
+    nome: string;
+    ordem: number;
+  }[];
 }
 
 export interface FormularioDinamico {

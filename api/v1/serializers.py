@@ -21,7 +21,7 @@ from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
 from notifications.models import Notificacao
 from reviews.models import Revisao
-from workshop.models import CelulaQuadro, Quadro
+from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 from meb.models import MebMessage, MebThread
 from meb.services import ensure_thread_for_user
 
@@ -298,12 +298,26 @@ class CelulaQuadroSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "quadro")
 
 
+class QuadroLinhaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuadroLinha
+        fields = ("id", "linha", "nome", "ordem")
+
+
+class QuadroColunaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuadroColuna
+        fields = ("id", "coluna", "nome", "ordem")
+
+
 class QuadroSerializer(serializers.ModelSerializer):
     celulas = CelulaQuadroSerializer(many=True, read_only=True)
+    linhas = QuadroLinhaSerializer(many=True, read_only=True)
+    colunas = QuadroColunaSerializer(many=True, read_only=True)
 
     class Meta:
         model = Quadro
-        fields = ("id", "gt", "template", "version", "celulas")
+        fields = ("id", "gt", "area", "template", "version", "celulas", "linhas", "colunas")
 
 
 class FormularioDinamicoSerializer(serializers.ModelSerializer):

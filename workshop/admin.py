@@ -8,22 +8,27 @@ from .models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 
 @admin.register(Quadro)
 class QuadroAdmin(admin.ModelAdmin):
-    list_display = ("gt", "template", "version", "updated_at")
-    list_filter = ("template", "gt")
+    list_display = ("gt", "area", "template", "version", "updated_at")
+    list_filter = ("template", "gt", "area")
     change_form_template = "admin/workshop/quadro/change_form.html"
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Customiza o queryset para campos ForeignKey."""
-        if db_field.name == "gt":
+        if db_field.name in {"gt", "area"}:
             from core.models import Usuario
-            from curriculum.models import GT
+            from curriculum.models import Area, GT
             
-            # Se o usuário é super admin, mostrar todos os GTs
+            # Se o usuário é super admin, mostrar todos os registros
             if hasattr(request.user, 'role') and request.user.role == Usuario.Role.SUPER_ADMIN:
-                kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
-            # Para outros usuários, usar o queryset padrão (com filtro de cliente)
+                if db_field.name == "gt":
+                    kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
+                else:
+                    kwargs["queryset"] = Area.raw_objects.filter(is_deleted=False)
             else:
-                kwargs["queryset"] = GT.objects.all()
+                if db_field.name == "gt":
+                    kwargs["queryset"] = GT.objects.all()
+                else:
+                    kwargs["queryset"] = Area.objects.all()
         
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 

@@ -840,7 +840,7 @@ class QuadroViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
-        queryset = Quadro.objects.select_related("gt").filter(cliente_id=cliente_id)
+        queryset = Quadro.objects.select_related("gt").prefetch_related("linhas", "colunas", "celulas").filter(cliente_id=cliente_id)
         user = self.request.user
         if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
             gt_ids = _get_user_gt_ids(user)
@@ -852,10 +852,10 @@ class QuadroViewSet(viewsets.ReadOnlyModelViewSet):
         template = self.request.query_params.get("template")
         if area_id:
             try:
-                area = Area.objects.get(pk=area_id, cliente_id=cliente_id)
+                Area.objects.get(pk=area_id, cliente_id=cliente_id)
             except Area.DoesNotExist as exc:
                 raise ValidationError("Área não encontrada.") from exc
-            queryset = queryset.filter(gt_id__in=area.gts.values_list("id", flat=True))
+            queryset = queryset.filter(area_id=area_id)
         if gt_id:
             queryset = queryset.filter(gt_id=gt_id)
         if template:

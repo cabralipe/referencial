@@ -5,11 +5,12 @@ from __future__ import annotations
 from django.db import models
 
 from core.mixins import TenantModel
-from curriculum.models import GT
+from curriculum.models import Area, GT
 
 
 class Quadro(TenantModel):
     gt = models.ForeignKey(GT, on_delete=models.CASCADE, related_name="quadros")
+    area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True, blank=True, related_name="quadros")
     template = models.CharField(max_length=120)
     version = models.PositiveIntegerField(default=1)
 

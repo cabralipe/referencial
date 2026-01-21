@@ -188,6 +188,12 @@ export function QuadrosPage() {
           {quadros.map((quadro) => {
             const maxLinha = Math.max(0, ...quadro.celulas.map((celula) => celula.linha));
             const maxColuna = Math.max(0, ...quadro.celulas.map((celula) => celula.coluna));
+            const maxLinhaFromNames = Math.max(0, ...quadro.linhas.map((linha) => linha.linha));
+            const maxColunaFromNames = Math.max(0, ...quadro.colunas.map((coluna) => coluna.coluna));
+            const totalLinhas = Math.max(maxLinha, maxLinhaFromNames);
+            const totalColunas = Math.max(maxColuna, maxColunaFromNames);
+            const rowNames = new Map(quadro.linhas.map((linha) => [linha.linha, linha.nome]));
+            const colNames = new Map(quadro.colunas.map((coluna) => [coluna.coluna, coluna.nome]));
 
             const getConteudo = (linha: number, coluna: number) => {
               const key = buildKey(quadro.id, linha, coluna);
@@ -212,33 +218,50 @@ export function QuadrosPage() {
                 <div className={`quadros__grid ${viewMode === 'compact' ? 'quadros__grid--compact' : ''}`}>
                   <div className="quadros__table-scroll">
                     <table>
-                    <tbody>
-                      {Array.from({ length: maxLinha + 1 }).map((_, linha) => (
-                        <tr key={linha}>
-                          {Array.from({ length: maxColuna + 1 }).map((__, coluna) => {
-                            const value = getConteudo(linha, coluna);
-                            const isSaving = updateCelula.isPending;
+                      <thead>
+                        <tr>
+                          <th className="quadros__sticky-corner">Linhas \\ Colunas</th>
+                          {Array.from({ length: totalColunas + 1 }).map((_, coluna) => {
+                            const colLabel = colNames.get(coluna) ?? `Coluna ${coluna}`;
                             return (
-                              <td key={coluna}>
-                                <label>
-                                  <span>
-                                    L{linha} · C{coluna}
-                                  </span>
-                                  <textarea
-                                    value={value}
-                                    onChange={(event) => handleChange(quadro.id, linha, coluna, event.target.value)}
-                                    rows={4}
-                                  />
-                                </label>
-                                <button type="button" onClick={() => handleSalvar(quadro.id, linha, coluna)} disabled={isSaving}>
-                                  {isSaving ? 'Salvando...' : 'Salvar célula'}
-                                </button>
-                              </td>
+                              <th key={coluna} className="quadros__sticky-col">
+                                {colLabel}
+                              </th>
                             );
                           })}
                         </tr>
-                      ))}
-                    </tbody>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: totalLinhas + 1 }).map((_, linha) => {
+                          const rowLabel = rowNames.get(linha) ?? `Linha ${linha}`;
+                          return (
+                            <tr key={linha}>
+                              <th className="quadros__sticky-row">{rowLabel}</th>
+                              {Array.from({ length: totalColunas + 1 }).map((__, coluna) => {
+                                const value = getConteudo(linha, coluna);
+                                const isSaving = updateCelula.isPending;
+                                return (
+                                  <td key={coluna}>
+                                    <label>
+                                      <span>
+                                        {rowLabel} · {colNames.get(coluna) ?? `Coluna ${coluna}`}
+                                      </span>
+                                      <textarea
+                                        value={value}
+                                        onChange={(event) => handleChange(quadro.id, linha, coluna, event.target.value)}
+                                        rows={4}
+                                      />
+                                    </label>
+                                    <button type="button" onClick={() => handleSalvar(quadro.id, linha, coluna)} disabled={isSaving}>
+                                      {isSaving ? 'Salvando...' : 'Salvar célula'}
+                                    </button>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
                     </table>
                   </div>
                 </div>

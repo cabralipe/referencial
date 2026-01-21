@@ -193,6 +193,37 @@
   table-layout: fixed;
 }
 
+.quadros__grid th {
+  text-align: left;
+  font-size: 0.85rem;
+  color: #0f172a;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.quadros__sticky-col {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.quadros__sticky-row {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 200px;
+}
+
+.quadros__sticky-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  min-width: 200px;
+}
+
 .quadros__table-scroll {
   width: 100%;
   overflow: auto;
