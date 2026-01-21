@@ -36,7 +36,7 @@ from core.permissions import (
 from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -62,6 +62,7 @@ from .serializers import (
     OnlineUserSerializer,
     PerguntaWriteSerializer,
     PerguntaSerializer,
+    AreaSerializer,
     GTSerializer,
     ExportJobSerializer,
     FormularioDinamicoSerializer,
@@ -397,6 +398,29 @@ class GTViewSet(viewsets.ReadOnlyModelViewSet):
         }:
             return queryset
         return queryset.filter(membros=user)
+
+
+class AreaViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AreaSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ("nome",)
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = Area.objects.filter(cliente_id=cliente_id).order_by("nome")
+        user = self.request.user
+        if not getattr(user, "is_authenticated", False):
+            return queryset.none()
+        if getattr(user, "role", None) in {
+            user.Role.ADMIN_CLIENTE,
+            user.Role.SUPER_ADMIN,
+        }:
+            return queryset.prefetch_related("gts")
+        gt_ids = _get_user_gt_ids(user)
+        if not gt_ids:
+            return queryset.none()
+        return queryset.filter(gts__id__in=gt_ids).distinct().prefetch_related("gts")
 
 
 class ConsultaPublicaViewSet(viewsets.ModelViewSet):
@@ -823,8 +847,15 @@ class QuadroViewSet(viewsets.ReadOnlyModelViewSet):
             if not gt_ids:
                 return queryset.none()
             queryset = queryset.filter(gt_id__in=gt_ids)
+        area_id = self.request.query_params.get("area_id")
         gt_id = self.request.query_params.get("gt_id")
         template = self.request.query_params.get("template")
+        if area_id:
+            try:
+                area = Area.objects.get(pk=area_id, cliente_id=cliente_id)
+            except Area.DoesNotExist as exc:
+                raise ValidationError("Área não encontrada.") from exc
+            queryset = queryset.filter(gt_id__in=area.gts.values_list("id", flat=True))
         if gt_id:
             queryset = queryset.filter(gt_id=gt_id)
         if template:

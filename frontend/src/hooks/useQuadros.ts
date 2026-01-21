@@ -4,18 +4,20 @@ import { useApiClient } from '@/api/client';
 import type { CelulaQuadro, PaginatedResponse, Quadro } from '@/api/types';
 
 interface UseQuadrosParams {
+  areaId?: number;
   gtId?: number;
   template?: string;
 }
 
-export function useQuadros({ gtId, template }: UseQuadrosParams = {}) {
+export function useQuadros({ areaId, gtId, template }: UseQuadrosParams = {}) {
   const client = useApiClient();
 
   return useQuery({
-    queryKey: ['quadros', { gtId, template }],
+    queryKey: ['quadros', { areaId, gtId, template }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<Quadro>>('/quadro', {
         query: {
+          area_id: areaId,
           gt_id: gtId,
           template,
           page_size: 200,

@@ -15,7 +15,7 @@ from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, Cl
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -72,6 +72,14 @@ class GTSerializer(serializers.ModelSerializer):
     class Meta:
         model = GT
         fields = ("id", "nome", "etapa")
+
+
+class AreaSerializer(serializers.ModelSerializer):
+    gts = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    class Meta:
+        model = Area
+        fields = ("id", "nome", "gts")
 
 
 class PerguntaSerializer(serializers.ModelSerializer):

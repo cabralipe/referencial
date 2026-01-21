@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { useAreas } from '@/hooks/useAreas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useQuadros, useUpdateCelulaQuadro } from '@/hooks/useQuadros';
 
@@ -14,21 +15,54 @@ function buildKey(quadroId: number, linha: number, coluna: number): CellKey {
 }
 
 export function QuadrosPage() {
+  const { data: areas, isLoading: isLoadingAreas } = useAreas();
   const { gtOptions } = useAvailableGts();
+  const [selectedArea, setSelectedArea] = useState<number | ''>('');
   const [selectedGt, setSelectedGt] = useState<number | ''>('');
   const [templateFilter, setTemplateFilter] = useState('');
   const [drafts, setDrafts] = useState<Record<CellKey, string>>({});
+  const [viewMode, setViewMode] = useState<'compact' | 'expanded'>('expanded');
 
   const { data: quadros, isLoading } = useQuadros({
+    areaId: typeof selectedArea === 'number' ? selectedArea : undefined,
     gtId: typeof selectedGt === 'number' ? selectedGt : undefined,
     template: templateFilter || undefined,
   });
   const updateCelula = useUpdateCelulaQuadro();
 
+  const sortedAreas = useMemo(() => {
+    if (!areas) return [];
+    return [...areas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [areas]);
+
+  const selectedAreaInfo = useMemo(() => {
+    if (typeof selectedArea !== 'number') return null;
+    return sortedAreas.find((area) => area.id === selectedArea) ?? null;
+  }, [selectedArea, sortedAreas]);
+
+  const filteredGtOptions = useMemo(() => {
+    if (!selectedAreaInfo) return gtOptions;
+    const allowed = new Set(selectedAreaInfo.gts);
+    return gtOptions.filter((gt) => allowed.has(gt.id));
+  }, [gtOptions, selectedAreaInfo]);
+
   const templates = useMemo(() => {
     if (!quadros) return [] as string[];
     return Array.from(new Set(quadros.map((item) => item.template))).sort();
   }, [quadros]);
+
+  useEffect(() => {
+    if (!selectedAreaInfo || typeof selectedGt !== 'number') {
+      return;
+    }
+    if (!selectedAreaInfo.gts.includes(selectedGt)) {
+      setSelectedGt('');
+    }
+  }, [selectedAreaInfo, selectedGt]);
+
+  if (isLoadingAreas && !areas) {
+    return <FullPageLoader message="Carregando áreas..." />;
+  }
 
   if (isLoading && !quadros) {
     return <FullPageLoader message="Carregando quadros..." />;
@@ -74,33 +108,82 @@ export function QuadrosPage() {
         ]}
       />
 
-      <div className="quadros__filters">
-        <label>
-          <span>GT</span>
-          <select value={selectedGt} onChange={(event) => setSelectedGt(event.target.value ? Number(event.target.value) : '')}>
-            <option value="">Todos</option>
-            {gtOptions.map((gt) => (
-              <option key={gt.id} value={gt.id}>
-                {gt.displayName}
-              </option>
+      {sortedAreas.length > 0 && !selectedAreaInfo ? (
+        <section className="quadros__areas">
+          <div className="quadros__areas-header">
+            <h2>Selecione uma área</h2>
+            <p>As áreas definem quais GTs compõem cada conjunto de quadros.</p>
+          </div>
+          <div className="quadros__areas-grid">
+            {sortedAreas.map((area) => (
+              <button type="button" key={area.id} className="quadros__area-card" onClick={() => setSelectedArea(area.id)}>
+                <strong>{area.nome}</strong>
+                <span>{area.gts.length} GT{area.gts.length === 1 ? '' : 's'}</span>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </section>
+      ) : (
+        <>
+          {selectedAreaInfo ? (
+            <div className="quadros__area-active">
+              <div>
+                <span>Área selecionada</span>
+                <strong>{selectedAreaInfo.nome}</strong>
+              </div>
+              <button type="button" onClick={() => setSelectedArea('')}>
+                Trocar área
+              </button>
+            </div>
+          ) : null}
 
-        <label>
-          <span>Template</span>
-          <select value={templateFilter} onChange={(event) => setTemplateFilter(event.target.value)}>
-            <option value="">Todos</option>
-            {templates.map((tpl) => (
-              <option key={tpl} value={tpl}>
-                {tpl}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+          <div className="quadros__filters">
+            <label>
+              <span>GT</span>
+              <select value={selectedGt} onChange={(event) => setSelectedGt(event.target.value ? Number(event.target.value) : '')}>
+                <option value="">Todos</option>
+                {filteredGtOptions.map((gt) => (
+                  <option key={gt.id} value={gt.id}>
+                    {gt.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-      {quadros && quadros.length > 0 ? (
+            <label>
+              <span>Template</span>
+              <select value={templateFilter} onChange={(event) => setTemplateFilter(event.target.value)}>
+                <option value="">Todos</option>
+                {templates.map((tpl) => (
+                  <option key={tpl} value={tpl}>
+                    {tpl}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="quadros__view-toggle">
+              <span>Visao</span>
+              <button
+                type="button"
+                className={viewMode === 'compact' ? 'is-active' : ''}
+                onClick={() => setViewMode('compact')}
+              >
+                Compacta
+              </button>
+              <button
+                type="button"
+                className={viewMode === 'expanded' ? 'is-active' : ''}
+                onClick={() => setViewMode('expanded')}
+              >
+                Expandida
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {sortedAreas.length > 0 && !selectedAreaInfo ? null : quadros && quadros.length > 0 ? (
         <div className="quadros__list">
           {quadros.map((quadro) => {
             const maxLinha = Math.max(0, ...quadro.celulas.map((celula) => celula.linha));
@@ -126,8 +209,9 @@ export function QuadrosPage() {
                   <span>Version {quadro.version}</span>
                 </header>
 
-                <div className="quadros__grid">
-                  <table>
+                <div className={`quadros__grid ${viewMode === 'compact' ? 'quadros__grid--compact' : ''}`}>
+                  <div className="quadros__table-scroll">
+                    <table>
                     <tbody>
                       {Array.from({ length: maxLinha + 1 }).map((_, linha) => (
                         <tr key={linha}>
@@ -155,7 +239,8 @@ export function QuadrosPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </article>
             );
@@ -164,7 +249,11 @@ export function QuadrosPage() {
       ) : (
         <div className="quadros__empty">
           <h3>Nenhum quadro disponível</h3>
-          <p>Ajuste os filtros para visualizar quadros cadastrados.</p>
+          <p>
+            {sortedAreas.length === 0
+              ? 'Nenhuma área cadastrada. Cadastre áreas no admin para agrupar os quadros.'
+              : 'Ajuste os filtros para visualizar quadros cadastrados.'}
+          </p>
         </div>
       )}
     </div>

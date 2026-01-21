@@ -26,6 +26,20 @@ class GT(TenantModel):
         return self.nome
 
 
+class Area(TenantModel):
+    nome = models.CharField(max_length=255)
+    gts = models.ManyToManyField(GT, related_name="areas", blank=True)
+
+    class Meta:
+        verbose_name = "Área"
+        verbose_name_plural = "Áreas"
+        ordering = ("nome",)
+        unique_together = ("cliente", "nome")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.nome
+
+
 class Tarefa(TenantModel):
     class Tipo(models.TextChoices):
         PERGUNTAS = "PERGUNTAS", "Perguntas"

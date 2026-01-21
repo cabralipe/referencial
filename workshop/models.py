@@ -38,3 +38,31 @@ class CelulaQuadro(TenantModel):
     class Meta:
         unique_together = ("quadro", "linha", "coluna")
         ordering = ("linha", "coluna")
+
+
+class QuadroLinha(TenantModel):
+    quadro = models.ForeignKey(Quadro, on_delete=models.CASCADE, related_name="linhas")
+    linha = models.PositiveIntegerField()
+    nome = models.CharField(max_length=255)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("quadro", "linha")
+        ordering = ("ordem", "linha")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.quadro_id} - L{self.linha}: {self.nome}"
+
+
+class QuadroColuna(TenantModel):
+    quadro = models.ForeignKey(Quadro, on_delete=models.CASCADE, related_name="colunas")
+    coluna = models.PositiveIntegerField()
+    nome = models.CharField(max_length=255)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("quadro", "coluna")
+        ordering = ("ordem", "coluna")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.quadro_id} - C{self.coluna}: {self.nome}"

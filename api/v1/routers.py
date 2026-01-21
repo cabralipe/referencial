@@ -12,6 +12,7 @@ from .viewsets import (
     ComentarioViewSet,
     ExportJobViewSet,
     ConsultaPublicaViewSet,
+    AreaViewSet,
     GTViewSet,
     FormularioDinamicoViewSet,
     MidiaViewSet,
@@ -35,6 +36,7 @@ router.register("ai/assist", AiAssistViewSet, basename="ai-assist")
 router.register("tarefas", TarefaViewSet, basename="tarefa")
 router.register("perguntas", PerguntaViewSet, basename="pergunta")
 router.register("gts", GTViewSet, basename="gt")
+router.register("areas", AreaViewSet, basename="area")
 router.register("respostas", RespostaViewSet, basename="resposta")
 router.register("texto_unico", TextoUnicoViewSet, basename="texto_unico")
 router.register("textos_colaborativos", TextoColaborativoViewSet, basename="texto_colaborativo")

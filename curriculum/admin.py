@@ -5,7 +5,7 @@ from django import forms
 from django.contrib import admin
 from django.utils.html import strip_tags
 
-from .models import Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
+from .models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
 
 
 @admin.register(GT)
@@ -25,6 +25,25 @@ class GTAdmin(admin.ModelAdmin):
         
         # Para outros usuários, usar o queryset padrão (com filtro de cliente)
         return super().get_queryset(request)
+
+
+@admin.register(Area)
+class AreaAdmin(admin.ModelAdmin):
+    list_display = ("nome", "cliente", "created_at")
+    search_fields = ("nome", "cliente__nome")
+    list_filter = ("cliente",)
+    filter_horizontal = ("gts",)
+    fields = ("nome", "cliente", "gts")
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "gts":
+            from core.models import Usuario
+
+            if hasattr(request.user, "role") and request.user.role == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = GT.raw_objects.filter(is_deleted=False)
+            else:
+                kwargs["queryset"] = GT.objects.all()
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class TarefaForm(forms.ModelForm):

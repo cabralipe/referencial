@@ -30,6 +30,12 @@ export interface GT {
   etapa: string;
 }
 
+export interface Area {
+  id: number;
+  nome: string;
+  gts: number[];
+}
+
 export interface Resposta {
   id: number;
   gt: number;

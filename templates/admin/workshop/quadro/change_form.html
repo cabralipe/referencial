@@ -1,0 +1,244 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .quadro-admin-table {
+      margin-top: 1.5rem;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .quadro-admin-table th,
+    .quadro-admin-table td {
+      border: 1px solid #d6dbe2;
+      padding: 0.5rem;
+      vertical-align: top;
+    }
+    .quadro-admin-table th {
+      background: #f5f7fa;
+      text-align: left;
+      font-weight: 600;
+    }
+    .quadro-admin-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .quadro-admin-table tbody th {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f5f7fa;
+    }
+    .quadro-admin-table input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .quadro-admin-table input[type="number"] {
+      width: 4rem;
+    }
+    .quadro-admin-table textarea {
+      width: 100%;
+      min-height: 80px;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .quadro-admin-cell {
+      min-width: 140px;
+    }
+    .quadro-admin-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .quadro-admin-header-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .quadro-admin-header-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: #4b5563;
+    }
+    .quadro-admin-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .quadro-admin-actions label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+    .quadro-admin-section {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border: 1px dashed #d6dbe2;
+      border-radius: 0.5rem;
+      background: #fafafa;
+    }
+  </style>
+{% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  {% if show_quadro_table %}
+    <h2>Tabela do quadro</h2>
+    {% if quadro_linhas and quadro_colunas %}
+      <table class="quadro-admin-table">
+        <thead>
+          <tr>
+            <th>Linhas \ Colunas</th>
+            {% for coluna in quadro_colunas %}
+              <th>
+                <div class="quadro-admin-header">
+                  <input
+                    type="text"
+                    name="col_name_{{ coluna.coluna }}"
+                    value="{{ coluna.nome }}"
+                    placeholder="Nome da coluna"
+                  />
+                  <div class="quadro-admin-header-row">
+                    <label>
+                      Ordem
+                      <input
+                        type="number"
+                        name="col_order_{{ coluna.coluna }}"
+                        value="{{ coluna.ordem }}"
+                        min="0"
+                      />
+                    </label>
+                    <label>
+                      Excluir
+                      <input type="checkbox" name="col_delete_{{ coluna.coluna }}" value="1" />
+                    </label>
+                  </div>
+                </div>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in quadro_linhas %}
+            <tr>
+              <th>
+                <div class="quadro-admin-header">
+                  <input
+                    type="text"
+                    name="row_name_{{ linha.linha }}"
+                    value="{{ linha.nome }}"
+                    placeholder="Nome da linha"
+                  />
+                  <div class="quadro-admin-header-row">
+                    <label>
+                      Ordem
+                      <input
+                        type="number"
+                        name="row_order_{{ linha.linha }}"
+                        value="{{ linha.ordem }}"
+                        min="0"
+                      />
+                    </label>
+                    <label>
+                      Excluir
+                      <input type="checkbox" name="row_delete_{{ linha.linha }}" value="1" />
+                    </label>
+                  </div>
+                </div>
+              </th>
+              {% for cell in linha.cells %}
+                <td class="quadro-admin-cell">
+                  <textarea
+                    name="cell_{{ linha.linha }}_{{ cell.coluna }}"
+                    placeholder="Preencha a célula"
+                  >{{ cell.valor }}</textarea>
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Nenhuma linha ou coluna cadastrada ainda.</p>
+    {% endif %}
+
+    <div class="quadro-admin-actions">
+      <label>
+        <span>Adicionar nova linha</span>
+        <input type="text" name="new_row_name" placeholder="Nome da nova linha" />
+      </label>
+      <label>
+        <span>Adicionar nova coluna</span>
+        <input type="text" name="new_col_name" placeholder="Nome da nova coluna" />
+      </label>
+    </div>
+
+    <div class="quadro-admin-section">
+      <strong>Adicionar multiplas linhas/colunas</strong>
+      <div class="quadro-admin-actions">
+        <label>
+          <span>Quantidade de linhas</span>
+          <input type="number" name="new_row_count" min="1" />
+        </label>
+        <label>
+          <span>Prefixo da linha</span>
+          <input type="text" name="new_row_prefix" placeholder="Linha " />
+        </label>
+        <label>
+          <span>Inicio da numeracao</span>
+          <input type="number" name="new_row_start" min="1" value="1" />
+        </label>
+        <label>
+          <span>Quantidade de colunas</span>
+          <input type="number" name="new_col_count" min="1" />
+        </label>
+        <label>
+          <span>Prefixo da coluna</span>
+          <input type="text" name="new_col_prefix" placeholder="Coluna " />
+        </label>
+        <label>
+          <span>Inicio da numeracao</span>
+          <input type="number" name="new_col_start" min="1" value="1" />
+        </label>
+      </div>
+    </div>
+  {% else %}
+    <h2>Tabela do quadro</h2>
+    <p>Salve o quadro para editar a tabela.</p>
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.querySelector('form#quadro_form') || document.querySelector('form');
+      const textareas = document.querySelectorAll('.quadro-admin-table textarea');
+
+      const resize = (el) => {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+      };
+
+      textareas.forEach((textarea) => {
+        resize(textarea);
+        textarea.addEventListener('input', () => resize(textarea));
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault();
+          if (form) {
+            form.submit();
+          }
+        }
+      });
+    });
+  </script>
+{% endblock %}
