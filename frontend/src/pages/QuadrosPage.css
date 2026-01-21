@@ -62,6 +62,15 @@
   color: #0f172a;
 }
 
+.quadros__area-description {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.quadros__area-description p {
+  margin: 0.35rem 0 0;
+}
+
 .quadros__area-card span {
   font-size: 0.85rem;
   color: #64748b;

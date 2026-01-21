@@ -79,7 +79,7 @@ class AreaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Area
-        fields = ("id", "nome", "gts")
+        fields = ("id", "nome", "descricao_html", "gts")
 
 
 class PerguntaSerializer(serializers.ModelSerializer):

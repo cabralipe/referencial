@@ -118,6 +118,12 @@ export function QuadrosPage() {
             {sortedAreas.map((area) => (
               <button type="button" key={area.id} className="quadros__area-card" onClick={() => setSelectedArea(area.id)}>
                 <strong>{area.nome}</strong>
+                {area.descricao_html ? (
+                  <div
+                    className="quadros__area-description"
+                    dangerouslySetInnerHTML={{ __html: area.descricao_html }}
+                  />
+                ) : null}
                 <span>{area.gts.length} GT{area.gts.length === 1 ? '' : 's'}</span>
               </button>
             ))}
@@ -130,6 +136,12 @@ export function QuadrosPage() {
               <div>
                 <span>Área selecionada</span>
                 <strong>{selectedAreaInfo.nome}</strong>
+                {selectedAreaInfo.descricao_html ? (
+                  <div
+                    className="quadros__area-description"
+                    dangerouslySetInnerHTML={{ __html: selectedAreaInfo.descricao_html }}
+                  />
+                ) : null}
               </div>
               <button type="button" onClick={() => setSelectedArea('')}>
                 Trocar área
@@ -186,12 +198,25 @@ export function QuadrosPage() {
       {sortedAreas.length > 0 && !selectedAreaInfo ? null : quadros && quadros.length > 0 ? (
         <div className="quadros__list">
           {quadros.map((quadro) => {
-            const maxLinha = Math.max(0, ...quadro.celulas.map((celula) => celula.linha));
-            const maxColuna = Math.max(0, ...quadro.celulas.map((celula) => celula.coluna));
-            const maxLinhaFromNames = Math.max(0, ...quadro.linhas.map((linha) => linha.linha));
-            const maxColunaFromNames = Math.max(0, ...quadro.colunas.map((coluna) => coluna.coluna));
-            const totalLinhas = Math.max(maxLinha, maxLinhaFromNames);
-            const totalColunas = Math.max(maxColuna, maxColunaFromNames);
+            const linhasIndex = new Set<number>();
+            const colunasIndex = new Set<number>();
+
+            quadro.celulas.forEach((celula) => {
+              linhasIndex.add(celula.linha);
+              colunasIndex.add(celula.coluna);
+            });
+
+            quadro.linhas.forEach((linha) => linhasIndex.add(linha.linha));
+            quadro.colunas.forEach((coluna) => colunasIndex.add(coluna.coluna));
+
+            const linhasList = Array.from(linhasIndex);
+            const colunasList = Array.from(colunasIndex);
+            const minLinha = linhasList.length > 0 ? Math.min(...linhasList) : 0;
+            const maxLinha = linhasList.length > 0 ? Math.max(...linhasList) : 0;
+            const minColuna = colunasList.length > 0 ? Math.min(...colunasList) : 0;
+            const maxColuna = colunasList.length > 0 ? Math.max(...colunasList) : 0;
+            const totalLinhas = maxLinha - minLinha;
+            const totalColunas = maxColuna - minColuna;
             const rowNames = new Map(quadro.linhas.map((linha) => [linha.linha, linha.nome]));
             const colNames = new Map(quadro.colunas.map((coluna) => [coluna.coluna, coluna.nome]));
 
@@ -221,7 +246,8 @@ export function QuadrosPage() {
                       <thead>
                         <tr>
                           <th className="quadros__sticky-corner">Linhas \\ Colunas</th>
-                          {Array.from({ length: totalColunas + 1 }).map((_, coluna) => {
+                          {Array.from({ length: totalColunas + 1 }).map((_, idx) => {
+                            const coluna = minColuna + idx;
                             const colLabel = colNames.get(coluna) ?? `Coluna ${coluna}`;
                             return (
                               <th key={coluna} className="quadros__sticky-col">
@@ -232,19 +258,22 @@ export function QuadrosPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {Array.from({ length: totalLinhas + 1 }).map((_, linha) => {
+                        {Array.from({ length: totalLinhas + 1 }).map((_, idx) => {
+                          const linha = minLinha + idx;
                           const rowLabel = rowNames.get(linha) ?? `Linha ${linha}`;
                           return (
                             <tr key={linha}>
                               <th className="quadros__sticky-row">{rowLabel}</th>
-                              {Array.from({ length: totalColunas + 1 }).map((__, coluna) => {
+                              {Array.from({ length: totalColunas + 1 }).map((__, colIdx) => {
+                                const coluna = minColuna + colIdx;
                                 const value = getConteudo(linha, coluna);
                                 const isSaving = updateCelula.isPending;
+                                const colLabel = colNames.get(coluna) ?? `Coluna ${coluna}`;
                                 return (
                                   <td key={coluna}>
                                     <label>
                                       <span>
-                                        {rowLabel} · {colNames.get(coluna) ?? `Coluna ${coluna}`}
+                                        {rowLabel} · {colLabel}
                                       </span>
                                       <textarea
                                         value={value}

@@ -1,0 +1,71 @@
+<div class="basic-richtext">
+  <div class="basic-richtext__toolbar">
+    <button type="button" class="basic-richtext__button" data-command="bold">
+      <strong>B</strong>
+    </button>
+    <button type="button" class="basic-richtext__button" data-command="justifyCenter">
+      Centralizar
+    </button>
+  </div>
+  <div class="basic-richtext__editor" contenteditable="true"></div>
+  {% include "django/forms/widgets/textarea.html" %}
+</div>
+<style>
+  .basic-richtext {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .basic-richtext__toolbar {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .basic-richtext__button {
+    border: 1px solid #cbd5e1;
+    border-radius: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    background: #ffffff;
+    cursor: pointer;
+  }
+  .basic-richtext__editor {
+    min-height: 140px;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0.6rem;
+    background: #ffffff;
+  }
+  .basic-richtext textarea {
+    display: none;
+  }
+</style>
+<script>
+  (function () {
+    const script = document.currentScript;
+    if (!script) return;
+    const wrapper = script.previousElementSibling;
+    if (!wrapper || !wrapper.classList.contains('basic-richtext')) return;
+    const editor = wrapper.querySelector('.basic-richtext__editor');
+    const textarea = wrapper.querySelector('textarea');
+    if (!editor || !textarea) return;
+
+    const syncToTextarea = () => {
+      textarea.value = editor.innerHTML;
+    };
+
+    editor.innerHTML = textarea.value || '';
+    editor.addEventListener('input', syncToTextarea);
+
+    wrapper.querySelectorAll('[data-command]').forEach((button) => {
+      button.addEventListener('click', () => {
+        editor.focus();
+        document.execCommand(button.dataset.command, false, null);
+        syncToTextarea();
+      });
+    });
+
+    const form = textarea.closest('form');
+    if (form) {
+      form.addEventListener('submit', syncToTextarea);
+    }
+  })();
+</script>

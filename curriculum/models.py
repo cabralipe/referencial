@@ -28,6 +28,7 @@ class GT(TenantModel):
 
 class Area(TenantModel):
     nome = models.CharField(max_length=255)
+    descricao_html = models.TextField(blank=True)
     gts = models.ManyToManyField(GT, related_name="areas", blank=True)
 
     class Meta:

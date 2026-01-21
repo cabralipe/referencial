@@ -8,6 +8,25 @@ from django.utils.html import strip_tags
 from .models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
 
 
+class BasicRichTextWidget(forms.Textarea):
+    template_name = "admin/widgets/basic_rich_text.html"
+
+
+class AreaForm(forms.ModelForm):
+    class Meta:
+        model = Area
+        fields = "__all__"
+        widgets = {
+            "descricao_html": BasicRichTextWidget(attrs={"rows": 6}),
+        }
+
+    def clean_descricao_html(self):
+        conteudo = self.cleaned_data.get("descricao_html", "")
+        if not conteudo:
+            return conteudo
+        return re.sub(r"<script[\s\S]*?</script>", "", conteudo, flags=re.IGNORECASE)
+
+
 @admin.register(GT)
 class GTAdmin(admin.ModelAdmin):
     list_display = ("nome", "etapa", "cliente", "created_at")
@@ -29,11 +48,12 @@ class GTAdmin(admin.ModelAdmin):
 
 @admin.register(Area)
 class AreaAdmin(admin.ModelAdmin):
+    form = AreaForm
     list_display = ("nome", "cliente", "created_at")
     search_fields = ("nome", "cliente__nome")
     list_filter = ("cliente",)
     filter_horizontal = ("gts",)
-    fields = ("nome", "cliente", "gts")
+    fields = ("nome", "cliente", "gts", "descricao_html")
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         if db_field.name == "gts":

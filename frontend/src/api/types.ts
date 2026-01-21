@@ -33,6 +33,7 @@ export interface GT {
 export interface Area {
   id: number;
   nome: string;
+  descricao_html?: string;
   gts: number[];
 }
 
