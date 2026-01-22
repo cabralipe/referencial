@@ -341,7 +341,8 @@ def create_library(cliente, users):
         cliente=cliente,
         url='https://example.com/logo.png',
         defaults={
-            'legenda': 'Logo do Projeto',
+            'titulo': 'Logo do Projeto',
+            'descricao': 'Logo do Projeto',
             'uploaded_by': users['admin']
         }
     )

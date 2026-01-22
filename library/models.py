@@ -9,8 +9,9 @@ from core.mixins import TenantModel
 
 
 class Midia(TenantModel):
+    titulo = models.CharField(max_length=255, blank=True)
     url = models.URLField()
-    legenda = models.CharField(max_length=255, blank=True)
+    descricao = models.CharField(max_length=255, blank=True)
     tags = models.JSONField(default=list, blank=True)
     gt = models.ForeignKey(
         "curriculum.GT",
@@ -43,7 +44,7 @@ class Midia(TenantModel):
         ordering = ("-created_at",)
 
     def __str__(self) -> str:  # pragma: no cover
-        return self.url
+        return self.titulo or self.url
 
 
 class BlocoTexto(TenantModel):

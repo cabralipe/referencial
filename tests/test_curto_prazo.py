@@ -164,14 +164,14 @@ def test_library_crud(auth_client, articulador):
     articulador_client.force_authenticate(articulador)
     forbidden_media = articulador_client.post(
         "/api/v1/midias",
-        {"url": "https://cdn.test/media.png", "legenda": "Logo", "tags": ["logo"]},
+        {"titulo": "Logo", "url": "https://cdn.test/media.png", "descricao": "Logo", "tags": ["logo"]},
         format="json",
     )
     assert forbidden_media.status_code == 403
 
     media_resp = client.post(
         "/api/v1/midias",
-        {"url": "https://cdn.test/media.png", "legenda": "Logo", "tags": ["logo"]},
+        {"titulo": "Logo", "url": "https://cdn.test/media.png", "descricao": "Logo", "tags": ["logo"]},
         format="json",
     )
     assert media_resp.status_code == 201

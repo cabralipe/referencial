@@ -123,8 +123,9 @@ export function useUpdateBloco() {
 }
 
 interface CreateMidiaInput {
+  titulo: string;
   url: string;
-  legenda?: string | null;
+  descricao?: string | null;
   tags?: string[];
   gt?: number | null;
   pergunta?: number | null;
@@ -135,11 +136,12 @@ export function useCreateMidia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ url, legenda, tags, gt, pergunta }: CreateMidiaInput) => {
+    mutationFn: async ({ titulo, url, descricao, tags, gt, pergunta }: CreateMidiaInput) => {
       const response = await client.post<Midia>('/midias', {
         body: {
+          titulo,
           url,
-          legenda,
+          descricao,
           tags,
           gt,
           pergunta,

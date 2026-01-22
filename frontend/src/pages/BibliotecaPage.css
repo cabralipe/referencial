@@ -96,6 +96,23 @@
   word-break: break-all;
 }
 
+.biblioteca__midia-descricao {
+  margin: 0.35rem 0 0;
+  color: var(--color-text);
+}
+
+.biblioteca__midia-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.biblioteca__midia-url {
+  color: var(--color-muted);
+  word-break: break-all;
+}
+
 .biblioteca__preview-html {
   background: var(--color-surface);
   border-radius: 0.75rem;
@@ -309,6 +326,19 @@
 .biblioteca__midias p {
   margin: 0;
   color: var(--color-text);
+}
+
+.biblioteca__midia-link {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-primary-strong);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .biblioteca__empty {

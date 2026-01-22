@@ -284,8 +284,9 @@ export interface Notificacao {
 
 export interface Midia {
   id: number;
+  titulo: string | null;
   url: string;
-  legenda: string | null;
+  descricao: string | null;
   tags: string[] | null;
   gt?: number | null;
   pergunta?: number | null;

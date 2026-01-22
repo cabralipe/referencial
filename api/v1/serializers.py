@@ -789,8 +789,11 @@ class MidiaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Midia
-        fields = ("id", "url", "legenda", "tags", "gt", "pergunta", "uploaded_by", "created_at")
+        fields = ("id", "titulo", "url", "descricao", "tags", "gt", "pergunta", "uploaded_by", "created_at")
         read_only_fields = ("id", "uploaded_by", "created_at")
+        extra_kwargs = {
+            "titulo": {"required": True, "allow_blank": False},
+        }
 
 
 class BlocoTextoSerializer(serializers.ModelSerializer):

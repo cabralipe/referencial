@@ -1501,7 +1501,11 @@ class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(models.Q(gt_id__in=gt_ids) | models.Q(gt__isnull=True))
         query = self.request.query_params.get("query")
         if query:
-            queryset = queryset.filter(models.Q(url__icontains=query) | models.Q(legenda__icontains=query))
+            queryset = queryset.filter(
+                models.Q(url__icontains=query)
+                | models.Q(titulo__icontains=query)
+                | models.Q(descricao__icontains=query)
+            )
         tags = self.request.query_params.getlist("tags") or self.request.query_params.get("tags")
         if tags:
             if isinstance(tags, str):
@@ -1549,7 +1553,17 @@ class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             if not gt_id:
                 raise ValidationError({"gt": "Selecione um GT para vincular a referência."})
         self._validate_biblioteca_relations(gt_id, pergunta_id)
-        serializer.save(cliente_id=_get_request_cliente_id(self.request), uploaded_by=self.request.user)
+        midia = serializer.save(cliente_id=_get_request_cliente_id(self.request), uploaded_by=self.request.user)
+        if gt_id and midia.cliente_id:
+            titulo = midia.titulo or "Novo material"
+            descricao = f" — {midia.descricao}" if midia.descricao else ""
+            conteudo = f"Novo link na Biblioteca: {titulo}{descricao}\n{midia.url}"
+            deliver_admin_broadcast(
+                cliente_id=midia.cliente_id,
+                autor=self.request.user,
+                conteudo=conteudo,
+                gt_ids=[gt_id],
+            )
 
     def perform_update(self, serializer):
         _assert_roles(
