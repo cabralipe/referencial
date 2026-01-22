@@ -222,6 +222,17 @@
   gap: 1.5rem;
 }
 
+.biblioteca__links header {
+  padding: 0.65rem 1rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.biblioteca__links header h2 {
+  margin: 0;
+}
+
 .biblioteca__cards {
   display: grid;
   gap: 1rem;
@@ -247,12 +258,6 @@
   color: var(--color-muted);
 }
 
-.biblioteca__snippet {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  color: var(--color-text);
-}
-
 .biblioteca__tags {
   list-style: none;
   margin: 0;
@@ -275,38 +280,6 @@
   color: var(--color-muted);
 }
 
-.biblioteca__card details {
-  background-color: var(--color-surface-muted);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-}
-
-.biblioteca__editar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  font-size: 0.9rem;
-  color: var(--color-text);
-}
-
-.biblioteca__editar textarea {
-  min-height: 120px;
-  resize: vertical;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.8rem;
-  border: 1px solid var(--color-border-strong);
-}
-
-.biblioteca__card button {
-  align-self: flex-start;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 0.6rem 1.4rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
-  color: #ffffff;
-  cursor: pointer;
-}
 
 .biblioteca__midias {
   list-style: none;

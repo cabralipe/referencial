@@ -1,10 +1,9 @@
 import { FormEvent, useMemo, useState } from 'react';
 
-import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAuth } from '@/context/AuthContext';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
-import { useBlocos, useCreateBloco, useCreateMidia, useMidias, useUpdateBloco } from '@/hooks/useBiblioteca';
+import { useBlocos, useCreateBloco, useCreateMidia, useMidias } from '@/hooks/useBiblioteca';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useTarefas } from '@/hooks/useTarefas';
 
@@ -52,11 +51,6 @@ export function BibliotecaPage() {
   });
   const criarBloco = useCreateBloco();
   const criarMidia = useCreateMidia();
-  const atualizarBloco = useUpdateBloco();
-
-  const [draftBlocos, setDraftBlocos] = useState<Record<number, string>>({});
-
-  const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const gtLookup = useMemo(() => new Map(gtOptions.map((gt) => [gt.id, gt.displayName])), [gtOptions]);
   const perguntasLookup = useMemo(
     () => new Map((perguntas ?? []).map((pergunta) => [pergunta.id, pergunta.texto])),
@@ -141,16 +135,6 @@ export function BibliotecaPage() {
     }
   };
 
-  const handleAtualizarBloco = async (id: number, etag: string, tags: string[] | null) => {
-    await atualizarBloco.mutateAsync({
-      blocoId: id,
-      conteudo_html: draftBlocos[id],
-      etag,
-      tags,
-    });
-    refetchBlocos();
-  };
-
   const carregando = midiasLoading || blocosLoading;
   const requiresGt = user?.role !== 'admin_cliente' && user?.role !== 'super_admin';
   const canManageBiblioteca =
@@ -172,28 +156,8 @@ export function BibliotecaPage() {
       <header className="biblioteca__header">
         <div>
           <h1>Central bibliográfica</h1>
-          <p>Compartilhe referências, links e anexos que apoiam as respostas dos GTs.</p>
         </div>
       </header>
-
-      <PageInstructions
-        title="Como organizar as referências"
-        description="Disponibilize materiais por GT e conecte cada item às perguntas que ele responde."
-        items={[
-          {
-            title: 'Selecione o GT',
-            description: 'Escolha o grupo de trabalho para definir quem verá as referências.',
-          },
-          {
-            title: 'Vincule à pergunta',
-            description: 'Associe cada livro, link ou anexo à pergunta que ele ajuda a responder.',
-          },
-          {
-            title: 'Use tags estratégicas',
-            description: 'Padronize tags para facilitar o encontro de materiais nas revisões.',
-          },
-        ]}
-      />
 
       <div className="biblioteca__filters">
         <label>
@@ -392,10 +356,6 @@ export function BibliotecaPage() {
                             )}
                           </ul>
                         )}
-                        <p className="biblioteca__snippet">
-                          {stripHtml(bloco.conteudo_html).slice(0, 140) || 'Sem conteúdo.'}
-                          {stripHtml(bloco.conteudo_html).length > 140 ? '…' : ''}
-                        </p>
                       </div>
                       {bloco.tags && bloco.tags.length > 0 && (
                         <ul className="biblioteca__tags">
@@ -406,26 +366,10 @@ export function BibliotecaPage() {
                       )}
                     </header>
 
-                    <details>
-                      <summary>Visualizar HTML</summary>
-                      <div dangerouslySetInnerHTML={{ __html: bloco.conteudo_html }} />
-                    </details>
-
-                    <label className="biblioteca__editar">
-                      <span>Atualizar conteúdo</span>
-                      <textarea
-                        rows={3}
-                        value={draftBlocos[bloco.id] ?? bloco.conteudo_html}
-                        onChange={(event) => setDraftBlocos((prev) => ({ ...prev, [bloco.id]: event.target.value }))}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleAtualizarBloco(bloco.id, bloco.etag, bloco.tags)}
-                      disabled={atualizarBloco.isPending}
-                    >
-                      {atualizarBloco.isPending ? 'Salvando...' : 'Salvar alteração'}
-                    </button>
+                    <div
+                      className="biblioteca__preview-html"
+                      dangerouslySetInnerHTML={{ __html: bloco.conteudo_html }}
+                    />
                   </article>
                 ))}
               </div>
@@ -436,7 +380,7 @@ export function BibliotecaPage() {
             )}
           </section>
 
-          <section>
+          <section className="biblioteca__links">
             <header>
               <h2>Links e anexos ({midias?.length ?? 0})</h2>
             </header>
