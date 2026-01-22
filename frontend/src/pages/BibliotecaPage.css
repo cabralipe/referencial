@@ -91,26 +91,39 @@
   color: var(--color-text);
 }
 
-.biblioteca__preview-meta a {
-  color: var(--color-primary-strong);
-  word-break: break-all;
-}
-
 .biblioteca__midia-descricao {
   margin: 0.35rem 0 0;
   color: var(--color-text);
 }
 
-.biblioteca__midia-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-}
-
 .biblioteca__midia-url {
   color: var(--color-muted);
   word-break: break-all;
+}
+
+.biblioteca__midia-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.biblioteca__midia-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-primary-strong), #0ea5e9);
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.2);
 }
 
 .biblioteca__preview-html {
@@ -313,6 +326,19 @@
   gap: 0.5rem;
 }
 
+.biblioteca__midia-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.biblioteca__midia-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 .biblioteca__midias strong {
   font-size: 0.95rem;
   word-break: break-all;
@@ -328,19 +354,6 @@
   color: var(--color-text);
 }
 
-.biblioteca__midia-link {
-  display: inline-flex;
-  align-self: flex-start;
-  margin-top: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-primary-strong);
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
 .biblioteca__empty {
   border-radius: var(--radius-lg);
   border: 1px dashed var(--color-border-strong);
@@ -352,5 +365,10 @@
 @media (max-width: 720px) {
   .biblioteca__novo-bloco form {
     grid-template-columns: 1fr;
+  }
+
+  .biblioteca__midia-card-top {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 }

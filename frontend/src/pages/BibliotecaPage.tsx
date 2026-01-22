@@ -461,6 +461,12 @@ export function BibliotecaPage() {
                 <div className="biblioteca__preview biblioteca__preview--media">
                   <div className="biblioteca__preview-meta">
                     <strong>{midiaSelecionada.titulo || `Mídia #${midiaSelecionada.id}`}</strong>
+                    <div className="biblioteca__midia-primary">
+                      <a className="biblioteca__midia-open" href={midiaSelecionada.url} target="_blank" rel="noreferrer">
+                        Abrir link/anexo
+                      </a>
+                      <span className="biblioteca__midia-url">{midiaSelecionada.url}</span>
+                    </div>
                     <span>Registrada em {new Date(midiaSelecionada.created_at).toLocaleString('pt-BR')}</span>
                     {(midiaSelecionada.gt || midiaSelecionada.pergunta) && (
                       <ul className="biblioteca__meta">
@@ -482,13 +488,9 @@ export function BibliotecaPage() {
                         ))}
                       </ul>
                     )}
-                    {midiaSelecionada.descricao && <p className="biblioteca__midia-descricao">{midiaSelecionada.descricao}</p>}
-                    <div className="biblioteca__midia-actions">
-                      <a href={midiaSelecionada.url} target="_blank" rel="noreferrer">
-                        Abrir link/anexo
-                      </a>
-                      <span className="biblioteca__midia-url">{midiaSelecionada.url}</span>
-                    </div>
+                    {midiaSelecionada.descricao && (
+                      <p className="biblioteca__midia-descricao">{midiaSelecionada.descricao}</p>
+                    )}
                   </div>
                   {isImageUrl(midiaSelecionada.url) && (
                     <img
@@ -504,8 +506,17 @@ export function BibliotecaPage() {
               <ul className="biblioteca__midias">
                 {midias.map((midia) => (
                   <li key={midia.id}>
-                    <div>
-                      <strong>{midia.titulo || midia.url}</strong>
+                    <div className="biblioteca__midia-card">
+                      <div className="biblioteca__midia-card-top">
+                        <div>
+                          <strong>{midia.titulo || midia.url}</strong>
+                          {midia.descricao && <p>{midia.descricao}</p>}
+                        </div>
+                        <a className="biblioteca__midia-open" href={midia.url} target="_blank" rel="noreferrer">
+                          Abrir link/anexo
+                        </a>
+                      </div>
+                      <span className="biblioteca__midia-url">{midia.url}</span>
                       <span>Registrada em {new Date(midia.created_at).toLocaleString('pt-BR')}</span>
                       {(midia.gt || midia.pergunta) && (
                         <ul className="biblioteca__meta">
@@ -515,7 +526,6 @@ export function BibliotecaPage() {
                           )}
                         </ul>
                       )}
-                      {midia.descricao && <p>{midia.descricao}</p>}
                       {midia.tags && midia.tags.length > 0 && (
                         <ul className="biblioteca__tags">
                           {midia.tags.map((tag) => (
@@ -523,10 +533,6 @@ export function BibliotecaPage() {
                           ))}
                         </ul>
                       )}
-                      <span className="biblioteca__midia-url">{midia.url}</span>
-                      <a className="biblioteca__midia-link" href={midia.url} target="_blank" rel="noreferrer">
-                        Abrir link/anexo
-                      </a>
                     </div>
                   </li>
                 ))}
