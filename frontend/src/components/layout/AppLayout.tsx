@@ -64,27 +64,6 @@ export function AppLayout() {
     if (!isDesktop && sidebarCompact) setSidebarCompact(false);
   }, [isDesktop, sidebarCompact]);
 
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      const el = sidenavInnerRef.current;
-      const runChecks = () => {
-        if (!el) return;
-        const hasOverflow = el.scrollHeight > el.clientHeight;
-        // Conteúdo: overflow só quando necessário
-        console.assert(typeof hasOverflow === 'boolean', 'Overflow calculado corretamente');
-      };
-      runChecks();
-      const onResize = () => runChecks();
-      window.addEventListener('resize', onResize);
-      // Acessibilidade: foco por teclado
-      if (el) {
-        const focusable = el.getAttribute('tabindex') === '0';
-        console.assert(focusable, 'Container é focável por teclado');
-      }
-      return () => window.removeEventListener('resize', onResize);
-    }
-  }, []);
-
   return (
     <div className={`app-shell ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`} style={themeStyles}>
       <aside
@@ -98,38 +77,6 @@ export function AppLayout() {
           className="app-shell__sidenav-inner"
           ref={sidenavInnerRef}
           tabIndex={0}
-          aria-label="Área rolável do menu lateral"
-          onKeyDown={(e) => {
-            const el = sidenavInnerRef.current;
-            if (!el) return;
-            const step = 60;
-            switch (e.key) {
-              case 'ArrowDown':
-                el.scrollBy({ top: step, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-              case 'ArrowUp':
-                el.scrollBy({ top: -step, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-              case 'PageDown':
-                el.scrollBy({ top: el.clientHeight, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-              case 'PageUp':
-                el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-              case 'Home':
-                el.scrollTo({ top: 0, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-              case 'End':
-                el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-                e.preventDefault();
-                break;
-            }
-          }}
         >
           <div className="app-shell__brand">
             {cliente?.tema?.logo_url ? (
@@ -144,17 +91,16 @@ export function AppLayout() {
               {cliente?.cliente?.slug && <span>{cliente.cliente.slug}</span>}
             </div>
           </div>
+
           {sidebarCompact ? (
             <div className="app-shell__user-block--compact">
               <button
                 type="button"
                 className="app-shell__collapse-btn"
                 aria-label={sidebarCompact ? 'Expandir menu' : 'Recolher menu'}
-                aria-controls="app-sidenav"
-                aria-expanded={!sidebarCompact}
                 onClick={() => setSidebarCompact((v) => !v)}
               >
-                <Icon name={sidebarCompact ? 'chevron-right' : 'chevron-left'} className="menu__icon" ariaHidden />
+                <Icon name="chevron-right" className="menu__icon" ariaHidden />
               </button>
             </div>
           ) : (
@@ -167,14 +113,13 @@ export function AppLayout() {
                 type="button"
                 className="app-shell__collapse-btn"
                 aria-label={sidebarCompact ? 'Expandir menu' : 'Recolher menu'}
-                aria-controls="app-sidenav"
-                aria-expanded={!sidebarCompact}
                 onClick={() => setSidebarCompact((v) => !v)}
               >
-                <Icon name={sidebarCompact ? 'chevron-right' : 'chevron-left'} className="menu__icon" ariaHidden />
+                <Icon name="chevron-left" className="menu__icon" ariaHidden />
               </button>
             </div>
           )}
+
           <nav className="app-shell__nav-vertical">
             <NavLink to="/" end>
               <Icon name="dashboard" className="menu__icon" ariaHidden />
@@ -253,6 +198,7 @@ export function AppLayout() {
           </nav>
         </div>
       </aside>
+
       <div
         className={`app-shell__overlay ${sidebarOpen ? 'is-visible' : ''}`}
         aria-hidden={!sidebarOpen}
@@ -260,6 +206,7 @@ export function AppLayout() {
           if (!isDesktop) setSidebarOpen(false);
         }}
       />
+
       <header className="app-shell__header">
         <div className="app-shell__brand app-shell__brand--header">
           {cliente?.tema?.logo_url ? (
@@ -274,13 +221,11 @@ export function AppLayout() {
             {cliente?.cliente?.slug && <span>{cliente.cliente.slug}</span>}
           </div>
         </div>
-        
+
         <button
           type="button"
           className="app-shell__toggle"
           aria-label="Abrir/fechar menu"
-          aria-controls="app-sidenav"
-          aria-expanded={sidebarOpen}
           onClick={() => setSidebarOpen((v) => !v)}
         >
           <span className="toggle__bars" aria-hidden="true" />

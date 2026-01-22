@@ -1,40 +1,72 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
+  /* Typography */
   --font-body: 'Manrope', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Manrope', sans-serif;
 
-  --color-bg: #eef2f6;
+  /* Colors - Base */
+  --color-bg: #f3f6f9; /* Lighter, cleaner background */
   --color-surface: #ffffff;
   --color-surface-muted: #f8fafc;
-  --color-border: rgba(148, 163, 184, 0.35);
-  --color-border-strong: rgba(148, 163, 184, 0.6);
-  --color-text: #0f172a;
-  --color-muted: #475569;
-  --color-primary: #1d4ed8;
-  --color-primary-strong: #2563eb;
-  --color-primary-soft: rgba(37, 99, 235, 0.12);
-  --color-success: #047857;
-  --color-danger: #b91c1c;
+  --color-surface-glass: rgba(255, 255, 255, 0.7);
+  
+  /* Colors - Text */
+  --color-text: #1e293b; /* Slate 800 */
+  --color-text-secondary: #64748b; /* Slate 500 */
+  --color-text-muted: #94a3b8; /* Slate 400 */
+  
+  /* Colors - Brand */
+  --color-primary: #2563eb; /* Blue 600 */
+  --color-primary-hover: #1d4ed8; /* Blue 700 */
+  --color-primary-light: #eff6ff; /* Blue 50 */
+  --color-primary-soft: rgba(37, 99, 235, 0.1);
+  
+  /* Colors - Semantic */
+  --color-success: #10b981;
+  --color-success-soft: rgba(16, 185, 129, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-soft: rgba(245, 158, 11, 0.1);
+  --color-danger: #ef4444;
+  --color-danger-soft: rgba(239, 68, 68, 0.1);
+  --color-info: #3b82f6;
+  --color-info-soft: rgba(59, 130, 246, 0.1);
 
-  --radius-sm: 0.65rem;
-  --radius-md: 0.85rem;
+  /* Borders */
+  --color-border: #e2e8f0; /* Slate 200 */
+  --color-border-hover: #cbd5e1; /* Slate 300 */
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
   --radius-lg: 1rem;
-  --radius-pill: 999px;
+  --radius-xl: 1.5rem;
+  --radius-pill: 9999px;
 
-  --shadow-sm: 0 8px 20px -20px rgba(15, 23, 42, 0.45);
-  --shadow-md: 0 18px 45px -30px rgba(15, 23, 42, 0.4);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
 
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Global Settings */
   font-family: var(--font-body);
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
   color: var(--color-text);
   background-color: var(--color-bg);
@@ -42,9 +74,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
@@ -54,61 +84,91 @@ body {
   background-color: var(--color-bg);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  font: inherit;
-}
-
-button,
-input,
-select,
-textarea {
-  font-family: var(--font-body);
-  color: var(--color-text);
-}
-
-input,
-select,
-textarea {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-strong);
-  background-color: var(--color-surface);
-  padding: 0.65rem 0.75rem;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
-}
-
-button {
-  border-radius: var(--radius-pill);
-  border: none;
-  cursor: pointer;
-}
-
-h1,
-h2,
-h3,
-h4 {
+/* Typography Utilities */
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   color: var(--color-text);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 { font-size: 2.25rem; letter-spacing: -0.02em; }
+h2 { font-size: 1.875rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+h5 { font-size: 1.125rem; }
+h6 { font-size: 1rem; }
+
+p { margin: 0 0 1rem 0; }
+small { font-size: 0.875rem; color: var(--color-text-secondary); }
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Form Elements */
+input, select, textarea {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  padding: 0.75rem 1rem;
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+input::placeholder {
+  color: var(--color-text-muted);
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

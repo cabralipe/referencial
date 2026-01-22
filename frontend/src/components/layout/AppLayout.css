@@ -9,7 +9,7 @@
 @media (min-width: 1024px) {
   .app-shell {
     display: grid;
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 260px 1fr;
     grid-template-rows: auto 1fr auto;
   }
 
@@ -18,7 +18,7 @@
     top: 0;
     height: 100vh;
     transform: none !important;
-    width: 250px;
+    width: 260px;
   }
 
   .app-shell__header,
@@ -36,11 +36,11 @@
   }
 
   .app-shell--sidebar-compact .app-shell {
-    grid-template-columns: 96px 1fr;
+    grid-template-columns: 80px 1fr;
   }
 
   .app-shell--sidebar-compact .app-shell__sidenav {
-    width: 96px;
+    width: 80px;
   }
 
   .app-shell--sidebar-compact .app-shell__brand-text {
@@ -49,39 +49,25 @@
 
   .app-shell--sidebar-compact .app-shell__nav-vertical a {
     justify-content: center;
+    padding: 0.75rem;
   }
 
   .app-shell--sidebar-compact .menu__label {
     display: none;
   }
 
-  .app-shell--sidebar-compact .app-shell__user-info span {
-    display: block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .app-shell--sidebar-compact .app-shell__user-info small {
+  .app-shell--sidebar-compact .app-shell__user-info {
     display: none;
   }
+
   .app-shell--sidebar-compact .app-shell__user-block {
-    display: none;
-  }
-
-  .app-shell__user-block--compact {
-    display: flex;
     justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
+    padding: 1rem 0;
   }
 
   .app-shell--sidebar-compact .app-shell__sidenav-inner {
     align-items: center;
+    padding: 1rem 0.5rem;
   }
 
   .app-shell--sidebar-compact .app-shell__header,
@@ -89,13 +75,6 @@
     max-width: 100%;
     width: 100%;
   }
-
-  .app-shell__header:focus-within,
-  .app-shell__content:focus-within {
-    outline: 2px solid var(--app-primary);
-    outline-offset: 2px;
-  }
-  /* Remove content expansion rules from here - will be handled below */
 
   .app-shell--sidebar-compact .app-shell__content {
     max-width: none;
@@ -109,16 +88,16 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
   position: sticky;
   top: 0;
   z-index: 10;
   flex-wrap: nowrap;
   gap: 1rem;
-  transition: width 300ms ease, max-width 300ms ease, padding 300ms ease;
-  min-width: 0;
-  overflow: hidden;
+  transition: all 300ms ease;
 }
 
 .app-shell__brand {
@@ -129,47 +108,32 @@
 }
 
 .app-shell__brand img {
-  height: 40px;
+  height: 32px;
   width: auto;
   object-fit: contain;
 }
 
 .app-shell__logo-fallback {
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  min-height: 40px !important;
-  max-width: 40px !important;
-  max-height: 40px !important;
-  border-radius: 0.9rem;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
   display: grid !important;
   place-items: center;
   font-weight: 700;
   color: #fff;
   flex-shrink: 0 !important;
-  box-sizing: border-box !important;
-  position: relative !important;
-  flex: none !important;
-  align-self: center !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  transform: none !important;
-  transition: none !important;
 }
 
 .app-shell__brand strong {
   display: block;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .app-shell__brand span {
-  font-size: 0.8rem;
-  color: var(--color-muted);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
 }
 
 .app-shell__sidenav {
@@ -177,10 +141,9 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: 250px;
+  width: 260px;
   background-color: var(--color-surface);
   border-right: 1px solid var(--color-border);
-  box-shadow: 0 0 20px rgba(2, 6, 23, 0.06);
   transform: translateX(0);
   transition: transform 300ms ease, width 300ms ease;
   z-index: 20;
@@ -194,31 +157,23 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1rem 0.75rem;
+  padding: 1.5rem 1rem;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  box-sizing: border-box;
 }
 
 .app-shell__sidenav-inner .app-shell__brand {
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
+  padding-left: 0.5rem;
 }
 
 .app-shell__sidenav-inner .app-shell__user-block {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--color-border);
-}
-
-.app-shell__sidenav-inner .app-shell__user-info {
-  align-items: flex-start;
 }
 
 .app-shell__collapse-btn {
@@ -230,14 +185,20 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 0.75rem;
-    border: 1px solid var(--color-border-strong);
-    background-color: var(--color-surface);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    background-color: transparent;
     margin-left: auto;
-    margin-bottom: 0;
+    transition: all 0.2s;
   }
+
+  .app-shell__collapse-btn:hover {
+    background-color: var(--color-surface-muted);
+    color: var(--color-primary);
+  }
+
   .app-shell--sidebar-compact .app-shell__collapse-btn {
     margin-left: 0;
   }
@@ -253,39 +214,41 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 0.75rem;
-  color: var(--color-text);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
   font-weight: 500;
   text-decoration: none;
-  transition: background-color 200ms ease, color 200ms ease;
+  transition: all 200ms ease;
 }
 
 .app-shell__nav-vertical a:hover {
   background-color: var(--color-surface-muted);
-}
-
-.app-shell__nav-vertical a.active {
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary-strong);
-}
-
-.menu__icon {
-  width: 18px;
-  height: 18px;
-  display: inline-block;
   color: var(--color-text);
 }
 
-.app-shell__nav-vertical a:hover .menu__icon,
+.app-shell__nav-vertical a.active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.menu__icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  color: currentColor;
+  opacity: 0.8;
+}
+
 .app-shell__nav-vertical a.active .menu__icon {
-  color: var(--color-primary-strong);
+  opacity: 1;
 }
 
 .app-shell__overlay {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.35);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms ease;
@@ -295,7 +258,7 @@
 .app-shell__overlay.is-visible {
   opacity: 1;
   pointer-events: auto;
-  display: none;
+  display: block;
 }
 
 .app-shell__toggle {
@@ -304,8 +267,8 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   background-color: var(--color-surface);
 }
 
@@ -328,57 +291,50 @@
   margin-left: auto;
 }
 
-.app-shell__user-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 0.85rem;
-  color: var(--color-text);
-}
-
-.app-shell__user-info small {
-  color: var(--color-muted);
-  text-transform: capitalize;
-}
-
 .app-shell__user button {
   border: none;
-  background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
-  color: #ffffff;
-  padding: 0.55rem 1rem;
-  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
   font-weight: 600;
-  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  border: 1px solid var(--color-border);
+}
+
+.app-shell__user button:hover {
+  background-color: var(--color-surface-muted);
+  color: var(--color-danger);
+  border-color: var(--color-danger-soft);
 }
 
 .app-shell__main {
   flex: 1;
+  position: relative;
 }
 
 .app-shell__content {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
   width: 100%;
-  transition: width 300ms ease, max-width 300ms ease, padding 300ms ease;
+  transition: all 300ms ease;
 }
 
 .app-shell__footer {
   padding: 1.5rem 2rem;
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
 }
 
 @media (max-width: 1023px) {
-  .app-shell--sidebar-open .app-shell__main,
-  .app-shell--sidebar-open .app-shell__header,
-  .app-shell--sidebar-open .app-shell__footer {
-    margin-left: 0;
-  }
-
   .app-shell__sidenav {
-    width: 70vw;
+    width: 280px;
     transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
   }
 
   .app-shell__sidenav.is-open {
@@ -386,315 +342,30 @@
   }
 
   .app-shell__header {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow: hidden;
-    max-width: 100vw;
+    padding: 0.75rem 1rem;
   }
 
   .app-shell__toggle {
     display: inline-flex;
-    order: 2;
-    flex-shrink: 0;
-    margin-left: auto;
-    white-space: nowrap;
-    min-width: fit-content;
-    width: auto !important;
-    height: auto !important;
-    padding: 0.5rem;
+    margin-right: 0.5rem;
   }
-  
-  .app-shell__toggle .toggle__bars {
-    white-space: nowrap;
-    display: inline-block;
-    min-width: 20px;
-    min-height: 20px;
-  }
-  
-  .app-shell__user {
-    flex-shrink: 0;
-    margin-left: 0.5rem;
+
+  .app-shell__content {
+    padding: 1rem;
   }
 }
-  .app-shell__overlay.is-visible {
-    display: block;
-  }
+
+/* Scrollbar styling for sidebar */
 .app-shell__sidenav-inner {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .app-shell__sidenav-inner::-webkit-scrollbar {
-  width: 8px;
-}
-
-.app-shell__sidenav-inner::-webkit-scrollbar-track {
-  background: transparent;
+  width: 4px;
 }
 
 .app-shell__sidenav-inner::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-strong);
-  border-radius: 8px;
-  border: 2px solid transparent;
-}
-.app-shell__sidenav-inner:focus {
-  outline: 2px solid var(--app-primary);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-shell__sidenav-inner {
-    scroll-behavior: auto;
-  }
-}
-
-.app-shell__brand-text strong {
-  display: block;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Estilos para a cópia da marca no header */
-.app-shell__logo-fallback {
-  flex: none !important;
-  align-self: center !important;
-  position: relative !important;
-}
-
-/* Garantir tamanho fixo absoluto para todas as instâncias */
-[class*="logo-fallback"] {
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  min-height: 40px !important;
-  max-width: 40px !important;
-  max-height: 40px !important;
-  flex: none !important;
-  box-sizing: border-box !important;
-  contain: strict !important;
-  contain-intrinsic-width: 40px !important;
-  contain-intrinsic-height: 40px !important;
-  resize: none !important;
-  zoom: 1 !important;
-  transform: none !important;
-  scale: none !important;
-}
-.app-shell__brand--header * {
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
-  hyphens: auto !important;
-  white-space: normal !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Aplicar as mesmas regras de responsividade para todos os textos da marca */
-.app-shell__brand-text strong,
-.app-shell__brand-text span {
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
-  hyphens: auto !important;
-  white-space: normal !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  display: block !important;
-  line-height: 1.3 !important;
-  text-overflow: ellipsis !important;
-  overflow: hidden !important;
-}
-
-/* Regras específicas para forçar quebra em textos muito longos */
-.app-shell__brand-text strong {
-  word-break: break-all !important;
-  overflow-wrap: break-word !important;
-  text-overflow: ellipsis !important;
-  overflow: hidden !important;
-}
-
-.app-shell__brand-text span {
-  word-break: break-all !important;
-  overflow-wrap: break-word !important;
-  text-overflow: ellipsis !important;
-  overflow: hidden !important;
-}
-.app-shell__brand--header {
-  display: none;
-}
-
-@media (max-width: 1023px) {
-  .app-shell__brand--header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #0f172a;
-    margin-right: auto;
-    min-width: 0;
-    flex-shrink: 1;
-    max-width: calc(100% - 140px);
-  }
-  
-  .app-shell__brand--header img {
-    height: 32px;
-    width: auto;
-    object-fit: contain;
-  }
-  
-  .app-shell__brand--header .app-shell__logo-fallback {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    max-width: 32px !important;
-    max-height: 32px !important;
-    border-radius: 0.75rem;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-  }
-  
-  .app-shell__brand--header .app-shell__brand-text strong {
-    font-size: 0.95rem;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-    hyphens: auto !important;
-    max-width: 100%;
-    white-space: normal !important;
-    line-height: 1.2;
-    display: block;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-  
-  .app-shell__brand--header .app-shell__brand-text span {
-    font-size: 0.75rem;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-    hyphens: auto !important;
-    max-width: 100%;
-    white-space: normal !important;
-    line-height: 1.2;
-    display: block;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-  
-  .app-shell__brand--header .app-shell__brand-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex-shrink: 1;
-    width: 100%;
-    overflow: hidden;
-  }
-}
-
-/* Ajustes adicionais para telas muito pequenas */
-@media (max-width: 480px) {
-  .app-shell__header {
-    padding: 0.5rem 0.75rem;
-    gap: 0.25rem;
-  }
-  
-  .app-shell__brand--header {
-    gap: 0.25rem;
-    max-width: calc(100% - 80px);
-  }
-  
-  .app-shell__brand--header .app-shell__brand-text strong {
-    font-size: 0.75rem;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-  }
-  
-  .app-shell__brand--header .app-shell__brand-text span {
-    font-size: 0.65rem;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-  }
-  
-  .app-shell__brand--header img {
-    height: 24px;
-  }
-  
-  .app-shell__brand--header .app-shell__logo-fallback {
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
-    max-width: 24px !important;
-    max-height: 24px !important;
-    font-size: 0.7rem;
-    flex-shrink: 0;
-  }
-  
-  .app-shell__user button {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-    white-space: nowrap;
-    min-width: fit-content;
-    display: inline-block;
-    width: auto !important;
-    height: auto !important;
-  }
-  
-  /* Aplicar aos textos da sidebar também em telas pequenas */
-  .app-shell__brand-text strong {
-    font-size: 0.8rem !important;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-  }
-  
-  .app-shell__brand-text span {
-    font-size: 0.65rem !important;
-    word-break: break-all !important;
-    overflow-wrap: break-word !important;
-  }
-}
-
-.menu__label {
-  font-size: clamp(0.85rem, 1vw, 0.95rem);
-}
-
-.app-shell__nav-vertical a {
-  padding: clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.9rem);
-}
-
-@media (max-width: 480px) {
-  .app-shell__sidenav-inner {
-    padding: 0.75rem 0.5rem;
-  }
-  .app-shell__brand img {
-    height: 36px;
-  }
-}
-
-@media (min-width: 1024px) {
-  /* Quando menu está recolhido, expande o conteúdo para ocupar todo espaço disponível */
-  .app-shell--sidebar-compact .app-shell__header,
-  .app-shell--sidebar-compact .app-shell__main,
-  .app-shell--sidebar-compact .app-shell__content,
-  .app-shell--sidebar-compact .app-shell__footer {
-    grid-column: 1 / -1;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* Ajusta o padding para considerar a sidebar compacta (96px) */
-  .app-shell--sidebar-compact .app-shell__header {
-    padding-left: calc(2rem + 96px);
-  }
-
-  .app-shell--sidebar-compact .app-shell__content {
-    padding-left: calc(2rem + 96px);
-    padding-right: 2rem;
-  }
-
-  .app-shell--sidebar-compact .app-shell__footer {
-    padding-left: calc(2rem + 96px);
-  }
+  background-color: var(--color-border);
+  border-radius: 4px;
 }

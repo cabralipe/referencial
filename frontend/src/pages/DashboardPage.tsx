@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { PageHeader } from '@/components/common/PageHeader';
+import { Card } from '@/components/common/Card';
+import { Button } from '@/components/common/Button';
+import Icon from '@/components/common/Icon';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
 import { usePainelRespostas } from '@/hooks/usePainelRespostas';
@@ -76,17 +80,17 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="dashboard dashboard--empty">
-      <header className="dashboard__header">
-        <div className="dashboard__title">
-          <h1>Dashboard</h1>
-          <p>Acompanhe as trilhas e atualizações mais recentes por aqui.</p>
+    <div className="dashboard-container">
+      <PageHeader
+        title="Dashboard"
+        description="Acompanhe as trilhas e atualizações mais recentes por aqui."
+      />
+      <Card>
+        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+          <h2 style={{ marginBottom: '0.5rem', fontSize: '1.5rem' }}>Sem dados para este perfil</h2>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Se precisar de acesso a relatórios específicos, fale com a equipe responsável.</p>
         </div>
-      </header>
-      <div className="dashboard__empty">
-        <h2>Sem dados para este perfil</h2>
-        <p>Se precisar de acesso a relatórios específicos, fale com a equipe responsável.</p>
-      </div>
+      </Card>
     </div>
   );
 }
@@ -266,24 +270,24 @@ function AdminDashboard() {
   }
 
   return (
-    <div className="dashboard dashboard--admin">
-      <header className="dashboard__header">
-        <div className="dashboard__title">
-          <h1>Dashboard administrativo</h1>
-          <p>Visibilidade completa de acesso, engajamento e progresso das trilhas pedagógicas.</p>
-        </div>
-        <div className="dashboard__actions">
-          <Link to="/auditoria" className="dashboard__action">
-            Ver auditoria
-          </Link>
-          <Link to="/revisoes" className="dashboard__action dashboard__action--primary">
-            Revisões em andamento
-          </Link>
-        </div>
-      </header>
+    <div className="dashboard-container">
+      <PageHeader
+        title="Dashboard administrativo"
+        description="Visibilidade completa de acesso, engajamento e progresso das trilhas pedagógicas."
+        actions={
+          <>
+            <Link to="/auditoria">
+              <Button variant="outline" leftIcon={<Icon name="audit" />}>Ver auditoria</Button>
+            </Link>
+            <Link to="/revisoes">
+              <Button variant="primary" leftIcon={<Icon name="review" />}>Revisões em andamento</Button>
+            </Link>
+          </>
+        }
+      />
 
-      <section className="dashboard__cards">
-        <div className="dashboard__card">
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        <Card>
           <div className="dashboard__card-header">
             <span>Acesso em tempo real</span>
             <strong>{onlineUsers?.length ?? 0} online</strong>
@@ -295,25 +299,25 @@ function AdminDashboard() {
               style={{ width: `${Math.min((onlineUsers?.length ?? 0) * 10, 100)}%` }}
             />
           </div>
-        </div>
+        </Card>
 
-        <div className="dashboard__card">
+        <Card>
           <div className="dashboard__card-header">
             <span>Respostas registradas</span>
             <strong>{totalRespostas}</strong>
           </div>
           <p>Quantidade total de respostas enviadas.</p>
-        </div>
+        </Card>
 
-        <div className="dashboard__card">
+        <Card>
           <div className="dashboard__card-header">
             <span>Pareceres emitidos</span>
             <strong>{totalRevisoes}</strong>
           </div>
           <p>Total de pareceres e revisões registrados.</p>
-        </div>
+        </Card>
 
-        <div className="dashboard__card">
+        <Card>
           <div className="dashboard__card-header">
             <span>Taxa de resposta</span>
             <strong>{respostaRateLabel}</strong>
@@ -324,9 +328,9 @@ function AdminDashboard() {
           <div className="dashboard__progress">
             <div className="dashboard__progress-bar" style={{ width: `${respostaRate * 100}%` }} />
           </div>
-        </div>
+        </Card>
 
-        <div className="dashboard__card">
+        <Card>
           <div className="dashboard__card-header">
             <span>Uso por redatores</span>
             <strong>{articuladorUsage.percent}%</strong>
@@ -337,9 +341,9 @@ function AdminDashboard() {
           <div className="dashboard__progress">
             <div className="dashboard__progress-bar" style={{ width: `${articuladorUsage.percent}%` }} />
           </div>
-        </div>
+        </Card>
 
-        <div className="dashboard__card">
+        <Card>
           <div className="dashboard__card-header">
             <span>Uso por membros GT</span>
             <strong>{membroUsage.percent}%</strong>
@@ -350,12 +354,12 @@ function AdminDashboard() {
           <div className="dashboard__progress">
             <div className="dashboard__progress-bar" style={{ width: `${membroUsage.percent}%` }} />
           </div>
-        </div>
+        </Card>
       </section>
 
       <section className="dashboard__charts">
-        <div className="dashboard__chart-card">
-          <header>
+        <Card>
+          <header style={{ marginBottom: '1rem' }}>
             <h2>Progresso das trilhas</h2>
             <span>{respostaRateLabel} concluído</span>
           </header>
@@ -369,10 +373,10 @@ function AdminDashboard() {
             <span>{totalRespostas} respostas</span>
             <span>{Math.max(expectedRespostas - totalRespostas, 0)} pendentes</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="dashboard__chart-card">
-          <header>
+        <Card>
+          <header style={{ marginBottom: '1rem' }}>
             <h2>Uso por perfil</h2>
             <span>Distribuição do tempo ativo</span>
           </header>
@@ -404,11 +408,11 @@ function AdminDashboard() {
               <span className="dashboard__chart-percent">{membroUsage.percent}%</span>
             </div>
           </div>
-        </div>
+        </Card>
       </section>
 
       <section className="dashboard__split">
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Presença agora</h2>
@@ -436,9 +440,9 @@ function AdminDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Nenhum usuário online agora.</div>
           )}
-        </div>
+        </Card>
 
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Logins recentes</h2>
@@ -483,11 +487,11 @@ function AdminDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Nenhum login registrado no período.</div>
           )}
-        </div>
+        </Card>
       </section>
 
       <section className="dashboard__split">
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Uso por redator</h2>
@@ -513,9 +517,9 @@ function AdminDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Sem dados de uso por redatores.</div>
           )}
-        </div>
+        </Card>
 
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Uso por membro GT</h2>
@@ -541,18 +545,24 @@ function AdminDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Sem dados de uso por membros GT.</div>
           )}
-        </div>
+        </Card>
       </section>
 
-      <section className="dashboard__panel">
+      <Card>
         <div className="dashboard__panel-header">
           <div>
             <h2>Respostas recentes</h2>
             <p>Últimos registros enviados por GT.</p>
           </div>
-          <button type="button" className="dashboard__refresh" onClick={() => refetchPainel()} disabled={painelLoading}>
-            {painelLoading ? 'Atualizando...' : 'Atualizar'}
-          </button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetchPainel()}
+            disabled={painelLoading}
+            isLoading={painelLoading}
+          >
+            Atualizar
+          </Button>
         </div>
         {painelError ? (
           <div className="dashboard__panel-error">
@@ -583,7 +593,7 @@ function AdminDashboard() {
             </table>
           </div>
         )}
-      </section>
+      </Card>
     </div>
   );
 }
@@ -691,10 +701,10 @@ function ArticuladorDashboard() {
     const ordered = (tarefas ?? []).slice().sort((a, b) => a.ordem - b.ordem);
     const base = term
       ? ordered.filter((tarefa) => {
-          const nome = tarefa.nome?.toLowerCase() ?? '';
-          const etapa = tarefa.etapa?.toLowerCase() ?? '';
-          return nome.includes(term) || etapa.includes(term) || String(tarefa.ordem).includes(term);
-        })
+        const nome = tarefa.nome?.toLowerCase() ?? '';
+        const etapa = tarefa.etapa?.toLowerCase() ?? '';
+        return nome.includes(term) || etapa.includes(term) || String(tarefa.ordem).includes(term);
+      })
       : ordered;
     if (!selectedGtId) {
       return base;
@@ -749,27 +759,37 @@ function ArticuladorDashboard() {
   }
 
   return (
-    <div className="dashboard dashboard--articulador">
-      <header className="dashboard__header">
-        <div className="dashboard__title">
-          <h1>Dashboard do redator</h1>
-          <p>Escolha um GT, revise missões e publique pareceres com rapidez.</p>
-        </div>
-        <div className="dashboard__actions">
-          <Link to="/revisoes" className="dashboard__action dashboard__action--primary">
-            Abrir revisões
-          </Link>
-          <button type="button" className="dashboard__action" onClick={() => refetchPainel()} disabled={painelLoading}>
-            {painelLoading ? 'Atualizando...' : 'Atualizar respostas'}
-          </button>
-          <button type="button" className="dashboard__action" onClick={() => refetchScore()} disabled={scoreLoading}>
-            {scoreLoading ? 'Atualizando score...' : 'Atualizar score'}
-          </button>
-        </div>
-      </header>
+    <div className="dashboard-container">
+      <PageHeader
+        title="Dashboard do redator"
+        description="Escolha um GT, revise missões e publique pareceres com rapidez."
+        actions={
+          <>
+            <Link to="/revisoes">
+              <Button variant="primary" leftIcon={<Icon name="review" />}>Abrir revisões</Button>
+            </Link>
+            <Button
+              variant="secondary"
+              onClick={() => refetchPainel()}
+              disabled={painelLoading}
+              isLoading={painelLoading}
+            >
+              Atualizar respostas
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => refetchScore()}
+              disabled={scoreLoading}
+              isLoading={scoreLoading}
+            >
+              Atualizar score
+            </Button>
+          </>
+        }
+      />
 
-      <section className="dashboard__cards">
-        <div className="dashboard__card">
+      <section style={{ marginBottom: '2rem' }}>
+        <Card>
           <div className="dashboard__card-header">
             <span>Score do mês</span>
             <strong>{scoreSummary?.current_points ?? 0} pts</strong>
@@ -781,47 +801,49 @@ function ArticuladorDashboard() {
               style={{ width: `${Math.min((scoreSummary?.progress ?? 0) * 100, 100)}%` }}
             />
           </div>
-        </div>
+        </Card>
       </section>
 
       <section className="dashboard__spotlight">
-        <div className="dashboard__spotlight-header">
-          <div>
-            <h2>GTs disponíveis</h2>
-            <p>Selecione um GT para abrir trilhas e revisar conteúdo rapidamente.</p>
+        <Card>
+          <div className="dashboard__spotlight-header" style={{ marginBottom: '1.5rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>GTs disponíveis</h2>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Selecione um GT para abrir trilhas e revisar conteúdo rapidamente.</p>
+            </div>
+            <input
+              type="search"
+              className="dashboard__search"
+              placeholder="Buscar GT"
+              value={gtSearch}
+              onChange={(event) => setGtSearch(event.target.value)}
+            />
           </div>
-          <input
-            type="search"
-            className="dashboard__search"
-            placeholder="Buscar GT"
-            value={gtSearch}
-            onChange={(event) => setGtSearch(event.target.value)}
-          />
-        </div>
-        <div className="dashboard__gt-grid">
-          {filteredGts.map((gt) => {
-            const responses = respostasPorGtMap.get(gt.id) ?? 0;
-            return (
-              <button
-                key={gt.id}
-                type="button"
-                className={`dashboard__gt-card ${selectedGtId === gt.id ? 'is-active' : ''}`}
-                onClick={() => setSelectedGtId(gt.id)}
-                aria-pressed={selectedGtId === gt.id}
-              >
-                <div>
-                  <strong>{gt.displayName}</strong>
-                  <span>{gt.etapa ? `Etapa ${gt.etapa}` : 'Etapa não informada'}</span>
-                </div>
-                <span className="dashboard__gt-meta">{responses} resposta(s) recentes</span>
-              </button>
-            );
-          })}
-        </div>
+          <div className="dashboard__gt-grid">
+            {filteredGts.map((gt) => {
+              const responses = respostasPorGtMap.get(gt.id) ?? 0;
+              return (
+                <button
+                  key={gt.id}
+                  type="button"
+                  className={`dashboard__gt-card ${selectedGtId === gt.id ? 'is-active' : ''}`}
+                  onClick={() => setSelectedGtId(gt.id)}
+                  aria-pressed={selectedGtId === gt.id}
+                >
+                  <div>
+                    <strong>{gt.displayName}</strong>
+                    <span>{gt.etapa ? `Etapa ${gt.etapa}` : 'Etapa não informada'}</span>
+                  </div>
+                  <span className="dashboard__gt-meta">{responses} resposta(s) recentes</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
       </section>
 
       <section className="dashboard__split">
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Trilhas para revisão</h2>
@@ -851,8 +873,8 @@ function ArticuladorDashboard() {
                   </div>
                   <div className="dashboard__trilha-meta">
                     <span>{perguntasByTarefa.get(tarefa.id) ?? 0} missões</span>
-                    <Link to={`/tarefas/${tarefa.id}?gt=${selectedGtId}`} className="dashboard__action dashboard__action--primary">
-                      Abrir trilha
+                    <Link to={`/tarefas/${tarefa.id}?gt=${selectedGtId}`}>
+                      <Button size="sm" variant="primary">Abrir trilha</Button>
                     </Link>
                   </div>
                 </div>
@@ -864,9 +886,9 @@ function ArticuladorDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Selecione um GT para visualizar as trilhas.</div>
           )}
-        </div>
+        </Card>
 
-        <div className="dashboard__panel">
+        <Card>
           <div className="dashboard__panel-header">
             <div>
               <h2>Respostas recentes</h2>
@@ -887,13 +909,13 @@ function ArticuladorDashboard() {
                   <div className="dashboard__list-meta">
                     <span>Atualizado {formatDateTime(resp.updated_at)}</span>
                     <span>{resp.autor_nome ?? (resp.autor ? `Usuário #${resp.autor}` : 'Autor não informado')}</span>
-                    <button
-                      type="button"
-                      className="dashboard__inline-action"
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => setModalRespostaId(resp.id)}
                     >
                       Expandir
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -901,7 +923,7 @@ function ArticuladorDashboard() {
           ) : (
             <div className="dashboard__empty-inline">Nenhuma resposta registrada ainda.</div>
           )}
-        </div>
+        </Card>
       </section>
 
       {respostaAtiva && (
@@ -925,14 +947,13 @@ function ArticuladorDashboard() {
                   <span>{respostaAtiva.autor_nome ?? (respostaAtiva.autor ? `Usuário #${respostaAtiva.autor}` : 'Autor não informado')}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                className="dashboard__inline-action"
+              <Button
+                variant="ghost"
                 onClick={() => setModalRespostaId(null)}
                 aria-label="Fechar modal de resposta"
               >
                 Fechar
-              </button>
+              </Button>
             </header>
             <div className="dashboard__modal-body">
               {respostaAtiva.pergunta_texto && (
@@ -977,37 +998,35 @@ function MembroDashboard() {
   }
 
   return (
-    <div className="dashboard dashboard--membro">
-      <header className="dashboard__header">
-        <div className="dashboard__title">
-          <h1>Meu dashboard</h1>
-          <p>Veja os pareceres mais recentes enviados pelo redator.</p>
-        </div>
-        <div className="dashboard__actions">
-          <button type="button" className="dashboard__action" onClick={() => refetch()}>
+    <div className="dashboard-container">
+      <PageHeader
+        title="Meu dashboard"
+        description="Veja os pareceres mais recentes enviados pelo redator."
+        actions={
+          <Button variant="secondary" onClick={() => refetch()}>
             Atualizar pareceres
-          </button>
-        </div>
-      </header>
+          </Button>
+        }
+      />
 
-      <section className="dashboard__cards">
-        <div className="dashboard__card">
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        <Card>
           <div className="dashboard__card-header">
             <span>GTs vinculados</span>
             <strong>{gtOptions.length}</strong>
           </div>
           <p>Use os pareceres abaixo para ajustar as missões e trilhas.</p>
-        </div>
-        <div className="dashboard__card">
+        </Card>
+        <Card>
           <div className="dashboard__card-header">
             <span>Pareceres recentes</span>
             <strong>{pareceres.length}</strong>
           </div>
           <p>Revisões mais recentes do redator associadas ao seu GT.</p>
-        </div>
+        </Card>
       </section>
 
-      <section className="dashboard__panel">
+      <Card>
         <div className="dashboard__panel-header">
           <div>
             <h2>Pareceres do redator</h2>
@@ -1033,8 +1052,8 @@ function MembroDashboard() {
                     <span>Status: {rev.status}</span>
                     <span>Atualizado {formatDateTime(rev.updated_at)}</span>
                     {linkTo && (
-                      <Link to={linkTo} className="dashboard__action dashboard__action--primary">
-                        Abrir trilha
+                      <Link to={linkTo}>
+                        <Button size="sm" variant="primary">Abrir trilha</Button>
                       </Link>
                     )}
                   </div>
@@ -1047,7 +1066,7 @@ function MembroDashboard() {
             Nenhum parecer disponível ainda. Assim que o redator publicar, ele aparece aqui.
           </div>
         )}
-      </section>
+      </Card>
     </div>
   );
 }
