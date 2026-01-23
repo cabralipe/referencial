@@ -1,0 +1,144 @@
+/* Vertical Bar Chart */
+.simple-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    width: 100%;
+    padding-top: 1.5rem;
+    /* Space for value labels */
+}
+
+.simple-bar-chart__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    gap: 0.5rem;
+}
+
+.simple-bar-chart__bar-container {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+}
+
+.simple-bar-chart__bar {
+    width: 60%;
+    min-width: 8px;
+    max-width: 40px;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.5s ease;
+    position: relative;
+}
+
+.simple-bar-chart__bar:hover {
+    opacity: 0.9;
+}
+
+.simple-bar-chart__value-label {
+    position: absolute;
+    top: -1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.simple-bar-chart__label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Horizontal Bar Chart */
+.simple-horizontal-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.simple-horizontal-bar-chart__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.simple-horizontal-bar-chart__labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.simple-horizontal-bar-chart__label {
+    color: #475569;
+    font-weight: 500;
+}
+
+.simple-horizontal-bar-chart__value {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.simple-horizontal-bar-chart__track {
+    width: 100%;
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.simple-horizontal-bar-chart__bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+/* Donut Chart */
+.simple-donut-chart {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.simple-donut-chart__svg {
+    transform: rotate(0deg);
+    /* Reset rotation */
+}
+
+.simple-donut-chart__progress {
+    transition: stroke-dashoffset 0.8s ease;
+}
+
+.simple-donut-chart__content {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.simple-donut-chart__label {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.simple-donut-chart__sublabel {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+}

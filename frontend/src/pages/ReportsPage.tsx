@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { StatCard } from '@/components/dashboard/StatCard';
 import { useAuditLogs, useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useAiAssist } from '@/hooks/useAiAssist';
@@ -171,8 +172,8 @@ export function ReportsPage() {
       `Auditoria (${periodoLabel}): ${auditSummary.total} acao(oes)\n` +
       (includeAuditDetails
         ? `Top acoes: ${auditSummary.topActions.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
-          `Top entidades: ${auditSummary.topEntities.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
-          `Detalhes (max ${detailLines}): ${detalhesLabel}\n`
+        `Top entidades: ${auditSummary.topEntities.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
+        `Detalhes (max ${detailLines}): ${detalhesLabel}\n`
         : '');
     setMessage(text);
     setFeedback('Mensagem gerada.');
@@ -275,26 +276,34 @@ export function ReportsPage() {
       />
 
       <section className="reports__cards">
-        <div className="reports__card">
-          <span>Online agora</span>
-          <strong>{onlineLoading ? '...' : summary.online}</strong>
-        </div>
-        <div className="reports__card">
-          <span>Logins (30 dias)</span>
-          <strong>{sessionsLoading ? '...' : summary.logins}</strong>
-        </div>
-        <div className="reports__card">
-          <span>Respostas registradas</span>
-          <strong>{respostasLoading ? '...' : summary.respostas}</strong>
-        </div>
-        <div className="reports__card">
-          <span>Pareceres emitidos</span>
-          <strong>{revisoesQuery.isLoading ? '...' : summary.pareceres}</strong>
-        </div>
+        <StatCard
+          title="Online agora"
+          value={onlineLoading ? '...' : summary.online}
+          icon="group"
+          color="blue"
+        />
+        <StatCard
+          title="Logins (30 dias)"
+          value={sessionsLoading ? '...' : summary.logins}
+          icon="login"
+          color="purple"
+        />
+        <StatCard
+          title="Respostas"
+          value={respostasLoading ? '...' : summary.respostas}
+          icon="assignment"
+          color="green"
+        />
+        <StatCard
+          title="Pareceres"
+          value={revisoesQuery.isLoading ? '...' : summary.pareceres}
+          icon="rate_review"
+          color="orange"
+        />
       </section>
 
-      <section className="reports__gt">
-        <div className="reports__gt-header">
+      <section className="reports__section">
+        <div className="reports__section-header">
           <div>
             <h2>Indicadores por GT</h2>
             <p>Filtre um grupo para acompanhar respostas, pendencias e pareceres.</p>
@@ -306,30 +315,36 @@ export function ReportsPage() {
           </span>
         </div>
         <div className="reports__cards reports__cards--gt">
-          <div className="reports__card">
-            <span>Perguntas do GT</span>
-            <strong>{perguntasQuery.isLoading ? '...' : gtSummary.totalPerguntas}</strong>
-          </div>
-          <div className="reports__card">
-            <span>Respostas com conteudo</span>
-            <strong>{respostasLoading ? '...' : gtSummary.totalRespostas}</strong>
-          </div>
-          <div className="reports__card">
-            <span>Taxa de conclusao</span>
-            <strong>{respostasLoading || perguntasQuery.isLoading ? '...' : `${gtSummary.taxaConclusao}%`}</strong>
-          </div>
-          <div className="reports__card">
-            <span>Faltam responder</span>
-            <strong>{respostasLoading || perguntasQuery.isLoading ? '...' : gtSummary.faltamResponder}</strong>
-          </div>
-          <div className="reports__card">
-            <span>Pareceres emitidos</span>
-            <strong>{revisoesQuery.isLoading ? '...' : gtSummary.pareceresEmitidos}</strong>
-          </div>
-          <div className="reports__card">
-            <span>Pareceres pendentes</span>
-            <strong>{revisoesQuery.isLoading || respostasLoading ? '...' : gtSummary.pareceresPendentes}</strong>
-          </div>
+          <StatCard
+            title="Perguntas do GT"
+            value={perguntasQuery.isLoading ? '...' : gtSummary.totalPerguntas}
+            color="blue"
+          />
+          <StatCard
+            title="Respostas com conteudo"
+            value={respostasLoading ? '...' : gtSummary.totalRespostas}
+            color="green"
+          />
+          <StatCard
+            title="Taxa de conclusao"
+            value={respostasLoading || perguntasQuery.isLoading ? '...' : `${gtSummary.taxaConclusao}%`}
+            color="purple"
+          />
+          <StatCard
+            title="Faltam responder"
+            value={respostasLoading || perguntasQuery.isLoading ? '...' : gtSummary.faltamResponder}
+            color="red"
+          />
+          <StatCard
+            title="Pareceres emitidos"
+            value={revisoesQuery.isLoading ? '...' : gtSummary.pareceresEmitidos}
+            color="orange"
+          />
+          <StatCard
+            title="Pareceres pendentes"
+            value={revisoesQuery.isLoading || respostasLoading ? '...' : gtSummary.pareceresPendentes}
+            color="red"
+          />
         </div>
       </section>
 
@@ -446,8 +461,8 @@ export function ReportsPage() {
         </div>
       </section>
 
-      <section className="reports__audit">
-        <div className="reports__audit-header">
+      <section className="reports__section">
+        <div className="reports__section-header">
           <div>
             <h2>Auditoria</h2>
             <p>Resumo de acoes recentes com filtro por redator.</p>

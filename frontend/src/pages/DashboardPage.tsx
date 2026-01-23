@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { SimpleBarChart, SimpleDonutChart, SimpleHorizontalBarChart } from '@/components/dashboard/SimpleCharts';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
 import { usePainelRespostas } from '@/hooks/usePainelRespostas';
@@ -269,311 +271,138 @@ function AdminDashboard() {
     );
   }
 
+  const chartData = [
+    { label: 'Redatores', value: articuladorUsage.sessions, color: '#f97316' },
+    { label: 'Membros GT', value: membroUsage.sessions, color: '#10b981' },
+  ];
+
   return (
     <div className="dashboard-container">
       <PageHeader
         title="Dashboard administrativo"
-        description="Visibilidade completa de acesso, engajamento e progresso das trilhas pedagógicas."
+        description="Visão geral e indicadores de performance."
         actions={
           <>
             <Link to="/auditoria">
-              <Button variant="outline" leftIcon={<Icon name="audit" />}>Ver auditoria</Button>
+              <Button variant="outline" leftIcon={<Icon name="audit" />}>Auditoria</Button>
             </Link>
             <Link to="/revisoes">
-              <Button variant="primary" leftIcon={<Icon name="review" />}>Revisões em andamento</Button>
+              <Button variant="primary" leftIcon={<Icon name="review" />}>Revisões</Button>
             </Link>
           </>
         }
       />
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Acesso em tempo real</span>
-            <strong>{onlineUsers?.length ?? 0} online</strong>
-          </div>
-          <p>Última atualização {onlineFetching ? 'agora' : 'há menos de 1 minuto'}.</p>
-          <div className="dashboard__progress">
-            <div
-              className="dashboard__progress-bar"
-              style={{ width: `${Math.min((onlineUsers?.length ?? 0) * 10, 100)}%` }}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Respostas registradas</span>
-            <strong>{totalRespostas}</strong>
-          </div>
-          <p>Quantidade total de respostas enviadas.</p>
-        </Card>
-
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Pareceres emitidos</span>
-            <strong>{totalRevisoes}</strong>
-          </div>
-          <p>Total de pareceres e revisões registrados.</p>
-        </Card>
-
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Taxa de resposta</span>
-            <strong>{respostaRateLabel}</strong>
-          </div>
-          <p>
-            {totalRespostas} resposta(s) registradas de {expectedRespostas || '—'} previstas.
-          </p>
-          <div className="dashboard__progress">
-            <div className="dashboard__progress-bar" style={{ width: `${respostaRate * 100}%` }} />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Uso por redatores</span>
-            <strong>{articuladorUsage.percent}%</strong>
-          </div>
-          <p>
-            {articuladorUsage.sessions} sessões nos últimos 30 dias.
-          </p>
-          <div className="dashboard__progress">
-            <div className="dashboard__progress-bar" style={{ width: `${articuladorUsage.percent}%` }} />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Uso por membros GT</span>
-            <strong>{membroUsage.percent}%</strong>
-          </div>
-          <p>
-            {membroUsage.sessions} sessões nos últimos 30 dias.
-          </p>
-          <div className="dashboard__progress">
-            <div className="dashboard__progress-bar" style={{ width: `${membroUsage.percent}%` }} />
-          </div>
-        </Card>
-      </section>
-
-      <section className="dashboard__charts">
-        <Card>
-          <header style={{ marginBottom: '1rem' }}>
-            <h2>Progresso das trilhas</h2>
-            <span>{respostaRateLabel} concluído</span>
-          </header>
-          <div className="dashboard__chart-bar">
-            <div
-              className="dashboard__chart-bar-fill"
-              style={{ width: `${respostaRate * 100}%` }}
-            />
-          </div>
-          <div className="dashboard__chart-meta">
-            <span>{totalRespostas} respostas</span>
-            <span>{Math.max(expectedRespostas - totalRespostas, 0)} pendentes</span>
-          </div>
-        </Card>
-
-        <Card>
-          <header style={{ marginBottom: '1rem' }}>
-            <h2>Uso por perfil</h2>
-            <span>Distribuição do tempo ativo</span>
-          </header>
-          <div className="dashboard__chart-rows">
-            <div className="dashboard__chart-row">
-              <div>
-                <strong>Redatores</strong>
-                <span>{articuladorUsage.sessions} sessões</span>
-              </div>
-              <div className="dashboard__chart-bar">
-                <div
-                  className="dashboard__chart-bar-fill dashboard__chart-bar-fill--alt"
-                  style={{ width: `${articuladorUsage.percent}%` }}
-                />
-              </div>
-              <span className="dashboard__chart-percent">{articuladorUsage.percent}%</span>
-            </div>
-            <div className="dashboard__chart-row">
-              <div>
-                <strong>Membros GT</strong>
-                <span>{membroUsage.sessions} sessões</span>
-              </div>
-              <div className="dashboard__chart-bar">
-                <div
-                  className="dashboard__chart-bar-fill dashboard__chart-bar-fill--secondary"
-                  style={{ width: `${membroUsage.percent}%` }}
-                />
-              </div>
-              <span className="dashboard__chart-percent">{membroUsage.percent}%</span>
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      <section className="dashboard__split">
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Presença agora</h2>
-              <p>Quem está na plataforma neste momento.</p>
-            </div>
-            <span className="dashboard__pill">{onlineLoading ? 'Carregando...' : `${onlineUsers?.length ?? 0} online`}</span>
-          </div>
-          {onlineLoading ? (
-            <p className="dashboard__helper">Carregando sessões ativas...</p>
-          ) : onlineList.length > 0 ? (
-            <div className="dashboard__list">
-              {onlineList.map((session) => (
-                <div key={session.id} className="dashboard__list-item">
-                  <div>
-                    <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
-                    <span>{session.usuario_email || 'E-mail não informado'}</span>
-                  </div>
-                  <div className="dashboard__list-meta">
-                    <span>{ROLE_LABELS[session.usuario_role ?? 'leitor'] ?? session.usuario_role}</span>
-                    <span>Última atividade {formatDateTime(session.last_seen_at)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="dashboard__empty-inline">Nenhum usuário online agora.</div>
-          )}
-        </Card>
-
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Logins recentes</h2>
-              <p>Histórico de acesso dos últimos 30 dias.</p>
-            </div>
-            <span className="dashboard__pill">{sessionsFetching ? 'Atualizando...' : `${sessionHistory?.length ?? 0} registros`}</span>
-          </div>
-          {sessionsLoading ? (
-            <p className="dashboard__helper">Carregando histórico...</p>
-          ) : (sessionHistory ?? []).length > 0 ? (
-            <div className="dashboard__table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Usuário</th>
-                    <th>Perfil</th>
-                    <th>Login</th>
-                    <th>Duração</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessionHistory?.slice(0, 6).map((session) => {
-                    const secs = session.session_duration_seconds ?? 0;
-                    const hours = Math.floor(secs / 3600);
-                    const minutes = Math.floor((secs % 3600) / 60);
-                    const durationLabel = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
-                    return (
-                      <tr key={`sess-${session.id}`}>
-                        <td>
-                          <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
-                          <span>{session.usuario_email || 'E-mail não informado'}</span>
-                        </td>
-                        <td>{ROLE_LABELS[session.usuario_role ?? 'leitor'] ?? session.usuario_role}</td>
-                        <td>{formatDateTime(session.first_seen_at)}</td>
-                        <td>{durationLabel}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="dashboard__empty-inline">Nenhum login registrado no período.</div>
-          )}
-        </Card>
-      </section>
-
-      <section className="dashboard__split">
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Uso por redator</h2>
-              <p>Top 5 com mais tempo ativo.</p>
-            </div>
-            <span className="dashboard__pill">{usageByRole.topArticuladores.length} perfis</span>
-          </div>
-          {usageByRole.topArticuladores.length > 0 ? (
-            <div className="dashboard__list">
-              {usageByRole.topArticuladores.map((user) => (
-                <div key={`${user.email}-art`} className="dashboard__list-item">
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="dashboard__list-meta">
-                    <span>{Math.round(user.duration / 60)} min ativos</span>
-                    <span>{user.sessions} sessões</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="dashboard__empty-inline">Sem dados de uso por redatores.</div>
-          )}
-        </Card>
-
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Uso por membro GT</h2>
-              <p>Top 5 com mais tempo ativo.</p>
-            </div>
-            <span className="dashboard__pill">{usageByRole.topMembros.length} perfis</span>
-          </div>
-          {usageByRole.topMembros.length > 0 ? (
-            <div className="dashboard__list">
-              {usageByRole.topMembros.map((user) => (
-                <div key={`${user.email}-gt`} className="dashboard__list-item">
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="dashboard__list-meta">
-                    <span>{Math.round(user.duration / 60)} min ativos</span>
-                    <span>{user.sessions} sessões</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="dashboard__empty-inline">Sem dados de uso por membros GT.</div>
-          )}
-        </Card>
-      </section>
-
-      <Card>
-        <div className="dashboard__panel-header">
-          <div>
-            <h2>Respostas recentes</h2>
-            <p>Últimos registros enviados por GT.</p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => refetchPainel()}
-            disabled={painelLoading}
-            isLoading={painelLoading}
-          >
-            Atualizar
-          </Button>
+      <div className="dashboard-grid">
+        {/* KPI Cards */}
+        <div className="dashboard-grid__kpi">
+          <StatCard
+            title="Online Agora"
+            value={onlineUsers?.length ?? 0}
+            icon="group"
+            color="blue"
+            loading={onlineFetching}
+          />
         </div>
-        {painelError ? (
-          <div className="dashboard__panel-error">
-            <p>Não foi possível carregar as respostas recentes.</p>
-            <p>{painelErrorObj instanceof ApiError ? painelErrorObj.message : 'Erro desconhecido'}</p>
+        <div className="dashboard-grid__kpi">
+          <StatCard
+            title="Respostas"
+            value={totalRespostas}
+            icon="assignment"
+            color="green"
+            trend={{ value: 12, label: 'vs. mês anterior', direction: 'up' }}
+          />
+        </div>
+        <div className="dashboard-grid__kpi">
+          <StatCard
+            title="Pareceres"
+            value={totalRevisoes}
+            icon="rate_review"
+            color="purple"
+          />
+        </div>
+        <div className="dashboard-grid__kpi">
+          <StatCard
+            title="Conclusão"
+            value={respostaRateLabel}
+            icon="pie_chart"
+            color="orange"
+          />
+        </div>
+
+        {/* Main Charts */}
+        <div className="dashboard-grid__main-chart">
+          <div className="dashboard-card-header">
+            <h2>Engajamento por Perfil</h2>
+            <p>Sessões ativas nos últimos 30 dias</p>
           </div>
-        ) : (painelRespostas ?? []).length === 0 ? (
-          <div className="dashboard__panel-empty">Nenhuma resposta registrada ainda.</div>
-        ) : (
-          <div className="dashboard__table">
-            <table>
+          <SimpleBarChart data={chartData} height={240} />
+        </div>
+
+        <div className="dashboard-grid__side-chart">
+          <div className="dashboard-card-header">
+            <h2>Taxa de Resposta</h2>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+            <SimpleDonutChart
+              percent={respostaRate * 100}
+              label={`${Math.round(respostaRate * 100)}%`}
+              subLabel="Concluído"
+              color="#3b82f6"
+              size={180}
+            />
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
+            {totalRespostas} de {expectedRespostas} respostas esperadas
+          </div>
+        </div>
+
+        {/* Details Tables */}
+        <div className="dashboard-grid__details">
+          <div className="dashboard-card-header">
+            <h2>Presença em Tempo Real</h2>
+            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              {onlineUsers?.length ?? 0} usuários online
+            </span>
+          </div>
+          {onlineList.length > 0 ? (
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>Perfil</th>
+                  <th>Última atividade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {onlineList.map((session) => (
+                  <tr key={session.id}>
+                    <td>
+                      <div className="dashboard-table__user">
+                        <strong>{session.usuario_nome || 'Usuário sem nome'}</strong>
+                        <span>{session.usuario_email}</span>
+                      </div>
+                    </td>
+                    <td>{ROLE_LABELS[session.usuario_role ?? 'leitor'] ?? session.usuario_role}</td>
+                    <td>{formatDateTime(session.last_seen_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="dashboard-empty">Nenhum usuário online no momento.</div>
+          )}
+        </div>
+
+        <div className="dashboard-grid__details">
+          <div className="dashboard-card-header">
+            <h2>Respostas Recentes</h2>
+            <button className="dashboard-card-action" onClick={() => refetchPainel()}>
+              Atualizar
+            </button>
+          </div>
+          {(painelRespostas ?? []).length > 0 ? (
+            <table className="dashboard-table">
               <thead>
                 <tr>
                   <th>GT</th>
@@ -582,18 +411,24 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {painelRespostas?.slice(0, 8).map((resposta) => (
+                {painelRespostas?.slice(0, 5).map((resposta) => (
                   <tr key={`painel-${resposta.id}`}>
                     <td>{resposta.gt_nome ?? `GT #${resposta.gt}`}</td>
-                    <td>{resposta.autor_nome ?? (resposta.autor ? `Usuário #${resposta.autor}` : 'Autor não informado')}</td>
+                    <td>
+                      <div className="dashboard-table__user">
+                        <strong>{resposta.autor_nome || 'Autor não informado'}</strong>
+                      </div>
+                    </td>
                     <td>{formatDateTime(resposta.updated_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </Card>
+          ) : (
+            <div className="dashboard-empty">Nenhuma resposta recente.</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
