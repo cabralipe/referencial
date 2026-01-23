@@ -34,6 +34,16 @@ const TipoLabel: Record<string, string> = {
   OFICINA: 'Oficina',
 };
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const isNewTask = (createdAt?: string | null) => {
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - created.getTime()) / MS_PER_DAY);
+  return diffDays <= 7;
+};
+
 export function TasksPage() {
   const { user } = useAuth();
   const client = useApiClient();
@@ -374,6 +384,7 @@ export function TasksPage() {
                   <td>
                     <span className="tasks__trilha-label">
                       {tarefa.nome}
+                      {isNewTask(tarefa.created_at) && <span className="tasks__trilha-new">Atividade nova</span>}
                       {tarefasRespondidas.has(`${tarefa.id}-${gt.id}`) && (
                         <span className="tasks__trilha-badge">Respondida ✓</span>
                       )}

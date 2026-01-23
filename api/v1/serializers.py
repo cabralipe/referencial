@@ -65,7 +65,7 @@ class ClienteMeSerializer(serializers.Serializer):
 class TarefaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tarefa
-        fields = ("id", "nome", "ordem", "etapa", "tipo", "status")
+        fields = ("id", "nome", "ordem", "etapa", "tipo", "status", "created_at")
 
 
 class GTSerializer(serializers.ModelSerializer):

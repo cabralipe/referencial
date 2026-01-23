@@ -79,6 +79,16 @@ const stripHtml = (value: string) => {
   return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const isNewTask = (createdAt?: string | null) => {
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - created.getTime()) / MS_PER_DAY);
+  return diffDays <= 7;
+};
+
 export function TaskDetailPage() {
   const { tarefaId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -666,7 +676,10 @@ export function TaskDetailPage() {
 
       <header className="task-detail__header">
         <div>
-          <h1>Trilha pedagógica #{tarefa.ordem}</h1>
+          <div className="task-detail__title">
+            <h1>Trilha pedagógica #{tarefa.ordem}</h1>
+            {isNewTask(tarefa.created_at) && <span className="task-detail__new-badge">Atividade nova</span>}
+          </div>
           <p>{etapaLabel} · {tipoLabel}</p>
         </div>
         <TaskStatusBadge status={tarefa.status} />

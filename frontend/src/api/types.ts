@@ -5,6 +5,7 @@ export interface Tarefa {
   etapa: string;
   tipo: 'PERGUNTAS' | 'OFICINA' | string;
   status: 'rascunho' | 'em_desenvolvimento' | 'em_revisao' | 'concluida' | string;
+  created_at?: string;
 }
 
 export interface PaginatedResponse<T> {
