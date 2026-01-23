@@ -103,8 +103,6 @@ export function LoginPage() {
         {/* Form Section */}
         <div className="w-full lg:w-2/5 flex flex-col items-center justify-start relative z-20 px-4 lg:px-12 -mt-20 lg:mt-0 pb-8 lg:pb-0 lg:bg-white lg:shadow-none lg:h-screen lg:overflow-y-auto">
           {/* Desktop Top Strip */}
-          <div className="hidden lg:block lg:absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-cyan-400"></div>
-
           <div className="w-full max-w-md flex flex-col lg:my-auto lg:py-12">
 
             {/* The Card Container - styles vary for mobile/desktop */}
