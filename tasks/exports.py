@@ -136,6 +136,11 @@ def _build_context(job: ExportJob) -> ExportContext:
                 or f"Exportação #{job.id}",
             }
         )
+    elif job.alvo_tipo == ExportJob.AlvoTipo.RELATORIO:
+        payload_json = job.payload_json if isinstance(job.payload_json, dict) else {}
+        conteudo_html = payload_json.get("conteudo_html") or "<p>Relatório sem conteúdo.</p>"
+        titulo = payload_json.get("titulo") or f"Relatório #{job.id}"
+        payload.update({"conteudo_html": str(conteudo_html), "titulo": str(titulo)})
     return ExportContext(job=job, payload=payload)
 
 

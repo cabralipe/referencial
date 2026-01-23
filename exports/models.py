@@ -13,6 +13,7 @@ class ExportJob(TenantModel):
         QUADRO = "quadro", "Quadro"
         RESPOSTA = "resposta", "Resposta"
         COLECAO = "colecao", "Coleção"
+        RELATORIO = "relatorio", "Relatório"
 
     class Formato(models.TextChoices):
         PDF = "pdf", "PDF"

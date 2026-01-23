@@ -1,10 +1,19 @@
 """Configurações do Django Admin para entidades centrais."""
 
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
 from .forms import UsuarioCreationForm, UsuarioChangeForm, ClienteTemaAdminForm
+from meb.services import deliver_admin_broadcast
+
+
+class BroadcastMessageForm(forms.Form):
+    conteudo = forms.CharField(
+        label="Mensagem para o chat",
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Digite a mensagem do disparo..."}),
+    )
 
 
 @admin.register(Cliente)
@@ -90,6 +99,60 @@ class UsuarioAdmin(DjangoUserAdmin):
             },
         ),
     )
+    action_form = BroadcastMessageForm
+    actions = ["broadcast_chat_message"]
+
+    @admin.action(description="Disparar mensagem no chat para os usuários selecionados")
+    def broadcast_chat_message(self, request, queryset):
+        user_role = getattr(request.user, "role", None)
+        if user_role not in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}:
+            self.message_user(
+                request,
+                "Apenas administradores podem enviar disparos de mensagens.",
+                level=messages.ERROR,
+            )
+            return
+
+        conteudo = (request.POST.get("conteudo") or "").strip()
+        if not conteudo:
+            self.message_user(
+                request,
+                "Digite a mensagem antes de enviar o disparo.",
+                level=messages.ERROR,
+            )
+            return
+
+        total_enviados = 0
+        skipped = 0
+        usuarios_by_cliente: dict[int, list[int]] = {}
+        for usuario in queryset:
+            if not usuario.cliente_id:
+                skipped += 1
+                continue
+            usuarios_by_cliente.setdefault(usuario.cliente_id, []).append(usuario.id)
+
+        for cliente_id, usuario_ids in usuarios_by_cliente.items():
+            enviados = deliver_admin_broadcast(
+                cliente_id=cliente_id,
+                autor=request.user,
+                conteudo=conteudo,
+                usuario_ids=usuario_ids,
+                include_all=False,
+            )
+            total_enviados += enviados
+
+        if total_enviados == 0:
+            self.message_user(
+                request,
+                "Nenhum destinatário elegível encontrado para este disparo.",
+                level=messages.WARNING,
+            )
+            return
+
+        msg = f"Disparo enviado para {total_enviados} destinatário(s)."
+        if skipped:
+            msg += f" {skipped} usuário(s) sem cliente foram ignorados."
+        self.message_user(request, msg, level=messages.SUCCESS)
 
 
 @admin.register(AuditLog)

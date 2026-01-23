@@ -184,6 +184,19 @@
   align-items: center;
 }
 
+.reports__export {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reports__export select {
+  border-radius: 0.6rem;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 0.45rem 0.6rem;
+  background: #ffffff;
+}
+
 .reports__actions button {
   border-radius: 0.5rem;
   border: 1px solid rgba(37, 99, 235, 0.4);

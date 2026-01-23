@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 """Popula a biblioteca com orientações e links dos organizadores curriculares de Traipu."""
 
 from __future__ import annotations

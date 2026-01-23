@@ -29,6 +29,13 @@ type Template = {
   template: string;
 };
 
+type TextoUnicoSection = {
+  id: string;
+  pergunta: string;
+  html: string;
+  preview: string;
+};
+
 const TEXTO_TEMPLATES: Template[] = [
   {
     key: 'topicos',
@@ -70,6 +77,73 @@ const ensureHtml = (value: string) => {
     .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
     .join('');
   return paragraphs || `<p>${text}</p>`;
+};
+
+const stripHtml = (value: string) => {
+  if (!value.trim()) return '';
+  const doc = new DOMParser().parseFromString(value, 'text/html');
+  return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
+
+const buildPreview = (value: string, maxLength = 200) => {
+  const text = stripHtml(value);
+  if (!text) return 'Sem conteúdo.';
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}…`;
+};
+
+const parseTextoUnicoSections = (conteudoHtml: string): TextoUnicoSection[] => {
+  if (!conteudoHtml.trim()) return [];
+  const doc = new DOMParser().parseFromString(conteudoHtml, 'text/html');
+  const sections: TextoUnicoSection[] = [];
+  let current: { pergunta: string; nodes: Node[] } | null = null;
+
+  const pushCurrent = () => {
+    if (!current) return;
+    const container = doc.createElement('div');
+    current.nodes.forEach((node) => container.appendChild(node.cloneNode(true)));
+    const html = container.innerHTML.trim();
+    const preview = buildPreview(html);
+    sections.push({
+      id: `q-${sections.length + 1}`,
+      pergunta: current.pergunta || `Pergunta ${sections.length + 1}`,
+      html,
+      preview,
+    });
+  };
+
+  Array.from(doc.body.childNodes).forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element;
+      if (element.tagName.toLowerCase() === 'h3') {
+        pushCurrent();
+        current = {
+          pergunta: (element.textContent ?? '').trim(),
+          nodes: [],
+        };
+        return;
+      }
+    }
+    if (current) {
+      current.nodes.push(node);
+    }
+  });
+
+  pushCurrent();
+
+  if (sections.length === 0) {
+    const preview = buildPreview(conteudoHtml);
+    if (preview) {
+      sections.push({
+        id: 'q-1',
+        pergunta: 'Texto completo',
+        html: conteudoHtml,
+        preview,
+      });
+    }
+  }
+
+  return sections;
 };
 
 function normalizePayload(payload: Record<string, unknown>): TextoColaborativo | null {
@@ -136,7 +210,26 @@ export function TextoUnicoPage() {
   const [novoConteudo, setNovoConteudo] = useState('');
   const [createFeedback, setCreateFeedback] = useState<FeedbackEntry | null>(null);
   const [bulkFeedback, setBulkFeedback] = useState<FeedbackEntry | null>(null);
+  const [modalSection, setModalSection] = useState<
+    | null
+    | {
+        textoId: number;
+        gt: number;
+        tarefa: number;
+        version: number;
+        pergunta: string;
+        html: string;
+      }
+  >(null);
   const novoStats = getWordStats(novoConteudo);
+
+  const textoSections = useMemo(() => {
+    const map = new Map<number, TextoUnicoSection[]>();
+    (textos ?? []).forEach((texto) => {
+      map.set(texto.id, parseTextoUnicoSections(texto.conteudo_html));
+    });
+    return map;
+  }, [textos]);
 
   useEffect(() => {
     if (!textosColaborativos) {
@@ -185,6 +278,22 @@ export function TextoUnicoPage() {
       return next;
     });
   }, [textosColaborativos]);
+
+  useEffect(() => {
+    if (!modalSection) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setModalSection(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [modalSection]);
 
   useEffect(() => {
     setNovoTitulo('');
@@ -698,10 +807,37 @@ export function TextoUnicoPage() {
                 {texto.responsavel && <span>Responsável #{texto.responsavel}</span>}
                 <span>ETag: {texto.etag}</span>
               </div>
-              <details>
-                <summary>Visualizar HTML</summary>
-                <div className="texto-unico__preview" dangerouslySetInnerHTML={{ __html: texto.conteudo_html }} />
-              </details>
+              {(textoSections.get(texto.id) ?? []).length > 0 ? (
+                <div className="texto-unico__questions">
+                  {(textoSections.get(texto.id) ?? []).map((section, index) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className="texto-unico__question"
+                      onClick={() =>
+                        setModalSection({
+                          textoId: texto.id,
+                          gt: texto.gt,
+                          tarefa: texto.tarefa,
+                          version: texto.version,
+                          pergunta: section.pergunta,
+                          html: section.html,
+                        })
+                      }
+                      aria-label={`Abrir pergunta ${index + 1}`}
+                    >
+                      <span className="texto-unico__question-index">Pergunta {index + 1}</span>
+                      <span className="texto-unico__question-title">{section.pergunta}</span>
+                      <span className="texto-unico__question-preview">{section.preview}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="texto-unico__empty">
+                  <h3>Sem perguntas disponíveis</h3>
+                  <p>O conteúdo ainda não foi estruturado para exibir as perguntas.</p>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -711,6 +847,42 @@ export function TextoUnicoPage() {
           <p>Selecione um GT e trilha ou gere um novo conteúdo para iniciar.</p>
         </div>
       )}
+
+      {modalSection ? (
+        <div
+          className="texto-unico__modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="texto-unico-modal-title"
+          onClick={() => setModalSection(null)}
+        >
+          <div className="texto-unico__modal" onClick={(event) => event.stopPropagation()}>
+            <header className="texto-unico__modal-header">
+              <div>
+                <p className="texto-unico__modal-eyebrow">
+                  GT {modalSection.gt} · Trilha {modalSection.tarefa}
+                </p>
+                <h3 id="texto-unico-modal-title">{modalSection.pergunta}</h3>
+                <p className="texto-unico__modal-meta">Versão {modalSection.version}</p>
+              </div>
+              <button
+                type="button"
+                className="texto-unico__modal-close"
+                onClick={() => setModalSection(null)}
+                aria-label="Fechar modal da pergunta"
+              >
+                Fechar
+              </button>
+            </header>
+            <div className="texto-unico__modal-body">
+              <div
+                className="texto-unico__modal-content"
+                dangerouslySetInnerHTML={{ __html: modalSection.html }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

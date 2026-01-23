@@ -3,11 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    body { font-family: 'Arial', sans-serif; margin: 2cm; }
+    body { font-family: 'Arial', sans-serif; margin: 2cm; color: #0f172a; }
     header { border-bottom: 2px solid {{ tema.cor_primaria|default:'#004aad' }}; margin-bottom: 20px; }
     footer { border-top: 1px solid {{ tema.cor_secundaria|default:'#00b4d8' }}; margin-top: 30px; font-size: 10px; color: #999; }
     h1, h2, h3 { color: {{ tema.cor_primaria|default:'#004aad' }}; }
     ul.anexos { list-style: square; }
+    .report-meta { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+    .report-section { margin: 18px 0 22px; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .report-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+    .report-card span { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .report-card strong { display: block; font-size: 18px; color: #0f172a; margin-top: 6px; }
+    .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .report-table th, .report-table td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+    .report-table th { background: #f1f5f9; color: #334155; }
+    .report-list { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: #475569; }
+    .report-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; font-size: 11px; color: #334155; }
   </style>
 </head>
 <body>
