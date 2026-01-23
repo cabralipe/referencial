@@ -41,8 +41,8 @@ export function LoginPage() {
         err instanceof ApiError
           ? err.message
           : err instanceof Error
-          ? err.message
-          : 'Não foi possível autenticar';
+            ? err.message
+            : 'Não foi possível autenticar';
       setLocalError(message);
     } finally {
       setIsSubmitting(false);
@@ -110,7 +110,7 @@ export function LoginPage() {
       <section className="login__aside">
         <div className="login__overlay" />
         <div className="login__aside-content">
-          <h2>Cooperação em escala</h2>
+          <h2>Plataforma MEB</h2>
           <p>
             Organize e acompanhe o trabalho dos grupos, consolide respostas, gere estudos comparados e
             publique referenciais curriculares com segurança.
