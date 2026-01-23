@@ -2,10 +2,18 @@
 
 import re
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import strip_tags
 
 from .models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
+from meb.services import deliver_admin_broadcast
+
+
+class BroadcastMessageForm(forms.Form):
+    conteudo = forms.CharField(
+        label="Mensagem para o chat",
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Digite a mensagem do disparo..."}),
+    )
 
 
 class BasicRichTextWidget(forms.Textarea):
@@ -33,6 +41,8 @@ class GTAdmin(admin.ModelAdmin):
     search_fields = ("nome", "etapa", "cliente__nome")
     filter_horizontal = ("membros",)
     list_filter = ("cliente", "etapa")
+    action_form = BroadcastMessageForm
+    actions = ["broadcast_chat_message"]
     
     def get_queryset(self, request):
         """Super admins podem ver todos os GTs, outros usuários seguem o filtro normal."""
@@ -44,6 +54,60 @@ class GTAdmin(admin.ModelAdmin):
         
         # Para outros usuários, usar o queryset padrão (com filtro de cliente)
         return super().get_queryset(request)
+
+    @admin.action(description="Disparar mensagem no chat para os GTs selecionados")
+    def broadcast_chat_message(self, request, queryset):
+        from core.models import Usuario
+
+        user_role = getattr(request.user, "role", None)
+        if user_role not in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}:
+            self.message_user(
+                request,
+                "Apenas administradores podem enviar disparos de mensagens.",
+                level=messages.ERROR,
+            )
+            return
+
+        conteudo = (request.POST.get("conteudo") or "").strip()
+        if not conteudo:
+            self.message_user(
+                request,
+                "Digite a mensagem antes de enviar o disparo.",
+                level=messages.ERROR,
+            )
+            return
+
+        total_enviados = 0
+        skipped = 0
+        gts_by_cliente: dict[int, list[int]] = {}
+        for gt in queryset:
+            if not gt.cliente_id:
+                skipped += 1
+                continue
+            gts_by_cliente.setdefault(gt.cliente_id, []).append(gt.id)
+
+        for cliente_id, gt_ids in gts_by_cliente.items():
+            enviados = deliver_admin_broadcast(
+                cliente_id=cliente_id,
+                autor=request.user,
+                conteudo=conteudo,
+                gt_ids=gt_ids,
+                include_all=False,
+            )
+            total_enviados += enviados
+
+        if total_enviados == 0:
+            self.message_user(
+                request,
+                "Nenhum destinatário elegível encontrado para este disparo.",
+                level=messages.WARNING,
+            )
+            return
+
+        msg = f"Disparo enviado para {total_enviados} destinatário(s)."
+        if skipped:
+            msg += f" {skipped} GT(s) sem cliente foram ignorados."
+        self.message_user(request, msg, level=messages.SUCCESS)
 
 
 @admin.register(Area)

@@ -391,13 +391,23 @@ class ExportJobSerializer(serializers.ModelSerializer):
         if not alvo_tipo:
             return attrs
         if alvo_tipo != ExportJob.AlvoTipo.COLECAO and not alvo_id:
-            return attrs
+            if alvo_tipo != ExportJob.AlvoTipo.RELATORIO:
+                return attrs
 
         modelo_por_tipo = {
             ExportJob.AlvoTipo.TEXTO_UNICO: TextoUnico,
             ExportJob.AlvoTipo.QUADRO: Quadro,
             ExportJob.AlvoTipo.RESPOSTA: Resposta,
         }
+        if alvo_tipo == ExportJob.AlvoTipo.RELATORIO:
+            if user and getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+                raise serializers.ValidationError("Somente administradores podem exportar relatórios.")
+            payload = attrs.get("payload_json") or {}
+            conteudo_html = payload.get("conteudo_html") if isinstance(payload, dict) else None
+            if not isinstance(conteudo_html, str) or not conteudo_html.strip():
+                raise serializers.ValidationError({"payload_json": "Informe o conteudo_html do relatório."})
+            attrs["alvo_id"] = attrs.get("alvo_id") or "relatorio"
+            return attrs
         if alvo_tipo == ExportJob.AlvoTipo.COLECAO:
             secoes = (attrs.get("payload_json") or {}).get("secoes", [])
             if not secoes:

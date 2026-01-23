@@ -12,6 +12,7 @@ import { useRespostas } from '@/hooks/useRespostas';
 import { useUsuariosLookup } from '@/hooks/useUsuariosLookup';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAllPaginated } from '@/utils/pagination';
+import { useCreateExportJob } from '@/hooks/useExportJobs';
 import type { Pergunta, Revisao } from '@/api/types';
 
 import './ReportsPage.css';
@@ -22,6 +23,7 @@ export function ReportsPage() {
   const { data: onlineUsers, isLoading: onlineLoading } = useOnlineUsers();
   const { data: sessionHistory, isLoading: sessionsLoading } = useSessionHistory();
   const aiAssist = useAiAssist();
+  const criarExportacao = useCreateExportJob();
 
   const [redatorQuery, setRedatorQuery] = useState('');
   const [selectedRedator, setSelectedRedator] = useState<{ id: number; nome: string; email: string } | null>(null);
@@ -31,6 +33,8 @@ export function ReportsPage() {
   const [detailLines, setDetailLines] = useState(10);
   const [aiTemplate, setAiTemplate] = useState<'curto' | 'executivo' | 'detalhado'>('curto');
   const [selectedGtId, setSelectedGtId] = useState<number | null>(null);
+  const [reportMode, setReportMode] = useState<'resumo' | 'completo'>('resumo');
+  const [exportFeedback, setExportFeedback] = useState('');
 
   const { data: redatorSuggestions = [] } = useUsuariosLookup(redatorQuery);
   const { gtOptions } = useAvailableGts();
@@ -131,6 +135,35 @@ export function ReportsPage() {
       revisoesEmitidas: revisoesDoGt.length,
     };
   }, [perguntasQuery.data, revisoesFiltradas, respostas, selectedGtId]);
+
+  const gtDetails = useMemo(() => {
+    const perguntas = perguntasQuery.data ?? [];
+    const revisoes = revisoesFiltradas.filter((rev) => rev.alvo_tipo === 'resposta');
+    return gtOptions.map((gt) => {
+      const perguntasDoGt = perguntas.filter((pergunta) => !pergunta.gts?.length || pergunta.gts.includes(gt.id));
+      const respostasDoGt = respostas.filter((resp) => resp.gt === gt.id);
+      const respostasComConteudo = respostasDoGt.filter((resp) => resp.conteudo_html?.trim().length);
+      const revisoesDoGt = revisoes.filter((rev) => rev.alvo_preview?.gt === gt.id);
+      const respostasComParecer = new Set(revisoesDoGt.map((rev) => rev.alvo_id));
+      const totalPerguntas = perguntasDoGt.length;
+      const totalRespostas = respostasComConteudo.length;
+      const pareceresEmitidos = respostasComParecer.size;
+      const pareceresPendentes = Math.max(totalRespostas - pareceresEmitidos, 0);
+      const faltamResponder = Math.max(totalPerguntas - totalRespostas, 0);
+      const taxaConclusao = totalPerguntas > 0 ? Math.round((totalRespostas / totalPerguntas) * 100) : 0;
+      return {
+        id: gt.id,
+        nome: gt.displayName,
+        totalPerguntas,
+        totalRespostas,
+        faltamResponder,
+        taxaConclusao,
+        pareceresEmitidos,
+        pareceresPendentes,
+        revisoesEmitidas: revisoesDoGt.length,
+      };
+    });
+  }, [gtOptions, perguntasQuery.data, respostas, revisoesFiltradas]);
 
   if (!user) {
     return <FullPageLoader message="Carregando relatorios..." />;
@@ -243,6 +276,167 @@ export function ReportsPage() {
       setFeedback('Mensagem copiada para o WhatsApp.');
     } catch (err) {
       setFeedback('Nao foi possivel copiar automaticamente.');
+    }
+  };
+
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>\"']/g, (char) => {
+      switch (char) {
+        case '&':
+          return '&amp;';
+        case '<':
+          return '&lt;';
+        case '>':
+          return '&gt;';
+        case '"':
+          return '&quot;';
+        case "'":
+          return '&#39;';
+        default:
+          return char;
+      }
+    });
+
+  const buildReportHtml = (mode: 'resumo' | 'completo') => {
+    const today = new Date();
+    const todayLabel = today.toLocaleDateString('pt-BR');
+    const redatorLabel = selectedRedator ? `${selectedRedator.nome} (${selectedRedator.email})` : 'Todos os redatores';
+    const periodoLabel = `${periodDays} dias`;
+    const actionLabel = actionFilter ? actionFilter : 'todas';
+    const gtLabel = selectedGtId ? gtOptions.find((gt) => gt.id === selectedGtId)?.displayName || 'GT selecionado' : 'Todos os GTs';
+
+    const overviewCards = [
+      { label: 'Online agora', value: summary.online },
+      { label: `Logins (${periodoLabel})`, value: summary.logins },
+      { label: 'Respostas registradas', value: summary.respostas },
+      { label: 'Pareceres emitidos', value: summary.pareceres },
+    ];
+
+    const auditDetails = mode === 'completo'
+      ? auditLogs.map((log) => `${new Date(log.timestamp).toLocaleString('pt-BR')} · ${log.acao} · ${log.entidade} #${log.entidade_id}`)
+      : auditSummary.details;
+
+    const auditNotice =
+      mode === 'completo' && auditLogs.length >= 200
+        ? '<p class=\"report-meta\">Nota: relatório limitado aos 200 registros mais recentes de auditoria.</p>'
+        : '';
+
+    const gtRows = (mode === 'completo' ? gtDetails : selectedGtId ? gtDetails.filter((gt) => gt.id === selectedGtId) : [])
+      .map(
+        (gt) =>
+          `<tr>
+            <td>${escapeHtml(gt.nome)}</td>
+            <td>${gt.totalPerguntas}</td>
+            <td>${gt.totalRespostas}</td>
+            <td>${gt.faltamResponder}</td>
+            <td>${gt.taxaConclusao}%</td>
+            <td>${gt.pareceresEmitidos}</td>
+            <td>${gt.pareceresPendentes}</td>
+          </tr>`
+      )
+      .join('');
+
+    return `
+      <div class="report">
+        <p class="report-meta">Gerado em ${todayLabel} · Modo: ${mode === 'resumo' ? 'Resumo executivo' : 'Relatório completo'}</p>
+        <section class="report-section">
+          <h2>Filtros aplicados</h2>
+          <ul class="report-list">
+            <li><strong>Período:</strong> ${escapeHtml(periodoLabel)}</li>
+            <li><strong>Redator:</strong> ${escapeHtml(redatorLabel)}</li>
+            <li><strong>GT:</strong> ${escapeHtml(gtLabel)}</li>
+            <li><strong>Ação:</strong> ${escapeHtml(actionLabel)}</li>
+          </ul>
+        </section>
+
+        <section class="report-section">
+          <h2>Visão geral</h2>
+          <div class="report-grid">
+            ${overviewCards
+              .map(
+                (card) =>
+                  `<div class="report-card"><span>${escapeHtml(card.label)}</span><strong>${card.value}</strong></div>`
+              )
+              .join('')}
+          </div>
+        </section>
+
+        <section class="report-section">
+          <h2>Indicadores por GT</h2>
+          <div class="report-meta">Resumo geral: ${gtSummary.totalPerguntas} perguntas · ${gtSummary.totalRespostas} respostas · ${gtSummary.taxaConclusao}% conclusão</div>
+          ${
+            gtRows
+              ? `<table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>GT</th>
+                      <th>Perguntas</th>
+                      <th>Respostas</th>
+                      <th>Pendentes</th>
+                      <th>Conclusão</th>
+                      <th>Pareceres</th>
+                      <th>Pareceres pendentes</th>
+                    </tr>
+                  </thead>
+                  <tbody>${gtRows}</tbody>
+                </table>`
+              : '<p>Sem dados para este filtro.</p>'
+          }
+        </section>
+
+        <section class="report-section">
+          <h2>Auditoria</h2>
+          <div class="report-meta">Total: ${auditSummary.total} ações</div>
+          <div class="report-grid">
+            <div class="report-card">
+              <span>Top ações</span>
+              <strong>${auditSummary.topActions.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' · ') || 'Sem dados'}</strong>
+            </div>
+            <div class="report-card">
+              <span>Top entidades</span>
+              <strong>${auditSummary.topEntities.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' · ') || 'Sem dados'}</strong>
+            </div>
+          </div>
+          ${auditNotice}
+          ${
+            auditDetails.length
+              ? `<ul class="report-list">${auditDetails.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+              : '<p>Sem detalhes de auditoria para o período selecionado.</p>'
+          }
+        </section>
+      </div>
+    `;
+  };
+
+  const handleExportPdf = async () => {
+    if (
+      onlineLoading ||
+      sessionsLoading ||
+      respostasLoading ||
+      perguntasQuery.isLoading ||
+      revisoesQuery.isLoading ||
+      auditLoading
+    ) {
+      setExportFeedback('Aguarde o carregamento completo dos dados antes de exportar.');
+      return;
+    }
+    setExportFeedback('');
+    const now = new Date();
+    const titulo = `Relatório ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} · ${now.toLocaleDateString('pt-BR')}`;
+    try {
+      await criarExportacao.mutateAsync({
+        alvoTipo: 'relatorio',
+        alvoId: 'relatorio',
+        formato: 'pdf',
+        payloadJson: {
+          titulo,
+          conteudo_html: buildReportHtml(reportMode),
+          modo: reportMode,
+        },
+      });
+      setExportFeedback('Exportação solicitada. Confira o histórico em Exportações.');
+    } catch (err) {
+      setExportFeedback('Não foi possível solicitar a exportação.');
     }
   };
 
@@ -502,7 +696,17 @@ export function ReportsPage() {
           <button type="button" className="secondary" onClick={handleCopy} disabled={!message}>
             Copiar para WhatsApp
           </button>
+          <div className="reports__export">
+            <select value={reportMode} onChange={(event) => setReportMode(event.target.value as 'resumo' | 'completo')}>
+              <option value="resumo">PDF resumido</option>
+              <option value="completo">PDF completo</option>
+            </select>
+            <button type="button" className="secondary" onClick={handleExportPdf} disabled={criarExportacao.isPending}>
+              {criarExportacao.isPending ? 'Exportando...' : 'Exportar PDF'}
+            </button>
+          </div>
           {feedback && <span className="reports__feedback">{feedback}</span>}
+          {exportFeedback && <span className="reports__feedback">{exportFeedback}</span>}
         </div>
         <textarea
           rows={6}
