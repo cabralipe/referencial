@@ -124,6 +124,25 @@
   text-decoration: none;
   font-size: 0.9rem;
   box-shadow: 0 8px 18px rgba(14, 165, 233, 0.2);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
+  animation: biblioteca-float 3.5s ease-in-out infinite;
+}
+
+.biblioteca__midia-open:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.25);
+}
+
+@keyframes biblioteca-float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biblioteca__midia-open {
+    animation: none;
+  }
 }
 
 .biblioteca__preview-html {
