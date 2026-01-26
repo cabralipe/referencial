@@ -6,6 +6,7 @@ import { useApiClient } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAuditLogs, useOnlineUsers, useSessionHistory } from '@/hooks/useAuditLogs';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useAiAssist } from '@/hooks/useAiAssist';
@@ -179,6 +180,26 @@ export function ReportsPage() {
     );
   }
 
+  const stripHtml = (value: string) => {
+    if (!value.trim()) return '';
+    const doc = new DOMParser().parseFromString(value, 'text/html');
+    return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+  };
+
+  const ensureHtml = (value: string) => {
+    const text = value.trim();
+    if (!text) return '';
+    const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(text);
+    if (hasHtmlTag) {
+      return value;
+    }
+    const paragraphs = text
+      .split(/\n{2,}/)
+      .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+      .join('');
+    return paragraphs || `<p>${text}</p>`;
+  };
+
   const handleGenerate = () => {
     const today = new Date().toLocaleDateString('pt-BR');
     const redatorLabel = selectedRedator ? `${selectedRedator.nome} (${selectedRedator.email})` : 'Todos os redatores';
@@ -208,7 +229,7 @@ export function ReportsPage() {
         `Top entidades: ${auditSummary.topEntities.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
         `Detalhes (max ${detailLines}): ${detalhesLabel}\n`
         : '');
-    setMessage(text);
+    setMessage(ensureHtml(text));
     setFeedback('Mensagem gerada.');
   };
 
@@ -248,7 +269,7 @@ export function ReportsPage() {
         context,
       });
       const output = (response.output || '').slice(0, 600);
-      setMessage(output);
+      setMessage(ensureHtml(output));
       setFeedback('Mensagem gerada com IA.');
     } catch (err) {
       setFeedback('Nao foi possivel gerar o relatorio com IA.');
@@ -256,14 +277,14 @@ export function ReportsPage() {
   };
 
   const handleAiRewrite = async () => {
-    if (!message.trim()) return;
+    if (!stripHtml(message)) return;
     setFeedback('');
     try {
       const response = await aiAssist.mutateAsync({
         mode: 'grammar',
-        text: message,
+        text: stripHtml(message),
       });
-      setMessage((response.output || message).slice(0, 600));
+      setMessage(ensureHtml((response.output || stripHtml(message)).slice(0, 600)));
       setFeedback('Mensagem revisada pela IA.');
     } catch (err) {
       setFeedback('Nao foi possivel revisar a mensagem.');
@@ -271,9 +292,10 @@ export function ReportsPage() {
   };
 
   const handleCopy = async () => {
-    if (!message) return;
+    const plainText = stripHtml(message);
+    if (!plainText) return;
     try {
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(plainText);
       setFeedback('Mensagem copiada para o WhatsApp.');
     } catch (err) {
       setFeedback('Nao foi possivel copiar automaticamente.');
@@ -723,11 +745,13 @@ export function ReportsPage() {
           {feedback && <span className="reports__feedback">{feedback}</span>}
           {exportFeedback && <span className="reports__feedback">{exportFeedback}</span>}
         </div>
-        <textarea
-          rows={6}
+        <RichTextEditor
           value={message}
-          onChange={(event) => setMessage(event.target.value)}
+          onChange={setMessage}
           placeholder="Clique em gerar mensagem para ver o texto aqui."
+          config={{
+            toolbar: ['bold', 'italic', 'link', 'bulletedList', 'numberedList', 'undo', 'redo'],
+          }}
         />
       </section>
     </div>

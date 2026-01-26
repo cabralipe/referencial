@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost } from '@/hooks/useMural';
 
@@ -42,6 +43,10 @@ export function AdminMuralPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setFeedback('');
+    if (!conteudo.trim()) {
+      setFeedback('Informe o conteúdo do aviso.');
+      return;
+    }
     const payload = {
       titulo,
       conteudo_html: conteudo,
@@ -82,7 +87,7 @@ export function AdminMuralPage() {
           </label>
           <label className="full">
             <span>Conteúdo (HTML)</span>
-            <textarea value={conteudo} onChange={(event) => setConteudo(event.target.value)} rows={4} required />
+            <RichTextEditor value={conteudo} onChange={setConteudo} placeholder="Escreva o aviso." />
           </label>
           <label>
             <span>Link</span>

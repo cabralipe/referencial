@@ -28,11 +28,23 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 # Importar modelos
-from core.models import Cliente, ClienteConfig, ClienteTema, ScoreEntry
-from curriculum.models import GT, Tarefa, Pergunta, Resposta, TextoUnico, TextoColaborativo
+from core.models import (
+    AuditLog,
+    Cliente,
+    ClienteConfig,
+    ClienteFeatureFlag,
+    ClienteTema,
+    ScoreEntry,
+    ThrottleBlock,
+    UserSessionLog,
+)
+from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
+from exports.models import ExportJob
 from reviews.models import Revisao
 from library.models import Midia, BlocoTexto
-from workshop.models import Quadro, CelulaQuadro
+from notifications.models import Notificacao
+from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 from consultas.models import ConsultaPublica, ManifestacaoPublica
 from comments.models import Comentario
 from meb.models import MebThread, MebMessage
@@ -61,6 +73,12 @@ def create_clients():
             'rodape_html': '<p>&copy; 2024 SEDUC. Todos os direitos reservados.</p>',
             'cabecalho_html': '<div><h1>Referencial SEDUC</h1></div>'
         }
+    )
+
+    ClienteFeatureFlag.objects.get_or_create(
+        cliente=cliente_seduc,
+        flag='dynamic_forms',
+        defaults={'ativo': True}
     )
     print(f"Cliente criado: {cliente_seduc}")
     return cliente_seduc
@@ -150,6 +168,15 @@ def create_curriculum(cliente, users):
         defaults={'etapa': 'Ensino Fundamental'}
     )
     gt_port.membros.add(users['articulador'])
+
+    # Área
+    area_base, _ = Area.objects.get_or_create(
+        cliente=cliente,
+        nome='Ciências da Natureza e Matemática',
+        defaults={'descricao_html': '<p>Área integrada de ciências e matemática.</p>'}
+    )
+
+    area_base.gts.add(gt_mat, gt_port)
 
     # Tarefas
     tarefa1, _ = Tarefa.objects.get_or_create(
@@ -282,6 +309,13 @@ def create_curriculum(cliente, users):
             'autor': users['articulador']
         }
     )
+
+    Anexo.objects.get_or_create(
+        cliente=cliente,
+        resposta=r1,
+        url='https://example.com/anexo-principios.pdf',
+        defaults={'legenda': 'Documento base de princípios'}
+    )
     
     # Texto Único
     tu1, _ = TextoUnico.objects.get_or_create(
@@ -306,8 +340,16 @@ def create_curriculum(cliente, users):
         }
     )
 
+    p1_t1.gts.add(gt_mat)
+
     print("Estrutura curricular criada.")
-    return {'gts': [gt_mat, gt_port], 'tarefas': [tarefa1, tarefa2, tarefa3, tarefa4, tarefa5], 'respostas': [r1, r2, r3], 'textos_unicos': [tu1]}
+    return {
+        'areas': [area_base],
+        'gts': [gt_mat, gt_port],
+        'tarefas': [tarefa1, tarefa2, tarefa3, tarefa4, tarefa5],
+        'respostas': [r1, r2, r3],
+        'textos_unicos': [tu1],
+    }
 
 def create_reviews(cliente, users, curriculum_data):
     print("--- Criando Revisões ---")
@@ -326,13 +368,18 @@ def create_reviews(cliente, users, curriculum_data):
     )
     print("Revisão criada.")
 
-def create_library(cliente, users):
+def create_library(cliente, users, curriculum_data):
     print("--- Criando Biblioteca ---")
+    gt_mat = curriculum_data['gts'][0]
+    pergunta = Pergunta.objects.filter(cliente=cliente).first()
     BlocoTexto.objects.get_or_create(
         cliente=cliente,
         titulo='Introdução Padrão',
         defaults={
             'conteudo_html': '<p>Este documento segue as diretrizes da BNCC.</p>',
+            'tags': ['introducao', 'bncc'],
+            'gt': gt_mat,
+            'pergunta': pergunta,
             'created_by': users['admin']
         }
     )
@@ -343,6 +390,9 @@ def create_library(cliente, users):
         defaults={
             'titulo': 'Logo do Projeto',
             'descricao': 'Logo do Projeto',
+            'tags': ['logo', 'identidade'],
+            'gt': gt_mat,
+            'pergunta': pergunta,
             'uploaded_by': users['admin']
         }
     )
@@ -351,12 +401,39 @@ def create_library(cliente, users):
 def create_workshop(cliente, users, curriculum_data):
     print("--- Criando Workshop (Quadros) ---")
     gt_mat = curriculum_data['gts'][0]
+    area_base = curriculum_data['areas'][0]
     
     quadro, _ = Quadro.objects.get_or_create(
         cliente=cliente,
         gt=gt_mat,
+        area=area_base,
         template='swot',
         defaults={}
+    )
+
+    QuadroLinha.objects.get_or_create(
+        cliente=cliente,
+        quadro=quadro,
+        linha=0,
+        defaults={'nome': 'Forças', 'ordem': 1}
+    )
+    QuadroLinha.objects.get_or_create(
+        cliente=cliente,
+        quadro=quadro,
+        linha=1,
+        defaults={'nome': 'Fraquezas', 'ordem': 2}
+    )
+    QuadroColuna.objects.get_or_create(
+        cliente=cliente,
+        quadro=quadro,
+        coluna=0,
+        defaults={'nome': 'Interno', 'ordem': 1}
+    )
+    QuadroColuna.objects.get_or_create(
+        cliente=cliente,
+        quadro=quadro,
+        coluna=1,
+        defaults={'nome': 'Externo', 'ordem': 2}
     )
     
     CelulaQuadro.objects.get_or_create(
@@ -437,6 +514,15 @@ def create_meb_chat(cliente, users):
         origem=MebMessage.Origem.MASCOTE,
         defaults={'created_at': timezone.now()}
     )
+
+    MebMessage.objects.get_or_create(
+        cliente=cliente,
+        thread=thread,
+        conteudo='Encaminhei sua dúvida para a equipe pedagógica.',
+        origem=MebMessage.Origem.ADMIN,
+        autor=users['admin'],
+        defaults={'created_at': timezone.now() + datetime.timedelta(minutes=2)}
+    )
     print("Chat MEB populado.")
 
 def create_gamification(cliente, users):
@@ -452,6 +538,158 @@ def create_gamification(cliente, users):
     )
     print("Gamificação populada.")
 
+def create_dynamic_forms(cliente, users, curriculum_data):
+    print("--- Criando Formulários Dinâmicos ---")
+    gt_mat = curriculum_data['gts'][0]
+    resposta = curriculum_data['respostas'][0]
+    texto_unico = curriculum_data['textos_unicos'][0]
+
+    formulario, _ = FormularioDinamico.objects.get_or_create(
+        cliente=cliente,
+        nome='Metadados de Resposta',
+        defaults={'descricao': 'Campos adicionais para qualificar uma resposta.'}
+    )
+
+    campo_referencia, _ = CampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        chave='referencias',
+        defaults={
+            'tipo': CampoDinamico.Tipo.TEXTO,
+            'config_json': {'max': 500},
+            'obrigatorio': False,
+            'ordem': 1,
+        }
+    )
+
+    campo_nivel, _ = CampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        chave='nivel_prioridade',
+        defaults={
+            'tipo': CampoDinamico.Tipo.SELECT,
+            'config_json': {'opcoes': ['baixo', 'medio', 'alto']},
+            'obrigatorio': True,
+            'ordem': 2,
+        }
+    )
+
+    RespostaCampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        campo=campo_referencia,
+        owner_type=RespostaCampoDinamico.OwnerType.RESPOSTA,
+        owner_id=str(resposta.id),
+        defaults={'valor_texto': 'Referência BNCC, p. 12-15.'}
+    )
+
+    RespostaCampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        campo=campo_nivel,
+        owner_type=RespostaCampoDinamico.OwnerType.RESPOSTA,
+        owner_id=str(resposta.id),
+        defaults={'valor_texto': 'medio'}
+    )
+
+    RespostaCampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        campo=campo_nivel,
+        owner_type=RespostaCampoDinamico.OwnerType.TEXTO_UNICO,
+        owner_id=str(texto_unico.id),
+        defaults={'valor_texto': 'alto'}
+    )
+
+    RespostaCampoDinamico.objects.get_or_create(
+        cliente=cliente,
+        formulario=formulario,
+        campo=campo_nivel,
+        owner_type=RespostaCampoDinamico.OwnerType.GT,
+        owner_id=str(gt_mat.id),
+        defaults={'valor_texto': 'baixo'}
+    )
+    print("Formulários dinâmicos criados.")
+
+def create_exports(cliente, curriculum_data):
+    print("--- Criando Exportações ---")
+    resposta = curriculum_data['respostas'][0]
+
+    ExportJob.objects.get_or_create(
+        cliente=cliente,
+        alvo_tipo=ExportJob.AlvoTipo.RESPOSTA,
+        alvo_id=str(resposta.id),
+        formato=ExportJob.Formato.PDF,
+        defaults={
+            'status': ExportJob.Status.DONE,
+            'payload_json': {'layout': 'padrao', 'idioma': 'pt-BR'},
+            'url_resultado': 'https://example.com/exports/resposta-1.pdf',
+            'finished_at': timezone.now(),
+        }
+    )
+    print("Exportações criadas.")
+
+def create_notifications(cliente, users, curriculum_data):
+    print("--- Criando Notificações ---")
+    resposta = curriculum_data['respostas'][0]
+
+    Notificacao.objects.get_or_create(
+        cliente=cliente,
+        usuario=users['professor'],
+        tipo='resposta_comentada',
+        defaults={'payload_json': {'resposta_id': str(resposta.id)}}
+    )
+
+    Notificacao.objects.get_or_create(
+        cliente=cliente,
+        usuario=users['articulador'],
+        tipo='revisao_pendente',
+        defaults={'payload_json': {'alvo_tipo': 'resposta', 'alvo_id': str(resposta.id)}}
+    )
+    print("Notificações criadas.")
+
+def create_core_extras(cliente, users, curriculum_data):
+    print("--- Criando Logs e Segurança ---")
+    resposta = curriculum_data['respostas'][0]
+    now = timezone.now()
+
+    AuditLog.objects.get_or_create(
+        cliente=cliente,
+        entidade='Resposta',
+        entidade_id=str(resposta.id),
+        acao='create',
+        defaults={
+            'usuario_id': users['professor'].id,
+            'diff_json': {'conteudo_html': 'criado via populate'},
+            'timestamp': now,
+        }
+    )
+
+    ThrottleBlock.objects.get_or_create(
+        cliente=cliente,
+        usuario=users['professor'],
+        scope='login',
+        cache_key=f'login:{users["professor"].id}',
+        defaults={
+            'ident': users['professor'].email,
+            'wait_seconds': 60,
+            'blocked_until': now + datetime.timedelta(minutes=1),
+        }
+    )
+
+    UserSessionLog.objects.get_or_create(
+        usuario=users['professor'],
+        cliente=cliente,
+        session_key='session_seed_0001',
+        defaults={
+            'first_seen_at': now - datetime.timedelta(minutes=20),
+            'last_seen_at': now,
+            'user_agent': 'Mozilla/5.0 (Seed Script)',
+            'device': 'desktop',
+        }
+    )
+    print("Logs e segurança criados.")
+
 @transaction.atomic
 def run():
     print("Iniciando população do banco de dados...")
@@ -462,12 +700,16 @@ def run():
     curriculum_data = create_curriculum(cliente, users)
     
     create_reviews(cliente, users, curriculum_data)
-    create_library(cliente, users)
+    create_library(cliente, users, curriculum_data)
     create_workshop(cliente, users, curriculum_data)
     create_consultas(cliente, users)
     create_comments(cliente, users, curriculum_data)
     create_meb_chat(cliente, users)
     create_gamification(cliente, users)
+    create_dynamic_forms(cliente, users, curriculum_data)
+    create_exports(cliente, curriculum_data)
+    create_notifications(cliente, users, curriculum_data)
+    create_core_extras(cliente, users, curriculum_data)
     
     print("\n--- Processo Concluído com Sucesso! ---")
     print(f"Cliente: {cliente.nome} ({cliente.slug})")

@@ -6,6 +6,7 @@ import { ApiError, useApiClient } from '@/api/client';
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useTarefa } from '@/hooks/useTarefas';
 import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
@@ -55,12 +56,6 @@ const RESPOSTA_SNIPPETS: Snippet[] = [
   },
 ];
 
-const buildTextStats = (value: string) => {
-  const trimmed = value.trim();
-  const words = trimmed ? trimmed.split(/\s+/).length : 0;
-  return { words, chars: value.length };
-};
-
 const ensureHtml = (value: string) => {
   const text = value.trim();
   if (!text) return '';
@@ -77,6 +72,12 @@ const ensureHtml = (value: string) => {
 
 const stripHtml = (value: string) => {
   return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const buildTextStats = (value: string) => {
+  const trimmed = stripHtml(value);
+  const words = trimmed ? trimmed.split(/\s+/).length : 0;
+  return { words, chars: trimmed.length };
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -489,11 +490,10 @@ export function TaskDetailPage() {
         </header>
 
         <div className="pergunta-card__editor">
-          <textarea
+          <RichTextEditor
             value={draft}
-            onChange={(event) => handleChangeDraft(pergunta.id, event.target.value)}
-            rows={8}
-            placeholder="Digite o conteúdo em texto simples..."
+            onChange={(value) => handleChangeDraft(pergunta.id, value)}
+            placeholder="Digite o conteúdo aqui."
             disabled={!selectedGtId}
           />
 
@@ -587,14 +587,12 @@ export function TaskDetailPage() {
             <div className="pergunta-card__parecer">
               <label>
                 <span>Parecer do redator (HTML)</span>
-                <textarea
-                  rows={4}
+                <RichTextEditor
                   value={parecerDraft}
-                  onChange={(event) => {
+                  onChange={(value) => {
                     if (!respostaId) {
                       return;
                     }
-                    const value = event.target.value;
                     setParecerDrafts((prev) => ({ ...prev, [respostaId]: value }));
                   }}
                   placeholder="Registre aqui o parecer para o cliente."
@@ -730,10 +728,10 @@ export function TaskDetailPage() {
               </label>
               <label className="full">
                 <span>Texto da missao</span>
-                <textarea
-                  rows={4}
+                <RichTextEditor
                   value={novaTexto}
-                  onChange={(event) => setNovaTexto(event.target.value)}
+                  onChange={setNovaTexto}
+                  placeholder="Escreva o texto da missão."
                 />
               </label>
               <label>

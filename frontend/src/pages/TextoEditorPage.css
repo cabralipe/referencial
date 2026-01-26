@@ -20,16 +20,69 @@
 
 .texto-editor__toolbar {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  position: sticky;
+  top: 0.75rem;
+  z-index: 2;
 }
 
 .texto-editor__toolbar button {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-muted);
-  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.texto-editor__toolbar button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+.texto-editor__toolbar-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.texto-editor__toolbar-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.texto-editor__toolbar-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: rgba(148, 163, 184, 0.6);
+}
+
+.texto-editor__editor-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.texto-editor__subtoolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.texto-editor__bncc label {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .texto-editor__bncc {
@@ -37,12 +90,52 @@
   gap: 0.75rem;
   align-items: flex-end;
   flex-wrap: wrap;
+}
+
+.texto-editor__bncc input {
+  min-width: 220px;
+}
+
+.texto-editor__status {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.texto-editor__page {
+  background: radial-gradient(circle at top, #f8fafc, #eef2f7 55%, #e2e8f0 100%);
+  border-radius: 18px;
+  padding: 1.5rem;
+  position: relative;
+}
+
+.texto-editor__ruler {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.2));
   margin-bottom: 1rem;
 }
 
-.texto-editor__bncc label {
-  display: grid;
-  gap: 0.35rem;
+.texto-editor__editor .ck.ck-editor__main > .ck-editor__editable {
+  width: min(900px, 100%);
+  min-height: 480px;
+  margin: 0 auto;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: #ffffff;
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  padding: 2rem 2.5rem;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.texto-editor__editor .ck.ck-editor__top .ck-toolbar {
+  border-radius: 14px;
+  margin-bottom: 1rem;
 }
 
 .texto-editor__feedback {
@@ -138,4 +231,20 @@
   background: rgba(37, 99, 235, 0.12);
   color: var(--color-primary);
   font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .texto-editor__toolbar {
+    position: static;
+    border-radius: 16px;
+  }
+
+  .texto-editor__page {
+    padding: 1rem;
+  }
+
+  .texto-editor__editor .ck.ck-editor__main > .ck-editor__editable {
+    padding: 1.5rem;
+    border-radius: 14px;
+  }
 }

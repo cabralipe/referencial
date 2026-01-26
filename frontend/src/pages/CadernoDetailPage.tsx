@@ -5,6 +5,7 @@ import { Card } from '@/components/common/Card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/common/Button';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useCreateBloco, useUpdateBloco } from '@/hooks/useBiblioteca';
 import { useTarefas } from '@/hooks/useTarefas';
@@ -153,7 +154,7 @@ export function CadernoDetailPage() {
           </label>
           <label className="full">
             <span>Conteúdo</span>
-            <textarea value={conteudo} onChange={(event) => setConteudo(event.target.value)} rows={5} />
+            <RichTextEditor value={conteudo} onChange={setConteudo} placeholder="Escreva o conteúdo." />
           </label>
           <Button variant="secondary" type="submit" disabled={createBloco.isPending}>
             {createBloco.isPending ? 'Salvando...' : 'Adicionar texto'}
@@ -201,11 +202,7 @@ export function CadernoDetailPage() {
             </label>
             <label className="full">
               <span>Conteúdo</span>
-              <textarea
-                rows={5}
-                value={editingConteudo}
-                onChange={(event) => setEditingConteudo(event.target.value)}
-              />
+              <RichTextEditor value={editingConteudo} onChange={setEditingConteudo} placeholder="Atualize o conteúdo." />
             </label>
             <div className="caderno-detail__editor-actions">
               <Button variant="secondary" onClick={handleUpdate} disabled={updateBloco.isPending}>

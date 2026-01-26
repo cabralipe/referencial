@@ -185,9 +185,9 @@
   background: #ffffff;
 }
 
-.pareceres__parecer-field {
+.pareceres__parecer-field .ck.ck-editor__main > .ck-editor__editable {
   width: 100%;
-  min-height: 140px;
+  min-height: 160px;
   border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.6);
   padding: 0.75rem;
@@ -195,10 +195,8 @@
   font-size: 0.95rem;
 }
 
-.pareceres__parecer-field:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+.pareceres__parecer-field .ck.ck-editor__top .ck-toolbar {
+  border-radius: 0.75rem;
 }
 
 .pareceres__actions {

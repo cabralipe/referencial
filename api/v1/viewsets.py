@@ -2115,11 +2115,19 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             if gt and pergunta.gts.exists() and not pergunta.gts.filter(pk=gt.pk).exists():
                 raise ValidationError({"pergunta": "Pergunta não associada ao GT selecionado."})
 
+    def _is_caderno_tags(self, tags) -> bool:
+        return any(str(tag).startswith("caderno:") for tag in (tags or []))
+
     def perform_create(self, serializer):
-        _assert_roles(
-            self.request.user,
-            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
-        )
+        tags = serializer.validated_data.get("tags") or []
+        if getattr(self.request.user, "role", None) == self.request.user.Role.MEMBRO_GT:
+            if not self._is_caderno_tags(tags):
+                raise PermissionDenied("Membros GT só podem criar blocos de caderno.")
+        else:
+            _assert_roles(
+                self.request.user,
+                {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+            )
         gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
         pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
             serializer.validated_data.get("pergunta"), "id", None

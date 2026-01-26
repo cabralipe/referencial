@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useDeleteRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
@@ -301,13 +302,11 @@ export function PareceresPage() {
                 {canEdit && (
                   <div className="pareceres__edit">
                     <span className="pareceres__preview-label">Editar parecer (HTML)</span>
-                    <textarea
+                    <RichTextEditor
                       className="pareceres__parecer-field"
                       value={draftParecer[rev.id] ?? rev.parecer_html ?? ''}
-                      onChange={(event) =>
-                        setDraftParecer((prev) => ({ ...prev, [rev.id]: event.target.value }))
-                      }
-                      rows={6}
+                      onChange={(value) => setDraftParecer((prev) => ({ ...prev, [rev.id]: value }))}
+                      placeholder="Atualize o parecer."
                     />
                     <div className="pareceres__actions">
                       <button type="button" className="pareceres__button" onClick={() => handleAtualizarParecer(rev)}>

@@ -452,8 +452,8 @@
   resize: vertical;
 }
 
-.revisoes__parecer-field {
-  min-height: 150px;
+.revisoes__parecer-field .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 180px;
   border-radius: 0.9rem;
   border: 1px solid rgba(37, 99, 235, 0.35);
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
@@ -462,11 +462,8 @@
   line-height: 1.6;
 }
 
-.revisoes__parecer-field:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  background: #ffffff;
+.revisoes__parecer-field .ck.ck-editor__top .ck-toolbar {
+  border-radius: 0.9rem;
 }
 
 .revisoes__preview {
@@ -601,8 +598,8 @@
   gap: 1rem;
 }
 
-.revisoes__resposta-actions textarea {
-  min-height: 140px;
+.revisoes__resposta-actions .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 160px;
 }
 
 .revisoes__resposta-actions--modal label {
@@ -621,7 +618,7 @@
   color: #0f172a;
 }
 
-.revisoes__resposta-actions--modal textarea {
+.revisoes__resposta-actions--modal .ck.ck-editor__main > .ck-editor__editable {
   border-radius: 0.85rem;
   border: 1px solid rgba(148, 163, 184, 0.55);
   background: #ffffff;
@@ -631,15 +628,9 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.revisoes__resposta-actions--modal textarea.revisoes__parecer-field {
+.revisoes__resposta-actions--modal .revisoes__parecer-field .ck.ck-editor__main > .ck-editor__editable {
   border-color: rgba(37, 99, 235, 0.35);
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-}
-
-.revisoes__resposta-actions--modal textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .revisoes__modal-buttons {

@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/common/Button';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useCreateBloco } from '@/hooks/useBiblioteca';
@@ -115,7 +116,7 @@ export function CadernosPage() {
           </label>
           <label className="full">
             <span>Texto inicial</span>
-            <textarea value={conteudoTexto} onChange={(event) => setConteudoTexto(event.target.value)} rows={4} />
+            <RichTextEditor value={conteudoTexto} onChange={setConteudoTexto} placeholder="Escreva o texto inicial." />
           </label>
           <Button variant="secondary" type="submit" disabled={createBloco.isPending}>
             {createBloco.isPending ? 'Criando...' : 'Criar caderno'}

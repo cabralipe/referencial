@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { PageInstructions } from '@/components/common/PageInstructions';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useCreateRevisao, useDeleteRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
@@ -412,11 +413,11 @@ export function RevisoesPage() {
                 </label>
                 <label className="full">
                   <span>Atualizar parecer (HTML)</span>
-                  <textarea
-                    rows={4}
-                    className="revisoes__parecer-field"
+                  <RichTextEditor
                     value={draftParecer[revisao.id] ?? revisao.parecer_html ?? ''}
-                    onChange={(event) => setDraftParecer((prev) => ({ ...prev, [revisao.id]: event.target.value }))}
+                    onChange={(value) => setDraftParecer((prev) => ({ ...prev, [revisao.id]: value }))}
+                    placeholder="Atualize o parecer."
+                    className="revisoes__parecer-field"
                   />
                 </label>
                 <div className="revisoes__editar-actions">
@@ -527,10 +528,9 @@ export function RevisoesPage() {
                 </div>
                 <label className="full">
                   <span>Editar resposta (HTML)</span>
-                  <textarea
-                    rows={5}
+                  <RichTextEditor
                     value={draftConteudoResposta[respostaAtiva.id] ?? respostaAtiva.conteudo_html ?? ''}
-                    onChange={(e) => setDraftConteudoResposta((prev) => ({ ...prev, [respostaAtiva.id]: e.target.value }))}
+                    onChange={(value) => setDraftConteudoResposta((prev) => ({ ...prev, [respostaAtiva.id]: value }))}
                     placeholder="Ajuste a resposta antes de enviar revisão."
                   />
                 </label>
@@ -585,12 +585,11 @@ export function RevisoesPage() {
                 </div>
                 <label className="full">
                   <span>Parecer para o cliente (HTML)</span>
-                  <textarea
-                    rows={4}
-                    className="revisoes__parecer-field"
+                  <RichTextEditor
                     value={draftParecerResposta[respostaAtiva.id] ?? ''}
-                    onChange={(e) => setDraftParecerResposta((prev) => ({ ...prev, [respostaAtiva.id]: e.target.value }))}
+                    onChange={(value) => setDraftParecerResposta((prev) => ({ ...prev, [respostaAtiva.id]: value }))}
                     placeholder="Explique o ajuste esperado; o cliente verá este comentário."
+                    className="revisoes__parecer-field"
                   />
                 </label>
                 {feedbackResposta[respostaAtiva.id] && (

@@ -25,6 +25,34 @@ const CHECKLIST_OPTIONS = [
 const stripHtml = (html?: string | null) =>
   (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
+const formatAnchorLabel = (anchor: unknown) => {
+  if (!anchor) return null;
+  if (typeof anchor === 'string') {
+    try {
+      return formatAnchorLabel(JSON.parse(anchor));
+    } catch {
+      return anchor;
+    }
+  }
+  if (typeof anchor === 'object') {
+    const record = anchor as Record<string, unknown>;
+    if (typeof record.paragraph === 'number') {
+      return `Parágrafo ${record.paragraph}`;
+    }
+    if (typeof record.txt === 'string') {
+      return record.txt;
+    }
+    if (typeof record.trecho === 'string') {
+      return record.trecho;
+    }
+    if (typeof record.local === 'string') {
+      return record.local;
+    }
+    return JSON.stringify(record);
+  }
+  return null;
+};
+
 export function RedatorReviewDetailPage() {
   const { alvoTipo = 'resposta', alvoId = '' } = useParams();
   const alvoIdNumber = Number(alvoId);
@@ -259,7 +287,7 @@ export function RedatorReviewDetailPage() {
                   <span>{comentario.resolvido ? 'Resolvido' : 'Aberto'}</span>
                 </div>
                 <div dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }} />
-                {comentario.anchor_json && <small>Âncora: {comentario.anchor_json}</small>}
+                {comentario.anchor_json && <small>Âncora: {formatAnchorLabel(comentario.anchor_json)}</small>}
                 {!comentario.resolvido && (
                   <Button
                     size="sm"

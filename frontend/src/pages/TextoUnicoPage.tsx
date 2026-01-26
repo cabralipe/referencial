@@ -5,6 +5,7 @@ import { ApiError } from '@/api/client';
 import type { TextoColaborativo } from '@/api/types';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
 import {
@@ -57,11 +58,17 @@ const TEXTO_TEMPLATES: Template[] = [
   },
 ];
 
+const stripHtml = (value: string) => {
+  if (!value.trim()) return '';
+  const doc = new DOMParser().parseFromString(value, 'text/html');
+  return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
+
 const getWordStats = (value: string) => {
-  const trimmed = value.trim();
+  const trimmed = stripHtml(value);
   return {
     words: trimmed ? trimmed.split(/\s+/).length : 0,
-    chars: value.length,
+    chars: trimmed.length,
   };
 };
 
@@ -77,12 +84,6 @@ const ensureHtml = (value: string) => {
     .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
     .join('');
   return paragraphs || `<p>${text}</p>`;
-};
-
-const stripHtml = (value: string) => {
-  if (!value.trim()) return '';
-  const doc = new DOMParser().parseFromString(value, 'text/html');
-  return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
 };
 
 const buildPreview = (value: string, maxLength = 200) => {
@@ -646,11 +647,10 @@ export function TextoUnicoPage() {
                 value={novoTitulo}
                 onChange={(event) => setNovoTitulo(event.target.value)}
               />
-              <textarea
-                placeholder="Descreva o conteúdo inicial (texto simples; convertaremos para HTML)"
-                rows={4}
+              <RichTextEditor
                 value={novoConteudo}
-                onChange={(event) => setNovoConteudo(event.target.value)}
+                onChange={setNovoConteudo}
+                placeholder="Descreva o conteúdo inicial."
               />
               <div className="texto-colaborativo__toolbar">
                 <div className="texto-colaborativo__chips">
@@ -726,18 +726,18 @@ export function TextoUnicoPage() {
                           Origem: Missão #{texto.pergunta}
                         </div>
                       ) : null}
-                      <textarea
-                        rows={6}
+                      <RichTextEditor
                         value={draft.conteudo}
-                        onChange={(event) =>
+                        onChange={(value) =>
                           setCollabDrafts((prev) => ({
                             ...prev,
                             [texto.id]: {
                               titulo: prev[texto.id]?.titulo ?? '',
-                              conteudo: event.target.value,
+                              conteudo: value,
                             },
                           }))
                         }
+                        placeholder="Escreva o texto colaborativo."
                       />
                       <div className="texto-colaborativo__toolbar texto-colaborativo__toolbar--compact">
                         <div className="texto-colaborativo__chips">

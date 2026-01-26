@@ -102,6 +102,12 @@
   font-size: 0.95rem;
 }
 
+.task-detail__create .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 140px;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+}
+
 .task-detail__create .full {
   grid-column: 1 / -1;
 }
@@ -294,6 +300,12 @@
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, 'Liberation Mono', 'Courier New', monospace;
   min-height: 160px;
+}
+
+.pergunta-card__editor .ck.ck-editor__main > .ck-editor__editable {
+  border-radius: 0.9rem;
+  min-height: 200px;
+  font-size: 0.95rem;
 }
 
 .pergunta-card__toolbar {
@@ -538,6 +550,11 @@
 .task-detail__create textarea {
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
+}
+
+.task-detail__create .ck.ck-editor__main > .ck-editor__editable {
+  border-radius: var(--radius-sm);
   background-color: var(--color-surface);
 }
 

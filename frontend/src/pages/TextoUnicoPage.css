@@ -134,6 +134,12 @@
   font-size: 0.95rem;
 }
 
+.texto-colaborativo__create .ck.ck-editor__main > .ck-editor__editable {
+  border-radius: 0.75rem;
+  min-height: 140px;
+  font-size: 0.95rem;
+}
+
 .texto-colaborativo__create input:focus,
 .texto-colaborativo__create textarea:focus {
   outline: none;
@@ -266,6 +272,12 @@
   resize: vertical;
   min-height: 140px;
   font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.texto-colaborativo__card .ck.ck-editor__main > .ck-editor__editable {
+  border-radius: 0.75rem;
+  min-height: 160px;
   font-size: 0.95rem;
 }
 

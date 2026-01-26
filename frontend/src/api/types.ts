@@ -240,7 +240,7 @@ export interface Comentario {
   alvo_tipo: string;
   alvo_id: number;
   alvo_preview?: ComentarioAlvoPreview | null;
-  anchor_json: string;
+  anchor_json: string | Record<string, unknown> | null;
   conteudo_html: string;
   autor: number | null;
   resolvido: boolean;

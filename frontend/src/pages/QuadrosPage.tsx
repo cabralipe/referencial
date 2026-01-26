@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageInstructions } from '@/components/common/PageInstructions';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAreas } from '@/hooks/useAreas';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useQuadros, useUpdateCelulaQuadro } from '@/hooks/useQuadros';
@@ -275,10 +276,14 @@ export function QuadrosPage() {
                                       <span>
                                         {rowLabel} · {colLabel}
                                       </span>
-                                      <textarea
+                                      <RichTextEditor
+                                        className="quadros__cell-editor"
                                         value={value}
-                                        onChange={(event) => handleChange(quadro.id, linha, coluna, event.target.value)}
-                                        rows={4}
+                                        onChange={(next) => handleChange(quadro.id, linha, coluna, next)}
+                                        placeholder="Escreva aqui."
+                                        config={{
+                                          toolbar: ['bold', 'italic', 'link', 'bulletedList', 'numberedList', 'undo', 'redo'],
+                                        }}
                                       />
                                     </label>
                                     <button type="button" onClick={() => handleSalvar(quadro.id, linha, coluna)} disabled={isSaving}>

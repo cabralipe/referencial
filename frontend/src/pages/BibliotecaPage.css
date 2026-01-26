@@ -224,6 +224,11 @@
   background-color: var(--color-surface);
 }
 
+.biblioteca__novo-bloco .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 140px;
+  background-color: var(--color-surface);
+}
+
 .biblioteca__novo-bloco button {
   grid-column: 1 / -1;
   border: none;

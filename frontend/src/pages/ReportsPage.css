@@ -233,6 +233,19 @@
   resize: vertical;
 }
 
+.reports__composer .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 180px;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.reports__composer .ck.ck-editor__top .ck-toolbar {
+  border-radius: 0.5rem;
+}
+
 .reports__composer textarea:focus {
   outline: none;
   border-color: #3b82f6;

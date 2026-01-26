@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAuth } from '@/context/AuthContext';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useCreateBloco, useCreateMidia, useMidias } from '@/hooks/useBiblioteca';
@@ -15,6 +16,7 @@ export function BibliotecaPage() {
   const [filtroTags, setFiltroTags] = useState('');
   const [blocoError, setBlocoError] = useState<string | null>(null);
   const [midiaError, setMidiaError] = useState<string | null>(null);
+  const [novoConteudo, setNovoConteudo] = useState('');
   const [gtSelecionadoId, setGtSelecionadoId] = useState<number | ''>('');
   const [tarefaSelecionadaId, setTarefaSelecionadaId] = useState<number | ''>('');
   const [perguntaSelecionadaId, setPerguntaSelecionadaId] = useState<number | ''>('');
@@ -85,7 +87,7 @@ export function BibliotecaPage() {
     }
     const form = new FormData(event.currentTarget);
     const titulo = String(form.get('titulo') ?? '').trim();
-    const conteudo = String(form.get('conteudo') ?? '').trim();
+    const conteudo = novoConteudo.trim();
     const tags = String(form.get('tags') ?? '')
       .split(',')
       .map((tag) => tag.trim())
@@ -96,6 +98,7 @@ export function BibliotecaPage() {
     try {
       await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags, gt: gtId, pergunta: perguntaId });
       event.currentTarget.reset();
+      setNovoConteudo('');
       refetchBlocos();
     } catch (error) {
       setBlocoError('Não foi possível salvar a referência. Verifique os dados e tente novamente.');
@@ -242,7 +245,11 @@ export function BibliotecaPage() {
               </label>
               <label className="full">
                 <span>Referência (HTML ou texto)</span>
-                <textarea name="conteudo" rows={4} placeholder="Cole a referência, citação ou resumo" required />
+                <RichTextEditor
+                  value={novoConteudo}
+                  onChange={setNovoConteudo}
+                  placeholder="Cole a referência, citação ou resumo"
+                />
               </label>
           <button type="submit" disabled={criarBloco.isPending}>
             {criarBloco.isPending ? 'Salvando...' : 'Adicionar referência'}

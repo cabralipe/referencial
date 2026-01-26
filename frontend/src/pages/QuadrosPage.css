@@ -270,6 +270,18 @@
   background-color: #ffffff;
 }
 
+.quadros__cell-editor .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 140px;
+  max-height: 420px;
+  border-radius: 0.65rem;
+  font-size: 0.9rem;
+  background-color: #ffffff;
+}
+
+.quadros__cell-editor .ck.ck-editor__top .ck-toolbar {
+  border-radius: 0.65rem;
+}
+
 .quadros__grid button {
   margin-top: 0.5rem;
   border: none;
@@ -288,6 +300,12 @@
 }
 
 .quadros__grid--compact textarea {
+  min-height: 100px;
+  max-height: 260px;
+  font-size: 0.85rem;
+}
+
+.quadros__grid--compact .quadros__cell-editor .ck.ck-editor__main > .ck-editor__editable {
   min-height: 100px;
   max-height: 260px;
   font-size: 0.85rem;
@@ -313,6 +331,10 @@
   }
 
   .quadros__grid textarea {
+    min-height: 120px;
+  }
+
+  .quadros__cell-editor .ck.ck-editor__main > .ck-editor__editable {
     min-height: 120px;
   }
 }

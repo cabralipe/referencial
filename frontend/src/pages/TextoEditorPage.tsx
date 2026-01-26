@@ -5,6 +5,7 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
+import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useResposta, useUpdateResposta } from '@/hooks/useResposta';
@@ -32,6 +33,34 @@ const splitParagraphs = (html?: string | null) => {
     .split(/<\/p>/i)
     .map((chunk) => chunk.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
     .filter(Boolean);
+};
+
+const formatAnchorLabel = (anchor: unknown) => {
+  if (!anchor) return null;
+  if (typeof anchor === 'string') {
+    try {
+      return formatAnchorLabel(JSON.parse(anchor));
+    } catch {
+      return anchor;
+    }
+  }
+  if (typeof anchor === 'object') {
+    const record = anchor as Record<string, unknown>;
+    if (typeof record.paragraph === 'number') {
+      return `Parágrafo ${record.paragraph}`;
+    }
+    if (typeof record.txt === 'string') {
+      return record.txt;
+    }
+    if (typeof record.trecho === 'string') {
+      return record.trecho;
+    }
+    if (typeof record.local === 'string') {
+      return record.local;
+    }
+    return JSON.stringify(record);
+  }
+  return null;
 };
 
 export function TextoEditorPage() {
@@ -266,50 +295,79 @@ export function TextoEditorPage() {
       />
 
       <Card>
-        <div className="texto-editor__toolbar">
-          <button type="button" onClick={() => handleInsert('<h2>Título</h2>')}>Título</button>
-          <button type="button" onClick={() => handleInsert('<p>Parágrafo</p>')}>Parágrafo</button>
-          <button type="button" onClick={() => handleInsert('<ul><li>Item</li></ul>')}>Lista</button>
-          <button type="button" onClick={() => handleInsert('<table><tr><th>Título</th></tr><tr><td>Conteúdo</td></tr></table>')}>Tabela</button>
-        </div>
+        <div className="texto-editor__editor-shell">
+          <div className="texto-editor__toolbar">
+            <div className="texto-editor__toolbar-group">
+              <button type="button" onClick={() => handleInsert('<h2>Título</h2>')}>Título</button>
+              <button type="button" onClick={() => handleInsert('<p>Parágrafo</p>')}>Parágrafo</button>
+              <button type="button" onClick={() => handleInsert('<ul><li>Item</li></ul>')}>Lista</button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleInsert('<table><tr><th>Título</th></tr><tr><td>Conteúdo</td></tr></table>')
+                }
+              >
+                Tabela
+              </button>
+            </div>
+            <div className="texto-editor__toolbar-divider" />
+            <div className="texto-editor__toolbar-group">
+              <span className="texto-editor__toolbar-label">Estilo</span>
+              <button type="button" onClick={() => handleInsert('<strong>Negrito</strong>')}>Negrito</button>
+              <button type="button" onClick={() => handleInsert('<em>Itálico</em>')}>Itálico</button>
+              <button type="button" onClick={() => handleInsert('<u>Sublinhado</u>')}>Sublinhado</button>
+            </div>
+          </div>
 
-        <div className="texto-editor__bncc">
-          <label>
-            <span>Código BNCC</span>
-            <input
-              type="text"
-              value={bnccCode}
-              onChange={(event) => setBnccCode(event.target.value.toUpperCase())}
-              placeholder="Ex.: EF01LP01"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              if (!BNCC_REGEX.test(bnccCode.trim())) {
-                setFeedback('Código BNCC inválido. Use o padrão EF01LP01.');
-                return;
-              }
-              handleInsert(`<span class=\"bncc-code\">${bnccCode.trim()}</span>`);
-              setBnccCode('');
-            }}
-          >
-            Inserir código
-          </button>
-        </div>
+          <div className="texto-editor__subtoolbar">
+            <div className="texto-editor__bncc">
+              <label>
+                <span>Código BNCC</span>
+                <input
+                  type="text"
+                  value={bnccCode}
+                  onChange={(event) => setBnccCode(event.target.value.toUpperCase())}
+                  placeholder="Ex.: EF01LP01"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!BNCC_REGEX.test(bnccCode.trim())) {
+                    setFeedback('Código BNCC inválido. Use o padrão EF01LP01.');
+                    return;
+                  }
+                  handleInsert(`<span class=\"bncc-code\">${bnccCode.trim()}</span>`);
+                  setBnccCode('');
+                }}
+              >
+                Inserir código
+              </button>
+            </div>
+            <div className="texto-editor__status">
+              <span>Fonte: Documento</span>
+              <span>{draft.length} caracteres</span>
+            </div>
+          </div>
 
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          rows={12}
-          placeholder="Digite ou cole o texto aqui (HTML permitido)."
-        />
-        {feedback && <p className="texto-editor__feedback">{feedback}</p>}
-        {submitFeedback && <p className="texto-editor__feedback">{submitFeedback}</p>}
-        <details className="texto-editor__preview">
-          <summary>Pré-visualização</summary>
-          <div dangerouslySetInnerHTML={{ __html: ensureHtml(draft) || '<p>Sem conteúdo.</p>' }} />
-        </details>
+          <div className="texto-editor__page">
+            <div className="texto-editor__ruler" aria-hidden="true" />
+            <div className="texto-editor__editor">
+              <RichTextEditor
+                value={draft}
+                onChange={setDraft}
+                placeholder="Escreva como em um documento."
+              />
+            </div>
+          </div>
+
+          {feedback && <p className="texto-editor__feedback">{feedback}</p>}
+          {submitFeedback && <p className="texto-editor__feedback">{submitFeedback}</p>}
+          <details className="texto-editor__preview">
+            <summary>Pré-visualização</summary>
+            <div dangerouslySetInnerHTML={{ __html: ensureHtml(draft) || '<p>Sem conteúdo.</p>' }} />
+          </details>
+        </div>
       </Card>
 
       <Card>
@@ -359,17 +417,7 @@ export function TextoEditorPage() {
                   {comentario.anchor_json && (
                     <span>
                       Trecho:{' '}
-                      {(() => {
-                        try {
-                          const parsed = JSON.parse(comentario.anchor_json);
-                          if (parsed.paragraph) {
-                            return `Parágrafo ${parsed.paragraph}`;
-                          }
-                          return comentario.anchor_json;
-                        } catch {
-                          return comentario.anchor_json;
-                        }
-                      })()}
+                      {formatAnchorLabel(comentario.anchor_json)}
                     </span>
                   )}
                 </div>
