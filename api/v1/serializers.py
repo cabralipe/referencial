@@ -627,9 +627,15 @@ class RevisaoSerializer(serializers.ModelSerializer):
 
     def _build_resposta_preview(self, alvo_id: str | int):
         try:
-            resposta = Resposta.raw_objects.select_related("gt", "pergunta", "pergunta__tarefa").get(pk=alvo_id)
+            resposta = Resposta.raw_objects.select_related(
+                "gt",
+                "pergunta",
+                "pergunta__tarefa",
+                "autor",
+            ).get(pk=alvo_id)
         except Resposta.DoesNotExist:
             return None
+        tarefa = getattr(resposta.pergunta, "tarefa", None)
         return {
             "type": "resposta",
             "id": resposta.pk,
@@ -637,7 +643,10 @@ class RevisaoSerializer(serializers.ModelSerializer):
             "gt_nome": getattr(resposta.gt, "nome", None),
             "pergunta": resposta.pergunta_id,
             "pergunta_ordem": getattr(resposta.pergunta, "ordem", None),
-            "tarefa": getattr(getattr(resposta.pergunta, "tarefa", None), "id", None),
+            "tarefa": getattr(tarefa, "id", None),
+            "tarefa_nome": getattr(tarefa, "nome", None),
+            "tarefa_etapa": getattr(tarefa, "etapa", None),
+            "autor_nome": getattr(getattr(resposta, "autor", None), "nome", None),
             "conteudo_html": resposta.conteudo_html,
         }
 
@@ -755,6 +764,7 @@ class ComentarioSerializer(serializers.ModelSerializer):
             "gt_nome": getattr(texto.gt, "nome", None),
             "tarefa": texto.tarefa_id,
             "tarefa_nome": getattr(tarefa, "nome", None),
+            "tarefa_etapa": getattr(tarefa, "etapa", None),
         }
 
     def _build_quadro_preview(self, alvo_id: str | int):
@@ -788,6 +798,29 @@ class NotificacaoSerializer(serializers.ModelSerializer):
         model = Notificacao
         fields = ("id", "tipo", "payload_json", "lida", "created_at")
         read_only_fields = ("id", "tipo", "payload_json", "created_at")
+
+
+class MuralPostSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    titulo = serializers.CharField()
+    conteudo_html = serializers.CharField()
+    link_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    anexos = serializers.ListField(child=serializers.DictField(), required=False)
+    fixado = serializers.BooleanField(default=False)
+    gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
+    criado_por = serializers.DictField(required=False)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+
+class MuralPostCreateSerializer(serializers.Serializer):
+    titulo = serializers.CharField()
+    conteudo_html = serializers.CharField()
+    link_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    anexos = serializers.ListField(child=serializers.DictField(), required=False)
+    fixado = serializers.BooleanField(required=False)
+    include_all = serializers.BooleanField(required=False)
+    gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
 class MidiaSerializer(serializers.ModelSerializer):

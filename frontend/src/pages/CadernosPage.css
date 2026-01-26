@@ -1,0 +1,40 @@
+.cadernos {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cadernos__form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cadernos__form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cadernos__form .full {
+  grid-column: 1 / -1;
+}
+
+.cadernos__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.cadernos__card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cadernos__feedback {
+  color: var(--color-text-secondary);
+}
+
+.cadernos__empty {
+  color: var(--color-text-secondary);
+}

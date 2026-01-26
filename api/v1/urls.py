@@ -12,6 +12,8 @@ from .views import (
     CsrfTokenView,
     SessionLoginView,
     MebAvatarUploadView,
+    ContinuarView,
+    ApprovedDiffView,
     ConsultaPublicaPublicView,
     ManifestacaoPublicaView,
 )
@@ -26,6 +28,8 @@ urlpatterns = [
     path("auth/jwt", TokenObtainPairView.as_view(), name="token-obtain"),
     path("auth/jwt/refresh", TokenRefreshView.as_view(), name="token-refresh"),
     path("meb/avatar", MebAvatarUploadView.as_view(), name="meb-avatar-upload"),
+    path("continuar", ContinuarView.as_view(), name="continuar"),
+    path("diff/aprovado", ApprovedDiffView.as_view(), name="diff-aprovado"),
     path(
         "consultas_publicas/public/<str:token>",
         ConsultaPublicaPublicView.as_view(),

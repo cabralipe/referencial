@@ -1,0 +1,141 @@
+.texto-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.texto-editor__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.texto-editor textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+}
+
+.texto-editor__toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.texto-editor__toolbar button {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  padding: 0.4rem 0.6rem;
+}
+
+.texto-editor__bncc {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.texto-editor__bncc label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.texto-editor__feedback {
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+}
+
+.texto-editor__preview {
+  margin-top: 1rem;
+}
+
+.texto-editor__preview summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.texto-editor__comentarios,
+.texto-editor__historico {
+  display: grid;
+  gap: 1rem;
+}
+
+.texto-editor__comentario-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.texto-editor__comentario-form .full {
+  grid-column: 1 / -1;
+}
+
+.texto-editor__comentario-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.texto-editor__comentario-item {
+  background: var(--color-surface-muted);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.texto-editor__diff-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.texto-editor__diff {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.texto-editor__lista {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.texto-editor__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--color-surface-muted);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.texto-editor__item span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.texto-editor__empty {
+  color: var(--color-text-secondary);
+}
+
+.texto-editor__gt {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 200px;
+}
+
+.bncc-code {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--color-primary);
+  font-weight: 600;
+}

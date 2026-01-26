@@ -115,6 +115,9 @@ export type RevisaoAlvoPreview =
       pergunta?: number | null;
       pergunta_ordem?: number | null;
       tarefa?: number | null;
+      tarefa_nome?: string | null;
+      tarefa_etapa?: string | null;
+      autor_nome?: string | null;
       conteudo_html?: string;
     }
   | {
@@ -123,6 +126,8 @@ export type RevisaoAlvoPreview =
       gt?: number | null;
       gt_nome?: string | null;
       tarefa?: number | null;
+      tarefa_nome?: string | null;
+      tarefa_etapa?: string | null;
       conteudo_html?: string;
     }
   | {
@@ -281,6 +286,33 @@ export interface Notificacao {
   payload_json: Record<string, unknown>;
   lida: boolean;
   created_at: string;
+}
+
+export interface MuralPost {
+  id: string;
+  titulo: string;
+  conteudo_html: string;
+  link_url?: string | null;
+  anexos?: Array<{ titulo?: string; url?: string }>;
+  fixado?: boolean;
+  gt_ids?: number[];
+  criado_por?: {
+    id?: number | null;
+    nome?: string | null;
+    email?: string | null;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PppConfig {
+  tarefa_ids: number[];
+  descricao?: string;
+}
+
+export interface PppTrilhasResponse {
+  config: PppConfig;
+  trilhas: Tarefa[];
 }
 
 export interface Midia {

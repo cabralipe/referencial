@@ -1,15 +1,17 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
+import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 
 import './AppLayout.css';
 
 export function AppLayout() {
   const { cliente, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true,
   );
@@ -24,7 +26,22 @@ export function AppLayout() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('appSidebarCompact') === 'true';
   });
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('appFocusMode') === 'true';
+  });
   const sidenavInnerRef = useRef<HTMLDivElement | null>(null);
+  const roleLabel = useMemo(() => {
+    const role = user?.role ?? '';
+    const map: Record<string, string> = {
+      super_admin: 'Superadmin',
+      admin_cliente: 'Admin SEMED',
+      articulador: 'Redator',
+      membro_gt: 'Membro GT',
+      leitor: 'Leitor',
+    };
+    return map[role] ?? role;
+  }, [user?.role]);
 
   const themeStyles = useMemo(() => {
     const primary = cliente?.tema?.cor_primaria ?? '#2563eb';
@@ -49,6 +66,10 @@ export function AppLayout() {
   }, [sidebarCompact]);
 
   useEffect(() => {
+    window.localStorage.setItem('appFocusMode', String(focusMode));
+  }, [focusMode]);
+
+  useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     setIsDesktop(mq.matches);
@@ -64,8 +85,65 @@ export function AppLayout() {
     if (!isDesktop && sidebarCompact) setSidebarCompact(false);
   }, [isDesktop, sidebarCompact]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const focusParam = params.get('focus');
+    if (focusParam === '1') {
+      setFocusMode(true);
+    } else if (focusParam === '0') {
+      setFocusMode(false);
+    }
+  }, [location.search]);
+
+  const isGtMember = user?.role === 'membro_gt';
+  const isRedator = user?.role === 'articulador';
+  const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
+
+  const navItems = useMemo(() => {
+    if (isGtMember) {
+      return [
+        { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/minha-trilha', label: 'Minha Trilha', icon: 'tasks' },
+        { to: '/texto', label: 'Construção de Texto', icon: 'document' },
+        { to: '/cadernos', label: 'Cadernos', icon: 'library' },
+        { to: '/mural', label: 'Mural', icon: 'comment' },
+        { to: '/ppp', label: 'PPP', icon: 'kanban' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    const items = [
+      { to: '/', label: 'Painel', icon: 'dashboard' },
+      { to: '/tarefas', label: 'Trilhas pedagógicas', icon: 'tasks' },
+      { to: '/texto-unico', label: 'Texto único', icon: 'document' },
+      { to: '/quadros', label: 'Quadros', icon: 'kanban' },
+      { to: '/formularios', label: 'Formulários', icon: 'form' },
+      { to: '/revisoes', label: 'Revisões', icon: 'review' },
+      { to: '/pareceres', label: 'Pareceres', icon: 'review', only: ['membro_gt', 'articulador'] },
+      { to: '/comentarios', label: 'Comentários', icon: 'comment' },
+      { to: '/relatorios', label: 'Relatórios', icon: 'document', only: ['admin_cliente', 'super_admin'] },
+      { to: '/consultas-publicas', label: 'Consultas públicas', icon: 'document', only: ['admin_cliente', 'super_admin'] },
+      { to: '/biblioteca', label: 'Referências', icon: 'library' },
+      { to: '/exportacoes', label: 'Exportações', icon: 'export' },
+      { to: '/diff', label: 'Diff', icon: 'diff' },
+      { to: '/auditoria', label: 'Auditoria', icon: 'audit' },
+      { to: '/bloqueios', label: 'Bloqueios', icon: 'audit', only: ['admin_cliente', 'super_admin'] },
+      { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
+    ];
+    if (isAdmin) {
+      items.unshift(
+        { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
+        { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
+        { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
+      );
+    }
+    if (isRedator) {
+      items.unshift({ to: '/redator/revisoes', label: 'Fila de revisão', icon: 'review' });
+    }
+    return items;
+  }, [isAdmin, isGtMember, isRedator]);
+
   return (
-    <div className={`app-shell ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`} style={themeStyles}>
+    <div className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`} style={themeStyles}>
       <aside
         id="app-sidenav"
         className={`app-shell__sidenav ${sidebarOpen ? 'is-open' : 'is-closed'}`}
@@ -107,7 +185,7 @@ export function AppLayout() {
             <div className="app-shell__user-block">
               <div className="app-shell__user-info">
                 <span>{user?.nome ?? user?.email}</span>
-                <small>{user?.role}</small>
+                <small>{roleLabel}</small>
               </div>
               <button
                 type="button"
@@ -121,80 +199,17 @@ export function AppLayout() {
           )}
 
           <nav className="app-shell__nav-vertical">
-            <NavLink to="/" end>
-              <Icon name="dashboard" className="menu__icon" ariaHidden />
-              <span className="menu__label">Painel</span>
-            </NavLink>
-            <NavLink to="/tarefas">
-              <Icon name="tasks" className="menu__icon" ariaHidden />
-              <span className="menu__label">Trilhas pedagógicas</span>
-            </NavLink>
-            <NavLink to="/texto-unico">
-              <Icon name="document" className="menu__icon" ariaHidden />
-              <span className="menu__label">Texto único</span>
-            </NavLink>
-            <NavLink to="/quadros">
-              <Icon name="kanban" className="menu__icon" ariaHidden />
-              <span className="menu__label">Quadros</span>
-            </NavLink>
-            <NavLink to="/formularios">
-              <Icon name="form" className="menu__icon" ariaHidden />
-              <span className="menu__label">Formulários</span>
-            </NavLink>
-            <NavLink to="/revisoes">
-              <Icon name="review" className="menu__icon" ariaHidden />
-              <span className="menu__label">Revisões</span>
-            </NavLink>
-            {(user?.role === 'membro_gt' || user?.role === 'articulador') && (
-              <NavLink to="/pareceres">
-                <Icon name="review" className="menu__icon" ariaHidden />
-                <span className="menu__label">Pareceres</span>
-              </NavLink>
-            )}
-            <NavLink to="/comentarios">
-              <Icon name="comment" className="menu__icon" ariaHidden />
-              <span className="menu__label">Comentários</span>
-            </NavLink>
-            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
-              <NavLink to="/relatorios">
-                <Icon name="document" className="menu__icon" ariaHidden />
-                <span className="menu__label">Relatórios</span>
-              </NavLink>
-            )}
-            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
-              <NavLink to="/consultas-publicas">
-                <Icon name="document" className="menu__icon" ariaHidden />
-                <span className="menu__label">Consultas públicas</span>
-              </NavLink>
-            )}
-            <NavLink to="/biblioteca">
-              <Icon name="library" className="menu__icon" ariaHidden />
-              <span className="menu__label">Referências</span>
-            </NavLink>
-            <NavLink to="/exportacoes">
-              <Icon name="export" className="menu__icon" ariaHidden />
-              <span className="menu__label">Exportações</span>
-            </NavLink>
-            <NavLink to="/diff">
-              <Icon name="diff" className="menu__icon" ariaHidden />
-              <span className="menu__label">Diff</span>
-            </NavLink>
-            <NavLink to="/auditoria">
-              <Icon name="audit" className="menu__icon" ariaHidden />
-              <span className="menu__label">Auditoria</span>
-            </NavLink>
-            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
-              <NavLink to="/bloqueios">
-                <Icon name="audit" className="menu__icon" ariaHidden />
-                <span className="menu__label">Bloqueios</span>
-              </NavLink>
-            )}
-            {(user?.role === 'admin_cliente' || user?.role === 'super_admin') && (
-              <NavLink to="/gamificacao">
-                <Icon name="tasks" className="menu__icon" ariaHidden />
-                <span className="menu__label">Gamificação</span>
-              </NavLink>
-            )}
+            {navItems.map((item) => {
+              if (item.only && !item.only.includes(user?.role ?? '')) {
+                return null;
+              }
+              return (
+                <NavLink key={item.to} to={item.to} end={item.to === '/'}>
+                  <Icon name={item.icon} className="menu__icon" ariaHidden />
+                  <span className="menu__label">{item.label}</span>
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
       </aside>
@@ -240,6 +255,7 @@ export function AppLayout() {
 
       <main className="app-shell__main">
         <div className="app-shell__content">
+          <Breadcrumbs />
           <Outlet />
         </div>
       </main>

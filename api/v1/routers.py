@@ -16,8 +16,10 @@ from .viewsets import (
     GTViewSet,
     FormularioDinamicoViewSet,
     MidiaViewSet,
+    MuralPostViewSet,
     NotificacaoViewSet,
     PerguntaViewSet,
+    PppViewSet,
     ScoreViewSet,
     RevisaoViewSet,
     QuadroViewSet,
@@ -49,11 +51,13 @@ router.register("score", ScoreViewSet, basename="score")
 router.register("revisoes", RevisaoViewSet, basename="revisao")
 router.register("comentarios", ComentarioViewSet, basename="comentario")
 router.register("notificacoes", NotificacaoViewSet, basename="notificacao")
+router.register("mural", MuralPostViewSet, basename="mural")
 router.register("midias", MidiaViewSet, basename="midia")
 router.register("blocos", BlocoTextoViewSet, basename="bloco")
 router.register("meb/threads", MebThreadViewSet, basename="meb_thread")
 router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
 router.register("usuarios/lookup", UsuarioLookupViewSet, basename="usuario_lookup")
 router.register("consultas_publicas", ConsultaPublicaViewSet, basename="consulta_publica")
+router.register("ppp", PppViewSet, basename="ppp")
 
 __all__ = ["router"]

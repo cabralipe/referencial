@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
@@ -78,7 +78,7 @@ export function DashboardPage() {
   }
 
   if (user.role === 'membro_gt') {
-    return <MembroDashboard />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return (

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+from uuid import uuid4
+from django.utils.html import escape
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from django.db.models.functions import Cast
@@ -33,7 +35,7 @@ from core.permissions import (
     IsArticuladorForGT,
     IsMemberOfGT,
 )
-from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag
+from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag, usuario_e_membro_do_gt
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
 from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
@@ -78,6 +80,8 @@ from .serializers import (
     DiffResponseSerializer,
     MebMessageSerializer,
     MebThreadSerializer,
+    MuralPostCreateSerializer,
+    MuralPostSerializer,
     TarefaSerializer,
     TextoColaborativoSerializer,
     TextoUnicoSerializer,
@@ -149,6 +153,14 @@ DEFAULT_SCORE_CONFIG = {
     "tarefa_points": {},
 }
 
+PPP_CONFIG_KEY = "ppp.trilhas"
+DEFAULT_PPP_CONFIG = {
+    "tarefa_ids": [],
+    "descricao": "",
+}
+
+MURAL_NOTIFICATION_TYPE = "mural_post"
+
 
 def _normalize_score_config(payload):
     config = {
@@ -209,6 +221,70 @@ def _save_score_config(cliente_id: int, payload):
         },
     )
     return config
+
+
+def _normalize_ppp_config(payload):
+    config = {
+        "tarefa_ids": [],
+        "descricao": DEFAULT_PPP_CONFIG["descricao"],
+    }
+    if not payload:
+        return config
+    raw = payload
+    if isinstance(payload, str):
+        try:
+            raw = json.loads(payload)
+        except json.JSONDecodeError:
+            return config
+    if isinstance(raw, dict):
+        tarefa_ids = raw.get("tarefa_ids") or []
+        descricao = raw.get("descricao")
+        if isinstance(tarefa_ids, (list, tuple)):
+            normalized = []
+            for item in tarefa_ids:
+                try:
+                    valor = int(item)
+                except (TypeError, ValueError):
+                    continue
+                normalized.append(valor)
+            config["tarefa_ids"] = sorted(set(normalized))
+        if isinstance(descricao, str):
+            config["descricao"] = descricao.strip()
+    return config
+
+
+def _get_ppp_config(cliente_id: int):
+    cliente = Cliente.objects.filter(pk=cliente_id).first()
+    if not cliente:
+        return _normalize_ppp_config(None)
+    raw = obter_config(cliente, PPP_CONFIG_KEY)
+    return _normalize_ppp_config(raw)
+
+
+def _save_ppp_config(cliente_id: int, payload):
+    config = _normalize_ppp_config(payload)
+    ClienteConfig.raw_objects.update_or_create(
+        cliente_id=cliente_id,
+        chave=PPP_CONFIG_KEY,
+        defaults={
+            "valor_texto": json.dumps(config, ensure_ascii=True),
+            "is_deleted": False,
+        },
+    )
+    return config
+
+
+def _filtrar_tarefas_por_usuario(queryset, user):
+    if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+        user_gt_ids = _get_user_gt_ids(user)
+        if not user_gt_ids:
+            return queryset.none()
+        queryset = queryset.filter(
+            models.Q(perguntas__gts__id__in=user_gt_ids)
+            | models.Q(perguntas__gts__isnull=True)
+            | models.Q(perguntas__isnull=True)
+        ).distinct()
+    return queryset
 
 
 def _registrar_score(request, cliente_id: int, tarefa_id: int | None, origem_tipo: str, origem_id: str | int, descricao: str = ""):
@@ -332,6 +408,48 @@ class ScoreViewSet(viewsets.ViewSet):
             return Response(config)
         return Response(_get_score_config(cliente_id))
 
+
+class PppViewSet(viewsets.ViewSet):
+    permission_classes = [HasClientScope]
+
+    def list(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        config = _get_ppp_config(cliente_id)
+        tarefa_ids = config.get("tarefa_ids") or []
+        queryset = Tarefa.objects.filter(id__in=tarefa_ids).order_by("ordem")
+        queryset = _filtrar_tarefas_por_usuario(queryset, request.user)
+        gt_id = request.query_params.get("gt_id")
+        if gt_id:
+            queryset = queryset.filter(perguntas__respostas__gt_id=gt_id).distinct()
+        serializer = TarefaSerializer(queryset, many=True)
+        return Response(
+            {
+                "config": config,
+                "trilhas": serializer.data,
+            }
+        )
+
+    @action(
+        detail=False,
+        methods=["get", "patch"],
+        url_path="config",
+        permission_classes=[HasClientScope, IsAdminClienteOrReadOnly],
+    )
+    def config(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        if request.method == "PATCH":
+            _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+            payload = request.data or {}
+            tarefa_ids = payload.get("tarefa_ids") or []
+            if not isinstance(tarefa_ids, (list, tuple)):
+                raise ValidationError({"tarefa_ids": "Envie uma lista de IDs de tarefas."})
+            valid_ids = list(
+                Tarefa.objects.filter(cliente_id=cliente_id, id__in=tarefa_ids).values_list("id", flat=True)
+            )
+            payload["tarefa_ids"] = valid_ids
+            config = _save_ppp_config(cliente_id, payload)
+            return Response(config)
+        return Response(_get_ppp_config(cliente_id))
 
 class AiAssistViewSet(viewsets.ViewSet):
     permission_classes = [HasClientScope]
@@ -495,15 +613,7 @@ class TarefaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Tarefa.objects.all().order_by("ordem")
         user = self.request.user
-        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
-            user_gt_ids = _get_user_gt_ids(user)
-            if not user_gt_ids:
-                return queryset.none()
-            queryset = queryset.filter(
-                models.Q(perguntas__gts__id__in=user_gt_ids)
-                | models.Q(perguntas__gts__isnull=True)
-                | models.Q(perguntas__isnull=True)
-            ).distinct()
+        queryset = _filtrar_tarefas_por_usuario(queryset, user)
         etapa = self.request.query_params.get("etapa")
         gt_id = self.request.query_params.get("gt_id")
         if etapa:
@@ -518,6 +628,106 @@ class TarefaViewSet(viewsets.ModelViewSet):
         perguntas = tarefa.perguntas.order_by("ordem")
         serializer = PerguntaSerializer(perguntas, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="progresso")
+    def progresso(self, request, pk=None):
+        tarefa = self.get_object()
+        gt_id = request.query_params.get("gt_id") or request.query_params.get("gt")
+        if not gt_id:
+            raise ValidationError("Informe gt_id para calcular o progresso da trilha.")
+        try:
+            gt_id_int = int(gt_id)
+        except (TypeError, ValueError):
+            raise ValidationError("gt_id inválido.")
+        if not usuario_e_membro_do_gt(request.user, gt_id_int):
+            raise PermissionDenied("GT não disponível para o usuário.")
+
+        perguntas = list(tarefa.perguntas.order_by("ordem"))
+        perguntas_filtradas = []
+        for pergunta in perguntas:
+            if pergunta.gts.exists() and not pergunta.gts.filter(pk=gt_id_int).exists():
+                continue
+            perguntas_filtradas.append(pergunta)
+
+        respostas = Resposta.objects.filter(
+            gt_id=gt_id_int,
+            pergunta_id__in=[p.id for p in perguntas_filtradas],
+        )
+        respostas_map = {resp.pergunta_id: resp for resp in respostas}
+        revisoes = Revisao.objects.filter(
+            cliente_id=_get_request_cliente_id(request),
+            alvo_tipo=Revisao.AlvoTipo.RESPOSTA,
+            alvo_id__in=[str(resp.id) for resp in respostas],
+        ).order_by("-updated_at")
+        revisao_map = {}
+        for rev in revisoes:
+            if rev.alvo_id not in revisao_map:
+                revisao_map[rev.alvo_id] = rev
+
+        blocos = []
+        respondidos = 0
+        aprovados = 0
+        em_revisao = 0
+        devolvidos = 0
+        for pergunta in perguntas_filtradas:
+            resposta = respostas_map.get(pergunta.id)
+            resposta_id = getattr(resposta, "id", None)
+            revisao = revisao_map.get(str(resposta_id)) if resposta_id else None
+            status_bloco = "nao_iniciado"
+            if revisao:
+                if revisao.status == Revisao.Status.REPROVADO:
+                    status_bloco = "devolvido"
+                    devolvidos += 1
+                elif revisao.status == Revisao.Status.APROVADO:
+                    status_bloco = "concluido"
+                    aprovados += 1
+                elif revisao.status == Revisao.Status.EM_REVISAO:
+                    status_bloco = "em_revisao"
+                    em_revisao += 1
+            if status_bloco == "nao_iniciado":
+                if resposta and (resposta.conteudo_html or "").strip():
+                    status_bloco = "em_andamento"
+            if resposta and (resposta.conteudo_html or "").strip():
+                respondidos += 1
+
+            blocos.append(
+                {
+                    "pergunta_id": pergunta.id,
+                    "pergunta_ordem": pergunta.ordem,
+                    "pergunta_texto": pergunta.texto,
+                    "resposta_id": resposta_id,
+                    "status": status_bloco,
+                    "atualizado_em": getattr(resposta, "updated_at", None),
+                }
+            )
+
+        total = len(perguntas_filtradas)
+        if devolvidos:
+            status_trilha = "devolvido"
+        elif em_revisao:
+            status_trilha = "em_revisao"
+        elif total and aprovados == total:
+            status_trilha = "concluido"
+        elif respondidos:
+            status_trilha = "em_andamento"
+        else:
+            status_trilha = "nao_iniciado"
+
+        percentual = (respondidos / total) if total else 0
+        return Response(
+            {
+                "tarefa_id": tarefa.id,
+                "gt_id": gt_id_int,
+                "total_blocos": total,
+                "respondidos": respondidos,
+                "aprovados": aprovados,
+                "em_revisao": em_revisao,
+                "devolvidos": devolvidos,
+                "status": status_trilha,
+                "percentual": percentual,
+                "blocos": blocos,
+            }
+        )
 
     def perform_create(self, serializer):
         _assert_roles(self.request.user, {self.request.user.Role.ARTICULADOR, self.request.user.Role.ADMIN_CLIENTE})
@@ -1157,11 +1367,36 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Revisao.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Revisao.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
+        elif getattr(user, "role", None) == user.Role.MEMBRO_GT:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            queryset = queryset.filter(
+                models.Q(alvo_tipo=Revisao.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
+                | models.Q(alvo_tipo=Revisao.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
+                | models.Q(alvo_tipo=Revisao.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
+            )
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
-        _assert_roles(user, {user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE})
+        _assert_roles(user, {user.Role.MEMBRO_GT, user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE})
+        if user.role == user.Role.MEMBRO_GT:
+            alvo_tipo = serializer.validated_data.get("alvo_tipo")
+            alvo_id = serializer.validated_data.get("alvo_id")
+            if alvo_tipo == Revisao.AlvoTipo.RESPOSTA:
+                resposta = Resposta.objects.select_related("gt").filter(pk=alvo_id).first()
+                if not resposta or not usuario_e_membro_do_gt(user, resposta.gt_id):
+                    raise PermissionDenied("GT não disponível para o usuário.")
         revisao = serializer.save(
             cliente_id=_get_request_cliente_id(self.request),
             solicitante=user,
@@ -1205,6 +1440,54 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         instance = getattr(self, "_created_instance", None)
         if instance:
             response["ETag"] = instance.etag
+        return response
+
+    @action(detail=True, methods=["post"], url_path="decisao")
+    def decisao(self, request, pk=None):
+        revisao = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE})
+        _check_etag(request, revisao)
+
+        decision = (request.data.get("decision") or "").lower()
+        note = request.data.get("note") or ""
+        checklist = request.data.get("checklist") or []
+        if decision not in {"approve", "return"}:
+            raise ValidationError({"decision": "Informe approve ou return."})
+        if checklist and not isinstance(checklist, list):
+            raise ValidationError({"checklist": "Checklist deve ser uma lista."})
+
+        status = Revisao.Status.APROVADO if decision == "approve" else Revisao.Status.REPROVADO
+        checklist_html = ""
+        if checklist:
+            items = "".join(f"<li>{escape(str(item))}</li>" for item in checklist)
+            checklist_html = f"<ul>{items}</ul>"
+        parecer_html = f"{checklist_html}<p>{escape(str(note))}</p>" if (checklist_html or note) else revisao.parecer_html
+
+        old_status = revisao.status
+        revisao.status = status
+        if parecer_html is not None:
+            revisao.parecer_html = parecer_html
+        revisao.revisor = request.user
+        revisao.save(update_fields=["status", "parecer_html", "revisor", "updated_at"])
+
+        if revisao.status != old_status:
+            interessados = [uid for uid in [revisao.solicitante_id, revisao.revisor_id] if uid]
+            for usuario_id in interessados:
+                criar_notificacao(
+                    cliente_id=revisao.cliente_id,
+                    usuario_id=usuario_id,
+                    tipo="revisao.status",
+                    payload={"revisao_id": revisao.id, "status": revisao.status},
+                )
+            broadcast_stream_event(
+                revisao.alvo_tipo,
+                revisao.alvo_id,
+                "review:status_changed",
+                {"revisao_id": revisao.id, "status": revisao.status},
+            )
+
+        response = Response(self.get_serializer(revisao).data)
+        response["ETag"] = revisao.etag
         return response
 
 
@@ -1263,7 +1546,27 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
-        return Comentario.objects.filter(cliente_id=cliente_id).select_related("autor", "resolvido_por")
+        queryset = Comentario.objects.filter(cliente_id=cliente_id).select_related("autor", "resolvido_por")
+        user = self.request.user
+        if getattr(user, "role", None) == user.Role.MEMBRO_GT:
+            gt_ids = _get_user_gt_ids(user)
+            if not gt_ids:
+                return queryset.none()
+            resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            texto_unico_ids = TextoUnico.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            quadro_ids = Quadro.objects.filter(gt_id__in=gt_ids).annotate(
+                id_text=Cast("id", models.CharField()),
+            ).values("id_text")
+            queryset = queryset.filter(
+                models.Q(alvo_tipo=Comentario.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
+                | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
+                | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
+            )
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -1337,6 +1640,170 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         response = Response(serializer.data)
         response["ETag"] = comentario.etag
         return response
+
+
+def _build_mural_payload(*, payload, autor, gt_ids):
+    titulo = (payload.get("titulo") or "").strip()
+    conteudo_html = (payload.get("conteudo_html") or "").strip()
+    if not titulo:
+        raise ValidationError({"titulo": "Informe um título para o mural."})
+    if not conteudo_html:
+        raise ValidationError({"conteudo_html": "Informe o conteúdo do aviso."})
+
+    link_url = payload.get("link_url") or ""
+    anexos = payload.get("anexos") or []
+    if not isinstance(anexos, list):
+        raise ValidationError({"anexos": "Envie uma lista de anexos."})
+    fixado = bool(payload.get("fixado", False))
+    return {
+        "mural_id": payload.get("mural_id") or uuid4().hex,
+        "titulo": titulo,
+        "conteudo_html": conteudo_html,
+        "link_url": link_url,
+        "anexos": anexos,
+        "fixado": fixado,
+        "gt_ids": gt_ids,
+        "criado_por": {
+            "id": getattr(autor, "id", None),
+            "nome": getattr(autor, "nome", "") or getattr(autor, "email", ""),
+            "email": getattr(autor, "email", ""),
+        },
+    }
+
+
+def _pick_mural_data(notificacao):
+    payload = notificacao.payload_json or {}
+    return {
+        "id": payload.get("mural_id", str(notificacao.id)),
+        "titulo": payload.get("titulo") or "",
+        "conteudo_html": payload.get("conteudo_html") or "",
+        "link_url": payload.get("link_url"),
+        "anexos": payload.get("anexos") or [],
+        "fixado": bool(payload.get("fixado", False)),
+        "gt_ids": payload.get("gt_ids") or [],
+        "criado_por": payload.get("criado_por") or {},
+        "created_at": notificacao.created_at,
+        "updated_at": notificacao.updated_at,
+    }
+
+
+class MuralPostViewSet(viewsets.ViewSet):
+    permission_classes = [HasClientScope]
+
+    def list(self, request):
+        cliente_id = _get_request_cliente_id(request)
+        base_queryset = Notificacao.objects.filter(
+            cliente_id=cliente_id,
+            tipo=MURAL_NOTIFICATION_TYPE,
+        )
+        user = request.user
+        if getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            base_queryset = base_queryset.filter(usuario=user)
+        notifications = base_queryset.order_by("-updated_at")
+
+        entries: dict[str, dict] = {}
+        for notificacao in notifications:
+            data = _pick_mural_data(notificacao)
+            entry = entries.get(data["id"])
+            if not entry or data["updated_at"] > entry["updated_at"]:
+                entries[data["id"]] = data
+
+        ordered = sorted(
+            entries.values(),
+            key=lambda item: (not item.get("fixado", False), item.get("updated_at")),
+            reverse=True,
+        )
+        serializer = MuralPostSerializer(ordered, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        serializer = MuralPostCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        cliente_id = _get_request_cliente_id(request)
+
+        gt_ids = serializer.validated_data.get("gt_ids") or []
+        if gt_ids:
+            gt_ids = list(
+                GT.objects.filter(cliente_id=cliente_id, id__in=gt_ids).values_list("id", flat=True)
+            )
+        include_all = serializer.validated_data.get("include_all", False) or not gt_ids
+        payload = _build_mural_payload(
+            payload=serializer.validated_data,
+            autor=request.user,
+            gt_ids=gt_ids,
+        )
+
+        UserModel = get_user_model()
+        recipients = UserModel.objects.filter(cliente_id=cliente_id, is_active=True)
+        if not include_all and gt_ids:
+            recipients = recipients.filter(grupos_trabalho__id__in=gt_ids)
+        recipients = recipients.distinct()
+
+        now = timezone.now()
+        notificacoes = [
+            Notificacao(
+                cliente_id=cliente_id,
+                usuario=usuario,
+                tipo=MURAL_NOTIFICATION_TYPE,
+                payload_json=payload,
+                created_at=now,
+                updated_at=now,
+            )
+            for usuario in recipients
+        ]
+        Notificacao.objects.bulk_create(notificacoes, ignore_conflicts=True)
+        response_data = {
+            **payload,
+            "id": payload.get("mural_id"),
+            "created_at": now,
+            "updated_at": now,
+        }
+        response = MuralPostSerializer(response_data)
+        return Response(response.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        serializer = MuralPostCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        cliente_id = _get_request_cliente_id(request)
+        gt_ids = serializer.validated_data.get("gt_ids") or []
+        if gt_ids:
+            gt_ids = list(
+                GT.objects.filter(cliente_id=cliente_id, id__in=gt_ids).values_list("id", flat=True)
+            )
+        payload = _build_mural_payload(
+            payload={**serializer.validated_data, "mural_id": pk},
+            autor=request.user,
+            gt_ids=gt_ids,
+        )
+        now = timezone.now()
+        queryset = Notificacao.objects.filter(
+            cliente_id=cliente_id,
+            tipo=MURAL_NOTIFICATION_TYPE,
+            payload_json__mural_id=pk,
+        )
+        queryset.update(payload_json=payload, updated_at=now)
+        response_data = {
+            **payload,
+            "id": pk,
+            "created_at": now,
+            "updated_at": now,
+        }
+        response = MuralPostSerializer(response_data)
+        return Response(response.data)
+
+    def destroy(self, request, pk=None):
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        cliente_id = _get_request_cliente_id(request)
+        now = timezone.now()
+        queryset = Notificacao.objects.filter(
+            cliente_id=cliente_id,
+            tipo=MURAL_NOTIFICATION_TYPE,
+            payload_json__mural_id=pk,
+        )
+        queryset.update(is_deleted=True, updated_at=now)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class NotificacaoViewSet(FeatureFlagMixin, mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
@@ -1540,11 +2007,19 @@ class MidiaViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             if gt and pergunta.gts.exists() and not pergunta.gts.filter(pk=gt.pk).exists():
                 raise ValidationError({"pergunta": "Pergunta não associada ao GT selecionado."})
 
+    def _is_caderno_tags(self, tags) -> bool:
+        return any(str(tag).startswith("caderno:") for tag in (tags or []))
+
     def perform_create(self, serializer):
-        _assert_roles(
-            self.request.user,
-            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
-        )
+        tags = serializer.validated_data.get("tags") or []
+        if getattr(self.request.user, "role", None) == self.request.user.Role.MEMBRO_GT:
+            if not self._is_caderno_tags(tags):
+                raise PermissionDenied("Membros GT só podem criar blocos de caderno.")
+        else:
+            _assert_roles(
+                self.request.user,
+                {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+            )
         gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
         pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
             serializer.validated_data.get("pergunta"), "id", None
@@ -1666,10 +2141,18 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.ARTICULADOR})
+        is_member = getattr(request.user, "role", None) == request.user.Role.MEMBRO_GT
+        if is_member and not self._is_caderno_tags(instance.tags):
+            raise PermissionDenied("Membros GT só podem editar blocos de caderno.")
+        if not is_member:
+            _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.ARTICULADOR})
         _check_etag(request, instance)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        if is_member:
+            tags = serializer.validated_data.get("tags") or instance.tags
+            if not self._is_caderno_tags(tags):
+                raise PermissionDenied("Mantenha a tag de caderno ao editar.")
         gt_id = serializer.validated_data.get("gt_id") or getattr(serializer.validated_data.get("gt"), "id", None)
         pergunta_id = serializer.validated_data.get("pergunta_id") or getattr(
             serializer.validated_data.get("pergunta"), "id", None
@@ -1685,10 +2168,14 @@ class BlocoTextoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         return response
 
     def perform_destroy(self, instance):
-        _assert_roles(
-            self.request.user,
-            {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
-        )
+        if getattr(self.request.user, "role", None) == self.request.user.Role.MEMBRO_GT:
+            if not self._is_caderno_tags(instance.tags):
+                raise PermissionDenied("Membros GT só podem remover blocos de caderno.")
+        else:
+            _assert_roles(
+                self.request.user,
+                {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.ARTICULADOR},
+            )
         instance.delete()
 
 

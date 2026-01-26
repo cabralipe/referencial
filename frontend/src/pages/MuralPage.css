@@ -1,0 +1,63 @@
+.mural {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mural__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.mural__card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.mural__card header span {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.mural__badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mural__link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--color-primary);
+}
+
+.mural__anexos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.mural__anexos a {
+  background: var(--color-surface-muted);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.mural__autor {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.mural__empty {
+  color: var(--color-text-secondary);
+}

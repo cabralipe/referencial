@@ -11,12 +11,14 @@ interface UseAuditLogsParams {
   dateFrom?: string; // ISO date or datetime
   dateTo?: string;   // ISO date or datetime
   pageSize?: number;
+  enabled?: boolean;
 }
 
-export function useAuditLogs({ entidade, entidadeId, usuarioId, acao, dateFrom, dateTo, pageSize }: UseAuditLogsParams = {}) {
+export function useAuditLogs({ entidade, entidadeId, usuarioId, acao, dateFrom, dateTo, pageSize, enabled }: UseAuditLogsParams = {}) {
   const client = useApiClient();
 
   return useQuery({
+    enabled: enabled ?? (entidade ? Boolean(entidadeId) : true),
     queryKey: ['audit-logs', { entidade, entidadeId, usuarioId, acao, dateFrom, dateTo, pageSize }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<AuditLog>>('/audit', {

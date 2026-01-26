@@ -17,6 +17,8 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from core.activity import touch_user_session
 from core.models import ClienteTema
 from core.permissions import HasClientScope
+from services.progress import get_next_block_for_user
+from services.diff import diff_last_approved
 from consultas.models import ConsultaPublica, ManifestacaoPublica
 
 from .serializers import (
@@ -110,6 +112,46 @@ class MebAvatarUploadView(APIView):
         tema.meb_avatar_url = url
         tema.save(update_fields=["meb_avatar_url", "updated_at"])
         return Response({"url": url})
+
+
+class ContinuarView(APIView):
+    permission_classes = [HasClientScope]
+
+    def get(self, request):
+        bloco = get_next_block_for_user(request.user)
+        if not bloco:
+            return Response(
+                {
+                    "url": "/minha-trilha?concluida=1",
+                    "message": "Todas as trilhas foram concluídas.",
+                }
+            )
+        if bloco.resposta_id:
+            url = f"/texto/{bloco.resposta_id}?gt={bloco.gt_id}"
+        else:
+            url = f"/minha-trilha/{bloco.tarefa_id}?gt={bloco.gt_id}"
+        return Response(
+            {
+                "url": url,
+                "status": bloco.status,
+                "gt_id": bloco.gt_id,
+                "tarefa_id": bloco.tarefa_id,
+                "pergunta_id": bloco.pergunta_id,
+                "resposta_id": bloco.resposta_id,
+            }
+        )
+
+
+class ApprovedDiffView(APIView):
+    permission_classes = [HasClientScope]
+
+    def get(self, request):
+        alvo_tipo = request.query_params.get("alvo_tipo")
+        alvo_id = request.query_params.get("alvo_id")
+        if not alvo_tipo or not alvo_id:
+            raise ValidationError("Informe alvo_tipo e alvo_id")
+        html = diff_last_approved(alvo_tipo, alvo_id)
+        return Response({"html": html})
 
 
 def _consulta_publica_por_token(token: str, require_open: bool = False) -> ConsultaPublica:

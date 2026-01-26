@@ -92,7 +92,7 @@ class Usuario(AbstractUser):
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "Super Admin"
         ADMIN_CLIENTE = "admin_cliente", "Admin do Cliente"
-        ARTICULADOR = "articulador", "Articulador"
+        ARTICULADOR = "articulador", "Redator"
         MEMBRO_GT = "membro_gt", "Membro GT"
         LEITOR = "leitor", "Leitor"
 

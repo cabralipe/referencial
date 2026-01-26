@@ -7,12 +7,14 @@ interface UseComentariosParams {
   alvoTipo?: string;
   alvoId?: number;
   resolvido?: boolean;
+  enabled?: boolean;
 }
 
-export function useComentarios({ alvoId, alvoTipo, resolvido }: UseComentariosParams = {}) {
+export function useComentarios({ alvoId, alvoTipo, resolvido, enabled }: UseComentariosParams = {}) {
   const client = useApiClient();
 
   return useQuery({
+    enabled: enabled ?? (alvoTipo ? Boolean(alvoId) : true),
     queryKey: ['comentarios', { alvoId, alvoTipo, resolvido }],
     queryFn: async () => {
       const response = await client.get<PaginatedResponse<Comentario>>('/comentarios', {

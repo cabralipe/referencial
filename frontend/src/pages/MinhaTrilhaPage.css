@@ -1,0 +1,89 @@
+.minha-trilha {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.minha-trilha__filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.minha-trilha__filters label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 220px;
+}
+
+.minha-trilha__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.minha-trilha__card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.minha-trilha__status {
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.minha-trilha__status.status-nao_iniciado {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.minha-trilha__status.status-em_andamento {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.minha-trilha__status.status-em_revisao {
+  background: #fef9c3;
+  color: #92400e;
+}
+
+.minha-trilha__status.status-devolvido {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.minha-trilha__status.status-concluido {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.minha-trilha__progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-border);
+  margin: 0.75rem 0;
+  overflow: hidden;
+}
+
+.minha-trilha__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--app-primary), var(--app-secondary));
+}
+
+.minha-trilha__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.minha-trilha__empty {
+  color: var(--color-text-secondary);
+}

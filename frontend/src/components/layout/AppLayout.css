@@ -5,6 +5,29 @@
   background-color: var(--color-bg);
 }
 
+.app-shell--gt .app-shell__sidenav {
+  background: linear-gradient(180deg, #f6f3ec 0%, #ffffff 65%);
+}
+
+.app-shell--gt .app-shell__nav-vertical a {
+  font-weight: 600;
+}
+
+.app-shell--gt .app-shell__nav-vertical a.active {
+  background: rgba(244, 230, 197, 0.6);
+  color: #1f2933;
+}
+
+.app-shell--focus .app-shell__sidenav,
+.app-shell--focus .app-shell__overlay,
+.app-shell--focus .app-shell__header {
+  display: none !important;
+}
+
+.app-shell--focus .app-shell__main {
+  grid-column: 1 / -1;
+}
+
 /* Layout desktop fixo dentro do container */
 @media (min-width: 1024px) {
   .app-shell {
