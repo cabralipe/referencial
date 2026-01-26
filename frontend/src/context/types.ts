@@ -34,6 +34,7 @@ export interface ClienteContextPayload {
 export interface LoginCredentials {
   email: string;
   password: string;
+  role?: string;
 }
 
 export interface AuthContextValue {

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
@@ -16,17 +16,18 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString('pt-BR');
 };
 
-type TabKey = 'novo' | 'em_revisao' | 'devolvido' | 'validado';
+type TabKey = 'pendentes' | 'em_revisao' | 'devolvidas' | 'validadas';
 
 const TAB_LABELS: Record<TabKey, string> = {
-  novo: 'Novo',
+  pendentes: 'Pendentes',
   em_revisao: 'Em revisão',
-  devolvido: 'Devolvido',
-  validado: 'Validado',
+  devolvidas: 'Devolvidas',
+  validadas: 'Validadas',
 };
 
 export function RedatorInboxPage() {
-  const [tab, setTab] = useState<TabKey>('novo');
+  const location = useLocation();
+  const [tab, setTab] = useState<TabKey>('pendentes');
   const revisoesEmRevisao = useRevisoes({ status: 'em_revisao', pageSize: 300 });
   const revisoesReprovadas = useRevisoes({ status: 'reprovado', pageSize: 300 });
   const revisoesAprovadas = useRevisoes({ status: 'aprovado', pageSize: 300 });
@@ -41,11 +42,30 @@ export function RedatorInboxPage() {
   }, [revisoesEmRevisao.data]);
 
   const tabData: Record<TabKey, Revisao[]> = {
-    novo: novas,
+    pendentes: novas,
     em_revisao: emRevisao,
-    devolvido: revisoesReprovadas.data ?? [],
-    validado: revisoesAprovadas.data ?? [],
+    devolvidas: revisoesReprovadas.data ?? [],
+    validadas: revisoesAprovadas.data ?? [],
   };
+
+  useEffect(() => {
+    const tabParam = new URLSearchParams(location.search).get('tab');
+    if (!tabParam) return;
+    const normalized = tabParam.toLowerCase();
+    const alias: Record<string, TabKey> = {
+      pendentes: 'pendentes',
+      pendente: 'pendentes',
+      novo: 'pendentes',
+      em_revisao: 'em_revisao',
+      'em-revisao': 'em_revisao',
+      devolvidas: 'devolvidas',
+      devolvido: 'devolvidas',
+      validadas: 'validadas',
+      validado: 'validadas',
+    };
+    const mapped = alias[normalized];
+    if (mapped) setTab(mapped);
+  }, [location.search]);
 
   if (loading) {
     return <FullPageLoader message="Carregando revisões..." />;
@@ -54,8 +74,8 @@ export function RedatorInboxPage() {
   return (
     <div className="redator-inbox">
       <PageHeader
-        title="Inbox de Revisões"
-        description="Acompanhe as entregas dos GTs e acelere as devolutivas."
+        title="Revisões"
+        description="Acompanhe as entregas dos GTs e conclua validações com agilidade."
       />
 
       <div className="redator-inbox__tabs">

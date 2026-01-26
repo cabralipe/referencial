@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
@@ -32,6 +32,8 @@ import { AdminConsolePage } from './pages/AdminConsolePage';
 import { AdminModulePage } from './pages/AdminModulePage';
 import { RedatorInboxPage } from './pages/RedatorInboxPage';
 import { RedatorReviewDetailPage } from './pages/RedatorReviewDetailPage';
+import { RedatorConteudosPage } from './pages/RedatorConteudosPage';
+import { RedatorMuralPage } from './pages/RedatorMuralPage';
 import { ExportacoesPage } from './pages/ExportacoesPage';
 import { DiffPage } from './pages/DiffPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
@@ -260,10 +262,42 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'redator/painel',
+        element: (
+          <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
+            <DashboardPage />
+          </RoleRoute>
+        ),
+      },
+      {
         path: 'redator/revisoes',
         element: (
           <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
             <RedatorInboxPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'redator/conteudos',
+        element: (
+          <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
+            <RedatorConteudosPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'redator/mural',
+        element: (
+          <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
+            <RedatorMuralPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'redator/exportacoes',
+        element: (
+          <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
+            <ExportacoesPage />
           </RoleRoute>
         ),
       },
@@ -274,6 +308,26 @@ export const router = createBrowserRouter([
             <RedatorReviewDetailPage />
           </RoleRoute>
         ),
+      },
+      {
+        path: 'redator/fila',
+        element: <Navigate to="/redator/revisoes" replace />,
+      },
+      {
+        path: 'redator/diff',
+        element: <Navigate to="/redator/revisoes?tab=diff" replace />,
+      },
+      {
+        path: 'redator/comentarios',
+        element: <Navigate to="/redator/revisoes?tab=comentarios" replace />,
+      },
+      {
+        path: 'redator/pareceres',
+        element: <Navigate to="/redator/revisoes?tab=parecer" replace />,
+      },
+      {
+        path: 'redator/referencias',
+        element: <Navigate to="/redator/revisoes?tab=referencias" replace />,
       },
       {
         path: 'biblioteca',

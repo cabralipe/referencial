@@ -228,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchCliente]);
 
   const login = useCallback(
-    async ({ email, password }: LoginCredentials) => {
+    async ({ email, password, role }: LoginCredentials) => {
       queryClient.clear();
       setState((prev) => ({
         ...prev,
@@ -254,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const csrfToken = await ensureCsrfToken();
-        const payload = JSON.stringify({ email, password });
+        const payload = JSON.stringify({ email, password, role });
         const commonInit: RequestInit = {
           method: 'POST',
           headers: {

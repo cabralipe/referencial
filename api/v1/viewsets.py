@@ -30,6 +30,7 @@ except ImportError:  # pragma: no cover
 from core.activity import online_sessions_for_cliente
 from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, ThrottleBlock, UserSessionLog
 from core.permissions import (
+    CanManageMural,
     HasClientScope,
     IsAdminClienteOrReadOnly,
     IsArticuladorForGT,
@@ -1819,7 +1820,7 @@ class MuralPostViewSet(viewsets.ViewSet):
             tipo=MURAL_NOTIFICATION_TYPE,
         )
         user = request.user
-        if getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        if not CanManageMural().has_permission(request, self):
             base_queryset = base_queryset.filter(usuario=user)
         notifications = base_queryset.order_by("-updated_at")
 
@@ -1841,7 +1842,8 @@ class MuralPostViewSet(viewsets.ViewSet):
     def create(self, request):
         serializer = MuralPostCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        if not CanManageMural().has_permission(request, self):
+            raise PermissionDenied("Ação não permitida para o seu perfil")
         cliente_id = _get_request_cliente_id(request)
 
         gt_ids = serializer.validated_data.get("gt_ids") or []
@@ -1887,7 +1889,8 @@ class MuralPostViewSet(viewsets.ViewSet):
     def update(self, request, pk=None):
         serializer = MuralPostCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        if not CanManageMural().has_permission(request, self):
+            raise PermissionDenied("Ação não permitida para o seu perfil")
         cliente_id = _get_request_cliente_id(request)
         gt_ids = serializer.validated_data.get("gt_ids") or []
         if gt_ids:
@@ -1916,7 +1919,8 @@ class MuralPostViewSet(viewsets.ViewSet):
         return Response(response.data)
 
     def destroy(self, request, pk=None):
-        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
+        if not CanManageMural().has_permission(request, self):
+            raise PermissionDenied("Ação não permitida para o seu perfil")
         cliente_id = _get_request_cliente_id(request)
         now = timezone.now()
         queryset = Notificacao.objects.filter(

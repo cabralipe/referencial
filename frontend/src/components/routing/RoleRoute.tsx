@@ -16,7 +16,14 @@ export function RoleRoute({ allowed, children }: RoleRouteProps) {
   }
 
   if (!allowed.includes(user.role)) {
-    const fallback = user.role === 'membro_gt' ? '/inicio' : '/';
+    const fallback =
+      user.role === 'membro_gt'
+        ? '/inicio'
+        : user.role === 'revisor'
+          ? '/revisor/inbox'
+          : user.role === 'articulador'
+            ? '/redator/revisoes'
+            : '/';
     return <Navigate to={fallback} replace state={{ from: location }} />;
   }
 

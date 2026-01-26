@@ -6,12 +6,37 @@ import { Button } from '@/components/common/Button';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useBlocos, useMidias } from '@/hooks/useBiblioteca';
 import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost } from '@/hooks/useMural';
 
 import './AdminMuralPage.css';
 
-export function AdminMuralPage() {
+type MuralEditorPageProps = {
+  title?: string;
+  description?: string;
+};
+
+type ReferenciaItem =
+  | {
+      kind: 'bloco';
+      id: string;
+      titulo: string;
+      conteudo_html: string;
+      updated_at: string;
+    }
+  | {
+      kind: 'midia';
+      id: string;
+      titulo: string;
+      descricao?: string | null;
+      link_url: string;
+      updated_at: string;
+    };
+
+export function AdminMuralPage({ title = 'Admin · Mural', description = 'Publique avisos para os membros do GT e acompanhe os comunicados.' }: MuralEditorPageProps) {
   const { data: posts, isLoading } = useMural();
+  const { data: midias, isLoading: midiasLoading } = useMidias();
+  const { data: blocos, isLoading: blocosLoading } = useBlocos();
   const { gtOptions } = useAvailableGts({ scope: 'all' });
   const createPost = useCreateMuralPost();
   const updatePost = useUpdateMuralPost();
@@ -29,6 +54,27 @@ export function AdminMuralPage() {
   const ordered = useMemo(() => {
     return (posts ?? []).slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }, [posts]);
+
+  const referencias = useMemo<ReferenciaItem[]>(() => {
+    const blocosItems: ReferenciaItem[] = (blocos ?? []).map((bloco) => ({
+      kind: 'bloco',
+      id: `bloco-${bloco.id}`,
+      titulo: bloco.titulo,
+      conteudo_html: bloco.conteudo_html,
+      updated_at: bloco.updated_at,
+    }));
+    const midiaItems: ReferenciaItem[] = (midias ?? []).map((midia) => ({
+      kind: 'midia',
+      id: `midia-${midia.id}`,
+      titulo: midia.titulo || 'Link da biblioteca',
+      descricao: midia.descricao,
+      link_url: midia.url,
+      updated_at: midia.created_at,
+    }));
+    return [...blocosItems, ...midiaItems].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+    );
+  }, [blocos, midias]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -67,16 +113,13 @@ export function AdminMuralPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || midiasLoading || blocosLoading) {
     return <FullPageLoader message="Carregando mural..." />;
   }
 
   return (
     <div className="admin-mural">
-      <PageHeader
-        title="Admin · Mural"
-        description="Publique avisos para os membros do GT e acompanhe os comunicados." 
-      />
+      <PageHeader title={title} description={description} />
 
       <Card>
         <form className="admin-mural__form" onSubmit={handleSubmit}>
@@ -186,6 +229,47 @@ export function AdminMuralPage() {
           </Card>
         ))}
       </div>
+
+      <section className="admin-mural__references">
+        <h2>Materiais da biblioteca</h2>
+        <div className="admin-mural__references-grid">
+          {referencias.map((item) => {
+            if (item.kind === 'midia') {
+              const descricao = item.descricao?.trim() || item.link_url;
+              return (
+                <Card key={item.id}>
+                  <div className="admin-mural__reference-card">
+                    <header>
+                      <div>
+                        <h3>{item.titulo}</h3>
+                        <span>{new Date(item.updated_at).toLocaleString('pt-BR')}</span>
+                      </div>
+                    </header>
+                    <p>{descricao}</p>
+                    <a className="admin-mural__reference-link" href={item.link_url} target="_blank" rel="noreferrer">
+                      Abrir link
+                    </a>
+                  </div>
+                </Card>
+              );
+            }
+            return (
+              <Card key={item.id}>
+                <div className="admin-mural__reference-card">
+                  <header>
+                    <div>
+                      <h3>{item.titulo}</h3>
+                      <span>{new Date(item.updated_at).toLocaleString('pt-BR')}</span>
+                    </div>
+                  </header>
+                  <div dangerouslySetInnerHTML={{ __html: item.conteudo_html }} />
+                </div>
+              </Card>
+            );
+          })}
+          {referencias.length === 0 && <p className="admin-mural__references-empty">Nenhuma referência encontrada.</p>}
+        </div>
+      </section>
     </div>
   );
 }

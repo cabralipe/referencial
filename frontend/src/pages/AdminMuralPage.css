@@ -69,3 +69,37 @@
 .admin-mural__feedback {
   color: var(--color-text-secondary);
 }
+
+.admin-mural__references {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-mural__references-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-mural__reference-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-mural__reference-card header span {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.admin-mural__reference-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--color-primary);
+}
+
+.admin-mural__references-empty {
+  color: var(--color-text-secondary);
+}

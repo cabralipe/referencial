@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
@@ -441,10 +441,10 @@ function ArticuladorDashboard() {
   const { data: scoreSummary, isLoading: scoreLoading, refetch: refetchScore } = useScoreSummary();
 
   const [gtSearch, setGtSearch] = useState('');
-  const [trilhaSearch, setTrilhaSearch] = useState('');
   const [selectedGtId, setSelectedGtId] = useState<number | null>(null);
   const [modalRespostaId, setModalRespostaId] = useState<number | null>(null);
   const { data: respostasDoGt, isLoading: respostasLoading } = useRespostas({ gtId: selectedGtId });
+  const trilhaSearch = '';
 
   useEffect(() => {
     if (!selectedGtId && gtOptions.length > 0) {
@@ -576,6 +576,30 @@ function ArticuladorDashboard() {
       });
   }, [tarefasFiltradas, tarefasRespondidas, selectedGtId]);
 
+  const pontosAtuais = scoreSummary?.current_points ?? 0;
+  const metaMensal = scoreSummary?.monthly_limit ?? 0;
+  const progressoBase = metaMensal > 0 ? pontosAtuais / metaMensal : scoreSummary?.progress ?? 0;
+  const progresso = Math.min(Math.max(progressoBase, 0), 1);
+  const progressoPercentual = Math.round(progresso * 1000) / 10;
+  const pontosRestantes = Math.max(metaMensal - pontosAtuais, 0);
+
+  const dataHojeBase = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const dataHoje = dataHojeBase.charAt(0).toUpperCase() + dataHojeBase.slice(1);
+
+  const respostasOrdenadas = useMemo(() => {
+    return painelRespostasFiltradas
+      .slice()
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }, [painelRespostasFiltradas]);
+
+  const respostasRecentes = respostasOrdenadas.slice(0, 2);
+  const trilhasPrioritarias = tarefasOrdenadas.slice(0, 2);
+
   if (isLoading || gtsLoading || respostasLoading) {
     return <FullPageLoader message="Carregando painel do redator..." />;
   }
@@ -594,172 +618,187 @@ function ArticuladorDashboard() {
   }
 
   return (
-    <div className="dashboard-container">
-      <PageHeader
-        title="Dashboard do redator"
-        description="Escolha um GT, revise missões e publique pareceres com rapidez."
-        actions={
-          <>
-            <Link to="/revisoes">
-              <Button variant="primary" leftIcon={<Icon name="review" />}>Abrir revisões</Button>
-            </Link>
-            <Button
-              variant="secondary"
-              onClick={() => refetchPainel()}
-              disabled={painelLoading}
-              isLoading={painelLoading}
-            >
-              Atualizar respostas
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => refetchScore()}
-              disabled={scoreLoading}
-              isLoading={scoreLoading}
-            >
-              Atualizar score
-            </Button>
-          </>
-        }
-      />
+    <div className="redator-dashboard">
+      <header className="redator-dashboard__header">
+        <div>
+          <h1>Painel do Redator</h1>
+          <p>{dataHoje}</p>
+        </div>
+        <div className="redator-dashboard__actions">
+          <Link to="/redator/revisoes" className="redator-action primary">
+            Abrir revisões
+          </Link>
+          <button
+            type="button"
+            className="redator-action ghost"
+            onClick={() => refetchPainel()}
+            disabled={painelLoading}
+          >
+            Atualizar respostas
+          </button>
+          <button
+            type="button"
+            className="redator-action outline"
+            onClick={() => refetchScore()}
+            disabled={scoreLoading}
+          >
+            Atualizar score
+          </button>
+        </div>
+      </header>
 
-      <section style={{ marginBottom: '2rem' }}>
-        <Card>
-          <div className="dashboard__card-header">
-            <span>Score do mês</span>
-            <strong>{scoreSummary?.current_points ?? 0} pts</strong>
-          </div>
-          <p>Meta mensal: {scoreSummary?.monthly_limit ?? 0} pts.</p>
-          <div className="dashboard__progress">
-            <div
-              className="dashboard__progress-bar"
-              style={{ width: `${Math.min((scoreSummary?.progress ?? 0) * 100, 100)}%` }}
-            />
-          </div>
-        </Card>
-      </section>
-
-      <section className="dashboard__spotlight">
-        <Card>
-          <div className="dashboard__spotlight-header" style={{ marginBottom: '1.5rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>GTs disponíveis</h2>
-              <p style={{ color: 'var(--color-text-secondary)' }}>Selecione um GT para abrir trilhas e revisar conteúdo rapidamente.</p>
-            </div>
-            <input
-              type="search"
-              className="dashboard__search"
-              placeholder="Buscar GT"
-              value={gtSearch}
-              onChange={(event) => setGtSearch(event.target.value)}
-            />
-          </div>
-          <div className="dashboard__gt-grid">
-            {filteredGts.map((gt) => {
-              const responses = respostasPorGtMap.get(gt.id) ?? 0;
-              return (
-                <button
-                  key={gt.id}
-                  type="button"
-                  className={`dashboard__gt-card ${selectedGtId === gt.id ? 'is-active' : ''}`}
-                  onClick={() => setSelectedGtId(gt.id)}
-                  aria-pressed={selectedGtId === gt.id}
-                >
-                  <div>
-                    <strong>{gt.displayName}</strong>
-                    <span>{gt.etapa ? `Etapa ${gt.etapa}` : 'Etapa não informada'}</span>
-                  </div>
-                  <span className="dashboard__gt-meta">{responses} resposta(s) recentes</span>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
-      </section>
-
-      <section className="dashboard__split">
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Trilhas para revisão</h2>
-              <p>{selectedGt ? `GT selecionado: ${selectedGt.displayName}` : 'Selecione um GT para iniciar.'}</p>
-            </div>
-            <input
-              type="search"
-              className="dashboard__search"
-              placeholder="Buscar trilha"
-              value={trilhaSearch}
-              onChange={(event) => setTrilhaSearch(event.target.value)}
-            />
-          </div>
-          {selectedGtId ? (
-            <div className="dashboard__trilhas">
-              {tarefasOrdenadas.map((tarefa) => (
-                <div key={tarefa.id} className="dashboard__trilha-card">
-                  <div>
-                    <strong>
-                      Trilha #{tarefa.ordem}
-                      {tarefasRespondidas.has(tarefa.id) && (
-                        <span className="dashboard__trilha-badge">Respondida ✓</span>
-                      )}
-                    </strong>
-                    <span>{tarefa.nome}</span>
-                    <small>{tarefa.etapa ? `Etapa ${tarefa.etapa}` : 'Etapa não informada'}</small>
-                  </div>
-                  <div className="dashboard__trilha-meta">
-                    <span>{perguntasByTarefa.get(tarefa.id) ?? 0} missões</span>
-                    <Link to={`/tarefas/${tarefa.id}?gt=${selectedGtId}`}>
-                      <Button size="sm" variant="primary">Abrir trilha</Button>
-                    </Link>
-                  </div>
+      <div className="redator-dashboard__grid">
+        <div className="redator-dashboard__main">
+          <section className="redator-card redator-card--score">
+            <div className="redator-card__top">
+              <div>
+                <span className="redator-chip">Desempenho Atual</span>
+                <h2>Score do Mês</h2>
+              </div>
+              <div className="redator-score">
+                <div>
+                  <span className="redator-score__value">{pontosAtuais}</span>
+                  <span className="redator-score__meta">/ {metaMensal} pts</span>
                 </div>
+                <p>{metaMensal ? `${progressoPercentual}% da meta mensal` : 'Meta mensal não definida'}</p>
+              </div>
+            </div>
+            <div className="redator-progress">
+              <div className="redator-progress__labels">
+                <span>Progresso</span>
+                <span>{pontosRestantes} pts restantes</span>
+              </div>
+              <div className="redator-progress__bar">
+                <span style={{ width: `${progresso * 100}%` }} />
+              </div>
+            </div>
+            <div className="redator-card__kpis">
+              <div>
+                <p>GTs ativos</p>
+                <strong>{gtOptions.length}</strong>
+              </div>
+              <div>
+                <p>Respostas recentes</p>
+                <strong>{painelRespostasFiltradas.length}</strong>
+              </div>
+              <div>
+                <p>Trilhas disponíveis</p>
+                <strong>{tarefasOrdenadas.length}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="redator-section">
+            <div className="redator-section__header">
+              <h3>Respostas Recentes</h3>
+              <Link to="/redator/revisoes" className="redator-link">
+                Ver histórico completo
+              </Link>
+            </div>
+            <div className="redator-list">
+              {respostasRecentes.map((resp) => (
+                <article key={resp.id} className="redator-list__card">
+                  <div className="redator-list__icon" aria-hidden="true">
+                    <span>*</span>
+                  </div>
+                  <div className="redator-list__content">
+                    <div className="redator-list__header">
+                      <div>
+                        <h4>{resp.gt_nome ?? `GT #${resp.gt}`}</h4>
+                        <p>{resp.autor_nome ?? (resp.autor ? `Usuário #${resp.autor}` : 'Autor não informado')}</p>
+                      </div>
+                      <span>{formatDateTime(resp.updated_at)}</span>
+                    </div>
+                    <div className="redator-list__preview">
+                      <p>{buildPreview(resp.conteudo_html)}</p>
+                    </div>
+                    <div className="redator-list__actions">
+                      <button type="button" onClick={() => setModalRespostaId(resp.id)}>
+                        Abrir Revisão
+                      </button>
+                    </div>
+                  </div>
+                </article>
               ))}
-              {tarefasOrdenadas.length === 0 && (
-                <div className="dashboard__empty-inline">Nenhuma trilha encontrada.</div>
+              {!respostasRecentes.length && (
+                <div className="redator-empty">Nenhuma resposta registrada ainda.</div>
               )}
             </div>
-          ) : (
-            <div className="dashboard__empty-inline">Selecione um GT para visualizar as trilhas.</div>
-          )}
-        </Card>
+          </section>
+        </div>
 
-        <Card>
-          <div className="dashboard__panel-header">
-            <div>
-              <h2>Respostas recentes</h2>
-              <p>Acesso rápido aos últimos envios.</p>
+        <div className="redator-dashboard__side">
+          <section className="redator-panel">
+            <div className="redator-panel__header">
+              <h3>GTs Disponíveis</h3>
+              <p>Grupos de trabalho ativos para seleção</p>
+              <div className="redator-search">
+                <input
+                  type="search"
+                  placeholder="Buscar por componente ou nível..."
+                  value={gtSearch}
+                  onChange={(event) => setGtSearch(event.target.value)}
+                />
+              </div>
             </div>
-            <span className="dashboard__pill">{painelRespostasFiltradas.length} registros</span>
-          </div>
-          {painelLoading ? (
-            <p className="dashboard__helper">Carregando respostas...</p>
-          ) : painelRespostasFiltradas.length > 0 ? (
-            <div className="dashboard__list">
-              {painelRespostasFiltradas.slice(0, 6).map((resp) => (
-                <div key={resp.id} className="dashboard__list-item">
-                  <div>
-                    <strong>{resp.gt_nome ?? `GT #${resp.gt}`}</strong>
-                    <span>{buildPreview(resp.conteudo_html)}</span>
-                  </div>
-                  <div className="dashboard__list-meta">
-                    <span>Atualizado {formatDateTime(resp.updated_at)}</span>
-                    <span>{resp.autor_nome ?? (resp.autor ? `Usuário #${resp.autor}` : 'Autor não informado')}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setModalRespostaId(resp.id)}
-                    >
-                      Expandir
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="redator-panel__list">
+              {filteredGts.map((gt) => {
+                const responses = respostasPorGtMap.get(gt.id) ?? 0;
+                return (
+                  <button
+                    key={gt.id}
+                    type="button"
+                    className={`redator-gt ${selectedGtId === gt.id ? 'is-active' : ''}`}
+                    onClick={() => setSelectedGtId(gt.id)}
+                  >
+                    <div>
+                      <h4>{gt.displayName}</h4>
+                      <p>{responses} respostas aguardando</p>
+                    </div>
+                    <span>{'>'}</span>
+                  </button>
+                );
+              })}
+              {!filteredGts.length && <div className="redator-empty">Nenhum GT encontrado.</div>}
             </div>
-          ) : (
-            <div className="dashboard__empty-inline">Nenhuma resposta registrada ainda.</div>
-          )}
-        </Card>
-      </section>
+            {selectedGt && (
+              <div className="redator-panel__footer">
+                <span>Selecionado: {selectedGt.displayName}</span>
+              </div>
+            )}
+          </section>
+
+          <section className="redator-panel redator-panel--compact">
+            <div className="redator-panel__header row">
+              <h3>Trilhas Prioritárias</h3>
+              <span className="redator-tag">Novo</span>
+            </div>
+            <div className="redator-panel__stack">
+              {trilhasPrioritarias.map((tarefa) => {
+                const respondida = tarefasRespondidas.has(tarefa.id);
+                return (
+                  <div key={tarefa.id} className="redator-track">
+                    <div className="redator-track__meta">
+                      <span>Trilha #{tarefa.ordem}</span>
+                      <span className={`redator-status ${respondida ? 'ok' : 'pending'}`}>
+                        {respondida ? 'Completa' : 'Em análise'}
+                      </span>
+                    </div>
+                    <h4>{tarefa.nome}</h4>
+                    <p>{perguntasByTarefa.get(tarefa.id) ?? 0} missões pendentes</p>
+                    <Link to={`/tarefas/${tarefa.id}?gt=${selectedGtId ?? ''}`} className="redator-track__action">
+                      Abrir Trilha
+                    </Link>
+                  </div>
+                );
+              })}
+              {!trilhasPrioritarias.length && (
+                <div className="redator-empty">Nenhuma trilha disponível.</div>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
 
       {respostaAtiva && (
         <div

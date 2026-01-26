@@ -38,7 +38,7 @@ export function AppLayout() {
     const map: Record<string, string> = {
       super_admin: 'Superadmin',
       admin_cliente: 'Admin SEMED',
-      articulador: 'Redator',
+      articulador: 'Redação',
       revisor: 'Revisor',
       membro_gt: 'Membro GT',
       leitor: 'Leitor',
@@ -129,6 +129,15 @@ export function AppLayout() {
       }
       return adminItems;
     }
+    if (isRedator) {
+      return [
+        { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
+        { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
+        { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
+        { to: '/redator/mural', label: 'Mural', icon: 'comment' },
+        { to: '/redator/exportacoes', label: 'Exportações', icon: 'export' },
+      ];
+    }
     const items = [
       { to: '/', label: 'Painel', icon: 'dashboard' },
       { to: '/tarefas', label: 'Trilhas pedagógicas', icon: 'tasks' },
@@ -147,9 +156,6 @@ export function AppLayout() {
       { to: '/bloqueios', label: 'Bloqueios', icon: 'audit', only: ['admin_cliente', 'super_admin'] },
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
-    if (isRedator) {
-      items.unshift({ to: '/redator/revisoes', label: 'Fila de revisão', icon: 'review' });
-    }
     return items;
   }, [isAdmin, isGtMember, isRedator, user?.role]);
 
@@ -183,7 +189,6 @@ export function AppLayout() {
             )}
             <div className="app-shell__brand-text">
               <strong>{cliente?.cliente?.nome ?? 'Referencial Curricular'}</strong>
-              {cliente?.cliente?.slug && <span>{cliente.cliente.slug}</span>}
             </div>
           </div>
 
@@ -250,7 +255,6 @@ export function AppLayout() {
           )}
           <div className="app-shell__brand-text">
             <strong>{cliente?.cliente?.nome ?? 'Referencial Curricular'}</strong>
-            {cliente?.cliente?.slug && <span>{cliente.cliente.slug}</span>}
           </div>
         </div>
 

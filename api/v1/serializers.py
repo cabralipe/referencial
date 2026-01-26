@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.db import IntegrityError
 from django.utils.text import slugify
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from urllib.parse import urlparse
 
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, UserSessionLog
@@ -1253,19 +1254,58 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    role = serializers.CharField(required=False, allow_blank=True)
+
+    @staticmethod
+    def _normalize_role(value: str | None) -> str | None:
+        if not value:
+            return None
+        return value.strip().lower()
+
+    @staticmethod
+    def _validate_role_for_user(user, role: str | None) -> None:
+        if not role:
+            return
+        allowed_roles = {
+            user.Role.MEMBRO_GT,
+            user.Role.REVISOR,
+            user.Role.ARTICULADOR,
+        }
+        if role not in allowed_roles:
+            raise serializers.ValidationError("Perfil inválido.")
+        if user.role in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            return
+        if user.role != role:
+            raise serializers.ValidationError("Seu usuário não possui acesso ao perfil selecionado.")
 
     def validate(self, attrs):
         request = self.context.get("request")
         email = attrs.get("email")
         password = attrs.get("password")
+        role = self._normalize_role(attrs.get("role"))
         if email:
             email = email.strip().lower()
             attrs["email"] = email
+        if role:
+            attrs["role"] = role
         user = authenticate(request=request, username=email, password=password)
         if not user:
-            raise serializers.ValidationError("Credenciais inválidas")
+            raise serializers.ValidationError("E-mail ou senha inválidos. Tente novamente.")
+        self._validate_role_for_user(user, role)
         attrs["user"] = user
         return attrs
+
+
+class RoleTokenObtainPairSerializer(TokenObtainPairSerializer):
+    role = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        role = LoginSerializer._normalize_role(attrs.get("role"))
+        if role:
+            attrs["role"] = role
+        data = super().validate(attrs)
+        LoginSerializer._validate_role_for_user(self.user, role)
+        return data
 
 
 class AiAssistSerializer(serializers.Serializer):

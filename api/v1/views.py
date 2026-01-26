@@ -13,6 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.activity import touch_user_session
 from core.models import ClienteTema
@@ -25,9 +26,14 @@ from .serializers import (
     ClienteMeSerializer,
     ConsultaPublicaPublicSerializer,
     LoginSerializer,
+    RoleTokenObtainPairSerializer,
     ManifestacaoPublicaCreateSerializer,
     ManifestacaoPublicaPublicSerializer,
 )
+
+
+class RoleTokenObtainPairView(TokenObtainPairView):
+    serializer_class = RoleTokenObtainPairSerializer
 
 
 class SessionLoginView(APIView):
