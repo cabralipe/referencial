@@ -101,6 +101,14 @@ export interface Revisao {
   parecer_html: string;
   revisor: number | null;
   solicitante: number | null;
+  reviewer_recommendation?: {
+    id: number;
+    decision_type: string;
+    checklist: string[];
+    note: string;
+    created_at: string;
+    actor_id: number | null;
+  } | null;
   created_at: string;
   updated_at: string;
   etag: string;

@@ -77,6 +77,7 @@ export function RedatorInboxPage() {
           const tarefaNome = preview && 'tarefa_nome' in preview ? preview.tarefa_nome : null;
           const tarefaEtapa = preview && 'tarefa_etapa' in preview ? preview.tarefa_etapa : null;
           const autor = preview && 'autor_nome' in preview ? preview.autor_nome : null;
+          const recommendation = rev.reviewer_recommendation;
           const titulo = tarefaNome || `Trilha #${preview && 'tarefa' in preview ? preview.tarefa : '—'}`;
           return (
             <Card key={rev.id}>
@@ -85,6 +86,11 @@ export function RedatorInboxPage() {
                   <strong>{titulo}</strong>
                   <span>{tarefaEtapa ? `Etapa: ${tarefaEtapa}` : 'Etapa não definida'}</span>
                   <span>Autor: {autor || 'Não informado'}</span>
+                  {recommendation && (
+                    <span className="redator-inbox__badge">
+                      Revisado · {recommendation.decision_type.replace('recommend_', '')}
+                    </span>
+                  )}
                 </div>
                 <div className="redator-inbox__meta">
                   <span>Status: {rev.status}</span>

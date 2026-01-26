@@ -24,19 +24,24 @@ Este guia explica o novo passo a passo para o Membro GT na Plataforma MEB Refere
 4. Registre comentários por trecho quando necessário.
 5. Use o histórico de versões para comparar mudanças.
 
-## 5) Cadernos
+## 5) Revisões do Revisor
+1. Quando o revisor comentar, você recebe uma notificação e verá os comentários na tela do texto.
+2. Ajuste o conteúdo conforme as observações.
+3. Após corrigir, retorne ao fluxo de revisão para que o redator valide ou devolva novamente.
+
+## 6) Cadernos
 1. Acesse **/cadernos**.
 2. Crie um novo caderno com um texto inicial.
 3. Dentro de **/cadernos/:id**, adicione textos e vincule a perguntas.
 
-## 6) Mural
+## 7) Mural
 1. Abra **/mural** para ver avisos publicados pela administração.
 2. Avisos fixados aparecem no topo.
 
-## 7) PPP
+## 8) PPP
 1. Acesse **/ppp**.
 2. Selecione a trilha do PPP e avance pelos blocos.
 
-## 8) Ajuda
+## 9) Ajuda
 1. Em **/ajuda**, consulte orientações rápidas.
 2. Use o chat do MEB para dúvidas específicas.

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { API_BASE_URL } from '@/config/env';
 import { appendCsrfHeader } from '@/api/csrf';
@@ -232,5 +232,8 @@ export function useApiClient() {
     [request],
   );
 
-  return { request, get, post, put, patch, del };
+  return useMemo(
+    () => ({ request, get, post, put, patch, del }),
+    [request, get, post, put, patch, del],
+  );
 }

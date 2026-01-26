@@ -28,6 +28,8 @@ import { PppDetailPage } from './pages/PppDetailPage';
 import { AdminMuralPage } from './pages/AdminMuralPage';
 import { AdminPppPage } from './pages/AdminPppPage';
 import { AdminTrilhasPage } from './pages/AdminTrilhasPage';
+import { AdminConsolePage } from './pages/AdminConsolePage';
+import { AdminModulePage } from './pages/AdminModulePage';
 import { RedatorInboxPage } from './pages/RedatorInboxPage';
 import { RedatorReviewDetailPage } from './pages/RedatorReviewDetailPage';
 import { ExportacoesPage } from './pages/ExportacoesPage';
@@ -222,6 +224,22 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowed={['admin_cliente', 'super_admin']}>
             <AdminMuralPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'admin/console',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <AdminConsolePage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'admin/console/:moduleId',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <AdminModulePage />
           </RoleRoute>
         ),
       },

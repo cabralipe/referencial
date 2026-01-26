@@ -47,7 +47,8 @@ from notifications.models import Notificacao
 from notifications.services import criar_notificacao
 from meb.models import MebMessage, MebThread
 from meb.services import auto_reply_for_message, deliver_admin_broadcast, ensure_thread_for_user
-from reviews.models import Revisao
+from reviews.models import Revisao, ReviewDecision
+from services.reviewer_scope import get_reviewer_queryset
 from sockets.utils import broadcast_stream_event
 from diffs.services import build_diff
 from tasks.exports import enqueue_export_job
@@ -1385,6 +1386,8 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Revisao.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Revisao.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
+        elif getattr(user, "role", None) == user.Role.REVISOR:
+            queryset = get_reviewer_queryset(user)
         return queryset
 
     def perform_create(self, serializer):
@@ -1467,8 +1470,20 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         revisao.status = status
         if parecer_html is not None:
             revisao.parecer_html = parecer_html
-        revisao.revisor = request.user
+        if not revisao.revisor or getattr(revisao.revisor, "role", None) != request.user.Role.REVISOR:
+            revisao.revisor = request.user
         revisao.save(update_fields=["status", "parecer_html", "revisor", "updated_at"])
+
+        ReviewDecision.objects.create(
+            cliente_id=revisao.cliente_id,
+            target_type=revisao.alvo_tipo,
+            target_id=revisao.alvo_id,
+            actor=request.user,
+            actor_role=ReviewDecision.ActorRole.REDACTOR,
+            decision_type=ReviewDecision.DecisionType.RECOMMEND_APPROVE if decision == "approve" else ReviewDecision.DecisionType.RECOMMEND_RETURN,
+            checklist=checklist or [],
+            note=note or "",
+        )
 
         if revisao.status != old_status:
             interessados = [uid for uid in [revisao.solicitante_id, revisao.revisor_id] if uid]
@@ -1486,6 +1501,69 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 {"revisao_id": revisao.id, "status": revisao.status},
             )
 
+        response = Response(self.get_serializer(revisao).data)
+        response["ETag"] = revisao.etag
+        return response
+
+    @action(detail=True, methods=["post"], url_path="recommend")
+    def recommend(self, request, pk=None):
+        revisao = self.get_object()
+        _assert_roles(request.user, {request.user.Role.REVISOR})
+
+        decision = (request.data.get("decision") or "").lower()
+        note = request.data.get("note") or ""
+        checklist = request.data.get("checklist") or []
+        if decision not in {"approve", "return", "minor"}:
+            raise ValidationError({"decision": "Informe approve, return ou minor."})
+        if checklist and not isinstance(checklist, list):
+            raise ValidationError({"checklist": "Checklist deve ser uma lista."})
+
+        decision_map = {
+            "approve": ReviewDecision.DecisionType.RECOMMEND_APPROVE,
+            "return": ReviewDecision.DecisionType.RECOMMEND_RETURN,
+            "minor": ReviewDecision.DecisionType.RECOMMEND_MINOR,
+        }
+
+        recommendation = ReviewDecision.objects.create(
+            cliente_id=revisao.cliente_id,
+            target_type=revisao.alvo_tipo,
+            target_id=revisao.alvo_id,
+            actor=request.user,
+            actor_role=ReviewDecision.ActorRole.REVIEWER,
+            decision_type=decision_map[decision],
+            checklist=checklist or [],
+            note=note or "",
+        )
+
+        interessados = get_user_model().objects.filter(
+            cliente_id=revisao.cliente_id,
+            role__in=[request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE],
+        )
+        for interessado in interessados:
+            criar_notificacao(
+                cliente_id=revisao.cliente_id,
+                usuario_id=interessado.id,
+                tipo="revisao.reviewer_recommendation",
+                payload={"revisao_id": revisao.id, "decision": recommendation.decision_type},
+            )
+
+        response = Response(self.get_serializer(revisao).data)
+        response["ETag"] = revisao.etag
+        return response
+
+    @action(detail=True, methods=["post"], url_path="in-progress")
+    def in_progress(self, request, pk=None):
+        revisao = self.get_object()
+        _assert_roles(request.user, {request.user.Role.REVISOR})
+
+        ReviewDecision.objects.create(
+            cliente_id=revisao.cliente_id,
+            target_type=revisao.alvo_tipo,
+            target_id=revisao.alvo_id,
+            actor=request.user,
+            actor_role=ReviewDecision.ActorRole.REVIEWER,
+            decision_type=ReviewDecision.DecisionType.IN_PROGRESS,
+        )
         response = Response(self.get_serializer(revisao).data)
         response["ETag"] = revisao.etag
         return response
@@ -1536,6 +1614,33 @@ class UsuarioLookupViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return response
 
 
+def _notificar_comentario_alvo(comentario, usuario):
+    alvo_tipo = comentario.alvo_tipo
+    alvo_id = comentario.alvo_id
+    usuario_ids: set[int] = set()
+    if alvo_tipo == Comentario.AlvoTipo.RESPOSTA:
+        resposta = Resposta.objects.select_related("gt").filter(pk=alvo_id).first()
+        if resposta:
+            usuario_ids.update(resposta.gt.membros.values_list("id", flat=True))
+    elif alvo_tipo == Comentario.AlvoTipo.TEXTO_UNICO:
+        texto = TextoUnico.objects.select_related("gt").filter(pk=alvo_id).first()
+        if texto:
+            usuario_ids.update(texto.gt.membros.values_list("id", flat=True))
+    elif alvo_tipo == Comentario.AlvoTipo.QUADRO:
+        quadro = Quadro.objects.select_related("gt").filter(pk=alvo_id).first()
+        if quadro:
+            usuario_ids.update(quadro.gt.membros.values_list("id", flat=True))
+    if usuario:
+        usuario_ids.discard(usuario.id)
+    for usuario_id in usuario_ids:
+        criar_notificacao(
+            cliente_id=comentario.cliente_id,
+            usuario_id=usuario_id,
+            tipo="comentario.novo",
+            payload={"comentario_id": comentario.id, "alvo_tipo": comentario.alvo_tipo, "alvo_id": comentario.alvo_id},
+        )
+
+
 class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
     serializer_class = ComentarioSerializer
     permission_classes = [HasClientScope]
@@ -1566,11 +1671,27 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
+        elif getattr(user, "role", None) == user.Role.REVISOR:
+            revisoes = get_reviewer_queryset(user)
+            resposta_ids = revisoes.filter(alvo_tipo=Comentario.AlvoTipo.RESPOSTA).values_list("alvo_id", flat=True)
+            texto_unico_ids = revisoes.filter(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO).values_list("alvo_id", flat=True)
+            quadro_ids = revisoes.filter(alvo_tipo=Comentario.AlvoTipo.QUADRO).values_list("alvo_id", flat=True)
+            queryset = queryset.filter(
+                models.Q(alvo_tipo=Comentario.AlvoTipo.RESPOSTA, alvo_id__in=resposta_ids)
+                | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
+                | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
+            )
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
-        _assert_roles(user, {user.Role.MEMBRO_GT, user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE})
+        _assert_roles(user, {user.Role.MEMBRO_GT, user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE, user.Role.REVISOR})
+        if getattr(user, "role", None) == user.Role.REVISOR:
+            alvo_tipo = serializer.validated_data.get("alvo_tipo")
+            alvo_id = serializer.validated_data.get("alvo_id")
+            permitido = get_reviewer_queryset(user).filter(alvo_tipo=alvo_tipo, alvo_id=str(alvo_id)).exists()
+            if not permitido:
+                raise PermissionDenied("Comentário fora do escopo atribuído.")
         mentions_ids = serializer.validated_data.pop("mentions", [])
         comentario = serializer.save(
             cliente_id=_get_request_cliente_id(self.request),
@@ -1598,6 +1719,7 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 tipo="comentario.mention",
                 payload={"comentario_id": comentario.id, "alvo_tipo": comentario.alvo_tipo, "alvo_id": comentario.alvo_id},
             )
+        _notificar_comentario_alvo(comentario, user)
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -1620,7 +1742,7 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             and not instance.resolvido
         )
         if vai_resolver:
-            _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE})
+            _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE, request.user.Role.REVISOR})
         mentions_ids = serializer.validated_data.pop("mentions", None)
         comentario = serializer.save()
         if mentions_ids is not None:

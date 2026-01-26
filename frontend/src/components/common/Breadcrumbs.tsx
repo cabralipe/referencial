@@ -11,6 +11,7 @@ const LABELS: Record<string, string> = {
   ajuda: 'Ajuda',
   ppp: 'PPP',
   admin: 'Admin',
+  console: 'Admin Console',
   redator: 'Redator',
   trilhas: 'Trilhas',
   revisoes: 'Revisões',

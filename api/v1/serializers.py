@@ -20,7 +20,7 @@ from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampo
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
 from notifications.models import Notificacao
-from reviews.models import Revisao
+from reviews.models import Revisao, ReviewDecision
 from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 from meb.models import MebMessage, MebThread
 from meb.services import ensure_thread_for_user
@@ -607,6 +607,7 @@ class UsuarioLookupSerializer(serializers.ModelSerializer):
 class RevisaoSerializer(serializers.ModelSerializer):
     etag = serializers.CharField(read_only=True)
     alvo_preview = serializers.SerializerMethodField()
+    reviewer_recommendation = serializers.SerializerMethodField()
 
     class Meta:
         model = Revisao
@@ -619,6 +620,7 @@ class RevisaoSerializer(serializers.ModelSerializer):
             "parecer_html",
             "revisor",
             "solicitante",
+            "reviewer_recommendation",
             "created_at",
             "updated_at",
             "etag",
@@ -685,6 +687,28 @@ class RevisaoSerializer(serializers.ModelSerializer):
         if obj.alvo_tipo == Revisao.AlvoTipo.QUADRO:
             return self._build_quadro_preview(obj.alvo_id)
         return None
+
+    def get_reviewer_recommendation(self, obj):
+        decision = (
+            ReviewDecision.objects.filter(
+                cliente_id=obj.cliente_id,
+                target_type=obj.alvo_tipo,
+                target_id=obj.alvo_id,
+                actor_role=ReviewDecision.ActorRole.REVIEWER,
+            )
+            .exclude(decision_type=ReviewDecision.DecisionType.IN_PROGRESS)
+            .first()
+        )
+        if not decision:
+            return None
+        return {
+            "id": decision.id,
+            "decision_type": decision.decision_type,
+            "checklist": decision.checklist,
+            "note": decision.note,
+            "created_at": decision.created_at,
+            "actor_id": decision.actor_id,
+        }
 
 
 class ComentarioSerializer(serializers.ModelSerializer):

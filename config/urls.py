@@ -8,6 +8,7 @@ from .views import serve_frontend
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include("api.v1.urls")),
+    path("", include("reviews.urls")),
 ]
 
 urlpatterns += [

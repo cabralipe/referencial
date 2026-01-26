@@ -1,15 +1,17 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
 import { Breadcrumbs } from '@/components/common/Breadcrumbs';
+import { useAdminScope } from '@/hooks/useAdminScope';
 
 import './AppLayout.css';
 
 export function AppLayout() {
   const { cliente, user, logout } = useAuth();
+  const { isSuperAdmin, clientes, selectedClienteId } = useAdminScope();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
@@ -37,6 +39,7 @@ export function AppLayout() {
       super_admin: 'Superadmin',
       admin_cliente: 'Admin SEMED',
       articulador: 'Redator',
+      revisor: 'Revisor',
       membro_gt: 'Membro GT',
       leitor: 'Leitor',
     };
@@ -111,6 +114,21 @@ export function AppLayout() {
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
+    if (isAdmin) {
+      const adminItems = [
+        { to: '/admin/console', label: 'Admin Console', icon: 'settings' },
+        { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
+        { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
+        { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
+      ];
+      if (user?.role === 'super_admin') {
+        adminItems.unshift(
+          { to: '/admin/console/clientes', label: 'Clientes', icon: 'users' },
+          { to: '/admin/console/clientes-config', label: 'Configuração do cliente', icon: 'settings' },
+        );
+      }
+      return adminItems;
+    }
     const items = [
       { to: '/', label: 'Painel', icon: 'dashboard' },
       { to: '/tarefas', label: 'Trilhas pedagógicas', icon: 'tasks' },
@@ -129,18 +147,17 @@ export function AppLayout() {
       { to: '/bloqueios', label: 'Bloqueios', icon: 'audit', only: ['admin_cliente', 'super_admin'] },
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
-    if (isAdmin) {
-      items.unshift(
-        { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
-        { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
-        { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
-      );
-    }
     if (isRedator) {
       items.unshift({ to: '/redator/revisoes', label: 'Fila de revisão', icon: 'review' });
     }
     return items;
-  }, [isAdmin, isGtMember, isRedator]);
+  }, [isAdmin, isGtMember, isRedator, user?.role]);
+
+  const selectedCliente = useMemo(() => {
+    if (!isSuperAdmin) return null;
+    if (!selectedClienteId) return null;
+    return clientes.find((item) => item.id === selectedClienteId) ?? null;
+  }, [clientes, isSuperAdmin, selectedClienteId]);
 
   return (
     <div className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`} style={themeStyles}>
@@ -245,6 +262,19 @@ export function AppLayout() {
         >
           <span className="toggle__bars" aria-hidden="true" />
         </button>
+
+        {isSuperAdmin && (
+          <div className="app-shell__client-context">
+            <span>Cliente selecionado:</span>
+            {selectedCliente ? (
+              <strong>{selectedCliente.nome}</strong>
+            ) : (
+              <Link to="/admin/console" className="app-shell__client-cta">
+                Selecionar cliente
+              </Link>
+            )}
+          </div>
+        )}
 
         <div className="app-shell__user">
           <button type="button" onClick={handleLogout}>

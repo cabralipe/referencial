@@ -4,15 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useTarefas } from '@/hooks/useTarefas';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useRevisoes } from '@/hooks/useRevisoes';
 import { fetchAllPaginated } from '@/utils/pagination';
 import { useContinuar } from '@/hooks/useContinuar';
+import { useAuth } from '@/context/AuthContext';
 import type { Pergunta, Resposta } from '@/api/types';
 
 import './MinhaTrilhaPage.css';
@@ -36,6 +35,7 @@ const normalizeDate = (value?: string | null) => {
 export function MinhaTrilhaPage() {
   const navigate = useNavigate();
   const client = useApiClient();
+  const { user } = useAuth();
   const { gtOptions, isLoading: gtsLoading } = useAvailableGts();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedGtId = searchParams.get('gt') ? Number(searchParams.get('gt')) : gtOptions[0]?.id ?? null;
@@ -102,6 +102,10 @@ export function MinhaTrilhaPage() {
     });
   }, [tarefas, perguntaMap, respostas, revisoesMap, selectedGtId]);
 
+  const tarefasLookup = useMemo(() => {
+    return new Map((tarefas ?? []).map((tarefa) => [tarefa.id, tarefa]));
+  }, [tarefas]);
+
   const ultimaResposta = useMemo<Resposta | null>(() => {
     if (!respostas?.length) return null;
     return respostas.slice().sort((a, b) => normalizeDate(b.updated_at) - normalizeDate(a.updated_at))[0] ?? null;
@@ -110,6 +114,7 @@ export function MinhaTrilhaPage() {
   const continuarLink = ultimaResposta?.tarefa_id
     ? `/minha-trilha/${ultimaResposta.tarefa_id}?gt=${ultimaResposta.gt}`
     : null;
+  const tarefaContinuar = ultimaResposta?.tarefa_id ? tarefasLookup.get(ultimaResposta.tarefa_id) : null;
 
   const carregando = gtsLoading || tarefasLoading || respostasLoading || revisoesLoading || perguntasQuery.isLoading;
 
@@ -119,73 +124,105 @@ export function MinhaTrilhaPage() {
 
   return (
     <div className="minha-trilha">
-      <PageHeader
-        title="Minha Trilha"
-        description="Veja o andamento das trilhas do seu GT e continue de onde parou."
-        actions={continuarLink ? (
-          <Link to={continuarLink}>
-            <Button variant="primary">Continuar de onde parei</Button>
-          </Link>
-        ) : (
-          <Button
-            variant="primary"
-            onClick={async () => {
-              const data = await continuar.mutateAsync();
-              if (data?.url) {
-                navigate(data.url);
-              }
-            }}
-            disabled={continuar.isPending}
-          >
-            {continuar.isPending ? 'Carregando...' : 'Continuar'}
-          </Button>
-        )}
-      />
+      <header className="minha-trilha__header">
+        <div className="minha-trilha__header-left">
+          <div className="minha-trilha__avatar" aria-hidden="true">
+            {(user?.nome || 'U')[0]?.toUpperCase()}
+            <span className="minha-trilha__online-dot" />
+          </div>
+          <div>
+            <span className="minha-trilha__welcome">Bem-vindo(a) de volta</span>
+            <h1>{user?.nome || 'Participante'}</h1>
+          </div>
+        </div>
+      </header>
 
-      <div className="minha-trilha__filters">
-        <label>
-          <span>GT</span>
-          <select
-            value={selectedGtId ?? ''}
-            onChange={(event) => {
-              const value = event.target.value ? Number(event.target.value) : null;
-              if (value) {
-                setSearchParams({ gt: String(value) });
-              } else {
-                setSearchParams({});
-              }
-            }}
-          >
-            <option value="">Selecione um GT</option>
-            {gtOptions.map((gt) => (
-              <option key={gt.id} value={gt.id}>
+      <section className="minha-trilha__title">
+        <h2>Minha Trilha</h2>
+        <p>Acompanhe seu progresso didático.</p>
+      </section>
+
+      <section className="minha-trilha__continue">
+        <div className="minha-trilha__continue-card">
+          <div className="minha-trilha__continue-content">
+            <span className="minha-trilha__continue-label">Continuar onde parou</span>
+            <h3>{tarefaContinuar?.nome || 'Sua próxima trilha'}</h3>
+            <p>
+              {tarefaContinuar?.etapa ? `${tarefaContinuar.etapa}` : 'Escolha uma trilha para avançar'}
+            </p>
+            {continuarLink ? (
+              <Link to={continuarLink} className="minha-trilha__primary-button">
+                Retomar atividade
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="minha-trilha__primary-button"
+                onClick={async () => {
+                  const data = await continuar.mutateAsync();
+                  if (data?.url) {
+                    navigate(data.url);
+                  }
+                }}
+                disabled={continuar.isPending}
+              >
+                {continuar.isPending ? 'Carregando...' : 'Continuar'}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="minha-trilha__gt-section">
+        <div className="minha-trilha__section-header">
+          <h3>Seu Grupo de Trabalho</h3>
+          <span>Ver todos</span>
+        </div>
+        <div className="minha-trilha__gt-chips">
+          {gtOptions.map((gt) => {
+            const isActive = gt.id === selectedGtId;
+            return (
+              <button
+                key={gt.id}
+                type="button"
+                className={`minha-trilha__chip ${isActive ? 'is-active' : ''}`}
+                onClick={() => {
+                  setSearchParams({ gt: String(gt.id) });
+                }}
+              >
                 {gt.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="minha-trilha__grid">
         {progressoTrilhas.map((item) => (
           <Card key={item.tarefa.id}>
             <div className="minha-trilha__card">
-              <div>
-                <h2>{item.tarefa.nome || `Trilha #${item.tarefa.id}`}</h2>
-                <p>{item.tarefa.etapa ? `Etapa: ${item.tarefa.etapa}` : 'Etapa não definida'}</p>
+              <div className="minha-trilha__card-head">
+                <div>
+                  <span className="minha-trilha__card-stage">
+                    {item.tarefa.etapa ? `Etapa ${item.tarefa.etapa}` : 'Etapa'}
+                  </span>
+                  <h3>{item.tarefa.nome || `Trilha #${item.tarefa.id}`}</h3>
+                </div>
+                <span className={`minha-trilha__status status-${item.status}`}>
+                  {statusLabel[item.status]}
+                </span>
               </div>
-              <span className={`minha-trilha__status status-${item.status}`}>{statusLabel[item.status]}</span>
+              <div className="minha-trilha__progress-meta">
+                <span>{item.respondidas} de {item.total} blocos concluídos</span>
+                <strong>{item.percentual}%</strong>
+              </div>
+              <div className="minha-trilha__progress">
+                <div className="minha-trilha__progress-bar" style={{ width: `${item.percentual}%` }} />
+              </div>
+              <Link to={`/minha-trilha/${item.tarefa.id}?gt=${selectedGtId ?? ''}`} className="minha-trilha__secondary-button">
+                Abrir trilha
+              </Link>
             </div>
-            <div className="minha-trilha__progress">
-              <div className="minha-trilha__progress-bar" style={{ width: `${item.percentual}%` }} />
-            </div>
-            <div className="minha-trilha__meta">
-              <span>{item.respondidas}/{item.total} blocos respondidos</span>
-              <span>{item.percentual}% concluído</span>
-            </div>
-            <Link to={`/minha-trilha/${item.tarefa.id}?gt=${selectedGtId ?? ''}`}>
-              <Button size="sm" variant="secondary">Abrir trilha</Button>
-            </Link>
           </Card>
         ))}
         {progressoTrilhas.length === 0 && (

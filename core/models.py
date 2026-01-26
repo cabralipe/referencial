@@ -93,6 +93,7 @@ class Usuario(AbstractUser):
         SUPER_ADMIN = "super_admin", "Super Admin"
         ADMIN_CLIENTE = "admin_cliente", "Admin do Cliente"
         ARTICULADOR = "articulador", "Redator"
+        REVISOR = "revisor", "Revisor"
         MEMBRO_GT = "membro_gt", "Membro GT"
         LEITOR = "leitor", "Leitor"
 

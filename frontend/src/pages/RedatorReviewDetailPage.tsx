@@ -131,6 +131,7 @@ export function RedatorReviewDetailPage() {
   const targetHtml = resposta?.conteudo_html ?? textoUnico?.conteudo_html ?? '';
   const plainText = stripHtml(targetHtml);
   const targetLabel = alvoTipo === 'texto_unico' ? 'Texto único' : 'Bloco';
+  const reviewerRecommendation = revisaoAtual?.reviewer_recommendation;
 
   return (
     <div className="redator-review-detail">
@@ -192,6 +193,25 @@ export function RedatorReviewDetailPage() {
           <div dangerouslySetInnerHTML={{ __html: targetHtml || '<p>Sem conteúdo.</p>' }} />
         </div>
       </Card>
+
+      {reviewerRecommendation && (
+        <Card>
+          <div className="redator-review-detail__recommendation">
+            <h2>Recomendação do revisor</h2>
+            <p>
+              Tipo: <strong>{reviewerRecommendation.decision_type.replace('recommend_', '')}</strong>
+            </p>
+            {reviewerRecommendation.checklist?.length ? (
+              <ul>
+                {reviewerRecommendation.checklist.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+            {reviewerRecommendation.note && <p>{reviewerRecommendation.note}</p>}
+          </div>
+        </Card>
+      )}
 
       {diffHtml && (
         <Card>

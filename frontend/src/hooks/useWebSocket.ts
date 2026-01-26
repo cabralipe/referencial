@@ -32,6 +32,11 @@ function resolveWebSocketBaseUrl(): string | null {
   if (envBase) {
     return envBase.replace(/\/$/, '');
   }
+  const devBackend = import.meta.env.VITE_DEV_BACKEND_HOST as string | undefined;
+  if (import.meta.env.DEV && devBackend) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${devBackend.replace(/^https?:\/\//, '')}`;
+  }
   const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (apiBase && apiBase.startsWith('http')) {
     try {
@@ -41,6 +46,9 @@ function resolveWebSocketBaseUrl(): string | null {
     } catch (_err) {
       // fallback para heurística do host atual
     }
+  }
+  if (import.meta.env.DEV && window.location.port === '5173') {
+    return 'ws://127.0.0.1:8000';
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}`;

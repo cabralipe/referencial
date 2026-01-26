@@ -1,0 +1,190 @@
+{% extends "focus_base.html" %}
+
+{% block title %}Revisão {% if target.titulo %}· {{ target.titulo }}{% endif %}{% endblock %}
+
+{% block head %}
+<style>
+  body { font-family: "Inter", system-ui, -apple-system, sans-serif; background: #f7f8fb; color: #0f172a; }
+  .review { max-width: 1180px; margin: 32px auto; padding: 0 24px 60px; display: grid; gap: 24px; }
+  .card { background: white; border-radius: 16px; padding: 20px; border: 1px solid #eef2f7; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06); }
+  .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .header h1 { font-size: 22px; margin: 0; }
+  .meta { font-size: 12px; color: #64748b; display: flex; gap: 12px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e2e8f0; color: #1f2937; font-weight: 600; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .button { border: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 12px; }
+  .button.primary { background: #2563eb; color: white; }
+  .button.ghost { background: #e2e8f0; color: #1f2937; }
+  .grid { display: grid; gap: 20px; }
+  .content { padding: 16px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
+  .content table { width: 100%; border-collapse: collapse; }
+  .content table td, .content table th { border: 1px solid #e2e8f0; padding: 8px; vertical-align: top; }
+  .checklist { display: grid; gap: 8px; }
+  .checklist label { font-size: 13px; }
+  .comments { display: grid; gap: 12px; }
+  .comment { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #fff; }
+  .comment small { color: #64748b; display: block; margin-top: 4px; }
+  .comment-actions { margin-top: 8px; }
+  .diff { border: 1px dashed #cbd5f5; background: #f8fafc; padding: 12px; border-radius: 12px; }
+  .diff del { background: #fee2e2; text-decoration: line-through; display: block; }
+  .diff ins { background: #dcfce7; text-decoration: none; display: block; }
+  .section-title { font-size: 15px; margin-bottom: 8px; }
+  form textarea { width: 100%; min-height: 90px; border-radius: 10px; border: 1px solid #e2e8f0; padding: 10px; font-size: 13px; }
+  form input[type="text"] { width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; padding: 8px; font-size: 13px; }
+  .mural { display: grid; gap: 12px; }
+  .mural-item { padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; }
+  .mural-item h4 { margin: 0 0 6px; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review">
+  <section class="card">
+    <div class="header">
+      <div>
+        <h1>{{ target.titulo }}</h1>
+        <div class="meta">
+          <span>{{ target.subtitulo }}</span>
+          <span>Etapa: {{ target.etapa|default:"—" }}</span>
+          <span>Status: {{ revisao.status }}</span>
+        </div>
+      </div>
+      <div class="meta">
+        <span class="badge">Revisão #{{ revisao.id }}</span>
+        {% if reviewer_recommendation %}
+          <span class="badge ok">Recomendação enviada</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Conteúdo atual</h2>
+    {% if target.table_rows %}
+      <div class="content">
+        <table>
+          {% for row in target.table_rows %}
+            <tr>
+              {% for cell in row %}
+                {% if forloop.parentloop.first %}
+                  <th>{{ cell }}</th>
+                {% else %}
+                  <td>{{ cell|safe }}</td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% else %}
+      <div class="content">
+        {{ target.conteudo_html|safe }}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Orientação do bloco</h2>
+    <p class="meta">{{ target.orientacao|default:"Sem orientação registrada." }}</p>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Materiais do mural</h2>
+    {% if mural_posts %}
+      <div class="mural">
+        {% for post in mural_posts %}
+          <article class="mural-item">
+            <h4>{{ post.titulo }}</h4>
+            <div class="meta">Atualizado em {{ post.updated_at|date:"d/m/Y H:i" }}</div>
+            <div class="content">{{ post.conteudo_html|safe }}</div>
+            {% if post.link_url %}
+              <a href="{{ post.link_url }}" target="_blank" rel="noreferrer">Abrir link</a>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="meta">Nenhum material relacionado encontrado.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Comentários</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_comment" />
+      <label class="meta">Comentário</label>
+      <textarea name="conteudo_html" placeholder="Escreva seu comentário..."></textarea>
+      <label class="meta">Âncora (JSON opcional)</label>
+      <input type="text" name="anchor_json" placeholder='{"context":"..."}' />
+      <button class="button primary" type="submit">Adicionar comentário</button>
+    </form>
+    <div class="comments">
+      {% for comentario in comentarios %}
+        <div class="comment">
+          <strong>Comentário #{{ comentario.id }}</strong>
+          <div class="meta">
+            <span>{{ comentario.autor.nome|default:comentario.autor.email }}</span>
+            <span>{{ comentario.created_at|date:"d/m/Y H:i" }}</span>
+            <span>{% if comentario.resolvido %}Resolvido{% else %}Aberto{% endif %}</span>
+          </div>
+          <div>{{ comentario.conteudo_html|safe }}</div>
+          {% if comentario.anchor_json %}
+            <small>Âncora: {{ comentario.anchor_json }}</small>
+          {% endif %}
+          {% if not comentario.resolvido %}
+            <div class="comment-actions">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="resolve_comment" />
+                <input type="hidden" name="comentario_id" value="{{ comentario.id }}" />
+                <button class="button ghost" type="submit">Marcar como resolvido</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="meta">Nenhum comentário registrado.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Ver alterações (diff)</h2>
+    {% if diff_html %}
+      <div class="diff">{{ diff_html|safe }}</div>
+    {% else %}
+      <p class="meta">Sem alterações detectadas ou diff indisponível.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Checklist de revisão</h2>
+    <form method="post" class="grid">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="recommend" />
+      <div class="checklist">
+        <label><input type="checkbox" name="checklist" value="Clareza" /> Clareza</label>
+        <label><input type="checkbox" name="checklist" value="Coerência" /> Coerência</label>
+        <label><input type="checkbox" name="checklist" value="Alinhamento com BNCC/etapa" /> Alinhamento com BNCC/etapa</label>
+        <label><input type="checkbox" name="checklist" value="Linguagem adequada" /> Linguagem adequada</label>
+        <label><input type="checkbox" name="checklist" value="Completo" /> Completo</label>
+      </div>
+      <label class="meta">Nota do revisor</label>
+      <textarea name="note" placeholder="Registre recomendações e observações."></textarea>
+      <label class="meta">Recomendação</label>
+      <select name="decision">
+        <option value="approve">Recomendar validação</option>
+        <option value="return">Recomendar devolução</option>
+        <option value="minor">Recomendar ajustes menores</option>
+      </select>
+      <button class="button primary" type="submit">Concluir revisão</button>
+    </form>
+    <form method="post" class="grid">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="in_progress" />
+      <button class="button ghost" type="submit">Marcar em andamento</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

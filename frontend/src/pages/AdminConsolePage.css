@@ -1,0 +1,233 @@
+.admin-console {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.admin-console__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.admin-console__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.admin-console__hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-console__hero-header h2 {
+  margin: 0 0 0.35rem;
+}
+
+.admin-console__suggestions,
+.admin-console__recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.admin-console__suggestions button,
+.admin-console__recent button {
+  border: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-console__hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.admin-console__shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.admin-console__shortcut {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.12));
+  text-decoration: none;
+  color: inherit;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.admin-console__shortcut h4 {
+  margin: 0;
+}
+
+.admin-console__checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-console__checklist-header h3 {
+  margin: 0 0 0.25rem 0;
+}
+
+.admin-console__checklist-items {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-console__checklist-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  background: var(--color-surface);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+}
+
+.admin-console__checklist-item small {
+  display: block;
+  color: var(--color-text-secondary);
+  margin-top: 0.15rem;
+}
+
+.admin-console__checklist-action {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-console__checklist-action button {
+  border: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-console__checklist-action .status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.admin-console__checklist-action .status--ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.admin-console__checklist-action .status--warn {
+  background: rgba(251, 191, 36, 0.2);
+  color: #b45309;
+}
+
+.admin-console__checklist-action .status--pending {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.admin-console__help ul {
+  padding-left: 1.2rem;
+  margin: 0.5rem 0 1rem;
+  color: var(--color-text-secondary);
+}
+
+.admin-console__help-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-console__help-actions a {
+  text-decoration: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.admin-console__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-console__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.admin-console__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 160px;
+  justify-content: space-between;
+}
+
+.admin-console__card h4 {
+  margin: 0 0 0.35rem 0;
+}
+
+.admin-console__card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-console__examples {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.admin-console__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-console__tags span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.admin-console__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}

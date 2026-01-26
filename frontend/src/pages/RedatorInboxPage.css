@@ -50,6 +50,21 @@
   color: var(--color-text-secondary);
 }
 
+.redator-inbox__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .redator-inbox__meta {
   display: grid;
   gap: 0.35rem;
