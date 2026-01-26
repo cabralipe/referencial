@@ -10,24 +10,48 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='blocotexto',
-            new_name='library_blo_cliente_0b5b85_idx',
-            old_name='library_blo_cliente_c9172d_idx',
+        migrations.RunSQL(
+            sql="ALTER INDEX IF EXISTS library_blo_cliente_c9172d_idx RENAME TO library_blo_cliente_0b5b85_idx",
+            reverse_sql="ALTER INDEX IF EXISTS library_blo_cliente_0b5b85_idx RENAME TO library_blo_cliente_c9172d_idx",
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='blocotexto',
+                    new_name='library_blo_cliente_0b5b85_idx',
+                    old_name='library_blo_cliente_c9172d_idx',
+                ),
+            ],
         ),
-        migrations.RenameIndex(
-            model_name='blocotexto',
-            new_name='library_blo_cliente_48a405_idx',
-            old_name='library_blo_cliente_2f9fe0_idx',
+        migrations.RunSQL(
+            sql="ALTER INDEX IF EXISTS library_blo_cliente_2f9fe0_idx RENAME TO library_blo_cliente_48a405_idx",
+            reverse_sql="ALTER INDEX IF EXISTS library_blo_cliente_48a405_idx RENAME TO library_blo_cliente_2f9fe0_idx",
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='blocotexto',
+                    new_name='library_blo_cliente_48a405_idx',
+                    old_name='library_blo_cliente_2f9fe0_idx',
+                ),
+            ],
         ),
-        migrations.RenameIndex(
-            model_name='midia',
-            new_name='library_mid_cliente_df384b_idx',
-            old_name='library_mid_cliente_89b671_idx',
+        migrations.RunSQL(
+            sql="ALTER INDEX IF EXISTS library_mid_cliente_89b671_idx RENAME TO library_mid_cliente_df384b_idx",
+            reverse_sql="ALTER INDEX IF EXISTS library_mid_cliente_df384b_idx RENAME TO library_mid_cliente_89b671_idx",
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='midia',
+                    new_name='library_mid_cliente_df384b_idx',
+                    old_name='library_mid_cliente_89b671_idx',
+                ),
+            ],
         ),
-        migrations.RenameIndex(
-            model_name='midia',
-            new_name='library_mid_cliente_63d651_idx',
-            old_name='library_mid_cliente_3c4a78_idx',
+        migrations.RunSQL(
+            sql="ALTER INDEX IF EXISTS library_mid_cliente_3c4a78_idx RENAME TO library_mid_cliente_63d651_idx",
+            reverse_sql="ALTER INDEX IF EXISTS library_mid_cliente_63d651_idx RENAME TO library_mid_cliente_3c4a78_idx",
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='midia',
+                    new_name='library_mid_cliente_63d651_idx',
+                    old_name='library_mid_cliente_3c4a78_idx',
+                ),
+            ],
         ),
     ]
