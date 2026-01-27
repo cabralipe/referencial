@@ -3,13 +3,14 @@
 import re
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.helpers import ActionForm
 from django.utils.html import strip_tags
 
 from .models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
 from meb.services import deliver_admin_broadcast
 
 
-class BroadcastMessageForm(forms.Form):
+class BroadcastMessageForm(ActionForm):
     conteudo = forms.CharField(
         label="Mensagem para o chat",
         widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Digite a mensagem do disparo..."}),
