@@ -6,7 +6,7 @@ from django.conf import settings
 from django.http import HttpResponse
 
 
-def serve_frontend(_request):
+def serve_frontend(_request, *args, **kwargs):
     """Serves the compiled frontend index file or a helpful placeholder."""
 
     index_path = Path(settings.BASE_DIR) / "static" / "frontend" / "index.html"

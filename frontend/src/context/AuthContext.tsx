@@ -357,13 +357,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             error: null,
           }));
           if (!payload.cliente) {
-            const cliente = await fetchCliente();
-            setState((prev) => ({
-              ...prev,
-              cliente,
-              status: 'authenticated',
-              error: null,
-            }));
+            try {
+              const cliente = await fetchCliente();
+              setState((prev) => ({
+                ...prev,
+                cliente,
+                status: 'authenticated',
+                error: null,
+              }));
+            } catch (err) {
+              // Superusuários podem não ter cliente associado, isso não deve invalidar a sessão
+              console.warn('Não foi possível carregar contexto do cliente (ignorando erro)', err);
+              setState((prev) => ({
+                ...prev,
+                status: 'authenticated',
+                error: null,
+              }));
+            }
           }
         })
         .catch(async (error) => {
