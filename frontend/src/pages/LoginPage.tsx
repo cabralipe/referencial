@@ -1,308 +1,221 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation, type Location } from 'react-router-dom';
+import { FormEvent, useEffect, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
-import { type RoleOption } from '@/components/login/roles';
 
-const ROLE_REDIRECTS: Record<RoleOption, string> = {
-  membro_gt: '/inicio',
-  revisor: '/revisor/inbox',
-  articulador: '/redator/revisoes',
-};
-
-const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
-
-const resolveLoginError = (err: unknown) => {
-  if (err instanceof ApiError) {
-    if (err.message.includes('perfil selecionado')) {
-      return 'Seu usuário não possui acesso ao perfil selecionado.';
-    }
-    if (err.message.toLowerCase().includes('credenciais')) {
-      return 'E-mail ou senha inválidos. Tente novamente.';
-    }
-    return err.message;
-  }
-  if (err instanceof Error) {
-    const message = err.message || '';
-    if (message.toLowerCase().includes('perfil selecionado')) {
-      return 'Seu usuário não possui acesso ao perfil selecionado.';
-    }
-    if (message.toLowerCase().includes('credenciais')) {
-      return 'E-mail ou senha inválidos. Tente novamente.';
-    }
-    if (!navigator.onLine || message.toLowerCase().includes('failed to fetch')) {
-      return 'Não foi possível conectar. Verifique sua internet.';
-    }
-    return message;
-  }
-  return 'Não foi possível autenticar.';
-};
-
-const trackLoginEvent = (event: string, payload?: Record<string, unknown>) => {
-  const data = {
-    ...payload,
-    timestamp: new Date().toISOString(),
-  };
-  const anyWindow = window as typeof window & {
-    analytics?: { track?: (name: string, props?: Record<string, unknown>) => void };
-    gtag?: (...args: unknown[]) => void;
-  };
-  if (anyWindow.analytics?.track) {
-    anyWindow.analytics.track(event, data);
-    return;
-  }
-  if (anyWindow.gtag) {
-    anyWindow.gtag('event', event, data);
-    return;
-  }
-  console.debug('[telemetry]', event, data);
-};
+// Remove import './LoginPage.css'; since we use Tailwind now
 
 export function LoginPage() {
   const queryClient = useQueryClient();
-  const { isAuthenticated, login, status, error, user } = useAuth();
+  const { isAuthenticated, login, status, error } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [touched, setTouched] = useState({ email: false, password: false });
-  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     queryClient.clear();
   }, [queryClient]);
 
-  const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? null;
-
-  const emailError = useMemo(() => {
-    if (!email.trim()) return 'Este campo é obrigatório.';
-    if (!isValidEmail(email)) return 'Informe um e-mail válido.';
-    return null;
-  }, [email]);
-
-  const passwordError = useMemo(() => {
-    if (!password.trim()) return 'Este campo é obrigatório.';
-    return null;
-  }, [password]);
-
-  const isFormValid = !emailError && !passwordError;
+  const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? '/';
 
   if (isAuthenticated) {
-    const roleKey = (user?.role ?? '') as RoleOption;
-    const roleRedirect = ROLE_REDIRECTS[roleKey] ?? '/';
-    return <Navigate to={redirectTo ?? roleRedirect} replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitAttempted(true);
     setLocalError(null);
-
-    if (!isFormValid) {
-      return;
-    }
-
     setIsSubmitting(true);
-    const startedAt = performance.now();
-    trackLoginEvent('login_attempt');
-
     try {
       await login({ email, password });
-      const durationMs = Math.round(performance.now() - startedAt);
-      trackLoginEvent('login_success', { durationMs });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
-      const message = resolveLoginError(err);
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Não foi possível autenticar';
       setLocalError(message);
-      const durationMs = Math.round(performance.now() - startedAt);
-      const failureType = message.includes('perfil selecionado')
-        ? 'perfil'
-        : message.includes('senha inválidos')
-          ? 'credenciais'
-          : message.includes('internet')
-            ? 'offline'
-            : 'erro';
-      trackLoginEvent('login_failure', { durationMs, type: failureType });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const activeError = localError ?? error;
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-display antialiased">
-      <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="relative overflow-hidden bg-gradient-to-br from-sky-600 via-blue-600 to-cyan-500 text-white px-8 py-10 lg:px-16 lg:py-16">
-          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/10 blur-3xl"></div>
-          <div className="absolute bottom-0 right-0 h-72 w-72 translate-x-1/3 translate-y-1/3 rounded-full bg-cyan-200/30 blur-3xl"></div>
+    <div className="bg-slate-50 font-display text-slate-900 antialiased overflow-x-hidden selection:bg-primary selection:text-white">
+      <div className="relative flex flex-col lg:flex-row min-h-screen w-full">
+        {/* Desktop Left Side */}
+        <div
+          className="hidden lg:flex relative w-3/5 bg-gradient-to-br from-blue-600 via-primary to-cyan-400 overflow-hidden items-center justify-center p-12"
+          data-alt="Abstract vibrant mesh gradient background in blue and cyan shades"
+        >
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+          <div className="absolute top-20 right-20 w-96 h-96 bg-cyan-300 rounded-full blur-[100px] opacity-30 mix-blend-screen animate-pulse"></div>
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-500 rounded-full blur-[100px] opacity-40 mix-blend-screen"></div>
 
-          <div className="relative z-10 max-w-xl space-y-8">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-white/15 border border-white/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl">school</span>
-              </div>
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-white/70">MEB Referencial</p>
-                <h1 className="text-3xl font-bold">Ambiente de produção editorial</h1>
-              </div>
+          <div className="relative z-10 flex flex-col items-start max-w-lg">
+            <div className="bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl mb-8 transform transition-transform hover:scale-105 duration-300 inline-block">
+              <span className="material-symbols-outlined text-white text-5xl">school</span>
             </div>
-
-            <p className="text-lg text-white/90">
-              Uma plataforma para criar, revisar e publicar textos com clareza e organização desde a primeira etapa.
+            <h1 className="text-white text-5xl font-extrabold tracking-tight drop-shadow-sm mb-4 leading-tight">Plataforma MEB</h1>
+            <p className="text-blue-50 text-xl font-medium opacity-90 leading-relaxed mb-8">
+              Gestão curricular integrada para um futuro educacional moderno e conectado.
             </p>
-
-            <div className="space-y-4">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-white/70">O que você encontra aqui</h2>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-xl">check_circle</span>
-                  <span>Trilhas guiadas por etapa: passo a passo</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-xl">check_circle</span>
-                  <span>Textos colaborativos com revisão e histórico</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-xl">check_circle</span>
-                  <span>Mural com avisos e materiais de apoio</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-white/20 bg-white/10 p-6">
-              <div className="h-40 rounded-2xl border border-dashed border-white/30 bg-white/5" aria-hidden="true"></div>
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 mt-4 w-full">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-3 w-3 rounded-full bg-cyan-300"></div>
+                <div className="h-3 w-3 rounded-full bg-blue-300"></div>
+                <div className="h-2 w-32 bg-white/20 rounded-full"></div>
+              </div>
+              <div className="h-32 bg-gradient-to-r from-white/10 to-transparent rounded-xl w-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-white/40 text-6xl">analytics</span>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="flex items-center justify-center px-6 py-10 lg:px-12">
-          <div className="w-full max-w-xl">
-            <div className="rounded-3xl bg-white shadow-xl border border-slate-200/60 p-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-slate-900">Acessar</h2>
-                <p className="text-slate-500">Entre com suas credenciais</p>
+        {/* Mobile Top Header */}
+        <div
+          className="lg:hidden relative w-full h-[45vh] bg-gradient-to-br from-blue-600 via-primary to-cyan-400 rounded-b-[3rem] overflow-hidden shrink-0 shadow-lg border-b border-white/10"
+          data-alt="Abstract vibrant mesh gradient background in blue and cyan shades"
+        >
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-300 rounded-full blur-[80px] opacity-30 mix-blend-screen"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500 rounded-full blur-[80px] opacity-40 mix-blend-screen"></div>
+          <div className="relative z-10 flex flex-col items-center justify-center h-full px-6 pb-12 text-center">
+            <div className="bg-white/20 backdrop-blur-md border border-white/30 p-3 rounded-2xl shadow-xl mb-6 transform transition-transform hover:scale-105 duration-300">
+              <span className="material-symbols-outlined text-white text-4xl">school</span>
+            </div>
+            <h1 className="text-white text-4xl font-extrabold tracking-tight drop-shadow-sm mb-2">Plataforma MEB</h1>
+            <p className="text-blue-50 text-base font-medium opacity-95 max-w-xs leading-relaxed">
+              Gestão curricular integrada para um futuro educacional moderno.
+            </p>
+          </div>
+        </div>
+
+        {/* Form Section */}
+        <div className="w-full lg:w-2/5 flex flex-col items-center justify-start relative z-20 px-4 lg:px-12 -mt-20 lg:mt-0 pb-8 lg:pb-0 lg:bg-white lg:shadow-none lg:h-screen lg:overflow-y-auto">
+          {/* Desktop Top Strip */}
+          <div className="w-full max-w-md flex flex-col lg:my-auto lg:py-12">
+
+            {/* The Card Container - styles vary for mobile/desktop */}
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col lg:bg-transparent lg:rounded-none lg:shadow-none lg:border-none lg:overflow-visible">
+
+              <div className="pt-8 pb-2 px-8 text-center lg:p-0 lg:mb-10 lg:text-left">
+
+                {/* Mobile-only branding in form */}
+                <div className="flex items-center gap-3 hidden mb-6">
+                </div>
+
+                <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 lg:text-slate-900 tracking-tight">Bem-vindo</h2>
+                <p className="text-slate-500 text-sm lg:text-base mt-1 lg:mt-2">
+                  {/* Text varies slightly in templates. Mobile: "Acesse com suas credenciais seguras." Desktop: "Acesse a plataforma com suas credenciais institucionais." */}
+                  <span className="lg:hidden">Acesse com suas credenciais seguras.</span>
+                  <span className="hidden lg:inline">Acesse a plataforma com suas credenciais institucionais.</span>
+                </p>
               </div>
 
-              <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700" htmlFor="login-email">
-                    E-mail
-                  </label>
-                  <input
-                    id="login-email"
-                    className={`w-full h-12 px-4 bg-white border rounded-xl focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 text-slate-900 placeholder-slate-400 transition-all outline-none ${
-                      (submitAttempted || touched.email) && emailError
-                        ? 'border-red-300'
-                        : 'border-slate-200'
-                    }`}
-                    placeholder="nome@dominio.com"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setLocalError(null);
-                    }}
-                    onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
-                    aria-describedby={
-                      (submitAttempted || touched.email) && emailError ? 'login-email-error' : undefined
-                    }
-                    required
-                    autoComplete="email"
-                  />
-                  {(submitAttempted || touched.email) && emailError && (
-                    <p id="login-email-error" className="text-sm text-red-600">
-                      {emailError}
-                    </p>
+              <div className="p-8 pt-6 space-y-5 lg:p-0 lg:space-y-6">
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700 ml-1">E-mail</label>
+                    <div className="relative group">
+                      <input
+                        className="w-full h-14 pl-12 pr-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
+                        placeholder="nome@instituicao.com.br"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        autoComplete="email"
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                        <span className="material-symbols-outlined">mail</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center ml-1">
+                      <label className="block text-sm font-semibold text-slate-700">Senha</label>
+                      <a className="text-xs font-semibold text-primary hover:text-blue-700 transition-colors" href="#">Esqueceu a senha?</a>
+                    </div>
+                    <div className="relative group">
+                      <input
+                        className="w-full h-14 pl-12 pr-12 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
+                        placeholder="••••••••"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                        <span className="material-symbols-outlined">lock</span>
+                      </div>
+                      <button
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility' : 'visibility_off'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {(localError || error) && (
+                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+                      {localError ?? error}
+                    </div>
                   )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || status === 'loading'}
+                    className="w-full h-14 bg-primary hover:bg-blue-700 lg:bg-primary lg:hover:bg-blue-700 group-hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 group mt-4 bg-gradient-to-r from-primary to-blue-600 lg:bg-none"
+                  >
+                    {isSubmitting || status === 'loading' ? 'Entrando...' : 'Entrar'}
+                    <span className="material-symbols-outlined text-white group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Security Badges Grid */}
+              <div className="bg-slate-50 p-6 border-t border-slate-100 lg:bg-transparent lg:p-0 lg:pt-8 lg:mt-10 lg:border-t lg:border-slate-100">
+                <div className="grid grid-cols-3 divide-x divide-slate-200">
+                  <div className="flex flex-col items-center text-center px-1 gap-2 group cursor-default">
+                    <span className="material-symbols-outlined text-primary text-[24px] group-hover:scale-110 transition-transform">badge</span>
+                    <span className="text-[11px] font-semibold text-slate-600 leading-tight">E-mail<br />corporativo</span>
+                  </div>
+                  <div className="flex flex-col items-center text-center px-1 gap-2 group cursor-default">
+                    <span className="material-symbols-outlined text-primary text-[24px] group-hover:scale-110 transition-transform">encrypted</span>
+                    <span className="text-[11px] font-semibold text-slate-600 leading-tight">Senha<br />atualizada</span>
+                  </div>
+                  <div className="flex flex-col items-center text-center px-1 gap-2 group cursor-default">
+                    <span className="material-symbols-outlined text-primary text-[24px] group-hover:scale-110 transition-transform">gpp_good</span>
+                    <span className="text-[11px] font-semibold text-slate-600 leading-tight">Ambiente<br />seguro</span>
+                  </div>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-slate-700" htmlFor="login-password">
-                      Senha
-                    </label>
-                    <a className="text-xs font-semibold text-sky-600 hover:text-sky-700" href="#">
-                      Esqueceu a senha?
-                    </a>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="login-password"
-                      className={`w-full h-12 px-4 pr-12 bg-white border rounded-xl focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 text-slate-900 placeholder-slate-400 transition-all outline-none ${
-                        (submitAttempted || touched.password) && passwordError
-                          ? 'border-red-300'
-                          : 'border-slate-200'
-                      }`}
-                      placeholder="••••••••"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setLocalError(null);
-                      }}
-                      onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
-                      aria-describedby={
-                        (submitAttempted || touched.password) && passwordError
-                          ? 'login-password-error'
-                          : undefined
-                      }
-                      required
-                      autoComplete="current-password"
-                    />
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">
-                        {showPassword ? 'visibility' : 'visibility_off'}
-                      </span>
-                    </button>
-                  </div>
-                  {(submitAttempted || touched.password) && passwordError && (
-                    <p id="login-password-error" className="text-sm text-red-600">
-                      {passwordError}
-                    </p>
-                  )}
-                </div>
-
-                {activeError && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                    {activeError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={!isFormValid || isSubmitting || status === 'loading'}
-                  className="w-full h-12 rounded-xl bg-sky-600 text-white font-semibold shadow-lg shadow-sky-500/20 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-sky-700 transition-colors"
-                >
-                  {isSubmitting || status === 'loading' ? (
-                    <span className="inline-flex items-center justify-center gap-2">
-                      <span
-                        className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-transparent"
-                        aria-hidden="true"
-                      ></span>
-                      Entrando...
-                    </span>
-                  ) : (
-                    'Entrar'
-                  )}
-                </button>
-              </form>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-              <a className="hover:text-slate-600" href="#">Ajuda</a>
-              <a className="hover:text-slate-600" href="#">Privacidade</a>
-              <a className="hover:text-slate-600" href="#">Termos</a>
+            {/* Footer Links - Outside Card for Mobile, Inside 'w-full max-w-md' for Desktop */}
+            <div className="mt-8 flex gap-6 text-sm font-medium text-slate-500 justify-center lg:mt-auto lg:pt-8 lg:gap-8 lg:text-slate-400">
+              <a className="hover:text-slate-700 lg:hover:text-slate-600 transition-colors" href="#">Ajuda</a>
+              <a className="hover:text-slate-700 lg:hover:text-slate-600 transition-colors" href="#">Privacidade</a>
+              <a className="hover:text-slate-700 lg:hover:text-slate-600 transition-colors" href="#">Termos</a>
             </div>
+
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
