@@ -2,6 +2,7 @@
 
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.helpers import ActionForm
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
@@ -9,7 +10,7 @@ from .forms import UsuarioCreationForm, UsuarioChangeForm, ClienteTemaAdminForm
 from meb.services import deliver_admin_broadcast
 
 
-class BroadcastMessageForm(forms.Form):
+class BroadcastMessageForm(ActionForm):
     conteudo = forms.CharField(
         label="Mensagem para o chat",
         widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Digite a mensagem do disparo..."}),
