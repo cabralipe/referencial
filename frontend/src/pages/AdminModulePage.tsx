@@ -190,13 +190,13 @@ export function AdminModulePage() {
     setEditing(null);
     const base = rows[0]
       ? Object.keys(rows[0]).reduce<AnyRecord>((acc, key) => {
-          if (!READ_ONLY_FIELDS.has(key)) acc[key] = '';
-          return acc;
-        }, {})
+        if (!READ_ONLY_FIELDS.has(key)) acc[key] = '';
+        return acc;
+      }, {})
       : (module?.essentialFields ?? []).reduce<AnyRecord>((acc, key) => {
-          acc[key] = '';
-          return acc;
-        }, {});
+        acc[key] = '';
+        return acc;
+      }, {});
     const scopedClienteId = selectedClienteId || user?.clienteId || '';
     if ((base as AnyRecord).cliente !== undefined && scopedClienteId) {
       base.cliente = scopedClienteId;
@@ -266,7 +266,7 @@ export function AdminModulePage() {
   }
 
   return (
-    <div className="admin-module">
+    <div className={`admin-module admin-module--${module.id}`}>
       <PageHeader
         title={module.label}
         description={module.description}
@@ -370,12 +370,15 @@ export function AdminModulePage() {
             <tbody>
               {filteredRows.map((row) => (
                 <tr key={String(row.id ?? Math.random())}>
-                  {columns.map((col) => (
-                    <td key={col}>
-                      {typeof row[col] === 'object' && row[col] !== null ? JSON.stringify(row[col]) : String(row[col] ?? '')}
-                    </td>
-                  ))}
-                  <td className="admin-module__row-actions">
+                  {columns.map((col) => {
+                    const label = module?.fieldLabels?.[col] ?? col;
+                    return (
+                      <td key={col} data-label={label}>
+                        {typeof row[col] === 'object' && row[col] !== null ? JSON.stringify(row[col]) : String(row[col] ?? '')}
+                      </td>
+                    );
+                  })}
+                  <td className="admin-module__row-actions" data-label="Ações">
                     <button type="button" onClick={() => openEdit(row)}>
                       Editar
                     </button>
@@ -447,67 +450,67 @@ export function AdminModulePage() {
                     return ai - bi;
                   })
                   .map(([key, value]) => {
-                  if (READ_ONLY_FIELDS.has(key)) return null;
-                  const inputType = inferInputType(value, key);
-                  const fieldLabel = module?.fieldLabels?.[key] ?? key;
-                  const helpText = module?.fieldHelp?.[key];
-                  if (key === 'cliente') {
+                    if (READ_ONLY_FIELDS.has(key)) return null;
+                    const inputType = inferInputType(value, key);
+                    const fieldLabel = module?.fieldLabels?.[key] ?? key;
+                    const helpText = module?.fieldHelp?.[key];
+                    if (key === 'cliente') {
+                      return (
+                        <label key={key}>
+                          <span>{fieldLabel}</span>
+                          <select
+                            value={value ? String(value) : ''}
+                            onChange={(event) => updateField(key, Number(event.target.value) || '')}
+                            disabled={!isSuperAdmin}
+                          >
+                            <option value="">Selecione</option>
+                            {clientes.map((cliente) => (
+                              <option key={cliente.id} value={cliente.id}>
+                                {cliente.nome}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      );
+                    }
+                    if (inputType === 'checkbox') {
+                      return (
+                        <label key={key} className="inline">
+                          <span>{fieldLabel}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(value)}
+                            onChange={(event) => updateField(key, event.target.checked)}
+                          />
+                          {helpText && <small>{helpText}</small>}
+                        </label>
+                      );
+                    }
+                    if (inputType === 'textarea') {
+                      return (
+                        <label key={key}>
+                          <span>{fieldLabel}</span>
+                          <textarea
+                            rows={4}
+                            value={formatValue(value)}
+                            onChange={(event) => updateField(key, parseValue(event.target.value, value, key))}
+                          />
+                          {helpText && <small>{helpText}</small>}
+                        </label>
+                      );
+                    }
                     return (
                       <label key={key}>
-                        <span>{fieldLabel}</span>
-                        <select
-                          value={value ? String(value) : ''}
-                          onChange={(event) => updateField(key, Number(event.target.value) || '')}
-                          disabled={!isSuperAdmin}
-                        >
-                          <option value="">Selecione</option>
-                          {clientes.map((cliente) => (
-                            <option key={cliente.id} value={cliente.id}>
-                              {cliente.nome}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    );
-                  }
-                  if (inputType === 'checkbox') {
-                    return (
-                      <label key={key} className="inline">
                         <span>{fieldLabel}</span>
                         <input
-                          type="checkbox"
-                          checked={Boolean(value)}
-                          onChange={(event) => updateField(key, event.target.checked)}
-                        />
-                        {helpText && <small>{helpText}</small>}
-                      </label>
-                    );
-                  }
-                  if (inputType === 'textarea') {
-                    return (
-                      <label key={key}>
-                        <span>{fieldLabel}</span>
-                        <textarea
-                          rows={4}
+                          type={inputType}
                           value={formatValue(value)}
                           onChange={(event) => updateField(key, parseValue(event.target.value, value, key))}
                         />
                         {helpText && <small>{helpText}</small>}
                       </label>
                     );
-                  }
-                  return (
-                    <label key={key}>
-                      <span>{fieldLabel}</span>
-                      <input
-                        type={inputType}
-                        value={formatValue(value)}
-                        onChange={(event) => updateField(key, parseValue(event.target.value, value, key))}
-                      />
-                      {helpText && <small>{helpText}</small>}
-                    </label>
-                  );
-                })}
+                  })}
               </div>
             )}
 

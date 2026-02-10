@@ -379,9 +379,9 @@ export function TasksPage() {
             <tbody>
               {tarefasOrganizadas.map(({ tarefa, gt }) => (
                 <tr key={`${tarefa.id}-${gt.id}`}>
-                  <td>{gt.displayName}</td>
-                  <td>{tarefa.ordem}</td>
-                  <td>
+                  <td data-label="GT">{gt.displayName}</td>
+                  <td data-label="Ordem">{tarefa.ordem}</td>
+                  <td data-label="Trilha">
                     <span className="tasks__trilha-label">
                       {tarefa.nome}
                       {isNewTask(tarefa.created_at) && <span className="tasks__trilha-new">Atividade nova</span>}
@@ -390,12 +390,12 @@ export function TasksPage() {
                       )}
                     </span>
                   </td>
-                  <td>{TipoLabel[tarefa.tipo] ?? tarefa.tipo}</td>
-                  <td>{tarefa.etapa}</td>
-                  <td>
+                  <td data-label="Tipo">{TipoLabel[tarefa.tipo] ?? tarefa.tipo}</td>
+                  <td data-label="Etapa">{tarefa.etapa}</td>
+                  <td data-label="Status">
                     <TaskStatusBadge status={tarefa.status} />
                   </td>
-                  <td>
+                  <td className="tasks__actions">
                     <Link to={`/tarefas/${tarefa.id}?gt=${gt.id}`}>Abrir</Link>
                   </td>
                 </tr>

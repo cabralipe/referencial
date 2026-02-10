@@ -18,20 +18,20 @@ type MuralEditorPageProps = {
 
 type ReferenciaItem =
   | {
-      kind: 'bloco';
-      id: string;
-      titulo: string;
-      conteudo_html: string;
-      updated_at: string;
-    }
+    kind: 'bloco';
+    id: string;
+    titulo: string;
+    conteudo_html: string;
+    updated_at: string;
+  }
   | {
-      kind: 'midia';
-      id: string;
-      titulo: string;
-      descricao?: string | null;
-      link_url: string;
-      updated_at: string;
-    };
+    kind: 'midia';
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    link_url: string;
+    updated_at: string;
+  };
 
 export function AdminMuralPage({ title = 'Admin · Mural', description = 'Publique avisos para os membros do GT e acompanhe os comunicados.' }: MuralEditorPageProps) {
   const { data: posts, isLoading } = useMural();
@@ -199,7 +199,10 @@ export function AdminMuralPage({ title = 'Admin · Mural', description = 'Publiq
                 </div>
                 {post.fixado && <span className="admin-mural__badge">Fixado</span>}
               </header>
-              <div dangerouslySetInnerHTML={{ __html: post.conteudo_html }} />
+              <div
+                className="admin-mural__item-content"
+                dangerouslySetInnerHTML={{ __html: post.conteudo_html }}
+              />
               <div className="admin-mural__item-actions">
                 <Button
                   size="sm"
@@ -212,7 +215,9 @@ export function AdminMuralPage({ title = 'Admin · Mural', description = 'Publiq
                     setFixado(Boolean(post.fixado));
                     setGtIds(post.gt_ids ?? []);
                     setIncludeAll(!(post.gt_ids && post.gt_ids.length > 0));
+                    window.scrollTo({ top: 0, behavior: 'smooth' }); // Add scroll to top when editing
                   }}
+                  title="Editar aviso"
                 >
                   Editar
                 </Button>
@@ -221,6 +226,7 @@ export function AdminMuralPage({ title = 'Admin · Mural', description = 'Publiq
                   variant="ghost"
                   onClick={() => deletePost.mutate(post.id)}
                   disabled={deletePost.isPending}
+                  title="Remover aviso"
                 >
                   Remover
                 </Button>

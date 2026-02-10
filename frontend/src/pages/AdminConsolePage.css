@@ -10,6 +10,12 @@
   gap: 1rem;
 }
 
+.admin-console__filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .admin-console__hero {
   display: flex;
   flex-direction: column;
@@ -26,6 +32,7 @@
 
 .admin-console__hero-header h2 {
   margin: 0 0 0.35rem;
+  font-family: var(--font-display);
 }
 
 .admin-console__suggestions,
@@ -48,17 +55,24 @@
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-console__suggestions button:hover,
+.admin-console__recent button:hover {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .admin-console__hero-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1.25rem;
 }
 
 .admin-console__shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
 }
 
@@ -73,10 +87,17 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 0.5rem;
+  transition: transform var(--transition-fast);
+}
+
+.admin-console__shortcut:hover {
+  transform: translateY(-2px);
 }
 
 .admin-console__shortcut h4 {
   margin: 0;
+  color: var(--color-primary);
+  font-family: var(--font-display);
 }
 
 .admin-console__checklist {
@@ -87,6 +108,7 @@
 
 .admin-console__checklist-header h3 {
   margin: 0 0 0.25rem 0;
+  font-family: var(--font-display);
 }
 
 .admin-console__checklist-items {
@@ -132,6 +154,7 @@
   font-weight: 700;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .admin-console__checklist-action .status--ok {
@@ -188,10 +211,12 @@
   gap: 0.75rem;
   min-height: 160px;
   justify-content: space-between;
+  height: 100%;
 }
 
 .admin-console__card h4 {
   margin: 0 0 0.35rem 0;
+  font-family: var(--font-display);
 }
 
 .admin-console__card p {
@@ -202,12 +227,14 @@
 .admin-console__examples {
   font-size: 0.8rem;
   color: var(--color-text-secondary);
+  margin-top: 0.25rem !important;
 }
 
 .admin-console__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  margin-top: 0.5rem;
 }
 
 .admin-console__tags span {
@@ -218,6 +245,7 @@
   border: 1px solid var(--color-border);
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
+  color: var(--color-text-secondary);
 }
 
 .admin-console__link {
@@ -230,4 +258,68 @@
   color: #fff;
   text-decoration: none;
   font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.admin-console__link:hover {
+  opacity: 0.9;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .admin-console {
+    gap: 1rem;
+  }
+
+  .admin-console__hero-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Shortcuts: make them smaller or easier to tap */
+  .admin-console__shortcut-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .admin-console__shortcut {
+    min-height: 100px;
+    padding: 0.75rem;
+  }
+
+  .admin-console__shortcut h4 {
+    font-size: 0.95rem;
+  }
+
+  .admin-console__shortcut p {
+    font-size: 0.8rem;
+  }
+
+  /* Checklist items as cleaner cards */
+  .admin-console__checklist-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .admin-console__checklist-action {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+  }
+
+  /* Stack filters */
+  .admin-console__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-console__grid {
+    grid-template-columns: 1fr;
+    /* Single column for main console grid on mobile */
+  }
+
+  /* Make cards more compact */
+  .admin-console__card {
+    min-height: auto;
+  }
 }

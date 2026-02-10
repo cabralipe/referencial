@@ -39,40 +39,53 @@ export function AdminPppPage() {
         <div className="admin-ppp__config">
           <label>
             <span>Descrição do PPP</span>
-            <textarea value={descricao} onChange={(event) => setDescricao(event.target.value)} rows={3} />
+            <textarea
+              value={descricao}
+              onChange={(event) => setDescricao(event.target.value)}
+              rows={3}
+              placeholder="Digite uma descrição para o programa..."
+            />
           </label>
-          <Button
-            variant="secondary"
-            onClick={() => updateConfig.mutate({ tarefa_ids: selectedIds, descricao })}
-            disabled={updateConfig.isPending}
-          >
-            {updateConfig.isPending ? 'Salvando...' : 'Salvar configuração'}
-          </Button>
+          <div className="admin-ppp__submit-row">
+            <Button
+              variant="secondary"
+              onClick={() => updateConfig.mutate({ tarefa_ids: selectedIds, descricao })}
+              disabled={updateConfig.isPending}
+            >
+              {updateConfig.isPending ? 'Salvando...' : 'Salvar configuração'}
+            </Button>
+          </div>
         </div>
       </Card>
 
       <div className="admin-ppp__lista">
-        {(tarefas ?? []).map((tarefa) => (
-          <Card key={tarefa.id}>
-            <label className="admin-ppp__item">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(tarefa.id)}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    setSelectedIds((prev) => [...prev, tarefa.id]);
-                  } else {
-                    setSelectedIds((prev) => prev.filter((id) => id !== tarefa.id));
-                  }
-                }}
-              />
-              <div>
-                <strong>{tarefa.nome || `Trilha #${tarefa.id}`}</strong>
-                <span>{tarefa.etapa || 'Sem etapa'}</span>
-              </div>
-            </label>
-          </Card>
-        ))}
+        {(tarefas ?? []).map((tarefa) => {
+          const isSelected = selectedIds.includes(tarefa.id);
+          return (
+            <Card
+              key={tarefa.id}
+              className={`transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : ''}`}
+            >
+              <label className="admin-ppp__item">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setSelectedIds((prev) => [...prev, tarefa.id]);
+                    } else {
+                      setSelectedIds((prev) => prev.filter((id) => id !== tarefa.id));
+                    }
+                  }}
+                />
+                <div className="admin-ppp__item__content">
+                  <strong>{tarefa.nome || `Trilha #${tarefa.id}`}</strong>
+                  <span>{tarefa.etapa || 'Sem etapa definida'}</span>
+                </div>
+              </label>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

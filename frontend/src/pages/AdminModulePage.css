@@ -13,6 +13,7 @@
 .admin-module__back {
   text-decoration: none;
   color: var(--color-text-secondary);
+  font-size: 0.9rem;
 }
 
 .admin-module__primary {
@@ -23,6 +24,7 @@
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .admin-module__toolbar {
@@ -54,6 +56,7 @@
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .admin-module__quick-filters button.is-active {
@@ -91,6 +94,7 @@
   border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .admin-module__row-actions button.danger {
@@ -150,6 +154,7 @@
 .admin-module__form label span {
   font-weight: 600;
   color: var(--color-text);
+  font-size: 0.9rem;
 }
 
 .admin-module__form label small {
@@ -167,16 +172,22 @@
 
 .admin-module__json {
   width: 100%;
+  flex: 1;
+  min-height: 300px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   padding: 0.75rem;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.85rem;
+  resize: vertical;
 }
 
 .admin-module__drawer-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  margin-bottom: 2rem;
+  /* Add some space at bottom for mobile scrolling */
 }
 
 .admin-module__drawer-actions .secondary,
@@ -195,4 +206,87 @@
 .admin-module__drawer-actions .primary {
   background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
   color: #fff;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .admin-module {
+    gap: 1rem;
+  }
+
+  .admin-module__toolbar {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Transform table into cards */
+  .admin-module__table table,
+  .admin-module__table thead,
+  .admin-module__table tbody,
+  .admin-module__table th,
+  .admin-module__table td,
+  .admin-module__table tr {
+    display: block;
+  }
+
+  /* Hide table headers (but not display:none for accessibility, though visually hidden) */
+  .admin-module__table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .admin-module__table tr {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .admin-module__table td {
+    border: none;
+    padding: 0.5rem 0;
+    position: relative;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  /* Add label before content */
+  .admin-module__table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .admin-module__table td:last-child {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--color-border);
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .admin-module__table td:last-child::before {
+    display: none;
+    /* Hide label for actions row if desired, or keep it */
+  }
+
+  .admin-module__row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .admin-module__drawer-content {
+    width: 100%;
+    padding: 1rem;
+  }
 }

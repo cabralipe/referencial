@@ -245,6 +245,15 @@ export function AppLayout() {
       />
 
       <header className="app-shell__header">
+        <button
+          type="button"
+          className="app-shell__toggle"
+          aria-label="Abrir/fechar menu"
+          onClick={() => setSidebarOpen((v) => !v)}
+        >
+          <span className="toggle__bars" aria-hidden="true" />
+        </button>
+
         <div className="app-shell__brand app-shell__brand--header">
           {cliente?.tema?.logo_url ? (
             <img src={cliente.tema.logo_url} alt={cliente.cliente.nome} />
@@ -258,14 +267,6 @@ export function AppLayout() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="app-shell__toggle"
-          aria-label="Abrir/fechar menu"
-          onClick={() => setSidebarOpen((v) => !v)}
-        >
-          <span className="toggle__bars" aria-hidden="true" />
-        </button>
 
         {isSuperAdmin && (
           <div className="app-shell__client-context">
