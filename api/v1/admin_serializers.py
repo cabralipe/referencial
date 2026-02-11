@@ -74,9 +74,19 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
 
 class AuditLogAdminSerializer(serializers.ModelSerializer):
+    usuario_id = serializers.SerializerMethodField()
+
     class Meta:
         model = AuditLog
-        fields = "__all__"
+        exclude = ["created_at", "updated_at"]
+
+    def get_usuario_id(self, obj) -> str | int | None:
+        if not obj.usuario_id:
+            return None
+        user = UserModel.objects.filter(id=obj.usuario_id).first()
+        if user:
+            return f"{user.nome} ({user.email})"
+        return obj.usuario_id
 
 
 class ThrottleBlockAdminSerializer(serializers.ModelSerializer):
