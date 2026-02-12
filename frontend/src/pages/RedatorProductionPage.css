@@ -194,17 +194,72 @@
 }
 
 @media (max-width: 1024px) {
+  .redator-production {
+    padding: 1rem;
+  }
+
   .redator-production__layout {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
   }
-  
+
+  .redator-production__sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f9fafb;
+    /* Match page bg or ensure contrast */
+    padding-bottom: 0.5rem;
+  }
+
   .redator-production__list {
     flex-direction: row;
     overflow-x: auto;
-    padding-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x mandatory;
+    gap: 0.75rem;
+
+    /* Hide scrollbar for cleaner look */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE 10+ */
   }
-  
+
+  .redator-production__list::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+
   .redator-item {
-    min-width: 250px;
+    min-width: 260px;
+    scroll-snap-align: start;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    margin-right: 0;
+    /* Clear default margins if any */
+  }
+
+  /* Make active item more visible in horizontal list */
+  .redator-item.active {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+  }
+
+  .redator-detail__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .redator-detail__actions {
+    width: 100%;
+    display: flex;
+    justify-content: stretch;
+  }
+
+  .redator-detail__actions button {
+    flex: 1;
   }
 }
