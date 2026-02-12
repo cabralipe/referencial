@@ -1,0 +1,63 @@
+databases:
+  - name: referencial-db
+    databaseName: referencial
+    user: referencial
+    plan: free
+
+services:
+  # Serviço Web (Django + Gunicorn)
+  - type: web
+    name: referencial-web
+    env: docker
+    plan: free
+    region: oregon
+    buildCommand: docker build -t referencial-app .
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: REFERENCIAL_DATABASE_URL
+        fromDatabase:
+          name: referencial-db
+          property: connectionString
+      - key: REFERENCIAL_REDIS_URL
+        fromService:
+          type: redis
+          name: referencial-redis
+          property: connectionString
+    dockerfilePath: ./Dockerfile
+
+  # Worker Celery (Processamento de Assíncrono)
+  - type: worker
+    name: referencial-worker
+    env: docker
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    startCommand: celery -A config worker -l info --concurrency 2
+    envVars:
+      - key: REFERENCIAL_DATABASE_URL
+        fromDatabase:
+          name: referencial-db
+          property: connectionString
+      - key: REFERENCIAL_REDIS_URL
+        fromService:
+          type: redis
+          name: referencial-redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false # Deve ser copiado manualmente ou usar sync: false e definir no dashboard se quiser a mesma key
+      - key: DJANGO_DEBUG
+        value: "False"
+
+  # Redis (Broker para Celery e Channels)
+  - type: redis
+    name: referencial-redis
+    region: oregon
+    plan: free
+    ipAllowList: [] # Apenas serviços internos

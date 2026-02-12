@@ -357,6 +357,8 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 3600,
     },
 }
+CELERY_TASK_ALWAYS_EAGER = env.bool("REFERENCIAL_CELERY_ALWAYS_EAGER", default=DEBUG)
+CELERY_TASK_EAGER_PROPAGATES = True
 
 # Logging básico para auditoria
 LOGGING = {
