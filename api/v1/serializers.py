@@ -401,8 +401,8 @@ class ExportJobSerializer(serializers.ModelSerializer):
             ExportJob.AlvoTipo.RESPOSTA: Resposta,
         }
         if alvo_tipo == ExportJob.AlvoTipo.RELATORIO:
-            if user and getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
-                raise serializers.ValidationError("Somente administradores podem exportar relatórios.")
+            if user and getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN, user.Role.ARTICULADOR}:
+                raise serializers.ValidationError("Somente administradores ou articuladores podem exportar relatórios.")
             payload = attrs.get("payload_json") or {}
             conteudo_html = payload.get("conteudo_html") if isinstance(payload, dict) else None
             if not isinstance(conteudo_html, str) or not conteudo_html.strip():
@@ -601,7 +601,7 @@ class OnlineUserSerializer(serializers.ModelSerializer):
 class UsuarioLookupSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "nome", "email")
+        fields = ("id", "nome", "email", "role")
         read_only_fields = fields
 
 

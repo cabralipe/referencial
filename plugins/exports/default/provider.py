@@ -19,7 +19,7 @@ def _default_context(ctx: Dict[str, Any]) -> Dict[str, Any]:
 
 def render_pdf(ctx: Dict[str, Any]) -> bytes:
     context = _default_context(ctx)
-    return html_to_pdf_bytes("exports/pdf/base.html", context)
+    return html_to_pdf_bytes("pdf/base.html", context)
 
 
 def render_docx(ctx: Dict[str, Any]) -> bytes:

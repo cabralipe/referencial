@@ -806,7 +806,7 @@ class RespostaViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(gt_id=gt_id)
         if pergunta_id:
             queryset = queryset.filter(pergunta_id=pergunta_id)
-        return queryset.order_by("pergunta__ordem")
+        return queryset.order_by("pergunta__ordem", "id")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -1222,6 +1222,7 @@ class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixin
             | models.Q(alvo_tipo=ExportJob.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
             | models.Q(alvo_tipo=ExportJob.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             | models.Q(alvo_tipo=ExportJob.AlvoTipo.COLECAO, payload_json__gt_ids__contained_by=gt_ids)
+            | models.Q(alvo_tipo=ExportJob.AlvoTipo.RELATORIO)
         )
         return queryset
 
@@ -1573,7 +1574,8 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
 class UsuarioLookupViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = UsuarioLookupSerializer
     permission_classes = [HasClientScope]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ("role",)
     search_fields = ("nome", "email")
 
     def get_queryset(self):
@@ -1583,7 +1585,7 @@ class UsuarioLookupViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if q:
             # SearchFilter will still apply; keeping explicit filter for non-standard setups
             queryset = queryset.filter(models.Q(nome__icontains=q) | models.Q(email__icontains=q))
-        return queryset.order_by("nome")
+        return queryset.order_by("nome", "id")
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", True)

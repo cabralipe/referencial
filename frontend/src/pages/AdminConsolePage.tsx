@@ -95,6 +95,18 @@ export function AdminConsolePage() {
       to: '/admin/mural',
     },
     {
+      id: 'relatorios',
+      label: 'Ver relatórios rápidos',
+      description: 'Gere resumos de utilização.',
+      to: '/relatorios',
+    },
+    {
+      id: 'producao-redator',
+      label: 'Produção por Redator',
+      description: 'Acompanhe e exporte textos.',
+      to: '/admin/producao-redatores',
+    },
+    {
       id: 'exports',
       label: 'Exportar documento',
       description: 'Gere relatórios finais.',
