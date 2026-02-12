@@ -24,7 +24,7 @@ class ExportContext:
     payload: Dict[str, object]
 
 
-def _build_context(job: ExportJob) -> ExportContext:
+def build_export_context(job: ExportJob) -> ExportContext:
     cliente = job.cliente
     payload: Dict[str, object] = {
         "cliente": coletar_contexto_do_cliente(cliente),
@@ -158,7 +158,7 @@ def build_pdf(job_id: int) -> None:
     job.status = ExportJob.Status.RUNNING
     job.save(update_fields=["status"])
     try:
-        context = _build_context(job)
+        context = build_export_context(job)
         plugin_name = obter_config(job.cliente, "export_plugin")
         provider = get_export_provider(plugin_name)
         pdf_bytes = provider.render_pdf(context.payload)
@@ -182,7 +182,7 @@ def build_docx(job_id: int) -> None:
     job.status = ExportJob.Status.RUNNING
     job.save(update_fields=["status"])
     try:
-        context = _build_context(job)
+        context = build_export_context(job)
         plugin_name = obter_config(job.cliente, "export_plugin")
         provider = get_export_provider(plugin_name)
         docx_bytes = provider.render_docx(context.payload)

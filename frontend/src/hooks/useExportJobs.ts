@@ -34,6 +34,7 @@ interface CreateExportJobInput {
   payloadJson?: Record<string, unknown>;
 }
 
+
 export function useCreateExportJob() {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -55,3 +56,23 @@ export function useCreateExportJob() {
     },
   });
 }
+
+export function useDownloadExport() {
+  const client = useApiClient();
+
+  return useMutation({
+    mutationFn: async ({ alvoTipo, alvoId, formato, payloadJson }: CreateExportJobInput) => {
+      const response = await client.post<Blob>('/exports/download', {
+        body: {
+          alvo_tipo: alvoTipo,
+          alvo_id: alvoId,
+          formato,
+          payload_json: payloadJson,
+        },
+        responseType: 'blob',
+      });
+      return response.data;
+    },
+  });
+}
+

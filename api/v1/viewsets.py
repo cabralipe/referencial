@@ -51,10 +51,13 @@ from meb.services import auto_reply_for_message, deliver_admin_broadcast, ensure
 from reviews.models import Revisao, ReviewDecision
 from services.reviewer_scope import get_reviewer_queryset
 from sockets.utils import broadcast_stream_event
+from django.http import HttpResponse
+from core.plugins import get_export_provider
 from diffs.services import build_diff
-from tasks.exports import enqueue_export_job
-from tasks.synthesis import enqueue_texto_unico
+from tasks.exports import enqueue_export_job, build_export_context
 from workshop.models import CelulaQuadro, Quadro
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 from .serializers import (
     AnexoSerializer,
@@ -1226,10 +1229,57 @@ class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixin
         )
         return queryset
 
+
     def perform_create(self, serializer):
         cliente_id = _get_request_cliente_id(self.request)
         job = serializer.save(cliente_id=cliente_id)
         enqueue_export_job(job.id)
+
+    @action(detail=False, methods=["post"], url_path="download")
+    def download(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        cliente_id = _get_request_cliente_id(self.request)
+        # Cria o job mas marca como processando
+        job = serializer.save(cliente_id=cliente_id, status=ExportJob.Status.RUNNING)
+
+        try:
+            # Lógica síncrona de geração (reusando serviços existentes)
+            context = build_export_context(job)
+            plugin_name = obter_config(job.cliente, "export_plugin")
+            provider = get_export_provider(plugin_name)
+
+            if job.formato == ExportJob.Formato.PDF:
+                file_bytes = provider.render_pdf(context.payload)
+                ext = "pdf"
+                content_type = "application/pdf"
+            else:
+                file_bytes = provider.render_docx(context.payload)
+                ext = "docx"
+                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+            filename = f"export_{job.id}.{ext}"
+            
+            # Salva histórico no storage (padrão do sistema)
+            saved_path = default_storage.save(f"exports/{job.id}.{ext}", ContentFile(file_bytes))
+            job.url_resultado = default_storage.url(saved_path)
+            job.status = ExportJob.Status.DONE
+            job.finished_at = timezone.now()
+            job.save()
+
+            # Retorna o arquivo diretamente
+            response = HttpResponse(file_bytes, content_type=content_type)
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["X-Export-Job-Id"] = str(job.id)
+            return response
+
+        except Exception as exc:
+            job.status = ExportJob.Status.ERROR
+            job.save()
+            logger.exception(f"Erro no download síncrono do job {job.id}")
+            raise ValidationError("Falha ao gerar o arquivo. Tente novamente ou use a exportação assíncrona.") from exc
+
 
 
 class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):

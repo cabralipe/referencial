@@ -6,7 +6,7 @@ import { useApiClient } from '@/api/client';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
-import { useCreateExportJob } from '@/hooks/useExportJobs';
+import { useCreateExportJob, useDownloadExport } from '@/hooks/useExportJobs';
 import { fetchAllPaginated } from '@/utils/pagination';
 import type { PaginatedResponse, Resposta } from '@/api/types';
 
@@ -22,7 +22,7 @@ interface Redator {
 
 export function RedatorProductionPage() {
     const client = useApiClient();
-    const criarExportacao = useCreateExportJob();
+    const baixarExportacao = useDownloadExport();
     const [selectedRedator, setSelectedRedator] = useState<Redator | null>(null);
     const [search, setSearch] = useState('');
     const [exportFeedback, setExportFeedback] = useState('');
@@ -77,7 +77,7 @@ export function RedatorProductionPage() {
 
     const handleExportPdf = async () => {
         if (!selectedRedator) return;
-        setExportFeedback('');
+        setExportFeedback('Gerando PDF...');
 
         // Construir HTML simples para o relatório
         const now = new Date().toLocaleDateString('pt-BR');
@@ -102,7 +102,7 @@ export function RedatorProductionPage() {
     `;
 
         try {
-            await criarExportacao.mutateAsync({
+            const blob = await baixarExportacao.mutateAsync({
                 alvoTipo: 'relatorio', // Tipo válido: RELATORIO
                 alvoId: String(selectedRedator.id),
                 formato: 'pdf',
@@ -112,9 +112,21 @@ export function RedatorProductionPage() {
                     modo: 'completo',
                 },
             });
-            setExportFeedback('Exportação solicitada! Verifique em "Exportações".');
+
+            // Trigger download
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `producao_${selectedRedator.nome.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            setExportFeedback('Download iniciado com sucesso!');
         } catch (err) {
-            setExportFeedback('Erro ao solicitar exportação.');
+            setExportFeedback('Erro ao gerar PDF.');
+            console.error(err);
         }
     };
 
@@ -176,10 +188,10 @@ export function RedatorProductionPage() {
                                 <div className="redator-detail__actions">
                                     <button
                                         onClick={handleExportPdf}
-                                        disabled={criarExportacao.isPending}
+                                        disabled={baixarExportacao.isPending}
                                         className="btn-primary"
                                     >
-                                        {criarExportacao.isPending ? 'Exportando...' : 'Baixar PDF'}
+                                        {baixarExportacao.isPending ? 'Baixando...' : 'Baixar PDF'}
                                     </button>
                                 </div>
                             </div>
