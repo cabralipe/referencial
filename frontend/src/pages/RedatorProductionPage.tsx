@@ -49,14 +49,23 @@ export function RedatorProductionPage() {
 
     // 3. Processar estatísticas
     const stats = useMemo(() => {
+        console.log('DEBUG: Processing stats');
+        console.log('DEBUG: Redatores count:', redatores.length);
+        console.log('DEBUG: Respostas count:', respostas.length);
+        if (respostas.length > 0) {
+            console.log('DEBUG: First resposta sample:', respostas[0]);
+        }
+
         const map = new Map<number, number>();
         respostas.forEach((r) => {
             if (r.autor) {
                 map.set(r.autor, (map.get(r.autor) || 0) + 1);
             }
         });
+
+        console.log('DEBUG: Stats map size:', map.size);
         return map;
-    }, [respostas]);
+    }, [respostas, redatores]);
 
     // 4. Filtrar lista de redatores
     const filteredRedatores = useMemo(() => {
