@@ -38,6 +38,7 @@ class RoleTokenObtainPairView(TokenObtainPairView):
 
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = []
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={"request": request})
