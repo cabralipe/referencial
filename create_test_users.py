@@ -81,6 +81,10 @@ def create_test_users():
         # Verificar se usuário já existe
         if Usuario.objects.filter(email=email).exists():
             print(f"ℹ️  Usuário já existe: {email}")
+            u = Usuario.objects.get(email=email)
+            u.set_password(senha_padrao)
+            u.save()
+            print(f"✅ Senha atualizada para: {email}")
             continue
         
         # Criar usuário
