@@ -5,7 +5,6 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import {
   useConsultaPublicaPublic,
   useEnviarManifestacao,
-  useManifestacoesPublicas,
 } from '@/hooks/useConsultasPublicas';
 
 import './ConsultaPublicaPublicPage.css';
@@ -18,7 +17,6 @@ function formatDate(value?: string | null) {
 export function ConsultaPublicaPublicPage() {
   const { token } = useParams<{ token: string }>();
   const { data: consulta, isLoading, error } = useConsultaPublicaPublic(token);
-  const { data: manifestacoes, refetch } = useManifestacoesPublicas(token);
   const enviarManifestacao = useEnviarManifestacao();
 
   const [pagina, setPagina] = useState('');
@@ -79,7 +77,6 @@ export function ConsultaPublicaPublicPage() {
       setCidade('');
       setEstado('');
       setEmail('');
-      refetch();
     } catch (submitError: any) {
       setErro(submitError?.message ?? 'Não foi possível enviar a manifestação.');
     }
@@ -234,49 +231,6 @@ export function ConsultaPublicaPublicPage() {
               {enviarManifestacao.isPending ? 'Enviando...' : 'Registrar manifestação'}
             </button>
           </form>
-        </section>
-
-        <section className="consulta-publica__panel">
-          <div className="consulta-publica__panel-header">
-            <div>
-              <h2>Comentários e votos registrados</h2>
-              <p>Transparência das contribuições públicas (dados sensíveis são omitidos).</p>
-            </div>
-            <span className="consulta-publica__chip neutral">
-              {consulta?.total_manifestacoes ?? 0} manifestação{(consulta?.total_manifestacoes ?? 0) === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div className="consulta-publica__manifestacoes">
-            {manifestacoes && manifestacoes.length > 0 ? (
-              manifestacoes.map((item) => (
-                <div key={item.id} className="manifestacao-publica">
-                  <div className="manifestacao-publica__header">
-                    <span>{item.pagina ? `Página ${item.pagina}` : 'Comentário geral'}</span>
-                    <span>{new Date(item.created_at).toLocaleString('pt-BR')}</span>
-                  </div>
-                  <p>{item.comentario}</p>
-                  {item.votos && item.votos.length > 0 && item.votos.some((v) => v) && (
-                    <div className="manifestacao-publica__votos">
-                      {item.votos.map((v, vi) =>
-                        v ? (
-                          <span key={vi} className="manifestacao-publica__voto">
-                            {consulta?.perguntas_votacao?.[vi]?.pergunta
-                              ? `${consulta.perguntas_votacao[vi].pergunta}: ${v}`
-                              : `Voto ${vi + 1}: ${v}`}
-                          </span>
-                        ) : null,
-                      )}
-                    </div>
-                  )}
-                  <small>
-                    {item.nome_completo} — {item.cidade}/{item.estado}
-                  </small>
-                </div>
-              ))
-            ) : (
-              <div className="consulta-publica__empty">Nenhuma manifestação registrada ainda.</div>
-            )}
-          </div>
         </section>
       </div>
     </div>
