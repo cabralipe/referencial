@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { ApiError } from '@/api/client';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
@@ -8,6 +8,7 @@ import {
   useCriarConsultaPublica,
   useExcluirConsultaPublica,
   useManifestacoesConsulta,
+  useEditarConsultaPublica,
 } from '@/hooks/useConsultasPublicas';
 import type { ConsultaPublica } from '@/api/types';
 
@@ -137,6 +138,89 @@ export function ConsultasPublicasPage() {
     }
   };
 
+  const editarConsulta = useEditarConsultaPublica();
+  const [editingConsulta, setEditingConsulta] = useState<ConsultaPublica | null>(null);
+
+  useEffect(() => {
+    if (editingConsulta) {
+      setPerguntas(
+        editingConsulta.perguntas_votacao?.map((p) => ({
+          pergunta: p.pergunta,
+          opcoesTexto: p.opcoes.join('\n'),
+        })) ?? []
+      );
+    } else {
+      setPerguntas([]);
+    }
+  }, [editingConsulta]);
+
+  const handleEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingConsulta) return;
+
+    const formElement = event.currentTarget;
+    setMensagem(null);
+    setErro(null);
+
+    const form = new FormData(formElement);
+    const titulo = String(form.get('titulo') ?? '').trim();
+    const slug = String(form.get('slug') ?? '').trim();
+    const descricao = String(form.get('descricao') ?? '').trim();
+    const data_publicacao = String(form.get('data_publicacao') ?? '').trim();
+    const data_validade = String(form.get('data_validade') ?? '').trim() || undefined;
+    const data_fechamento = String(form.get('data_fechamento') ?? '').trim() || undefined;
+    const ativa = form.get('ativa') !== null;
+
+    const pdfInput = formElement.querySelector('input[name="pdf"]') as HTMLInputElement;
+    const newPdfFile = pdfInput?.files?.[0];
+
+    if (newPdfFile) {
+      if (!newPdfFile.type.toLowerCase().includes('pdf') && !newPdfFile.name.toLowerCase().endsWith('.pdf')) {
+        setErro('Envie um arquivo PDF válido (extensão .pdf).');
+        return;
+      }
+      if (newPdfFile.size === 0) {
+        setErro('O PDF parece estar vazio.');
+        return;
+      }
+    }
+
+    if (!titulo || !data_publicacao) {
+      setErro('Preencha título e data de publicação.');
+      return;
+    }
+
+    const perguntas_votacao = perguntas
+      .filter((p) => p.pergunta.trim())
+      .map((p) => ({
+        pergunta: p.pergunta.trim(),
+        opcoes: p.opcoesTexto
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean),
+      }));
+
+    try {
+      await editarConsulta.mutateAsync({
+        id: editingConsulta.id,
+        titulo,
+        slug: slug || undefined,
+        descricao: descricao || undefined,
+        pdf: newPdfFile || undefined,
+        data_publicacao,
+        data_validade,
+        data_fechamento,
+        perguntas_votacao: perguntas_votacao.length > 0 ? perguntas_votacao : undefined,
+        ativa,
+      });
+      setMensagem('Consulta atualizada com sucesso!');
+      setEditingConsulta(null);
+      setPdfFile(null);
+    } catch (error: any) {
+      setErro(error?.message ?? 'Não foi possível atualizar a consulta.');
+    }
+  };
+
   if (isLoading && !consultas) {
     return <FullPageLoader message="Carregando consultas públicas..." />;
   }
@@ -166,8 +250,8 @@ export function ConsultasPublicasPage() {
             <h2>Nova consulta pública</h2>
             <p>Envie um PDF, defina datas e adicione perguntas de votação (opcional).</p>
           </div>
-          {mensagem && <span className="consultas-admin__badge success">{mensagem}</span>}
-          {erro && <span className="consultas-admin__badge danger">{erro}</span>}
+          {mensagem && !editingConsulta && <span className="consultas-admin__badge success">{mensagem}</span>}
+          {erro && !editingConsulta && <span className="consultas-admin__badge danger">{erro}</span>}
         </div>
         <form className="consultas-admin__form" onSubmit={handleSubmit}>
           <label>
@@ -213,7 +297,7 @@ export function ConsultasPublicasPage() {
                 + Adicionar pergunta
               </button>
             </div>
-            {perguntas.map((p, index) => (
+            {!editingConsulta && perguntas.map((p, index) => (
               <div key={index} className="consultas-admin__pergunta-item">
                 <div className="consultas-admin__pergunta-top">
                   <span className="consultas-admin__pergunta-number">{index + 1}</span>
@@ -240,7 +324,7 @@ export function ConsultasPublicasPage() {
                 />
               </div>
             ))}
-            {perguntas.length === 0 && (
+            {!editingConsulta && perguntas.length === 0 && (
               <p className="consultas-admin__perguntas-empty">
                 Nenhuma pergunta adicionada. Clique em "+ Adicionar pergunta" para criar uma.
               </p>
@@ -330,6 +414,9 @@ export function ConsultasPublicasPage() {
                   </div>
                 )}
                 <div className="consultas-admin__actions">
+                  <button type="button" className="ghost" onClick={() => setEditingConsulta(consulta)}>
+                    Editar
+                  </button>
                   <button
                     type="button"
                     className="ghost"
@@ -391,6 +478,146 @@ export function ConsultasPublicasPage() {
           </div>
         )}
       </section>
+
+      {editingConsulta && (
+        <div className="consultas-admin__modal-overlay">
+          <div className="consultas-admin__modal">
+            <header className="consultas-admin__modal-header">
+              <h3>Editar Consulta Pública</h3>
+              <button
+                type="button"
+                className="consultas-admin__modal-close"
+                onClick={() => setEditingConsulta(null)}
+              >
+                Fechar
+              </button>
+            </header>
+            <div className="consultas-admin__modal-body">
+              {erro && editingConsulta && <span className="consultas-admin__badge danger">{erro}</span>}
+              <form className="consultas-admin__form" onSubmit={handleEditSubmit}>
+                <label>
+                  <span>Título</span>
+                  <input
+                    name="titulo"
+                    type="text"
+                    defaultValue={editingConsulta.titulo}
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Slug (opcional)</span>
+                  <input
+                    name="slug"
+                    type="text"
+                    defaultValue={editingConsulta.slug || ''}
+                  />
+                </label>
+                <label className="full">
+                  <span>Descrição curta (opcional)</span>
+                  <textarea
+                    name="descricao"
+                    rows={3}
+                    defaultValue={editingConsulta.descricao || ''}
+                  />
+                </label>
+                <label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Subir novo PDF (opcional)</span>
+                    {editingConsulta.pdf_url && (
+                      <a href={editingConsulta.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>
+                        Ver PDF Atual
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    name="pdf"
+                    type="file"
+                    accept="application/pdf"
+                  />
+                </label>
+                <label>
+                  <span>Data de publicação</span>
+                  <input
+                    name="data_publicacao"
+                    type="date"
+                    required
+                    defaultValue={editingConsulta.data_publicacao}
+                  />
+                </label>
+                <label>
+                  <span>Validade da consulta (opcional)</span>
+                  <input
+                    name="data_validade"
+                    type="date"
+                    defaultValue={editingConsulta.data_validade || ''}
+                  />
+                </label>
+                <label>
+                  <span>Fechamento (opcional)</span>
+                  <input
+                    name="data_fechamento"
+                    type="date"
+                    defaultValue={editingConsulta.data_fechamento || ''}
+                  />
+                </label>
+
+                <div className="full consultas-admin__perguntas-section">
+                  <div className="consultas-admin__perguntas-header">
+                    <span>Perguntas de votação (opcional)</span>
+                    <button type="button" className="consultas-admin__add-pergunta" onClick={addPergunta}>
+                      + Adicionar pergunta
+                    </button>
+                  </div>
+                  {perguntas.map((p, index) => (
+                    <div key={index} className="consultas-admin__pergunta-item">
+                      <div className="consultas-admin__pergunta-top">
+                        <span className="consultas-admin__pergunta-number">{index + 1}</span>
+                        <input
+                          type="text"
+                          placeholder="Ex.: Você concorda com o documento?"
+                          value={p.pergunta}
+                          onChange={(e) => updatePergunta(index, 'pergunta', e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="consultas-admin__remove-pergunta"
+                          onClick={() => removePergunta(index)}
+                          title="Remover pergunta"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <textarea
+                        rows={2}
+                        placeholder={"Opções de voto (uma por linha)\nEx.: Sim\nNão"}
+                        value={p.opcoesTexto}
+                        onChange={(e) => updatePergunta(index, 'opcoesTexto', e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  {perguntas.length === 0 && (
+                    <p className="consultas-admin__perguntas-empty">
+                      Nenhuma pergunta adicionada.
+                    </p>
+                  )}
+                </div>
+
+                <label className="checkbox">
+                  <input
+                    name="ativa"
+                    type="checkbox"
+                    defaultChecked={editingConsulta.ativa}
+                  />
+                  <span>Consulta ativa</span>
+                </label>
+                <button type="submit" disabled={editarConsulta.isPending}>
+                  {editarConsulta.isPending ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

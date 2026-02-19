@@ -88,6 +88,63 @@ export function useCriarConsultaPublica() {
   });
 }
 
+export interface EditarConsultaPublicaInput extends Partial<CriarConsultaPublicaInput> {
+  id: number;
+}
+
+export function useEditarConsultaPublica() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: EditarConsultaPublicaInput) => {
+      if (!clienteId) {
+        throw new Error('Cliente não identificado para editar consulta.');
+      }
+
+      const form = new FormData();
+      if (payload.titulo) form.append('titulo', payload.titulo);
+      if (payload.slug !== undefined) form.append('slug', payload.slug); // Allow clearing slug
+      if (payload.descricao !== undefined) form.append('descricao', payload.descricao);
+
+      // PDF is optional in update
+      if (payload.pdf) {
+        const mime = payload.pdf?.type?.toLowerCase?.() ?? '';
+        const nomeArquivo = payload.pdf?.name?.toLowerCase?.() ?? '';
+        if ((!mime.includes('pdf') && !nomeArquivo.endsWith('.pdf'))) {
+          throw new Error('Envie um arquivo PDF válido.');
+        }
+        if (payload.pdf.size > 0) {
+          form.append('pdf', payload.pdf);
+        }
+      }
+
+      if (payload.data_publicacao) form.append('data_publicacao', payload.data_publicacao);
+      if (payload.data_validade !== undefined) form.append('data_validade', payload.data_validade || '');
+      if (payload.data_fechamento !== undefined) form.append('data_fechamento', payload.data_fechamento || '');
+
+      if (payload.perguntas_votacao) {
+        form.append('perguntas_votacao', JSON.stringify(payload.perguntas_votacao));
+      }
+
+      if (payload.ativa !== undefined) {
+        form.append('ativa', payload.ativa ? 'true' : 'false');
+      }
+
+      const response = await client.patch<ConsultaPublica>(`/consultas_publicas/${id}`, {
+        body: form,
+        headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultas_publicas', clienteId] });
+    },
+  });
+}
+
 export function useManifestacoesConsulta(consultaId?: number) {
   const client = useApiClient();
   const { cliente, user } = useAuth();
