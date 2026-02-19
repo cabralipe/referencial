@@ -20,4 +20,11 @@ urlpatterns += [
 
 # Servir mídia sempre que o storage for local (ou quando DEBUG estiver ativo).
 # Isso mantém a rota /media/ respondendo mesmo em produção para PDF de consulta pública.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Em produção com storage local, forçamos o serve do django (inseguro, mas necessário se não usar S3/Nginx)
+    from django.views.static import serve
+    urlpatterns += [
+        re_path(r"^%s(?P<path>.*)$" % settings.MEDIA_URL.lstrip("/"), serve, {"document_root": settings.MEDIA_ROOT}),
+    ]
