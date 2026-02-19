@@ -227,11 +227,32 @@
   flex-wrap: wrap;
 }
 
+.manifestacao-publica__votos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 .manifestacao-publica__voto {
   display: inline-block;
-  margin-top: 4px;
   font-weight: 700;
   color: #0f172a;
+  background: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+
+.consulta-publica__polls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consulta-publica__polls .consulta-publica__poll strong {
+  display: block;
+  margin-bottom: 4px;
 }
 
 @media (max-width: 720px) {

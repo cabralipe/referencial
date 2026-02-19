@@ -17,8 +17,7 @@ def consulta_publica(cliente, usuario):
         slug="documento-gt",
         pdf=pdf,
         data_publicacao=dt.date.today(),
-        pergunta_votacao="Você concorda com o texto final?",
-        opcoes_votacao=["Sim", "Não"],
+        perguntas_votacao=[{"pergunta": "Você concorda com o texto final?", "opcoes": ["Sim", "Não"]}],
         criada_por=usuario,
     )
 
@@ -39,7 +38,7 @@ def test_public_post_manifestacao(api_client, consulta_publica):
         "estado": "AL",
         "comentario": "Achei o texto claro e objetivo.",
         "pagina": 3,
-        "voto": "Sim",
+        "votos": ["Sim"],
     }
     resp = api_client.post(
         f"/api/v1/consultas_publicas/public/{consulta_publica.token_acesso}/manifestacoes",
@@ -51,7 +50,7 @@ def test_public_post_manifestacao(api_client, consulta_publica):
     manifestacao = ManifestacaoPublica.objects.first()
     assert manifestacao.cliente_id == consulta_publica.cliente_id
     assert manifestacao.pagina == 3
-    assert manifestacao.voto == "Sim"
+    assert manifestacao.votos == ["Sim"]
 
 
 def test_consulta_fechada_rejeita_manifestacao(api_client, consulta_publica):

@@ -116,35 +116,35 @@ export interface Revisao {
 
 export type RevisaoAlvoPreview =
   | {
-      type: 'resposta';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      pergunta?: number | null;
-      pergunta_ordem?: number | null;
-      tarefa?: number | null;
-      tarefa_nome?: string | null;
-      tarefa_etapa?: string | null;
-      autor_nome?: string | null;
-      conteudo_html?: string;
-    }
+    type: 'resposta';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    pergunta?: number | null;
+    pergunta_ordem?: number | null;
+    tarefa?: number | null;
+    tarefa_nome?: string | null;
+    tarefa_etapa?: string | null;
+    autor_nome?: string | null;
+    conteudo_html?: string;
+  }
   | {
-      type: 'texto_unico';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      tarefa?: number | null;
-      tarefa_nome?: string | null;
-      tarefa_etapa?: string | null;
-      conteudo_html?: string;
-    }
+    type: 'texto_unico';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    tarefa?: number | null;
+    tarefa_nome?: string | null;
+    tarefa_etapa?: string | null;
+    conteudo_html?: string;
+  }
   | {
-      type: 'quadro';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      template?: string | null;
-    };
+    type: 'quadro';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    template?: string | null;
+  };
 
 export interface CelulaQuadro {
   id: number;
@@ -262,31 +262,31 @@ export interface Comentario {
 
 export type ComentarioAlvoPreview =
   | {
-      type: 'resposta';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      tarefa?: number | null;
-      tarefa_nome?: string | null;
-      pergunta?: number | null;
-      pergunta_ordem?: number | null;
-      pergunta_texto?: string | null;
-    }
+    type: 'resposta';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    tarefa?: number | null;
+    tarefa_nome?: string | null;
+    pergunta?: number | null;
+    pergunta_ordem?: number | null;
+    pergunta_texto?: string | null;
+  }
   | {
-      type: 'texto_unico';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      tarefa?: number | null;
-      tarefa_nome?: string | null;
-    }
+    type: 'texto_unico';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    tarefa?: number | null;
+    tarefa_nome?: string | null;
+  }
   | {
-      type: 'quadro';
-      id: number;
-      gt?: number | null;
-      gt_nome?: string | null;
-      template?: string | null;
-    };
+    type: 'quadro';
+    id: number;
+    gt?: number | null;
+    gt_nome?: string | null;
+    template?: string | null;
+  };
 
 export interface Notificacao {
   id: number;
@@ -358,8 +358,7 @@ export interface ConsultaPublica {
   data_publicacao: string;
   data_validade: string | null;
   data_fechamento: string | null;
-  pergunta_votacao: string | null;
-  opcoes_votacao: string[];
+  perguntas_votacao: { pergunta: string; opcoes: string[] }[];
   ativa: boolean;
   public_url: string;
   total_manifestacoes: number;
@@ -374,8 +373,7 @@ export interface ConsultaPublicaPublic {
   data_publicacao: string;
   data_validade: string | null;
   data_fechamento: string | null;
-  pergunta_votacao: string | null;
-  opcoes_votacao: string[];
+  perguntas_votacao: { pergunta: string; opcoes: string[] }[];
   esta_disponivel: boolean;
   total_manifestacoes: number;
 }
@@ -385,7 +383,7 @@ export interface ManifestacaoPublica {
   consulta: number;
   pagina: number | null;
   comentario: string;
-  voto: string | null;
+  votos: string[];
   nome_completo: string;
   cpf: string;
   cidade: string;
@@ -400,7 +398,7 @@ export interface ManifestacaoPublicaPublic {
   id: number;
   pagina: number | null;
   comentario: string;
-  voto: string | null;
+  votos: string[];
   nome_completo: string;
   cidade: string;
   estado: string;

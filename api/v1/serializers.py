@@ -1029,8 +1029,7 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
             "data_publicacao",
             "data_validade",
             "data_fechamento",
-            "pergunta_votacao",
-            "opcoes_votacao",
+            "perguntas_votacao",
             "ativa",
             "public_url",
             "total_manifestacoes",
@@ -1078,23 +1077,28 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
             return obj.manifestacoes_count
         return obj.manifestacoes.count()
 
-    def validate_opcoes_votacao(self, value):
+    def validate_perguntas_votacao(self, value):
         if value is None or value == "" or value == []:
             return []
         if isinstance(value, str):
             try:
                 value = json.loads(value)
             except json.JSONDecodeError:
-                value = [line.strip() for line in value.splitlines() if line.strip()]
+                return []
         if not isinstance(value, (list, tuple)):
-            raise serializers.ValidationError("Forneça uma lista de opções de voto (um item por linha).")
-        opcoes = []
+            raise serializers.ValidationError("Forneça uma lista de perguntas de votação.")
+        perguntas = []
         for item in value:
-            texto = str(item).strip()
-            if not texto:
-                continue
-            opcoes.append(texto)
-        return opcoes
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Cada pergunta deve ser um objeto com 'pergunta' e 'opcoes'.")
+            pergunta = str(item.get("pergunta", "")).strip()
+            opcoes_raw = item.get("opcoes", [])
+            if isinstance(opcoes_raw, str):
+                opcoes_raw = [l.strip() for l in opcoes_raw.splitlines() if l.strip()]
+            opcoes = [str(o).strip() for o in opcoes_raw if str(o).strip()]
+            if pergunta:
+                perguntas.append({"pergunta": pergunta, "opcoes": opcoes})
+        return perguntas
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -1130,8 +1134,7 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
             "data_publicacao",
             "data_validade",
             "data_fechamento",
-            "pergunta_votacao",
-            "opcoes_votacao",
+            "perguntas_votacao",
             "esta_disponivel",
             "total_manifestacoes",
         )
@@ -1169,7 +1172,7 @@ class ManifestacaoPublicaSerializer(serializers.ModelSerializer):
             "consulta",
             "pagina",
             "comentario",
-            "voto",
+            "votos",
             "nome_completo",
             "cpf",
             "cidade",
@@ -1189,7 +1192,7 @@ class ManifestacaoPublicaPublicSerializer(serializers.ModelSerializer):
             "id",
             "pagina",
             "comentario",
-            "voto",
+            "votos",
             "nome_completo",
             "cidade",
             "estado",
@@ -1204,7 +1207,7 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
         fields = (
             "pagina",
             "comentario",
-            "voto",
+            "votos",
             "nome_completo",
             "cpf",
             "cidade",
@@ -1236,18 +1239,36 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Informe a cidade.")
         return cidade
 
+    def validate_votos(self, value):
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return []
+        if not isinstance(value, (list, tuple)):
+            raise serializers.ValidationError("Forneça uma lista de votos.")
+        return [str(v).strip() for v in value]
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         comentario = (attrs.get("comentario") or "").strip()
-        voto = (attrs.get("voto") or "").strip()
+        votos = attrs.get("votos") or []
         attrs["comentario"] = comentario
-        attrs["voto"] = voto
-        if not comentario and not voto:
+        attrs["votos"] = votos
+        has_any_vote = any(v for v in votos)
+        if not comentario and not has_any_vote:
             raise serializers.ValidationError("Adicione um comentário ou selecione uma opção de voto.")
         consulta: ConsultaPublica | None = self.context.get("consulta")
-        if consulta and consulta.pergunta_votacao and consulta.opcoes_votacao:
-            if voto and voto not in consulta.opcoes_votacao:
-                raise serializers.ValidationError({"voto": "Opção inválida para esta votação."})
+        if consulta and consulta.perguntas_votacao:
+            for i, v in enumerate(votos):
+                if not v:
+                    continue
+                if i < len(consulta.perguntas_votacao):
+                    opcoes = consulta.perguntas_votacao[i].get("opcoes", [])
+                    if opcoes and v not in opcoes:
+                        raise serializers.ValidationError({"votos": f"Opção inválida para a pergunta {i + 1}."})
         return attrs
 
 

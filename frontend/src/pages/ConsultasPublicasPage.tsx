@@ -13,6 +13,11 @@ import type { ConsultaPublica } from '@/api/types';
 
 import './ConsultasPublicasPage.css';
 
+interface PerguntaFormItem {
+  pergunta: string;
+  opcoesTexto: string; // raw textarea value (one option per line)
+}
+
 export function ConsultasPublicasPage() {
   const {
     data: consultas,
@@ -23,10 +28,10 @@ export function ConsultasPublicasPage() {
   const criarConsulta = useCriarConsultaPublica();
   const excluirConsulta = useExcluirConsultaPublica();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [opcoesTexto, setOpcoesTexto] = useState('');
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [consultaSelecionada, setConsultaSelecionada] = useState<number | null>(null);
+  const [perguntas, setPerguntas] = useState<PerguntaFormItem[]>([]);
   const { data: manifestacoes, isLoading: carregandoManifestacoes } = useManifestacoesConsulta(consultaSelecionada ?? undefined);
 
   const consultaFetchErro = useMemo(() => {
@@ -36,14 +41,19 @@ export function ConsultasPublicasPage() {
     return 'Não foi possível carregar as consultas públicas.';
   }, [consultasError]);
 
-  const opcoesVotacao = useMemo(
-    () =>
-      opcoesTexto
-        .split('\n')
-        .map((linha) => linha.trim())
-        .filter(Boolean),
-    [opcoesTexto],
-  );
+  const addPergunta = () => {
+    setPerguntas((prev) => [...prev, { pergunta: '', opcoesTexto: '' }]);
+  };
+
+  const removePergunta = (index: number) => {
+    setPerguntas((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePergunta = (index: number, field: keyof PerguntaFormItem, value: string) => {
+    setPerguntas((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    );
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,13 +75,23 @@ export function ConsultasPublicasPage() {
     const data_publicacao = String(form.get('data_publicacao') ?? '').trim();
     const data_validade = String(form.get('data_validade') ?? '').trim() || undefined;
     const data_fechamento = String(form.get('data_fechamento') ?? '').trim() || undefined;
-    const pergunta_votacao = String(form.get('pergunta_votacao') ?? '').trim() || undefined;
     const ativa = form.get('ativa') !== null;
 
     if (!titulo || !data_publicacao || !pdfFile) {
       setErro('Preencha título, data de publicação e selecione o PDF.');
       return;
     }
+
+    // Build perguntas_votacao from state
+    const perguntas_votacao = perguntas
+      .filter((p) => p.pergunta.trim())
+      .map((p) => ({
+        pergunta: p.pergunta.trim(),
+        opcoes: p.opcoesTexto
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean),
+      }));
 
     try {
       await criarConsulta.mutateAsync({
@@ -82,12 +102,11 @@ export function ConsultasPublicasPage() {
         data_publicacao,
         data_validade,
         data_fechamento,
-        pergunta_votacao,
-        opcoes_votacao: opcoesVotacao,
+        perguntas_votacao: perguntas_votacao.length > 0 ? perguntas_votacao : undefined,
         ativa,
       });
       setMensagem('Consulta criada com sucesso! Compartilhe o link público para iniciar a participação.');
-      setOpcoesTexto('');
+      setPerguntas([]);
       setPdfFile(null);
       formElement.reset();
     } catch (error: any) {
@@ -136,7 +155,7 @@ export function ConsultasPublicasPage() {
         description="Mantenha o processo simples para o público, mas completo para auditoria."
         items={[
           { title: 'Cadastre o PDF', description: 'Suba o documento final do GT com título e datas de abertura/encerramento.' },
-          { title: 'Defina a votação', description: 'Crie uma pergunta objetiva e opções claras; o nome/CPF são coletados ao enviar.' },
+          { title: 'Defina a votação', description: 'Crie perguntas objetivas com opções claras; o nome/CPF são coletados ao enviar.' },
           { title: 'Compartilhe o link', description: 'Use o link público gerado para divulgar a consulta aberta.' },
         ]}
       />
@@ -145,7 +164,7 @@ export function ConsultasPublicasPage() {
         <div className="consultas-admin__form-header">
           <div>
             <h2>Nova consulta pública</h2>
-            <p>Envie um PDF, defina datas e personalize a pergunta de votação (opcional).</p>
+            <p>Envie um PDF, defina datas e adicione perguntas de votação (opcional).</p>
           </div>
           {mensagem && <span className="consultas-admin__badge success">{mensagem}</span>}
           {erro && <span className="consultas-admin__badge danger">{erro}</span>}
@@ -185,19 +204,49 @@ export function ConsultasPublicasPage() {
             <span>Fechamento (opcional)</span>
             <input name="data_fechamento" type="date" />
           </label>
-          <label>
-            <span>Pergunta de votação (opcional)</span>
-            <input name="pergunta_votacao" type="text" placeholder="Você concorda com o documento?" />
-          </label>
-          <label className="full">
-            <span>Opções de voto (uma por linha)</span>
-            <textarea
-              rows={3}
-              value={opcoesTexto}
-              onChange={(event) => setOpcoesTexto(event.target.value)}
-              placeholder="Sim&#10;Não"
-            />
-          </label>
+
+          {/* ── Multiple questions section ── */}
+          <div className="full consultas-admin__perguntas-section">
+            <div className="consultas-admin__perguntas-header">
+              <span>Perguntas de votação (opcional)</span>
+              <button type="button" className="consultas-admin__add-pergunta" onClick={addPergunta}>
+                + Adicionar pergunta
+              </button>
+            </div>
+            {perguntas.map((p, index) => (
+              <div key={index} className="consultas-admin__pergunta-item">
+                <div className="consultas-admin__pergunta-top">
+                  <span className="consultas-admin__pergunta-number">{index + 1}</span>
+                  <input
+                    type="text"
+                    placeholder="Ex.: Você concorda com o documento?"
+                    value={p.pergunta}
+                    onChange={(e) => updatePergunta(index, 'pergunta', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="consultas-admin__remove-pergunta"
+                    onClick={() => removePergunta(index)}
+                    title="Remover pergunta"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  placeholder={"Opções de voto (uma por linha)\nEx.: Sim\nNão"}
+                  value={p.opcoesTexto}
+                  onChange={(e) => updatePergunta(index, 'opcoesTexto', e.target.value)}
+                />
+              </div>
+            ))}
+            {perguntas.length === 0 && (
+              <p className="consultas-admin__perguntas-empty">
+                Nenhuma pergunta adicionada. Clique em "+ Adicionar pergunta" para criar uma.
+              </p>
+            )}
+          </div>
+
           <label className="checkbox">
             <input name="ativa" type="checkbox" defaultChecked />
             <span>Consulta ativa</span>
@@ -264,14 +313,20 @@ export function ConsultasPublicasPage() {
                     Copiar
                   </button>
                 </div>
-                {consulta.pergunta_votacao && (
+                {consulta.perguntas_votacao && consulta.perguntas_votacao.length > 0 && (
                   <div className="consultas-admin__poll">
-                    <strong>{consulta.pergunta_votacao}</strong>
-                    <ul>
-                      {(consulta.opcoes_votacao || []).map((opcao) => (
-                        <li key={opcao}>{opcao}</li>
-                      ))}
-                    </ul>
+                    {consulta.perguntas_votacao.map((pv, idx) => (
+                      <div key={idx} className="consultas-admin__poll-item">
+                        <strong>{pv.pergunta}</strong>
+                        {pv.opcoes.length > 0 && (
+                          <ul>
+                            {pv.opcoes.map((opcao) => (
+                              <li key={opcao}>{opcao}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div className="consultas-admin__actions">
@@ -307,7 +362,19 @@ export function ConsultasPublicasPage() {
                             <span>{new Date(item.created_at).toLocaleString('pt-BR')}</span>
                           </div>
                           <p>{item.comentario}</p>
-                          {(item.voto || '').trim() && <span className="manifestacao__voto">Voto: {item.voto}</span>}
+                          {item.votos && item.votos.length > 0 && item.votos.some((v) => v) && (
+                            <div className="manifestacao__votos">
+                              {item.votos.map((v, vi) => (
+                                v ? (
+                                  <span key={vi} className="manifestacao__voto">
+                                    {consulta.perguntas_votacao?.[vi]?.pergunta
+                                      ? `${consulta.perguntas_votacao[vi].pergunta}: ${v}`
+                                      : `Voto ${vi + 1}: ${v}`}
+                                  </span>
+                                ) : null
+                              ))}
+                            </div>
+                          )}
                           <small>
                             {item.nome_completo} — {item.cidade}/{item.estado}
                           </small>

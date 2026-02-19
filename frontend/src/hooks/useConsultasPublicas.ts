@@ -40,8 +40,7 @@ interface CriarConsultaPublicaInput {
   data_publicacao: string;
   data_validade?: string;
   data_fechamento?: string;
-  pergunta_votacao?: string;
-  opcoes_votacao?: string[];
+  perguntas_votacao?: { pergunta: string; opcoes: string[] }[];
   ativa?: boolean;
 }
 
@@ -72,9 +71,8 @@ export function useCriarConsultaPublica() {
       form.append('data_publicacao', payload.data_publicacao);
       if (payload.data_validade) form.append('data_validade', payload.data_validade);
       if (payload.data_fechamento) form.append('data_fechamento', payload.data_fechamento);
-      if (payload.pergunta_votacao) form.append('pergunta_votacao', payload.pergunta_votacao);
-      if (payload.opcoes_votacao && payload.opcoes_votacao.length > 0) {
-        form.append('opcoes_votacao', JSON.stringify(payload.opcoes_votacao));
+      if (payload.perguntas_votacao && payload.perguntas_votacao.length > 0) {
+        form.append('perguntas_votacao', JSON.stringify(payload.perguntas_votacao));
       }
       form.append('ativa', payload.ativa === false ? 'false' : 'true');
 
@@ -142,7 +140,7 @@ interface EnviarManifestacaoInput {
   token: string;
   pagina?: number | null;
   comentario?: string;
-  voto?: string;
+  votos?: string[];
   nome_completo: string;
   cpf: string;
   cidade: string;

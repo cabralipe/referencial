@@ -34,8 +34,8 @@ class ConsultaPublica(TenantModel):
     data_publicacao = models.DateField()
     data_validade = models.DateField(null=True, blank=True)
     data_fechamento = models.DateField(null=True, blank=True)
-    pergunta_votacao = models.CharField(max_length=255, blank=True)
-    opcoes_votacao = models.JSONField(default=list, blank=True)
+    perguntas_votacao = models.JSONField(default=list, blank=True)
+    # Format: [{"pergunta": "...", "opcoes": ["A", "B"]}, ...]
     ativa = models.BooleanField(default=True)
     criada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -78,7 +78,8 @@ class ManifestacaoPublica(TenantModel):
     )
     pagina = models.PositiveIntegerField(null=True, blank=True)
     comentario = models.TextField()
-    voto = models.CharField(max_length=255, blank=True)
+    votos = models.JSONField(default=list, blank=True)
+    # Format: ["answer_for_q0", "answer_for_q1", ...]
     nome_completo = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14)
     cidade = models.CharField(max_length=120)

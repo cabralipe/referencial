@@ -23,7 +23,7 @@ export function ConsultaPublicaPublicPage() {
 
   const [pagina, setPagina] = useState('');
   const [comentario, setComentario] = useState('');
-  const [voto, setVoto] = useState('');
+  const [votos, setVotos] = useState<string[]>([]);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [cidade, setCidade] = useState('');
@@ -34,17 +34,28 @@ export function ConsultaPublicaPublicPage() {
 
   const podeParticipar = useMemo(() => consulta?.esta_disponivel !== false, [consulta?.esta_disponivel]);
 
+  const setVoto = (questionIndex: number, value: string) => {
+    setVotos((prev) => {
+      const copy = [...prev];
+      while (copy.length <= questionIndex) copy.push('');
+      copy[questionIndex] = value;
+      return copy;
+    });
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token || !consulta) return;
     setErro(null);
     setFeedback(null);
 
+    const hasAnyVote = votos.some((v) => v);
+
     const payload = {
       token,
       pagina: pagina ? Number(pagina) : null,
       comentario: comentario.trim(),
-      voto: voto.trim(),
+      votos: votos,
       nome_completo: nome.trim(),
       cpf: cpf.trim(),
       cidade: cidade.trim(),
@@ -52,7 +63,7 @@ export function ConsultaPublicaPublicPage() {
       contato_email: email.trim() || undefined,
     };
 
-    if (!payload.comentario && !payload.voto) {
+    if (!payload.comentario && !hasAnyVote) {
       setErro('Escreva um comentário ou escolha uma opção de voto.');
       return;
     }
@@ -61,7 +72,7 @@ export function ConsultaPublicaPublicPage() {
       await enviarManifestacao.mutateAsync(payload);
       setFeedback('Contribuição registrada! Obrigado por participar.');
       setComentario('');
-      setVoto('');
+      setVotos([]);
       setPagina('');
       setNome('');
       setCpf('');
@@ -152,27 +163,37 @@ export function ConsultaPublicaPublicPage() {
               />
             </label>
 
-            {consulta?.pergunta_votacao && (
-              <div className="consulta-publica__poll full">
-                <strong>{consulta.pergunta_votacao}</strong>
-                <div className="consulta-publica__options">
-                  {(consulta.opcoes_votacao || []).map((opcao) => (
-                    <label key={opcao} className={voto === opcao ? 'is-selected' : ''}>
-                      <input
-                        type="radio"
-                        name="voto"
-                        value={opcao}
-                        checked={voto === opcao}
-                        onChange={() => setVoto(opcao)}
-                      />
-                      <span>{opcao}</span>
-                    </label>
-                  ))}
-                  <label className={!voto ? 'is-selected' : ''}>
-                    <input type="radio" name="voto" value="" checked={!voto} onChange={() => setVoto('')} />
-                    <span>Sem voto</span>
-                  </label>
-                </div>
+            {consulta?.perguntas_votacao && consulta.perguntas_votacao.length > 0 && (
+              <div className="consulta-publica__polls full">
+                {consulta.perguntas_votacao.map((pv, idx) => (
+                  <div key={idx} className="consulta-publica__poll">
+                    <strong>{pv.pergunta}</strong>
+                    <div className="consulta-publica__options">
+                      {(pv.opcoes || []).map((opcao) => (
+                        <label key={opcao} className={(votos[idx] || '') === opcao ? 'is-selected' : ''}>
+                          <input
+                            type="radio"
+                            name={`voto_${idx}`}
+                            value={opcao}
+                            checked={(votos[idx] || '') === opcao}
+                            onChange={() => setVoto(idx, opcao)}
+                          />
+                          <span>{opcao}</span>
+                        </label>
+                      ))}
+                      <label className={!(votos[idx] || '') ? 'is-selected' : ''}>
+                        <input
+                          type="radio"
+                          name={`voto_${idx}`}
+                          value=""
+                          checked={!(votos[idx] || '')}
+                          onChange={() => setVoto(idx, '')}
+                        />
+                        <span>Sem voto</span>
+                      </label>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -234,7 +255,19 @@ export function ConsultaPublicaPublicPage() {
                     <span>{new Date(item.created_at).toLocaleString('pt-BR')}</span>
                   </div>
                   <p>{item.comentario}</p>
-                  {(item.voto || '').trim() && <span className="manifestacao-publica__voto">Voto: {item.voto}</span>}
+                  {item.votos && item.votos.length > 0 && item.votos.some((v) => v) && (
+                    <div className="manifestacao-publica__votos">
+                      {item.votos.map((v, vi) =>
+                        v ? (
+                          <span key={vi} className="manifestacao-publica__voto">
+                            {consulta?.perguntas_votacao?.[vi]?.pergunta
+                              ? `${consulta.perguntas_votacao[vi].pergunta}: ${v}`
+                              : `Voto ${vi + 1}: ${v}`}
+                          </span>
+                        ) : null,
+                      )}
+                    </div>
+                  )}
                   <small>
                     {item.nome_completo} — {item.cidade}/{item.estado}
                   </small>
