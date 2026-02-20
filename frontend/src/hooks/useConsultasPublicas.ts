@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import { fetchAllPaginated } from '@/utils/pagination';
 import type {
   ConsultaPublica,
   ConsultaPublicaPublic,
   ManifestacaoPublica,
   ManifestacaoPublicaPublic,
-  PaginatedResponse,
 } from '@/api/types';
 
 export function useConsultasPublicas() {
@@ -23,11 +23,10 @@ export function useConsultasPublicas() {
       if (!clienteId) {
         throw new Error('Cliente não identificado para carregar consultas.');
       }
-      const response = await client.get<PaginatedResponse<ConsultaPublica>>('/consultas_publicas', {
+      return fetchAllPaginated<ConsultaPublica>(client.get, '/consultas_publicas', {
         query: { page_size: 200 },
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
-      });
-      return response.data.results ?? [];
+      }, 200);
     },
   });
 }

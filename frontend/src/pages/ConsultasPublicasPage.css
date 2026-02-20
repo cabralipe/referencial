@@ -237,6 +237,56 @@
   font-size: 0.875rem;
 }
 
+.consultas-admin__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.consultas-admin__pagination-info {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.consultas-admin__pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.consultas-admin__pagination-controls span {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.consultas-admin__pagination-controls .ghost {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.consultas-admin__pagination-controls .ghost:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.consultas-admin__pagination-controls .ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Cards Grid ─────────────────────────────────────────── */
 .consultas-admin__grid {
   display: grid;

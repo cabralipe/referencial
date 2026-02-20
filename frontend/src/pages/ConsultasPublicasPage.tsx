@@ -20,6 +20,7 @@ interface PerguntaFormItem {
 }
 
 export function ConsultasPublicasPage() {
+  const CONSULTAS_POR_PAGINA = 12;
   const {
     data: consultas,
     isLoading,
@@ -32,8 +33,21 @@ export function ConsultasPublicasPage() {
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [consultaSelecionada, setConsultaSelecionada] = useState<number | null>(null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
   const [perguntas, setPerguntas] = useState<PerguntaFormItem[]>([]);
   const { data: manifestacoes, isLoading: carregandoManifestacoes } = useManifestacoesConsulta(consultaSelecionada ?? undefined);
+  const totalConsultas = consultas?.length ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(totalConsultas / CONSULTAS_POR_PAGINA));
+  const inicioPagina = totalConsultas === 0 ? 0 : (paginaAtual - 1) * CONSULTAS_POR_PAGINA + 1;
+  const fimPagina = Math.min(paginaAtual * CONSULTAS_POR_PAGINA, totalConsultas);
+
+  const consultasPaginadas = useMemo(() => {
+    if (!consultas || consultas.length === 0) {
+      return [];
+    }
+    const start = (paginaAtual - 1) * CONSULTAS_POR_PAGINA;
+    return consultas.slice(start, start + CONSULTAS_POR_PAGINA);
+  }, [consultas, paginaAtual]);
 
   const consultaFetchErro = useMemo(() => {
     if (!consultasError) return null;
@@ -153,6 +167,10 @@ export function ConsultasPublicasPage() {
       setPerguntas([]);
     }
   }, [editingConsulta]);
+
+  useEffect(() => {
+    setPaginaAtual((prev) => Math.min(prev, totalPaginas));
+  }, [totalPaginas]);
 
   const handleEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -356,9 +374,36 @@ export function ConsultasPublicasPage() {
           </div>
         )}
         {consultas && consultas.length > 0 ? (
-          <div className="consultas-admin__grid">
-            {consultas.map((consulta) => (
-              <article key={consulta.id} className="consultas-admin__card">
+          <>
+            <div className="consultas-admin__pagination">
+              <p className="consultas-admin__pagination-info">
+                Mostrando {inicioPagina}-{fimPagina} de {totalConsultas} consultas.
+              </p>
+              <div className="consultas-admin__pagination-controls">
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPaginaAtual((prev) => Math.max(1, prev - 1))}
+                >
+                  Anterior
+                </button>
+                <span>
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPaginaAtual((prev) => Math.min(totalPaginas, prev + 1))}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+            <div className="consultas-admin__grid">
+              {consultasPaginadas.map((consulta) => (
+                <article key={consulta.id} className="consultas-admin__card">
                 <header>
                   <div>
                     <h3>{consulta.titulo}</h3>
@@ -469,9 +514,10 @@ export function ConsultasPublicasPage() {
                       ))}
                   </div>
                 )}
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="consultas-admin__empty">
             <p>Nenhuma consulta publicada ainda.</p>
