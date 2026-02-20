@@ -202,7 +202,8 @@ interface EnviarManifestacaoInput {
   cpf: string;
   cidade: string;
   estado: string;
-  contato_email?: string;
+  contato_email: string;
+  area_atuacao_profissional: string;
 }
 
 export function useEnviarManifestacao() {

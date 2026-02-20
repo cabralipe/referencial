@@ -1178,6 +1178,7 @@ class ManifestacaoPublicaSerializer(serializers.ModelSerializer):
             "cidade",
             "estado",
             "contato_email",
+            "area_atuacao_profissional",
             "ip_address",
             "user_agent",
             "created_at",
@@ -1196,12 +1197,15 @@ class ManifestacaoPublicaPublicSerializer(serializers.ModelSerializer):
             "nome_completo",
             "cidade",
             "estado",
+            "area_atuacao_profissional",
             "created_at",
         )
         read_only_fields = fields
 
 
 class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
+    contato_email = serializers.EmailField(required=True, allow_blank=False)
+
     class Meta:
         model = ManifestacaoPublica
         fields = (
@@ -1213,6 +1217,7 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
             "cidade",
             "estado",
             "contato_email",
+            "area_atuacao_profissional",
         )
 
     def validate_estado(self, value):
@@ -1238,6 +1243,18 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
         if not cidade:
             raise serializers.ValidationError("Informe a cidade.")
         return cidade
+
+    def validate_contato_email(self, value):
+        email = (value or "").strip().lower()
+        if not email:
+            raise serializers.ValidationError("Informe o e-mail.")
+        return email
+
+    def validate_area_atuacao_profissional(self, value):
+        area = (value or "").strip()
+        if not area:
+            raise serializers.ValidationError("Informe sua área de atuação profissional.")
+        return area
 
     def validate_votos(self, value):
         if value is None or value == "":

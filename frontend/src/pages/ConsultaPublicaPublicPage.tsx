@@ -27,6 +27,7 @@ export function ConsultaPublicaPublicPage() {
   const [cidade, setCidade] = useState('');
   const [estado, setEstado] = useState('');
   const [email, setEmail] = useState('');
+  const [areaAtuacaoProfissional, setAreaAtuacaoProfissional] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -58,7 +59,8 @@ export function ConsultaPublicaPublicPage() {
       cpf: cpf.trim(),
       cidade: cidade.trim(),
       estado: estado.trim().toUpperCase(),
-      contato_email: email.trim() || undefined,
+      contato_email: email.trim(),
+      area_atuacao_profissional: areaAtuacaoProfissional.trim(),
     };
 
     if (!payload.comentario && !hasAnyVote) {
@@ -77,6 +79,7 @@ export function ConsultaPublicaPublicPage() {
       setCidade('');
       setEstado('');
       setEmail('');
+      setAreaAtuacaoProfissional('');
     } catch (submitError: any) {
       setErro(submitError?.message ?? 'Não foi possível enviar a manifestação.');
     }
@@ -221,8 +224,17 @@ export function ConsultaPublicaPublicPage() {
                   />
                 </label>
                 <label>
-                  <span>E-mail (opcional)</span>
-                  <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                  <span>E-mail</span>
+                  <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+                </label>
+                <label>
+                  <span>Área de atuação profissional</span>
+                  <input
+                    type="text"
+                    required
+                    value={areaAtuacaoProfissional}
+                    onChange={(event) => setAreaAtuacaoProfissional(event.target.value)}
+                  />
                 </label>
               </div>
             </div>

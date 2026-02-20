@@ -36,6 +36,8 @@ def test_public_post_manifestacao(api_client, consulta_publica):
         "cpf": "12345678901",
         "cidade": "Maceió",
         "estado": "AL",
+        "contato_email": "maria@exemplo.com",
+        "area_atuacao_profissional": "Professora",
         "comentario": "Achei o texto claro e objetivo.",
         "pagina": 3,
         "votos": ["Sim"],
@@ -51,6 +53,8 @@ def test_public_post_manifestacao(api_client, consulta_publica):
     assert manifestacao.cliente_id == consulta_publica.cliente_id
     assert manifestacao.pagina == 3
     assert manifestacao.votos == ["Sim"]
+    assert manifestacao.contato_email == "maria@exemplo.com"
+    assert manifestacao.area_atuacao_profissional == "Professora"
 
 
 def test_consulta_fechada_rejeita_manifestacao(api_client, consulta_publica):
@@ -64,6 +68,8 @@ def test_consulta_fechada_rejeita_manifestacao(api_client, consulta_publica):
             "cpf": "12345678901",
             "cidade": "Arapiraca",
             "estado": "AL",
+            "contato_email": "joao@exemplo.com",
+            "area_atuacao_profissional": "Gestor escolar",
             "comentario": "Comentário tardio",
         },
         format="json",

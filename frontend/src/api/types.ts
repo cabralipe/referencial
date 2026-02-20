@@ -389,6 +389,7 @@ export interface ManifestacaoPublica {
   cidade: string;
   estado: string;
   contato_email: string | null;
+  area_atuacao_profissional: string;
   ip_address?: string | null;
   user_agent?: string | null;
   created_at: string;
@@ -402,6 +403,7 @@ export interface ManifestacaoPublicaPublic {
   nome_completo: string;
   cidade: string;
   estado: string;
+  area_atuacao_profissional: string;
   created_at: string;
 }
 

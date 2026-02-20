@@ -85,6 +85,7 @@ class ManifestacaoPublica(TenantModel):
     cidade = models.CharField(max_length=120)
     estado = models.CharField(max_length=2)
     contato_email = models.EmailField(blank=True)
+    area_atuacao_profissional = models.CharField(max_length=255, blank=True, default="")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
 
