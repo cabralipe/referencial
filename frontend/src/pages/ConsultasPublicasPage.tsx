@@ -19,6 +19,13 @@ interface PerguntaFormItem {
   opcoesTexto: string; // raw textarea value (one option per line)
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return '—';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+}
+
 export function ConsultasPublicasPage() {
   const CONSULTAS_POR_PAGINA = 12;
   const {
@@ -416,15 +423,15 @@ export function ConsultasPublicasPage() {
                 <dl className="consultas-admin__meta">
                   <div>
                     <dt>Publicação</dt>
-                    <dd>{new Date(consulta.data_publicacao).toLocaleDateString('pt-BR')}</dd>
+                    <dd>{formatDate(consulta.data_publicacao)}</dd>
                   </div>
                   <div>
                     <dt>Validade</dt>
-                    <dd>{consulta.data_validade ? new Date(consulta.data_validade).toLocaleDateString('pt-BR') : '—'}</dd>
+                    <dd>{formatDate(consulta.data_validade)}</dd>
                   </div>
                   <div>
                     <dt>Encerramento</dt>
-                    <dd>{consulta.data_fechamento ? new Date(consulta.data_fechamento).toLocaleDateString('pt-BR') : '—'}</dd>
+                    <dd>{formatDate(consulta.data_fechamento)}</dd>
                   </div>
                   <div>
                     <dt>Manifestações</dt>

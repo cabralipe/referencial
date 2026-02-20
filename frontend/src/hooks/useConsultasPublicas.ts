@@ -138,8 +138,12 @@ export function useEditarConsultaPublica() {
       });
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (consultaAtualizada) => {
       queryClient.invalidateQueries({ queryKey: ['consultas_publicas', clienteId] });
+      queryClient.invalidateQueries({ queryKey: ['consulta_publica_public', consultaAtualizada.token_acesso] });
+      queryClient.invalidateQueries({
+        queryKey: ['consulta_publica_public', consultaAtualizada.token_acesso, 'manifestacoes'],
+      });
     },
   });
 }
@@ -167,6 +171,9 @@ export function useConsultaPublicaPublic(token?: string) {
   return useQuery({
     queryKey: ['consulta_publica_public', token],
     enabled: Boolean(token),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const response = await client.get<ConsultaPublicaPublic>(`/consultas_publicas/public/${token}`, {
         skipAuth: true,

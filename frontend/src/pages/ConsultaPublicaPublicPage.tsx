@@ -11,7 +11,9 @@ import './ConsultaPublicaPublicPage.css';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR');
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
 }
 
 export function ConsultaPublicaPublicPage() {
