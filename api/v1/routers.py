@@ -32,6 +32,24 @@ from .viewsets import (
     UsuarioLookupViewSet,
 )
 from courses.viewsets import BancoPlanosViewSet, CursoViewSet, PlanoAulaViewSet
+from courses.placi_viewsets import (
+    AvaliacaoPlanoViewSet,
+    CertificationViewSet,
+    PlanoAulaEstruturadoViewSet,
+    RubricaCriterioViewSet,
+    RubricaViewSet,
+)
+from bank.viewsets import (
+    PlanoPublicadoAvaliacaoViewSet,
+    PlanoPublicadoComentarioViewSet,
+    PlanoPublicadoViewSet,
+)
+from documents.viewsets import (
+    DocumentoPublicacaoViewSet,
+    DocumentoVersaoViewSet,
+    PlanoMetaPPPViewSet,
+    ReferencialHabilidadeViewSet,
+)
 from .admin_viewsets import (
     AnexoAdminViewSet,
     AreaAdminViewSet,
@@ -101,6 +119,18 @@ router.register("ppp", PppViewSet, basename="ppp")
 router.register("cursos", CursoViewSet, basename="curso")
 router.register("planos-aula", PlanoAulaViewSet, basename="plano_aula")
 router.register("banco-planos", BancoPlanosViewSet, basename="banco_planos")
+router.register("planos-estruturados", PlanoAulaEstruturadoViewSet, basename="planos_estruturados")
+router.register("rubricas", RubricaViewSet, basename="rubrica")
+router.register("rubricas-criterios", RubricaCriterioViewSet, basename="rubrica_criterio")
+router.register("avaliacoes-planos", AvaliacaoPlanoViewSet, basename="avaliacao_plano")
+router.register("certificacao", CertificationViewSet, basename="certificacao")
+router.register("banco/publicacoes", PlanoPublicadoViewSet, basename="banco_publicacoes")
+router.register("banco/comentarios", PlanoPublicadoComentarioViewSet, basename="banco_comentarios")
+router.register("banco/avaliacoes", PlanoPublicadoAvaliacaoViewSet, basename="banco_avaliacoes")
+router.register("documentos/ppp-metas", PlanoMetaPPPViewSet, basename="ppp_metas")
+router.register("documentos/referencial-habilidades", ReferencialHabilidadeViewSet, basename="referencial_habilidades")
+router.register("documentos/versoes", DocumentoVersaoViewSet, basename="documento_versoes")
+router.register("documentos/publicacoes", DocumentoPublicacaoViewSet, basename="documento_publicacoes")
 
 # Admin Console routes
 router.register("admin/clientes", ClienteAdminViewSet, basename="admin_clientes")

@@ -47,6 +47,7 @@ import { CursosPage } from './pages/CursosPage';
 import { CursoDetailPage } from './pages/CursoDetailPage';
 import { AdminCursosPage } from './pages/AdminCursosPage';
 import { AdminCursoBancoPlanosPage } from './pages/AdminCursoBancoPlanosPage';
+import { PlanoEditorPage } from './pages/PlanoEditorPage';
 
 export const router = createBrowserRouter([
   {
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
+        path: 'dashboard',
+        element: <Navigate to="/" replace />,
+      },
+      {
         path: 'cursos',
         element: (
           <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
@@ -74,6 +79,22 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
             <CursoDetailPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'cursos/:id/modulo/:moduloId',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <CursoDetailPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'plano/:id/editar',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <PlanoEditorPage />
           </RoleRoute>
         ),
       },
@@ -371,6 +392,38 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowed={['articulador', 'admin_cliente', 'super_admin']}>
             <BibliotecaPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'banco',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <CursosPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'documentos/ppp',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <PppPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'documentos/referencial',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <MinhaTrilhaPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'analytics',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <ReportsPage />
           </RoleRoute>
         ),
       },

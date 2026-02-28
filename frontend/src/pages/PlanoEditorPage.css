@@ -1,0 +1,57 @@
+.plano-editor {
+  display: grid;
+  gap: 1rem;
+}
+
+.plano-editor__status {
+  font-size: 0.85rem;
+  color: #4d5b68;
+}
+
+.plano-editor__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.plano-editor__steps button {
+  border: 1px solid #c9d4de;
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.plano-editor__steps button.is-active {
+  border-color: #0c4a6e;
+  color: #fff;
+  background: #0c4a6e;
+}
+
+.plano-editor__form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.plano-editor__form label {
+  font-weight: 600;
+}
+
+.plano-editor__form input,
+.plano-editor__form textarea {
+  width: 100%;
+  border: 1px solid #c7d3de;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  resize: vertical;
+}
+
+.plano-editor__form textarea {
+  min-height: 96px;
+}
+
+.plano-editor__hint {
+  color: #5f6d78;
+  font-size: 0.92rem;
+}
+

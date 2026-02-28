@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from django.urls import include, path
+from rest_framework.schemas import get_schema_view
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .routers import router
 from .viewsets import ClienteViewSet, DiffView
+from analytics.viewsets import AdminDashboardView, UserDashboardView
 from .views import (
     AuthMeView,
     CsrfTokenView,
@@ -17,6 +19,12 @@ from .views import (
     ApprovedDiffView,
     ConsultaPublicaPublicView,
     ManifestacaoPublicaView,
+)
+
+schema_view = get_schema_view(
+    title="PLACI API",
+    description="OpenAPI da Plataforma de Construcao Interativa",
+    version="1.0.0",
 )
 
 urlpatterns = [
@@ -31,6 +39,9 @@ urlpatterns = [
     path("meb/avatar", MebAvatarUploadView.as_view(), name="meb-avatar-upload"),
     path("continuar", ContinuarView.as_view(), name="continuar"),
     path("diff/aprovado", ApprovedDiffView.as_view(), name="diff-aprovado"),
+    path("analytics/dashboard", UserDashboardView.as_view(), name="analytics-user-dashboard"),
+    path("analytics/admin", AdminDashboardView.as_view(), name="analytics-admin-dashboard"),
+    path("schema", schema_view, name="openapi-schema"),
     path(
         "consultas_publicas/public/<str:token>",
         ConsultaPublicaPublicView.as_view(),

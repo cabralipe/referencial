@@ -1,0 +1,32 @@
+[
+  {
+    "model": "courses.curso",
+    "pk": 9001,
+    "fields": {
+      "cliente": 1,
+      "nome": "Curso Exemplo PLACI",
+      "categoria": "formacao",
+      "descricao": "Exemplo para desenvolvimento e testes.",
+      "objetivos": "Apoiar formação continuada e produção de planos.",
+      "carga_horaria_total": 80,
+      "carga_horaria_presencial": 20,
+      "carga_horaria_sincrona": 20,
+      "carga_horaria_plataforma": 40,
+      "status": "publicado",
+      "carga_presencial": 20,
+      "carga_sincrona": 20,
+      "carga_producao": 40,
+      "publicado": true,
+      "regras_certificacao_json": {
+        "percentual_minimo_conclusao": 75,
+        "numero_minimo_planos": 1,
+        "presenca_obrigatoria": true,
+        "entrega_final_obrigatoria": true
+      },
+      "is_deleted": false,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]
+

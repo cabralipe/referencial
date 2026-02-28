@@ -20,6 +20,10 @@ class Curso(TenantModel):
     descricao = models.TextField(blank=True)
     objetivos = models.TextField(blank=True)
     carga_horaria_total = models.PositiveIntegerField(default=0)
+    carga_horaria_presencial = models.PositiveIntegerField(default=0)
+    carga_horaria_sincrona = models.PositiveIntegerField(default=0)
+    carga_horaria_plataforma = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=30, default="rascunho")
     carga_presencial = models.PositiveIntegerField(default=0)
     carga_sincrona = models.PositiveIntegerField(default=0)
     carga_producao = models.PositiveIntegerField(default=0)
@@ -47,7 +51,9 @@ class CursoModulo(TenantModel):
 
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name="modulos")
     titulo = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
     ordem = models.PositiveIntegerField(default=0)
+    carga_horaria = models.PositiveIntegerField(default=0)
     tipo = models.CharField(max_length=30, choices=Tipo.choices, default=Tipo.MODULO)
 
     class Meta:
@@ -67,11 +73,13 @@ class CursoItem(TenantModel):
         FORUM = "FORUM", "Fórum"
         FORMULARIO = "FORMULARIO", "Formulário"
         CHECKLIST = "CHECKLIST", "Checklist"
+        ATIVIDADE = "ATIVIDADE", "Atividade"
 
     modulo = models.ForeignKey(CursoModulo, on_delete=models.CASCADE, related_name="itens")
     ordem = models.PositiveIntegerField(default=0)
     tipo = models.CharField(max_length=20, choices=Tipo.choices)
     titulo = models.CharField(max_length=255)
+    conteudo = models.TextField(blank=True)
     payload_json = models.JSONField(default=dict, blank=True)
 
     class Meta:
@@ -180,6 +188,86 @@ class PlanoAulaResposta(TenantModel):
         indexes = [
             models.Index(fields=["cliente", "usuario", "curso"]),
             models.Index(fields=["cliente", "status"]),
+        ]
+
+
+class PlanoAula(TenantModel):
+    class Status(models.TextChoices):
+        RASCUNHO = "rascunho", "Rascunho"
+        EM_REVISAO = "em_revisao", "Em revisão"
+        APROVADO = "aprovado", "Aprovado"
+        PUBLICADO = "publicado", "Publicado"
+
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name="planos_estruturados")
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="planos_estruturados",
+    )
+    escola = models.CharField(max_length=255, blank=True)
+    etapa_modalidade = models.CharField(max_length=255, blank=True)
+    componente_curricular = models.CharField(max_length=255, blank=True)
+    unidade_tematica = models.CharField(max_length=255, blank=True)
+    habilidades = models.JSONField(default=list, blank=True)
+    objetivos = models.TextField(blank=True)
+    conteudos = models.TextField(blank=True)
+    metodologia = models.TextField(blank=True)
+    recursos = models.TextField(blank=True)
+    avaliacao = models.TextField(blank=True)
+    estrategias_recomposicao = models.TextField(blank=True)
+    estrategias_inclusivas = models.TextField(blank=True)
+    referencias = models.TextField(blank=True)
+    metas_ppp = models.JSONField(default=list, blank=True)
+    habilidades_referencial = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RASCUNHO)
+
+    class Meta:
+        ordering = ("-updated_at", "-id")
+        indexes = [
+            models.Index(fields=["cliente", "curso", "autor"]),
+            models.Index(fields=["cliente", "status"]),
+            models.Index(fields=["cliente", "escola"]),
+        ]
+
+
+class Rubrica(TenantModel):
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name="rubricas")
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("nome",)
+        unique_together = ("cliente", "curso", "nome")
+
+
+class RubricaCriterio(TenantModel):
+    rubrica = models.ForeignKey(Rubrica, on_delete=models.CASCADE, related_name="criterios")
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+    pontuacao_maxima = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("ordem", "id")
+        unique_together = ("rubrica", "nome")
+
+
+class AvaliacaoPlano(TenantModel):
+    plano = models.ForeignKey(PlanoAula, on_delete=models.CASCADE, related_name="avaliacoes")
+    avaliador = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="avaliacoes_planos",
+    )
+    criterio = models.ForeignKey(RubricaCriterio, on_delete=models.CASCADE, related_name="avaliacoes")
+    pontuacao = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    comentario = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        unique_together = ("plano", "avaliador", "criterio")
+        indexes = [
+            models.Index(fields=["cliente", "plano", "avaliador"]),
         ]
 
 
