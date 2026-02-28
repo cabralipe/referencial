@@ -1,0 +1,101 @@
+.admin-curso-banco {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-curso-banco__back {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.admin-curso-banco__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-curso-banco__filters label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-curso-banco__filters input,
+.admin-curso-banco__filters select {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.7rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.admin-curso-banco__list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-curso-banco__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.admin-curso-banco__meta h3 {
+  margin: 0;
+}
+
+.admin-curso-banco__meta p {
+  margin: 0.35rem 0 0.2rem;
+}
+
+.admin-curso-banco__meta small {
+  color: var(--color-text-secondary);
+}
+
+.admin-curso-banco__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-curso-banco__payload {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-curso-banco__payload-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.65rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-curso-banco__payload-item span {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .admin-curso-banco__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-curso-banco__row {
+    flex-direction: column;
+  }
+
+  .admin-curso-banco__actions {
+    justify-content: flex-start;
+  }
+
+  .admin-curso-banco__payload {
+    grid-template-columns: 1fr;
+  }
+}
+

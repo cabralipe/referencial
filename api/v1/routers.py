@@ -31,6 +31,7 @@ from .viewsets import (
     MebMessageViewSet,
     UsuarioLookupViewSet,
 )
+from courses.viewsets import BancoPlanosViewSet, CursoViewSet, PlanoAulaViewSet
 from .admin_viewsets import (
     AnexoAdminViewSet,
     AreaAdminViewSet,
@@ -97,6 +98,9 @@ router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
 router.register("usuarios/lookup", UsuarioLookupViewSet, basename="usuario_lookup")
 router.register("consultas_publicas", ConsultaPublicaViewSet, basename="consulta_publica")
 router.register("ppp", PppViewSet, basename="ppp")
+router.register("cursos", CursoViewSet, basename="curso")
+router.register("planos-aula", PlanoAulaViewSet, basename="plano_aula")
+router.register("banco-planos", BancoPlanosViewSet, basename="banco_planos")
 
 # Admin Console routes
 router.register("admin/clientes", ClienteAdminViewSet, basename="admin_clientes")

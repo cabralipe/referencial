@@ -7,7 +7,7 @@ from .views import serve_frontend
 
 urlpatterns = [
     # Rotas do frontend que começam com admin/ mas devem ser servidas pelo React
-    re_path(r"^admin/(mural|console|trilhas|ppp)", serve_frontend),
+    re_path(r"^admin/(mural|console|trilhas|ppp|cursos)", serve_frontend),
 
     path("admin/", admin.site.urls),
     path("api/v1/", include("api.v1.urls")),

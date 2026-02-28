@@ -323,6 +323,134 @@ export interface PppTrilhasResponse {
   trilhas: Tarefa[];
 }
 
+export interface CursoAviso {
+  id: number;
+  titulo: string;
+  corpo: string;
+  publicado_em: string | null;
+}
+
+export interface CursoCronogramaItem {
+  id: number;
+  semana: string;
+  titulo: string;
+  descricao: string;
+  ordem: number;
+}
+
+export interface CursoItem {
+  id: number;
+  ordem: number;
+  tipo: 'VIDEO' | 'TEXTO' | 'CADERNO' | 'TAREFA' | 'FORUM' | 'FORMULARIO' | 'CHECKLIST' | string;
+  titulo: string;
+  payload_json: Record<string, unknown>;
+}
+
+export interface CursoModulo {
+  id: number;
+  titulo: string;
+  ordem: number;
+  tipo:
+    | 'APRESENTACAO'
+    | 'MODULO'
+    | 'BANCO_PLANOS'
+    | 'FORUM_GERAL'
+    | 'BIBLIOTECA'
+    | 'ENTREGA_FINAL'
+    | string;
+  itens: CursoItem[];
+}
+
+export interface CursoProgressoItem {
+  id: number;
+  item_id: number | null;
+  referencia_tipo: string;
+  referencia_id: string;
+  concluido_em: string;
+}
+
+export interface CursoProgresso {
+  id?: number;
+  percentual: number | string;
+  itens: CursoProgressoItem[];
+}
+
+export interface CursoRegrasCertificacao {
+  presenca_presencial_obrigatoria: boolean;
+  min_sincronos: number;
+  min_planos: number;
+  entrega_final_obrigatoria: boolean;
+  compartilhar_banco_obrigatorio: boolean;
+}
+
+export interface Curso {
+  id: number;
+  nome: string;
+  categoria: string;
+  descricao: string;
+  objetivos?: string;
+  carga_horaria_total?: number;
+  carga_presencial?: number;
+  carga_sincrona?: number;
+  carga_producao?: number;
+  publicado: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CursoDetail extends Curso {
+  avisos: CursoAviso[];
+  cronograma: CursoCronogramaItem[];
+  menu: Array<{ id: number; titulo: string; ordem: number; tipo: string }>;
+  modulos: CursoModulo[];
+  progresso: CursoProgresso;
+  regras_certificacao: CursoRegrasCertificacao;
+}
+
+export interface CursoCertificacaoStatus {
+  regras: CursoRegrasCertificacao;
+  checks: Record<string, { required: boolean | number; ok: boolean; value: unknown }>;
+  pode_emitir_certificado: boolean;
+  certificado_emitido: boolean;
+  certificado?: { id: number; codigo: string; emitido_em: string } | null;
+}
+
+export interface PlanoAulaPublicacaoResumo {
+  id: number;
+  status: 'RASCUNHO' | 'ENVIADO' | 'APROVADO' | 'PUBLICADO' | string;
+  allow_comments: boolean;
+  updated_at: string;
+}
+
+export interface PlanoAulaResposta {
+  id: number;
+  curso: number;
+  usuario: number;
+  formulario: number;
+  titulo: string;
+  status: 'RASCUNHO' | 'ENVIADO' | string;
+  compartilhado_banco: boolean;
+  dados_cache_json: Record<string, string>;
+  campos: Record<string, string>;
+  publicacao?: PlanoAulaPublicacaoResumo | null;
+  enviado_em?: string | null;
+  bloqueado_em?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanoAulaPublicacao {
+  id: number;
+  resposta_formulario_id: number;
+  autor: number;
+  autor_nome?: string | null;
+  status: 'RASCUNHO' | 'ENVIADO' | 'APROVADO' | 'PUBLICADO' | string;
+  allow_comments: boolean;
+  payload_json: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Midia {
   id: number;
   titulo: string | null;

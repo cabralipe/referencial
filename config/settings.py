@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "curriculum",
     "workshop",
     "dynamicforms",
+    "courses",
     "exports",
     "reviews",
     "comments",

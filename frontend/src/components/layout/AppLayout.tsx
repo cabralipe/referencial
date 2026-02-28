@@ -106,6 +106,7 @@ export function AppLayout() {
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/cursos', label: 'Curso AVAMEC', icon: 'library' },
         { to: '/minha-trilha', label: 'Minha Trilha', icon: 'tasks' },
         { to: '/texto', label: 'Construção de Texto', icon: 'document' },
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
@@ -118,6 +119,8 @@ export function AppLayout() {
       const adminItems = [
         { to: '/admin/console', label: 'Admin Console', icon: 'settings' },
         { to: '/consultas-publicas', label: 'Consultas públicas', icon: 'document' },
+        { to: '/cursos', label: 'Cursos', icon: 'library' },
+        { to: '/admin/cursos', label: 'Admin: Cursos', icon: 'form' },
         { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
         { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
         { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
@@ -133,6 +136,7 @@ export function AppLayout() {
     if (isRedator) {
       return [
         { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
+        { to: '/cursos', label: 'Curso AVAMEC', icon: 'library' },
         { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
         { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
         { to: '/redator/mural', label: 'Mural', icon: 'comment' },

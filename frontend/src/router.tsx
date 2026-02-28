@@ -43,6 +43,10 @@ import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
 import { ThrottleBlocksPage } from './pages/ThrottleBlocksPage';
+import { CursosPage } from './pages/CursosPage';
+import { CursoDetailPage } from './pages/CursoDetailPage';
+import { AdminCursosPage } from './pages/AdminCursosPage';
+import { AdminCursoBancoPlanosPage } from './pages/AdminCursoBancoPlanosPage';
 
 export const router = createBrowserRouter([
   {
@@ -56,6 +60,22 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <DashboardPage />,
+      },
+      {
+        path: 'cursos',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <CursosPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'cursos/:id',
+        element: (
+          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+            <CursoDetailPage />
+          </RoleRoute>
+        ),
       },
       {
         path: 'inicio',
@@ -219,6 +239,22 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowed={['admin_cliente', 'super_admin']}>
             <NotificacoesPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'admin/cursos',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <AdminCursosPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'admin/cursos/:id/banco-planos',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <AdminCursoBancoPlanosPage />
           </RoleRoute>
         ),
       },
