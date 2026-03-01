@@ -9,6 +9,8 @@ type IconName =
   | "review"
   | "comment"
   | "bell"
+  | "search"
+  | "notifications"
   | "library"
   | "export"
   | "diff"
@@ -100,6 +102,20 @@ export default function Icon({ name, size = 18, className, label, ariaHidden }: 
         <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
           <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
           <path d="M13.73 21a2 2 0 01-3.46 0" />
+        </svg>
+      );
+    case "notifications":
+      return (
+        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
         </svg>
       );
     case "library":

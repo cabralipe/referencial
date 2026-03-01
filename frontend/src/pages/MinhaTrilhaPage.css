@@ -1,154 +1,142 @@
 .minha-trilha {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.9rem;
 }
 
 .minha-trilha__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  padding: 0.8rem 0.95rem;
   background: var(--color-surface);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.9rem;
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   position: sticky;
-  top: 0.75rem;
+  top: 0.55rem;
   z-index: 4;
 }
 
 .minha-trilha__header-left {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.66rem;
 }
 
 .minha-trilha__avatar {
-  width: 48px;
-  height: 48px;
+  width: 2.45rem;
+  height: 2.45rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(29, 78, 216, 0.18), rgba(14, 165, 233, 0.15));
-  color: #1e3a8a;
-  font-weight: 700;
+  background: color-mix(in srgb, var(--color-primary) 14%, #fff);
+  color: var(--color-primary);
+  font-weight: 800;
   position: relative;
-  border: 2px solid rgba(29, 78, 216, 0.15);
+  border: 2px solid color-mix(in srgb, var(--color-primary) 20%, #fff);
 }
 
 .minha-trilha__online-dot {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 0.54rem;
+  height: 0.54rem;
   border-radius: 50%;
   background: #22c55e;
   border: 2px solid #fff;
-  bottom: 2px;
-  right: 2px;
+  bottom: 0.1rem;
+  right: 0.1rem;
 }
 
 .minha-trilha__welcome {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.14em;
   color: var(--color-text-muted);
   font-weight: 700;
 }
 
 .minha-trilha__header h1 {
-  margin: 0.15rem 0 0 0;
-  font-size: 1rem;
+  margin: 0.12rem 0 0;
+  font-size: 0.95rem;
 }
 
 .minha-trilha__title h2 {
   margin: 0;
-  font-size: 1.8rem;
+  font-size: 1.45rem;
 }
 
 .minha-trilha__title p {
-  margin: 0.35rem 0 0 0;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
   color: var(--color-text-secondary);
 }
 
 .minha-trilha__continue-card {
-  background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
-  color: #fff;
-  border-radius: 2rem;
-  padding: 1.75rem;
+  border-radius: 0.95rem;
+  padding: 1rem;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  background: linear-gradient(130deg, var(--color-primary), #0ea5e9);
+  color: #fff;
 }
 
 .minha-trilha__continue-card::before {
-  content: "";
+  content: '';
   position: absolute;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.15);
+  width: 10rem;
+  height: 10rem;
   border-radius: 999px;
-  top: -80px;
-  right: -80px;
-}
-
-.minha-trilha__continue-card::after {
-  content: "";
-  position: absolute;
-  width: 140px;
-  height: 140px;
-  background: rgba(59, 130, 246, 0.2);
-  border-radius: 999px;
-  bottom: -70px;
-  left: -50px;
+  background: rgba(255, 255, 255, 0.14);
+  top: -4.5rem;
+  right: -4rem;
 }
 
 .minha-trilha__continue-content {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
 }
 
 .minha-trilha__continue-label {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.84);
 }
 
 .minha-trilha__continue-content h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
 }
 
 .minha-trilha__continue-content p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .minha-trilha__primary-button {
-  margin-top: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-radius: 1.2rem;
-  background: #fff;
-  color: #1d4ed8;
-  text-decoration: none;
-  font-weight: 700;
+  margin-top: 0.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  border-radius: 0.68rem;
+  padding: 0.55rem 0.76rem;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  background: #fff;
+  border: 1px solid transparent;
 }
 
 .minha-trilha__gt-section {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .minha-trilha__section-header {
@@ -158,23 +146,24 @@
 }
 
 .minha-trilha__section-header h3 {
-  font-size: 0.7rem;
+  margin: 0;
+  font-size: 0.62rem;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   color: var(--color-text-muted);
 }
 
 .minha-trilha__section-header span {
-  font-size: 0.65rem;
-  color: #1d4ed8;
+  font-size: 0.64rem;
+  color: var(--color-primary);
   font-weight: 700;
 }
 
 .minha-trilha__gt-chips {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.12rem;
 }
 
 .minha-trilha__gt-chips::-webkit-scrollbar {
@@ -183,62 +172,62 @@
 
 .minha-trilha__chip {
   flex: 0 0 auto;
-  padding: 0.6rem 1.2rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  border: 1px solid var(--color-border);
   background: #fff;
-  color: #475569;
-  font-weight: 600;
-  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 0.71rem;
+  font-weight: 700;
+  padding: 0.44rem 0.76rem;
 }
 
 .minha-trilha__chip.is-active {
-  background: #1d4ed8;
+  background: var(--color-primary);
   color: #fff;
   border-color: transparent;
-  box-shadow: var(--shadow-md);
 }
 
 .minha-trilha__grid {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.72rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
 .minha-trilha__card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .minha-trilha__card-head {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
   align-items: flex-start;
+  gap: 0.55rem;
 }
 
 .minha-trilha__card-stage {
   display: inline-block;
-  font-size: 0.65rem;
+  margin-bottom: 0.28rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--color-text-muted);
-  margin-bottom: 0.35rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .minha-trilha__card h3 {
   margin: 0;
+  font-size: 0.9rem;
 }
 
 .minha-trilha__status {
-  padding: 0.35rem 0.8rem;
+  padding: 0.2rem 0.52rem;
   border-radius: 999px;
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.58rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   border: 1px solid transparent;
 }
 
@@ -249,68 +238,70 @@
 }
 
 .minha-trilha__status.status-em_andamento {
-  background: #ecfeff;
-  color: #0f766e;
-  border-color: rgba(13, 148, 136, 0.2);
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
 }
 
 .minha-trilha__status.status-em_revisao {
   background: #fef9c3;
   color: #92400e;
-  border-color: rgba(161, 98, 7, 0.2);
+  border-color: #fde68a;
 }
 
 .minha-trilha__status.status-devolvido {
   background: #fee2e2;
   color: #b91c1c;
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: #fecaca;
 }
 
 .minha-trilha__status.status-concluido {
   background: #dcfce7;
   color: #166534;
-  border-color: rgba(34, 197, 94, 0.2);
+  border-color: #bbf7d0;
 }
 
 .minha-trilha__progress-meta {
   display: flex;
   justify-content: space-between;
+  font-size: 0.74rem;
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
 }
 
 .minha-trilha__progress-meta strong {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .minha-trilha__progress {
   width: 100%;
-  height: 12px;
+  height: 0.52rem;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: #e2e8f0;
   overflow: hidden;
 }
 
 .minha-trilha__progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
-  border-radius: 999px;
-  transition: width 0.4s ease;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary), #0ea5e9);
+  transition: width 0.35s ease;
 }
 
 .minha-trilha__secondary-button {
-  padding: 0.8rem 1rem;
-  border-radius: 1.1rem;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: #f8fafc;
-  color: #1d4ed8;
+  border-radius: 0.62rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
   text-decoration: none;
-  font-weight: 700;
   text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.5rem 0.62rem;
 }
 
 .minha-trilha__empty {
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 @media (max-width: 768px) {

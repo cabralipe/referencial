@@ -1,144 +1,123 @@
-/* Vertical Bar Chart */
 .simple-bar-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-    width: 100%;
-    padding-top: 1.5rem;
-    /* Space for value labels */
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  padding-top: 1.1rem;
 }
 
 .simple-bar-chart__item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100%;
-    gap: 0.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: 0.4rem;
 }
 
 .simple-bar-chart__bar-container {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
 }
 
 .simple-bar-chart__bar {
-    width: 60%;
-    min-width: 8px;
-    max-width: 40px;
-    border-radius: 4px 4px 0 0;
-    transition: height 0.5s ease;
-    position: relative;
-}
-
-.simple-bar-chart__bar:hover {
-    opacity: 0.9;
+  width: min(2.1rem, 70%);
+  min-width: 0.75rem;
+  border-radius: 0.5rem 0.5rem 0.18rem 0.18rem;
+  transition: height 0.4s ease;
+  position: relative;
 }
 
 .simple-bar-chart__value-label {
-    position: absolute;
-    top: -1.25rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #475569;
-    white-space: nowrap;
+  position: absolute;
+  top: -1.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
 }
 
 .simple-bar-chart__label {
-    font-size: 0.75rem;
-    color: #64748b;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
+  font-size: 0.64rem;
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
-/* Horizontal Bar Chart */
 .simple-horizontal-bar-chart {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-}
-
-.simple-horizontal-bar-chart__item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
 .simple-horizontal-bar-chart__labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.73rem;
 }
 
 .simple-horizontal-bar-chart__label {
-    color: #475569;
-    font-weight: 500;
+  color: var(--color-text-secondary);
+  font-weight: 600;
 }
 
 .simple-horizontal-bar-chart__value {
-    color: #0f172a;
-    font-weight: 600;
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 .simple-horizontal-bar-chart__track {
-    width: 100%;
-    height: 8px;
-    background: #f1f5f9;
-    border-radius: 999px;
-    overflow: hidden;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
 }
 
 .simple-horizontal-bar-chart__bar {
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.5s ease;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.4s ease;
 }
 
-/* Donut Chart */
 .simple-donut-chart {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.simple-donut-chart__svg {
-    transform: rotate(0deg);
-    /* Reset rotation */
+.simple-donut-chart__bg {
+  stroke: #e2e8f0;
 }
 
 .simple-donut-chart__progress {
-    transition: stroke-dashoffset 0.8s ease;
+  transition: stroke-dashoffset 0.8s ease;
 }
 
 .simple-donut-chart__content {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .simple-donut-chart__label {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #0f172a;
-    line-height: 1;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--color-text);
+  line-height: 1;
 }
 
 .simple-donut-chart__sublabel {
-    font-size: 0.75rem;
-    color: #64748b;
-    margin-top: 0.1rem;
+  margin-top: 0.16rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }

@@ -45,6 +45,14 @@ export function AppLayout() {
     };
     return map[role] ?? role;
   }, [user?.role]);
+  const userInitials = useMemo(() => {
+    const source = (user?.nome || user?.email || 'RF').trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    }
+    return (source.slice(0, 2) || 'RF').toUpperCase();
+  }, [user?.email, user?.nome]);
 
   const themeStyles = useMemo(() => {
     const primary = cliente?.tema?.cor_primaria ?? '#2563eb';
@@ -271,7 +279,6 @@ export function AppLayout() {
           </div>
         </div>
 
-
         {isSuperAdmin && (
           <div className="app-shell__client-context">
             <span>Cliente selecionado:</span>
@@ -285,7 +292,21 @@ export function AppLayout() {
           </div>
         )}
 
+        <div className="app-shell__header-search">
+          <Icon name="search" className="menu__icon" ariaHidden />
+          <input type="search" placeholder="Buscar recursos..." aria-label="Buscar recursos" />
+        </div>
+
         <div className="app-shell__user">
+          <button type="button" className="app-shell__notify" aria-label="Notificações">
+            <Icon name="notifications" className="menu__icon" ariaHidden />
+            <span className="app-shell__notify-dot" />
+          </button>
+          <div className="app-shell__user-meta">
+            <strong>{user?.nome ?? 'Usuário'}</strong>
+            <small>{roleLabel}</small>
+          </div>
+          <div className="app-shell__avatar" aria-hidden="true">{userInitials}</div>
           <button type="button" onClick={handleLogout}>
             Sair
           </button>

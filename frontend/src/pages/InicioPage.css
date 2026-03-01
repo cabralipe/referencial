@@ -1,74 +1,108 @@
 .inicio {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.9rem;
 }
 
 .inicio__actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .inicio__stats {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
 .inicio__stat {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.24rem;
 }
 
 .inicio__stat span {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .inicio__stat strong {
-  font-size: 1.8rem;
+  font-size: 1.55rem;
+  color: var(--color-text);
+}
+
+.inicio__stat p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
 }
 
 .inicio__pareceres-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inicio__pareceres-header h2 {
+  font-size: 1rem;
+}
+
+.inicio__pareceres-header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
 }
 
 .inicio__pareceres-list {
   display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
 }
 
 .inicio__parecer {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  background: var(--color-surface-muted);
-  padding: 1rem;
-  border-radius: var(--radius-md);
+  gap: 0.72rem;
   flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: 0.72rem;
+  background: var(--color-surface-muted);
+  padding: 0.75rem;
+}
+
+.inicio__parecer strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-text);
 }
 
 .inicio__parecer span {
   display: block;
-  margin-top: 0.35rem;
+  margin-top: 0.2rem;
   color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  max-width: 48rem;
 }
 
 .inicio__parecer-meta {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.52rem;
   flex-wrap: wrap;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
 }
 
 .inicio__empty {
-  margin-top: 1rem;
-  color: var(--color-text-secondary);
+  margin-top: 0.65rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }

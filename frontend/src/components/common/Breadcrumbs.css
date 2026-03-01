@@ -1,16 +1,25 @@
 .breadcrumbs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  margin: 0.75rem 0 1.5rem;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0 0 0.9rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.breadcrumbs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
 }
 
 .breadcrumbs__item a {
   color: inherit;
   text-decoration: none;
-  font-weight: 500;
 }
 
 .breadcrumbs__item a:hover {
@@ -18,12 +27,11 @@
 }
 
 .breadcrumbs__item::after {
-  content: '/';
-  margin-left: 0.5rem;
-  color: var(--color-border);
+  content: '›';
+  color: var(--color-text-muted);
 }
 
 .breadcrumbs__current {
-  font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-secondary);
+  font-weight: 800;
 }
