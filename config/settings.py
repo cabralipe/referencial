@@ -43,13 +43,16 @@ DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in env("CSRF_TRUSTED_ORIGINS").split(",") if origin.strip()]
 
-# Configurações de CSRF para desenvolvimento
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+# Configurações de CSRF adicionais para desenvolvimento local
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ])
 
 if render_host := os.getenv("RENDER_EXTERNAL_HOSTNAME"):
     # Render injeta o hostname do deploy via env var
