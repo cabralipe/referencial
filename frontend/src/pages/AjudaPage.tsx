@@ -22,7 +22,7 @@ export function AjudaPage() {
         </Card>
         <Card>
           <h2>Precisa falar com a equipe?</h2>
-          <p>Use o chat do MEB no canto da tela para registrar dúvidas.</p>
+          <p>Use o chat do PROLUC no canto da tela para registrar dúvidas.</p>
         </Card>
       </div>
     </div>

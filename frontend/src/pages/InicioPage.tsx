@@ -48,7 +48,7 @@ export function InicioPage() {
   return (
     <div className="inicio">
       <PageHeader
-        title="Bem-vindo(a) ao MEB Referencial"
+        title="Bem-vindo(a) ao PROLUC"
         description="Aqui você acompanha suas trilhas e os pareceres do redator."
         actions={(
           <div className="inicio__actions">

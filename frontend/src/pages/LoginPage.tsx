@@ -61,10 +61,9 @@ export function LoginPage() {
           <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-500 rounded-full blur-[100px] opacity-40 mix-blend-screen"></div>
 
           <div className="relative z-10 flex flex-col items-start max-w-lg">
-            <div className="bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl mb-8 transform transition-transform hover:scale-105 duration-300 inline-block">
-              <span className="material-symbols-outlined text-white text-5xl">school</span>
+            <div className="mb-8 transform transition-transform hover:scale-105 duration-300 inline-block h-40 overflow-visible flex items-center justify-center">
+              <img src="/LOGO_PROLUC.png" alt="PROLUC Logo" className="h-full w-auto object-contain drop-shadow-xl" />
             </div>
-            <h1 className="text-white text-5xl font-extrabold tracking-tight drop-shadow-sm mb-4 leading-tight">Plataforma MEB</h1>
             <p className="text-blue-50 text-xl font-medium opacity-90 leading-relaxed mb-8">
               Gestão curricular integrada para um futuro educacional moderno e conectado.
             </p>
@@ -90,10 +89,9 @@ export function LoginPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-300 rounded-full blur-[80px] opacity-30 mix-blend-screen"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500 rounded-full blur-[80px] opacity-40 mix-blend-screen"></div>
           <div className="relative z-10 flex flex-col items-center justify-center h-full px-6 pb-12 text-center">
-            <div className="bg-white/20 backdrop-blur-md border border-white/30 p-3 rounded-2xl shadow-xl mb-6 transform transition-transform hover:scale-105 duration-300">
-              <span className="material-symbols-outlined text-white text-4xl">school</span>
+            <div className="mb-6 transform transition-transform hover:scale-105 duration-300 h-20 overflow-visible flex items-center justify-center">
+              <img src="/LOGO_PROLUC.png" alt="PROLUC Logo" className="h-full w-auto object-contain drop-shadow-lg" />
             </div>
-            <h1 className="text-white text-4xl font-extrabold tracking-tight drop-shadow-sm mb-2">Plataforma MEB</h1>
             <p className="text-blue-50 text-base font-medium opacity-95 max-w-xs leading-relaxed">
               Gestão curricular integrada para um futuro educacional moderno.
             </p>

@@ -1,5 +1,4 @@
-
-# IDENTIDADE VISUAL — Plataforma MEB
+# IDENTIDADE VISUAL — Plataforma PROLUC
 
 ## Stack Técnica
 

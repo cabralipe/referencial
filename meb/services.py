@@ -12,7 +12,7 @@ from django.utils import timezone
 from .models import MebMessage, MebThread
 
 WELCOME_MESSAGE = (
-    "Olá! Eu sou o MEB e fico aqui para registrar suas dúvidas. "
+    "Olá! Eu sou o PROLUC e fico aqui para registrar suas dúvidas. "
     "Sempre que precisar, é só me chamar que aviso os administradores."
 )
 
