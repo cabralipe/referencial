@@ -150,7 +150,7 @@ export function CursoDetailPage() {
     <div className="curso-detail">
       <PageHeader
         title={curso.nome}
-        description={curso.descricao || 'Curso AVAMEC integrado à plataforma.'}
+        description={curso.descricao || 'Curso PROLUC integrado à plataforma.'}
         actions={
           <div className="curso-detail__header-actions">
             <span className="curso-detail__progress-pill">

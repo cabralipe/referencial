@@ -20,7 +20,7 @@ export function CursosPage() {
   return (
     <div className="cursos-page">
       <PageHeader
-        title="Curso AVAMEC"
+        title="Módulos PROLUC"
         description="Referencial Curricular e Implementação do PPP na Prática Pedagógica"
         actions={isAdmin ? <Link className="cursos-page__admin-link" to="/admin/cursos">Ir para Admin de Cursos</Link> : undefined}
       />

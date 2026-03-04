@@ -114,7 +114,7 @@ export function AppLayout() {
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
-        { to: '/cursos', label: 'Curso AVAMEC', icon: 'library' },
+        { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
         { to: '/minha-trilha', label: 'Minha Trilha', icon: 'tasks' },
         { to: '/texto', label: 'Construção de Texto', icon: 'document' },
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
@@ -144,7 +144,7 @@ export function AppLayout() {
     if (isRedator) {
       return [
         { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
-        { to: '/cursos', label: 'Curso AVAMEC', icon: 'library' },
+        { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
         { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
         { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
         { to: '/redator/mural', label: 'Mural', icon: 'comment' },

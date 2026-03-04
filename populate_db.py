@@ -406,9 +406,8 @@ def create_workshop(cliente, users, curriculum_data):
     quadro, _ = Quadro.objects.get_or_create(
         cliente=cliente,
         gt=gt_mat,
-        area=area_base,
         template='swot',
-        defaults={}
+        defaults={'area': area_base}
     )
 
     QuadroLinha.objects.get_or_create(
