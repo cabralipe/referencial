@@ -75,6 +75,21 @@
   margin-bottom: 1rem;
 }
 
+.trilha-detail__checklist label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  width: auto;
+}
+
+.trilha-detail__checklist input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--color-primary);
+  transform: scale(1.1);
+}
+
 .trilha-detail__actions {
   display: flex;
   justify-content: flex-end;
