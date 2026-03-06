@@ -242,7 +242,7 @@ export function AdminCursosPage() {
   return (
     <div className="admin-cursos">
       <PageHeader
-        title="Admin · Cursos (AVAMEC)"
+        title="Admin · Cursos (PROLUC)"
         description="Configure a camada wrapper do curso sem alterar o PPP. Editor visual para módulos/itens + modo JSON avançado."
         actions={
           selectedId ? (
@@ -483,17 +483,17 @@ export function AdminCursosPage() {
                               prev.map((m, i) =>
                                 i === moduloIndex
                                   ? {
-                                      ...m,
-                                      itens: [
-                                        ...m.itens,
-                                        {
-                                          ordem: (m.itens?.length ?? 0) + 1,
-                                          tipo: 'TEXTO',
-                                          titulo: `Novo item ${(m.itens?.length ?? 0) + 1}`,
-                                          payload_json: {},
-                                        },
-                                      ],
-                                    }
+                                    ...m,
+                                    itens: [
+                                      ...m.itens,
+                                      {
+                                        ordem: (m.itens?.length ?? 0) + 1,
+                                        tipo: 'TEXTO',
+                                        titulo: `Novo item ${(m.itens?.length ?? 0) + 1}`,
+                                        payload_json: {},
+                                      },
+                                    ],
+                                  }
                                   : m,
                               ),
                             )
@@ -516,9 +516,9 @@ export function AdminCursosPage() {
                                       prev.map((m, mi) =>
                                         mi === moduloIndex
                                           ? {
-                                              ...m,
-                                              itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, titulo: e.target.value } : it)),
-                                            }
+                                            ...m,
+                                            itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, titulo: e.target.value } : it)),
+                                          }
                                           : m,
                                       ),
                                     )
@@ -534,9 +534,9 @@ export function AdminCursosPage() {
                                       prev.map((m, mi) =>
                                         mi === moduloIndex
                                           ? {
-                                              ...m,
-                                              itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, tipo: e.target.value } : it)),
-                                            }
+                                            ...m,
+                                            itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, tipo: e.target.value } : it)),
+                                          }
                                           : m,
                                       ),
                                     )
@@ -557,9 +557,9 @@ export function AdminCursosPage() {
                                       prev.map((m, mi) =>
                                         mi === moduloIndex
                                           ? {
-                                              ...m,
-                                              itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, ordem: Number(e.target.value) || 0 } : it)),
-                                            }
+                                            ...m,
+                                            itens: m.itens.map((it, ii) => (ii === itemIndex ? { ...it, ordem: Number(e.target.value) || 0 } : it)),
+                                          }
                                           : m,
                                       ),
                                     )
@@ -576,16 +576,16 @@ export function AdminCursosPage() {
                                       prev.map((m, mi) =>
                                         mi === moduloIndex
                                           ? {
-                                              ...m,
-                                              itens: m.itens.map((it, ii) => {
-                                                if (ii !== itemIndex) return it;
-                                                try {
-                                                  return { ...it, payload_json: JSON.parse(next || '{}') };
-                                                } catch {
-                                                  return { ...it };
-                                                }
-                                              }),
-                                            }
+                                            ...m,
+                                            itens: m.itens.map((it, ii) => {
+                                              if (ii !== itemIndex) return it;
+                                              try {
+                                                return { ...it, payload_json: JSON.parse(next || '{}') };
+                                              } catch {
+                                                return { ...it };
+                                              }
+                                            }),
+                                          }
                                           : m,
                                       ),
                                     );
