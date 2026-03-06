@@ -250,9 +250,21 @@
 }
 
 @media (max-width: 768px) {
+  .page-header__main {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .page-header__actions {
+    width: 100%;
+    justify-content: center !important;
+    margin-top: 0.5rem;
+  }
+
   .texto-editor__actions {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
 
   .texto-editor__actions>* {

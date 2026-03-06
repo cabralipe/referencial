@@ -13,6 +13,7 @@ export function PageHeader({ title, description, actions, breadcrumbs }: PageHea
       {breadcrumbs && <div style={{ marginBottom: '0.45rem' }}>{breadcrumbs}</div>}
 
       <div
+        className="page-header__main"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -48,7 +49,7 @@ export function PageHeader({ title, description, actions, breadcrumbs }: PageHea
         </div>
 
         {actions && (
-          <div style={{ display: 'flex', gap: '0.52rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="page-header__actions" style={{ display: 'flex', gap: '0.52rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {actions}
           </div>
         )}

@@ -273,11 +273,11 @@ export function TextoEditorPage() {
             <Button variant="primary" onClick={handleSave} disabled={updateResposta.isPending}>
               {updateResposta.isPending ? 'Salvando...' : 'Salvar texto'}
             </Button>
-            <Button variant="ghost" onClick={handleSubmitReview} disabled={createRevisao.isPending}>
+            <Button variant="secondary" onClick={handleSubmitReview} disabled={createRevisao.isPending}>
               {createRevisao.isPending ? 'Enviando...' : 'Enviar para revisão'}
             </Button>
             <Button
-              variant="ghost"
+              variant="secondary"
               onClick={() => {
                 const params = new URLSearchParams(searchParams);
                 const next = isFocus ? '0' : '1';
