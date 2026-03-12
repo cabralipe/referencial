@@ -1,0 +1,106 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Meu Painel | AVA PLACI{% endblock %}
+
+{% block content %}
+<div class="bg-light py-4 border-bottom">
+    <div class="container d-flex align-items-center">
+        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+            style="width: 60px; height: 60px;">
+            <i class="bi bi-person-workspace fs-2"></i>
+        </div>
+        <div>
+            <h1 class="h3 fw-bold mb-1">Olá, {{ user.get_short_name|default:user.username }}</h1>
+            <p class="text-muted mb-0">Bem-vindo(a) de volta ao seu ambiente de aprendizagem.</p>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <!-- Sidebar Aluno -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush rounded-4">
+                        <li class="list-group-item active bg-primary border-primary py-3 fw-semibold">
+                            <i class="bi bi-grid-1x2 me-2"></i>Meus Cursos
+                        </li>
+                        <a href="#" class="list-group-item list-group-item-action py-3 text-secondary">
+                            <i class="bi bi-compass me-2"></i>Minhas Trilhas
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action py-3 text-secondary">
+                            <i class="bi bi-award me-2"></i>Meus Certificados
+                        </a>
+                        <a href="{% url 'ava:catalogo' %}"
+                            class="list-group-item list-group-item-action py-3 text-secondary border-top">
+                            <i class="bi bi-search me-2"></i>Explorar Catálogo
+                        </a>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="h4 fw-bold mb-0">Cursos em Andamento ({{ matriculas|length }})</h2>
+                <div>
+                    <select class="form-select form-select-sm border-0 bg-light text-secondary rounded-pill pe-5">
+                        <option value="ativos">Apenas Ativos</option>
+                        <option value="todos">Todos (Incluso Concluídos)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-2 g-4">
+                {% for matricula in matriculas %}
+                <div class="col">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden">
+                        {% if matricula.status == 'concluida' %}
+                        <div
+                            class="position-absolute top-0 end-0 bg-success text-white px-3 py-1 rounded-start-pill small fw-bold">
+                            Concluído <i class="bi bi-check-circle-fill ms-1"></i></div>
+                        {% endif %}
+                        <div class="card-body p-4 d-flex flex-column">
+                            <span
+                                class="badge bg-light text-primary border border-primary-subtle mb-3 align-self-start">{{
+                                matricula.curso.categoria.nome|default:"Geral" }}</span>
+                            <h5 class="card-title fw-bold text-dark">{{ matricula.curso.titulo }}</h5>
+
+                            <div class="mt-auto pt-4">
+                                <div class="d-flex justify-content-between text-muted small fw-semibold mb-2">
+                                    <span>Progresso</span>
+                                    <span>{{ matricula.progresso_percentual }}%</span>
+                                </div>
+                                <div class="progress mb-4 progress-bar-custom bg-light">
+                                    <div class="progress-bar {% if matricula.progresso_percentual == 100 %}bg-success{% else %}bg-primary{% endif %} rounded-pill"
+                                        role="progressbar" style="width: {{ matricula.progresso_percentual }}%;"
+                                        aria-valuenow="{{ matricula.progresso_percentual }}" aria-valuemin="0"
+                                        aria-valuemax="100"></div>
+                                </div>
+                                <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}"
+                                    class="btn btn-primary w-100 rounded-pill fw-semibold py-2">Continuar Aprendendo <i
+                                        class="bi bi-arrow-right ms-2"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-light rounded-circle text-muted mb-3"
+                        style="width: 80px; height: 80px;">
+                        <i class="bi bi-emoji-smile fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Você ainda não está em nenhum curso.</h5>
+                    <p class="text-secondary mb-4">Visite nosso catálogo e encontre o percurso formativo ideal para
+                        você.</p>
+                    <a href="{% url 'ava:catalogo' %}" class="btn btn-outline-primary rounded-pill px-4">Ir para o
+                        Catálogo</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
