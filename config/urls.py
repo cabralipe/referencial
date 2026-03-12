@@ -18,7 +18,7 @@ urlpatterns = [
 ]
 
 urlpatterns += [
-    re_path(r"^(?!admin/|api/|ava/|static/|media/).*", serve_frontend, name="frontend"),
+    re_path(r"^(?!admin|api|ava|static|media).*", serve_frontend, name="frontend"),
 ]
 
 # Servir mídia sempre que o storage for local (ou quando DEBUG estiver ativo).
