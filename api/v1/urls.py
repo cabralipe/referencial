@@ -19,6 +19,7 @@ from .views import (
     ApprovedDiffView,
     ConsultaPublicaPublicView,
     ManifestacaoPublicaView,
+    PublicClientesEscolasView,
 )
 
 schema_view = get_schema_view(
@@ -51,5 +52,10 @@ urlpatterns = [
         "consultas_publicas/public/<str:token>/manifestacoes",
         ManifestacaoPublicaView.as_view(),
         name="consulta-publica-manifestacoes",
+    ),
+    path(
+        "public/cadastro-data", 
+        PublicClientesEscolasView.as_view(), 
+        name="public-cadastro-data"
     ),
 ]

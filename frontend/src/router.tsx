@@ -6,6 +6,7 @@ import { RoleRoute } from './components/routing/RoleRoute';
 import { DashboardPage } from './pages/DashboardPage';
 import { InicioPage } from './pages/InicioPage';
 import { LoginPage } from './pages/LoginPage';
+import { CadastroPage } from './pages/CadastroPage';
 import { MinhaTrilhaPage } from './pages/MinhaTrilhaPage';
 import { TaskDetailPage } from './pages/TaskDetailPage';
 import { TasksPage } from './pages/TasksPage';
@@ -496,6 +497,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/cadastro',
+    element: <CadastroPage />,
   },
   {
     path: '/consultas-publicas/:token',
