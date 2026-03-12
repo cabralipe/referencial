@@ -150,7 +150,7 @@ O conteudo do PPP usa o fluxo geral de revisao da plataforma:
 
 ## Limitacoes atuais (implementacao)
 - O PPP e municipal (escopo por cliente).
-- Nao existe entidade `Escola` no modelo atual, portanto nao ha PPP por escola nativo.
+- Ja existe entidade `Escola` no dominio de curriculum (com escopo por cliente), mas o PPP ainda nao possui fluxo nativo de segmentacao por escola.
 - O modulo PPP e uma "visao/configuracao" de trilhas existentes, nao um conjunto de entidades exclusivas.
 
 ## Referencias de implementacao (codigo)

@@ -54,6 +54,7 @@ class SessionLoginView(APIView):
                 "nome": getattr(user, "nome", ""),
                 "role": user.role,
                 "cliente_id": user.cliente_id,
+                "escola_id": getattr(user, "escola_id", None),
             }
         }
         if user.cliente:
@@ -73,6 +74,7 @@ class AuthMeView(APIView):
                 "nome": getattr(user, "nome", ""),
                 "role": user.role,
                 "cliente_id": user.cliente_id,
+                "escola_id": getattr(user, "escola_id", None),
             }
         }
         if user.cliente:

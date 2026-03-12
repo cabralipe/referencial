@@ -39,7 +39,7 @@ from core.permissions import (
 from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag, usuario_e_membro_do_gt
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -70,6 +70,7 @@ from .serializers import (
     PerguntaWriteSerializer,
     PerguntaSerializer,
     AreaSerializer,
+    EscolaSerializer,
     GTSerializer,
     ExportJobSerializer,
     FormularioDinamicoSerializer,
@@ -521,6 +522,17 @@ class GTViewSet(viewsets.ReadOnlyModelViewSet):
         }:
             return queryset
         return queryset.filter(membros=user)
+
+
+class EscolaViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = EscolaSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ("nome",)
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return Escola.objects.filter(cliente_id=cliente_id).order_by("nome")
 
 
 class AreaViewSet(viewsets.ReadOnlyModelViewSet):

@@ -38,7 +38,7 @@ from core.models import (
     ThrottleBlock,
     UserSessionLog,
 )
-from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from reviews.models import Revisao
@@ -152,6 +152,15 @@ def create_users(cliente):
     return users
 
 def create_curriculum(cliente, users):
+    escola_centro, _ = Escola.objects.get_or_create(
+        cliente=cliente,
+        nome='Escola Municipal Centro',
+    )
+    escola_norte, _ = Escola.objects.get_or_create(
+        cliente=cliente,
+        nome='Escola Municipal Norte',
+    )
+
     print("--- Criando Currículo (GTs, Tarefas, Perguntas) ---")
     
     # GTs
@@ -344,6 +353,7 @@ def create_curriculum(cliente, users):
 
     print("Estrutura curricular criada.")
     return {
+        'escolas': [escola_centro, escola_norte],
         'areas': [area_base],
         'gts': [gt_mat, gt_port],
         'tarefas': [tarefa1, tarefa2, tarefa3, tarefa4, tarefa5],

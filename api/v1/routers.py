@@ -13,6 +13,7 @@ from .viewsets import (
     ExportJobViewSet,
     ConsultaPublicaViewSet,
     AreaViewSet,
+    EscolaViewSet,
     GTViewSet,
     FormularioDinamicoViewSet,
     MidiaViewSet,
@@ -53,6 +54,7 @@ from documents.viewsets import (
 from .admin_viewsets import (
     AnexoAdminViewSet,
     AreaAdminViewSet,
+    EscolaAdminViewSet,
     AuditLogAdminViewSet,
     BlocoTextoAdminViewSet,
     CampoDinamicoAdminViewSet,
@@ -95,6 +97,7 @@ router.register("ai/assist", AiAssistViewSet, basename="ai-assist")
 router.register("tarefas", TarefaViewSet, basename="tarefa")
 router.register("perguntas", PerguntaViewSet, basename="pergunta")
 router.register("gts", GTViewSet, basename="gt")
+router.register("escolas", EscolaViewSet, basename="escola")
 router.register("areas", AreaViewSet, basename="area")
 router.register("respostas", RespostaViewSet, basename="resposta")
 router.register("texto_unico", TextoUnicoViewSet, basename="texto_unico")
@@ -144,6 +147,7 @@ router.register("admin/score-entries", ScoreEntryAdminViewSet, basename="admin_s
 router.register("admin/session-logs", UserSessionLogAdminViewSet, basename="admin_session_logs")
 
 router.register("admin/gts", GTAdminViewSet, basename="admin_gts")
+router.register("admin/escolas", EscolaAdminViewSet, basename="admin_escolas")
 router.register("admin/areas", AreaAdminViewSet, basename="admin_areas")
 router.register("admin/tarefas", TarefaAdminViewSet, basename="admin_tarefas")
 router.register("admin/perguntas", PerguntaAdminViewSet, basename="admin_perguntas")

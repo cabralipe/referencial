@@ -59,14 +59,14 @@ class UsuarioAdmin(DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
-    list_display = ("email", "nome", "cliente", "role", "is_active", "last_login")
-    list_filter = ("role", "is_active", "cliente")
+    list_display = ("email", "nome", "cliente", "escola", "role", "is_active", "last_login")
+    list_filter = ("role", "is_active", "cliente", "escola")
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Informações pessoais", {"fields": ("nome", "cliente", "role")}),
+        ("Informações pessoais", {"fields": ("nome", "cliente", "escola", "role")}),
         (
             "Permissões",
             {
@@ -90,6 +90,7 @@ class UsuarioAdmin(DjangoUserAdmin):
                     "email",
                     "nome",
                     "cliente",
+                    "escola",
                     "role",
                     "password1",
                     "password2",
@@ -102,6 +103,16 @@ class UsuarioAdmin(DjangoUserAdmin):
     )
     action_form = BroadcastMessageForm
     actions = ["broadcast_chat_message"]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "escola":
+            from curriculum.models import Escola
+
+            if getattr(request.user, "role", None) == Usuario.Role.SUPER_ADMIN:
+                kwargs["queryset"] = Escola.raw_objects.filter(is_deleted=False)
+            else:
+                kwargs["queryset"] = Escola.objects.filter(cliente_id=getattr(request, "cliente_id", None))
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     @admin.action(description="Disparar mensagem no chat para os usuários selecionados")
     def broadcast_chat_message(self, request, queryset):

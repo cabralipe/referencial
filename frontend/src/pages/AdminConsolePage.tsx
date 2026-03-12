@@ -71,6 +71,12 @@ export function AdminConsolePage() {
       to: '/admin/console/gts?new=1',
     },
     {
+      id: 'nova-escola',
+      label: 'Criar escola',
+      description: 'Cadastre as escolas do cliente.',
+      to: '/admin/console/escolas?new=1',
+    },
+    {
       id: 'nova-tarefa',
       label: 'Criar tarefa',
       description: 'Defina trilhas e etapas.',
@@ -128,6 +134,7 @@ export function AdminConsolePage() {
       const steps = [
         { id: 'usuarios', endpoint: '/admin/usuarios' },
         { id: 'gts', endpoint: '/admin/gts' },
+        { id: 'escolas', endpoint: '/admin/escolas' },
         { id: 'tarefas', endpoint: '/admin/tarefas' },
         { id: 'perguntas', endpoint: '/admin/perguntas' },
         { id: 'notificacoes', endpoint: '/admin/notificacoes' },
@@ -183,6 +190,14 @@ export function AdminConsolePage() {
       ok: checklistStatus.gts ?? null,
       action: () => navigate('/admin/console/gts'),
       actionLabel: 'Ir para GTs',
+    },
+    {
+      id: 'escolas',
+      label: 'Escolas cadastradas',
+      description: 'Registre as escolas do cliente.',
+      ok: checklistStatus.escolas ?? null,
+      action: () => navigate('/admin/console/escolas'),
+      actionLabel: 'Ir para escolas',
     },
     {
       id: 'tarefas',

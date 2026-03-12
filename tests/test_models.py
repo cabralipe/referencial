@@ -1,8 +1,8 @@
 import pytest
 
-from core.models import ClienteConfig, ClienteFeatureFlag, ClienteTema
+from core.models import Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
 from core.utils import coletar_contexto_do_cliente
-from curriculum.models import Resposta, TextoUnico
+from curriculum.models import Escola, Resposta, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from workshop.models import CelulaQuadro, Quadro
 
@@ -61,3 +61,30 @@ def test_domain_models_linkage(cliente, usuario, gt, tarefa, pergunta):
     assert contexto["configs"]["export_plugin"] == "default"
     assert contexto["flags"]["exports"] is True
     assert contexto["tema"]["logo_url"] == "https://example.com/logo.png"
+
+
+@pytest.mark.django_db
+def test_usuario_professor_exige_escola(cliente, django_user_model):
+    with pytest.raises(ValueError):
+        django_user_model.objects.create_user(
+            email="prof-sem-escola@teste.com",
+            password="senha123",
+            nome="Professor Sem Escola",
+            cliente=cliente,
+            role=Usuario.Role.PROFESSOR,
+        )
+
+
+@pytest.mark.django_db
+def test_usuario_escola_deve_pertencer_ao_mesmo_cliente(cliente, django_user_model):
+    cliente_b = Cliente.objects.create(nome="Cliente B", slug="cliente-b")
+    escola_b = Escola.objects.create(cliente=cliente_b, nome="Escola B")
+    with pytest.raises(ValueError):
+        django_user_model.objects.create_user(
+            email="prof-escola-outra@teste.com",
+            password="senha123",
+            nome="Professor Inválido",
+            cliente=cliente,
+            escola=escola_b,
+            role=Usuario.Role.PROFESSOR,
+        )

@@ -1,5 +1,5 @@
 import pytest
-from curriculum.models import GT, TextoUnico
+from curriculum.models import Escola, GT, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from workshop.models import Quadro
 
@@ -72,6 +72,19 @@ def test_gt_endpoint_only_member_param_limits_admin(auth_client, cliente, usuari
     payload = response.json()
     assert payload["count"] == 1
     assert payload["results"][0]["nome"] == gt_membro.nome
+
+
+@pytest.mark.django_db
+def test_escolas_endpoint_lists_for_cliente(auth_client, cliente):
+    Escola.objects.create(cliente=cliente, nome="Escola Centro")
+    Escola.objects.create(cliente=cliente, nome="Escola Norte")
+
+    response = auth_client.get("/api/v1/escolas")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 2
+    nomes = {item["nome"] for item in payload["results"]}
+    assert nomes == {"Escola Centro", "Escola Norte"}
 
 
 @pytest.mark.django_db

@@ -26,6 +26,19 @@ class GT(TenantModel):
         return self.nome
 
 
+class Escola(TenantModel):
+    nome = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = "Escola"
+        verbose_name_plural = "Escolas"
+        ordering = ("nome",)
+        unique_together = ("cliente", "nome")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.nome
+
+
 class Area(TenantModel):
     nome = models.CharField(max_length=255)
     descricao_html = models.TextField(blank=True)
