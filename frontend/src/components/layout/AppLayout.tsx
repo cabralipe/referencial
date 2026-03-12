@@ -162,6 +162,7 @@ export function AppLayout() {
       { to: '/comentarios', label: 'Comentários', icon: 'comment' },
       { to: '/relatorios', label: 'Relatórios', icon: 'document', only: ['admin_cliente', 'super_admin'] },
       { to: '/biblioteca', label: 'Referências', icon: 'library' },
+      { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true },
       { to: '/exportacoes', label: 'Exportações', icon: 'export' },
       { to: '/diff', label: 'Diff', icon: 'diff' },
       { to: '/auditoria', label: 'Auditoria', icon: 'audit' },
@@ -237,8 +238,16 @@ export function AppLayout() {
               if (item.only && !item.only.includes(user?.role ?? '')) {
                 return null;
               }
+              if (item.external) {
+                return (
+                  <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer">
+                    <Icon name={item.icon} className="menu__icon" ariaHidden />
+                    <span className="menu__label">{item.label}</span>
+                  </a>
+                );
+              }
               return (
-                <NavLink key={item.to} to={item.to} end={item.to === '/'}>
+                <NavLink key={item.to} to={item.to!} end={item.to === '/'}>
                   <Icon name={item.icon} className="menu__icon" ariaHidden />
                   <span className="menu__label">{item.label}</span>
                 </NavLink>
