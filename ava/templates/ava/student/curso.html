@@ -1,0 +1,111 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Curso: {{ curso.titulo }}{% endblock %}
+
+{% block content %}
+<div class="bg-primary text-white pt-5 pb-4">
+    <div class="container d-flex flex-column gap-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:aluno:dashboard' %}"
+                        class="text-white-50 text-decoration-none">Painel</a></li>
+                <li class="breadcrumb-item active text-white" aria-current="page">{{ curso.titulo }}</li>
+            </ol>
+        </nav>
+        <h1 class="display-6 fw-bold mb-0">{{ curso.titulo }}</h1>
+        <div class="d-flex align-items-center gap-3">
+            <div class="progress flex-grow-1 bg-white bg-opacity-25" style="height: 8px;">
+                <div class="progress-bar bg-success" role="progressbar"
+                    style="width: {{ matricula.progresso_percentual }}%;"
+                    aria-valuenow="{{ matricula.progresso_percentual }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <span class="fw-bold">{{ matricula.progresso_percentual }}% Concluído</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <h3 class="mb-4">Módulos do Curso</h3>
+
+            <div class="accordion" id="modulosAccordion">
+                {% for modulo in modulos %}
+                <div class="accordion-item mb-3 border-0 shadow-sm rounded-3 overflow-hidden">
+                    <h2 class="accordion-header" id="heading{{ modulo.id }}">
+                        <button
+                            class="accordion-button {% if not forloop.first %}collapsed{% endif %} bg-white text-dark fw-bold"
+                            type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ modulo.id }}"
+                            aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                            aria-controls="collapse{{ modulo.id }}">
+                            Módulo {{ modulo.ordem }}: {{ modulo.titulo }}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ modulo.id }}"
+                        class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                        aria-labelledby="heading{{ modulo.id }}" data-bs-parent="#modulosAccordion">
+                        <div class="accordion-body bg-light p-0">
+                            {% if modulo.descricao %}
+                            <div class="p-3 border-bottom text-muted small">
+                                {{ modulo.descricao }}
+                            </div>
+                            {% endif %}
+
+                            <ul class="list-group list-group-flush">
+                                {% for aula in modulo.aulas.all %}
+                                <li
+                                    class="list-group-item bg-transparent border-bottom-0 border-top py-3 px-4 d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <!-- Simulando checagem de progresso de aula no template -->
+                                        {% if aula.progresso_concluido %}
+                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                        {% else %}
+                                        <i class="bi bi-circle text-secondary fs-5"></i>
+                                        {% endif %}
+
+                                        <div>
+                                            <h6 class="mb-0 fw-semibold">{{ aula.titulo }}</h6>
+                                            <small class="text-muted"><i class="bi bi-clock me-1"></i>{{
+                                                aula.duracao_estimada_minutos }} min</small>
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'ava:aluno:acessar_aula' curso.slug aula.id %}"
+                                        class="btn btn-sm btn-outline-primary rounded-pill px-3">Acessar</a>
+                                </li>
+                                {% empty %}
+                                <li class="list-group-item bg-transparent text-muted py-3 px-4">Nenhuma aula disponível
+                                    neste módulo.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">Nenhum módulo foi publicado ainda.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 mb-4 sticky-top" style="top: 20px;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Informações</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-person-video3 me-2 text-primary"></i> <strong
+                                class="text-dark">Autor:</strong> {{
+                            curso.autor_principal.get_full_name|default:"Institucional" }}</li>
+                        <li class="mb-2"><i class="bi bi-clock-history me-2 text-primary"></i> <strong
+                                class="text-dark">Carga Horária:</strong> {{ curso.carga_horaria }}h</li>
+                        <li class="mb-2"><i class="bi bi-bar-chart-steps me-2 text-primary"></i> <strong
+                                class="text-dark">Progresso para aprovação:</strong> {{ curso.progresso_minimo }}%</li>
+                        {% if curso.permite_certificado %}
+                        <li class="mb-0"><i class="bi bi-patch-check me-2 text-success"></i> <strong
+                                class="text-dark">Emite Certificado</strong></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

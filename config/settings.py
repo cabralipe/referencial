@@ -116,6 +116,7 @@ INSTALLED_APPS = [
     "sockets",
     "tasks",
     "meb",
+    "ava",
 ]
 
 MIDDLEWARE = [
