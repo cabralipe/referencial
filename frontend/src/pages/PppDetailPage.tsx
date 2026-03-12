@@ -134,7 +134,7 @@ export function PppDetailPage() {
           <div className="ppp-detail__next">
             <div>
               <strong>Passo atual</strong>
-              <p>Missão {proximoBloco.pergunta.ordem}: {proximoBloco.pergunta.texto}</p>
+              <p>{proximoBloco.pergunta.texto}</p>
             </div>
             {proximoBloco.resposta ? (
               <Link to={`/texto/${proximoBloco.resposta.id}?gt=${selectedGtId ?? ''}`}>
@@ -158,7 +158,6 @@ export function PppDetailPage() {
           <Card key={bloco.pergunta.id}>
             <div className="ppp-detail__card">
               <header>
-                <h2>Missão {bloco.pergunta.ordem}</h2>
                 <span className={`ppp-detail__status status-${bloco.status}`}>{statusLabel[bloco.status]}</span>
               </header>
               <div

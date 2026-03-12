@@ -23,6 +23,7 @@ from core.permissions import HasClientScope, IsAdminConsole
 from curriculum.models import (
     Anexo,
     Area,
+    Escola,
     GT,
     Pergunta,
     Resposta,
@@ -42,6 +43,7 @@ from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 from .admin_serializers import (
     AnexoAdminSerializer,
     AreaAdminSerializer,
+    EscolaAdminSerializer,
     AuditLogAdminSerializer,
     BlocoTextoAdminSerializer,
     CampoDinamicoAdminSerializer,
@@ -156,6 +158,14 @@ class UsuarioAdminViewSet(AdminModelViewSet):
     queryset = UserModel.objects.all()
     serializer_class = UsuarioAdminSerializer
 
+    def _validate_escola_scope(self, serializer):
+        if self.request.user.role == self.request.user.Role.SUPER_ADMIN:
+            return
+        scope_id = getattr(self.request, "cliente_id", None)
+        escola = serializer.validated_data.get("escola")
+        if escola and escola.cliente_id != scope_id:
+            raise PermissionDenied("Não é permitido vincular escola de outro cliente.")
+
     def perform_create(self, serializer):
         password = serializer.validated_data.pop("password", None)
         if self.request.user.role != self.request.user.Role.SUPER_ADMIN:
@@ -165,6 +175,7 @@ class UsuarioAdminViewSet(AdminModelViewSet):
             scope_id = getattr(self.request, "cliente_id", None)
             if cliente and cliente.id != scope_id:
                 raise PermissionDenied("Não é permitido vincular outro cliente.")
+            self._validate_escola_scope(serializer)
             serializer.validated_data["cliente_id"] = scope_id
         instance = serializer.save()
         if password:
@@ -180,6 +191,7 @@ class UsuarioAdminViewSet(AdminModelViewSet):
             scope_id = getattr(self.request, "cliente_id", None)
             if cliente and cliente.id != scope_id:
                 raise PermissionDenied("Não é permitido vincular outro cliente.")
+            self._validate_escola_scope(serializer)
         instance = serializer.save()
         if password:
             instance.set_password(password)
@@ -229,6 +241,11 @@ class GTAdminViewSet(AdminModelViewSet):
 class AreaAdminViewSet(AdminModelViewSet):
     queryset = Area.objects.all()
     serializer_class = AreaAdminSerializer
+
+
+class EscolaAdminViewSet(AdminModelViewSet):
+    queryset = Escola.objects.all()
+    serializer_class = EscolaAdminSerializer
 
 
 class TarefaAdminViewSet(AdminModelViewSet):

@@ -137,7 +137,7 @@ export function TrilhaDetailPage() {
           <div className="trilha-detail__next">
             <div>
               <strong>Passo atual</strong>
-              <p>Missão {proximoBloco.pergunta.ordem}: {proximoBloco.pergunta.texto}</p>
+              <p>{proximoBloco.pergunta.texto}</p>
             </div>
             {proximoBloco.resposta ? (
               <Link to={`/texto/${proximoBloco.resposta.id}?gt=${selectedGtId ?? ''}`}>
@@ -161,7 +161,6 @@ export function TrilhaDetailPage() {
           <Card key={bloco.pergunta.id}>
             <div className="trilha-detail__card">
               <header>
-                <h2>Missão {bloco.pergunta.ordem}</h2>
                 <span className={`trilha-detail__status status-${bloco.status}`}>{statusLabel[bloco.status]}</span>
               </header>
               <div

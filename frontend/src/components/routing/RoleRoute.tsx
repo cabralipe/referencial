@@ -15,13 +15,16 @@ export function RoleRoute({ allowed, children }: RoleRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowed.includes(user.role)) {
+  const memberAliasRoles = new Set(['professor', 'diretor', 'coordenador_pedagogico']);
+  const effectiveRole = memberAliasRoles.has(user.role) ? 'membro_gt' : user.role;
+
+  if (!allowed.includes(effectiveRole)) {
     const fallback =
-      user.role === 'membro_gt'
+      effectiveRole === 'membro_gt'
         ? '/inicio'
-        : user.role === 'revisor'
+        : effectiveRole === 'revisor'
           ? '/revisor/inbox'
-          : user.role === 'articulador'
+          : effectiveRole === 'articulador'
             ? '/redator/revisoes'
             : '/';
     return <Navigate to={fallback} replace state={{ from: location }} />;

@@ -6,7 +6,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.utils.html import strip_tags
 
-from .models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoUnico
+from .models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoUnico
 from meb.services import deliver_admin_broadcast
 
 
@@ -129,6 +129,13 @@ class AreaAdmin(admin.ModelAdmin):
             else:
                 kwargs["queryset"] = GT.objects.all()
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+
+@admin.register(Escola)
+class EscolaAdmin(admin.ModelAdmin):
+    list_display = ("nome", "cliente", "created_at")
+    search_fields = ("nome", "cliente__nome")
+    list_filter = ("cliente",)
 
 
 class TarefaForm(forms.ModelForm):

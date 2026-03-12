@@ -16,7 +16,7 @@ from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, Cl
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Area, Anexo, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -73,6 +73,12 @@ class GTSerializer(serializers.ModelSerializer):
     class Meta:
         model = GT
         fields = ("id", "nome", "etapa")
+
+
+class EscolaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Escola
+        fields = ("id", "nome")
 
 
 class AreaSerializer(serializers.ModelSerializer):
@@ -1306,6 +1312,9 @@ class LoginSerializer(serializers.Serializer):
             return
         allowed_roles = {
             user.Role.MEMBRO_GT,
+            user.Role.PROFESSOR,
+            user.Role.DIRETOR,
+            user.Role.COORDENADOR_PEDAGOGICO,
             user.Role.REVISOR,
             user.Role.ARTICULADOR,
         }

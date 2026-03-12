@@ -26,6 +26,9 @@ import './DashboardPage.css';
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Admin',
   admin_cliente: 'Admin',
+  diretor: 'Diretor',
+  coordenador_pedagogico: 'Coordenador Pedagógico',
+  professor: 'Professor',
   articulador: 'Redator',
   membro_gt: 'Membro GT',
   leitor: 'Leitor',
@@ -77,7 +80,12 @@ export function DashboardPage() {
     return <ArticuladorDashboard />;
   }
 
-  if (user.role === 'membro_gt') {
+  if (
+    user.role === 'membro_gt'
+    || user.role === 'professor'
+    || user.role === 'diretor'
+    || user.role === 'coordenador_pedagogico'
+  ) {
     return <Navigate to="/inicio" replace />;
   }
 

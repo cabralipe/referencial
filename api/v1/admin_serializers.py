@@ -20,6 +20,7 @@ from core.models import (
 from curriculum.models import (
     Anexo,
     Area,
+    Escola,
     GT,
     Pergunta,
     Resposta,
@@ -72,6 +73,41 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
             "password": {"write_only": True, "required": False},
         }
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        instance = getattr(self, "instance", None)
+        request = self.context.get("request")
+
+        role = attrs.get("role", getattr(instance, "role", UserModel.Role.LEITOR))
+        cliente = attrs.get("cliente", getattr(instance, "cliente", None))
+        escola = attrs.get("escola", getattr(instance, "escola", None))
+        scope_cliente_id = getattr(request, "cliente_id", None) if request else None
+        cliente_id = getattr(cliente, "id", None)
+        if (
+            not cliente_id
+            and scope_cliente_id
+            and request
+            and getattr(request.user, "role", None) != request.user.Role.SUPER_ADMIN
+        ):
+            cliente_id = scope_cliente_id
+
+        if role != UserModel.Role.SUPER_ADMIN and not cliente_id:
+            raise serializers.ValidationError({"cliente": "Usuários não super_admin devem possuir cliente."})
+
+        if role in UserModel.ESCOLA_REQUIRED_ROLES and not escola:
+            raise serializers.ValidationError({"escola": "Diretor, Coordenador Pedagógico e Professor devem possuir escola."})
+
+        if role == UserModel.Role.SUPER_ADMIN:
+            if cliente_id:
+                raise serializers.ValidationError({"cliente": "Super admin não pode possuir cliente."})
+            if escola:
+                raise serializers.ValidationError({"escola": "Super admin não pode possuir escola."})
+
+        if escola and cliente_id and escola.cliente_id != cliente_id:
+            raise serializers.ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
+
+        return attrs
+
 
 class AuditLogAdminSerializer(serializers.ModelSerializer):
     usuario_id = serializers.SerializerMethodField()
@@ -116,6 +152,12 @@ class GTAdminSerializer(serializers.ModelSerializer):
 class AreaAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Area
+        fields = "__all__"
+
+
+class EscolaAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Escola
         fields = "__all__"
 
 

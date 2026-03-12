@@ -6,6 +6,7 @@ from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -63,13 +64,39 @@ class ClienteTema(TenantModel):
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
 
+    REQUIRED_ESCOLA_ROLES = {
+        "diretor",
+        "coordenador_pedagogico",
+        "professor",
+    }
+
     def _create_user(self, email: str, password: Optional[str], **extra_fields):
         if not email:
             raise ValueError("O e-mail é obrigatório")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        if extra_fields.get("role") != Usuario.Role.SUPER_ADMIN and not user.cliente_id:
+        role = extra_fields.get("role") or Usuario.Role.LEITOR
+        if role != Usuario.Role.SUPER_ADMIN and not user.cliente_id:
             raise ValueError("Usuários não super_admin devem possuir cliente")
+        if role == Usuario.Role.SUPER_ADMIN and user.cliente_id:
+            raise ValueError("Super admin não pode possuir cliente")
+        if role in self.REQUIRED_ESCOLA_ROLES and not user.escola_id:
+            raise ValueError("Diretor, Coordenador Pedagógico e Professor devem possuir escola")
+        if role == Usuario.Role.SUPER_ADMIN and user.escola_id:
+            raise ValueError("Super admin não pode possuir escola")
+        escola_cliente_id = None
+        if user.escola_id:
+            escola = extra_fields.get("escola")
+            if escola is not None:
+                escola_cliente_id = getattr(escola, "cliente_id", None)
+            else:
+                from curriculum.models import Escola
+
+                escola_cliente_id = (
+                    Escola.raw_objects.filter(pk=user.escola_id).values_list("cliente_id", flat=True).first()
+                )
+        if user.escola_id and user.cliente_id and escola_cliente_id and escola_cliente_id != user.cliente_id:
+            raise ValueError("Escola deve pertencer ao mesmo cliente do usuário")
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -85,6 +112,7 @@ class UsuarioManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("role", Usuario.Role.SUPER_ADMIN)
         extra_fields.setdefault("cliente", None)
+        extra_fields.setdefault("escola", None)
         return self._create_user(email, password, **extra_fields)
 
 
@@ -92,10 +120,19 @@ class Usuario(AbstractUser):
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "Super Admin"
         ADMIN_CLIENTE = "admin_cliente", "Admin do Cliente"
+        DIRETOR = "diretor", "Diretor"
+        COORDENADOR_PEDAGOGICO = "coordenador_pedagogico", "Coordenador Pedagógico"
+        PROFESSOR = "professor", "Professor"
         ARTICULADOR = "articulador", "Redator"
         REVISOR = "revisor", "Revisor"
         MEMBRO_GT = "membro_gt", "Membro GT"
         LEITOR = "leitor", "Leitor"
+
+    ESCOLA_REQUIRED_ROLES = {
+        Role.DIRETOR,
+        Role.COORDENADOR_PEDAGOGICO,
+        Role.PROFESSOR,
+    }
 
     username = None
     email = models.EmailField("E-mail", unique=True)
@@ -107,7 +144,14 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
     )
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.LEITOR)
+    escola = models.ForeignKey(
+        "curriculum.Escola",
+        on_delete=models.PROTECT,
+        related_name="usuarios",
+        null=True,
+        blank=True,
+    )
+    role = models.CharField(max_length=30, choices=Role.choices, default=Role.LEITOR)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = ["nome"]
@@ -121,6 +165,25 @@ class Usuario(AbstractUser):
 
     def __str__(self) -> str:  # pragma: no cover
         return self.email
+
+    def clean(self):  # type: ignore[override]
+        super().clean()
+        if self.role != self.Role.SUPER_ADMIN and not self.cliente_id:
+            raise ValidationError({"cliente": "Usuários não super_admin devem possuir cliente."})
+        if self.role in self.ESCOLA_REQUIRED_ROLES and not self.escola_id:
+            raise ValidationError({"escola": "Diretor, Coordenador Pedagógico e Professor devem possuir escola."})
+        if self.role == self.Role.SUPER_ADMIN:
+            if self.cliente_id:
+                raise ValidationError({"cliente": "Super admin não pode possuir cliente."})
+            if self.escola_id:
+                raise ValidationError({"escola": "Super admin não pode possuir escola."})
+        escola_cliente_id = None
+        if self.escola_id:
+            from curriculum.models import Escola
+
+            escola_cliente_id = Escola.raw_objects.filter(pk=self.escola_id).values_list("cliente_id", flat=True).first()
+        if self.escola_id and self.cliente_id and escola_cliente_id and escola_cliente_id != self.cliente_id:
+            raise ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
 
     @property
     def is_super_admin(self) -> bool:

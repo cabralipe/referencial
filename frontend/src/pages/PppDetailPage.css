@@ -25,7 +25,7 @@
 
 .ppp-detail__card header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 1rem;
 }
@@ -66,6 +66,7 @@
 .ppp-detail__texto {
   margin: 0.75rem 0;
   color: var(--color-text-secondary);
+  font-weight: bold;
 }
 
 .ppp-detail__checklist {

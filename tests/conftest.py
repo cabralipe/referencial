@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from core.models import Cliente, ClienteFeatureFlag, Usuario
+from curriculum.models import Escola
 
 
 @pytest.fixture
@@ -26,6 +27,11 @@ def gt(cliente):
     from curriculum.models import GT
 
     return GT.objects.create(cliente=cliente, nome="GT Base", etapa="I")
+
+
+@pytest.fixture
+def escola(cliente):
+    return Escola.objects.create(cliente=cliente, nome="Escola Base")
 
 
 @pytest.fixture
