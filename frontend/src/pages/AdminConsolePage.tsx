@@ -37,7 +37,7 @@ export function AdminConsolePage() {
   const client = useApiClient();
   const navigate = useNavigate();
   const { isSuperAdmin, clientes, selectedClienteId, setSelectedClienteId } = useAdminScope();
-  const avaHref = buildBackendUrl('/ava/');
+  const avaHref = buildBackendUrl('/ava/catalogo/');
 
   const filteredModules = useMemo(() => {
     const term = search.trim().toLowerCase();

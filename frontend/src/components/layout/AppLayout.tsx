@@ -110,7 +110,7 @@ export function AppLayout() {
   const isGtMember = user?.role === 'membro_gt';
   const isRedator = user?.role === 'articulador';
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
-  const avaHref = buildBackendUrl('/ava/');
+  const avaHref = buildBackendUrl('/ava/catalogo/');
 
   const navItems = useMemo(() => {
     const avaNavItem = { href: avaHref, label: 'Acessar AVA', icon: 'library', external: true } as const;

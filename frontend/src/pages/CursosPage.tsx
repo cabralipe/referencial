@@ -13,7 +13,7 @@ export function CursosPage() {
   const { data: cursos, isLoading } = useCursos();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
-  const avaHref = buildBackendUrl('/ava/');
+  const avaHref = buildBackendUrl('/ava/catalogo/');
 
   if (isLoading) {
     return <FullPageLoader message="Carregando cursos..." />;
