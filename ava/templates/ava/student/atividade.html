@@ -14,7 +14,7 @@
 <div class="container pb-5" style="max-width: 800px;">
 
     <div class="mb-4">
-        <a href="{% url 'ava:aluno:acessar_aula' curso.slug aula.id %}"
+        <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}"
             class="btn btn-outline-secondary btn-sm rounded-pill">
             <i class="bi bi-arrow-left me-1"></i> Voltar para Aula
         </a>
@@ -115,7 +115,7 @@
         {% endif %}
 
         <div>
-            <a href="{% url 'ava:aluno:acessar_aula' curso.slug aula.id %}"
+            <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}"
                 class="btn btn-outline-success rounded-pill px-4">Voltar para a Aula</a>
         </div>
     </div>

@@ -1,8 +1,6 @@
 from django.urls import path
 from ava.views import public
 
-app_name = "ava_public"
-
 urlpatterns = [
     path("catalogo/", public.catalogo_cursos, name="catalogo"),
     path("curso/<slug:slug>/", public.detalhes_curso_publico, name="detalhes_curso"),

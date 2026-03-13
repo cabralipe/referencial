@@ -75,7 +75,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     
     if erro:
         messages.warning(request, erro)
-        return redirect('ava:aluno:acessar_aula', curso_slug=curso_slug, aula_id=aula_id)
+        return redirect('ava:aluno_acessar_aula', curso_slug=curso_slug, aula_id=aula_id)
 
     if request.method == "POST":
         if atividade.tipo in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
@@ -88,7 +88,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             AtividadeService.submeter_tarefa_discursiva(tentativa, texto, arquivo)
             messages.success(request, "Atividade enviada com sucesso!")
             
-        return redirect('ava:aluno:acessar_aula', curso_slug=curso_slug, aula_id=aula_id)
+        return redirect('ava:aluno_acessar_aula', curso_slug=curso_slug, aula_id=aula_id)
 
     # Se for GET, renderiza a prova
     questoes = []

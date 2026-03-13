@@ -29,7 +29,7 @@
                         <div class="accordion-body p-0 lesson-nav">
                             <ul class="list-group list-group-flush">
                                 {% for a in mod.aulas.all %}
-                                <a href="{% url 'ava:aluno:acessar_aula' aula.modulo.curso.slug a.id %}"
+                                <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug a.id %}"
                                     class="list-group-item list-group-item-action {% if a == aula %}active{% endif %} py-3 px-4 border-0 border-bottom text-dark">
                                     <div class="d-flex align-items-center gap-2">
                                         {% if a.progresso_concluido %}
@@ -98,7 +98,7 @@
                             {% endif %}
 
                             <!-- Formulário HTMX para marcar visualização individualmente -->
-                            <form htmx-post="{% url 'ava:aluno:marcar_conteudo' conteudo.id %}" htmx-swap="outerHTML"
+                            <form htmx-post="{% url 'ava:aluno_marcar_conteudo' conteudo.id %}" htmx-swap="outerHTML"
                                 class="mt-4 text-end">
                                 <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3">
                                     <i class="bi bi-check-circle me-1"></i> Marcar como Lido/Visto
@@ -137,7 +137,7 @@
                                 </div>
                                 <p class="text-muted">{{ atividade.descricao|truncatewords:20 }}</p>
                                 <div class="text-end">
-                                    <a href="{% url 'ava:aluno:responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}"
+                                    <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}"
                                         class="btn btn-primary rounded-pill px-4">Acessar Atividade <i
                                             class="bi bi-arrow-right ms-1"></i></a>
                                 </div>

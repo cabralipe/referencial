@@ -134,7 +134,7 @@
                             </div>
                             <div>
                                 <strong class="d-block text-dark">Autor Resposável</strong>
-                                {{ curso.autor_principal.get_full_name|default:curso.autor_principal.username }}
+                                {{ curso.autor_principal.get_full_name|default:curso.autor_principal.nome|default:curso.autor_principal.email }}
                             </div>
                         </li>
                         {% endif %}
