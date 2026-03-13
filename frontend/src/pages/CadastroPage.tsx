@@ -27,7 +27,7 @@ export function CadastroPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'Diretor' | 'Coordenador Pedagógico' | 'Professor' | ''>('');
+  const [role, setRole] = useState<'diretor' | 'coordenador_pedagogico' | 'professor' | ''>('');
   
   const api = useApiClient();
   const [clientes, setClientes] = useState<ClienteData[]>([]);
@@ -105,16 +105,42 @@ export function CadastroPage() {
 
     setIsSubmitting(true);
     
-    // Simulate API call for registration
+    setIsSubmitting(true);
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In a real scenario, this would call an API like:
-      // await register({ nome, email, password, role, cliente_id: selectedClienteId, escola_id: selectedEscolaId });
-      
-      // Redirect to login after successful registration
+      await api.post('public/cadastro', {
+        body: {
+          nome,
+          email,
+          password,
+          role,
+          cliente_id: selectedClienteId,
+          escola_id: selectedEscolaId,
+        },
+        skipAuth: true
+      });
       navigate('/login', { replace: true });
-    } catch (err) {
-      setLocalError('Não foi possível realizar o cadastro. Tente novamente.');
+    } catch (err: any) {
+      if (err.payload && typeof err.payload === 'object') {
+        const p = err.payload as Record<string, any>;
+        if (p.email?.length > 0) {
+          setLocalError(p.email[0]);
+          return;
+        }
+        if (p.non_field_errors?.length > 0) {
+          setLocalError(p.non_field_errors[0]);
+          return;
+        }
+        if (p.cliente_id?.length > 0) {
+          setLocalError('Município (Cliente) inválido: ' + p.cliente_id[0]);
+          return;
+        }
+        if (p.escola_id?.length > 0) {
+          setLocalError('Escola inválida: ' + p.escola_id[0]);
+          return;
+        }
+      }
+      setLocalError(err.message || 'Não foi possível realizar o cadastro. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -190,28 +216,32 @@ export function CadastroPage() {
                   <div className="space-y-3">
                     <label className="block text-sm font-semibold text-slate-700 ml-1">Eu sou um(a)</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {['Diretor', 'Coordenador Pedagógico', 'Professor'].map((option) => (
+                      {[
+                        { label: 'Diretor', value: 'diretor' },
+                        { label: 'Coordenador Pedagógico', value: 'coordenador_pedagogico' },
+                        { label: 'Professor', value: 'professor' },
+                      ].map((option) => (
                         <label 
-                          key={option} 
+                          key={option.value} 
                           className={`
                             relative flex flex-col cursor-pointer rounded-xl border p-3 focus:outline-none transition-all duration-200
-                            ${role === option 
+                            ${role === option.value 
                               ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
                               : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             }
                           `}
                         >
                           <div className="flex items-center justify-between w-full h-full text-center group">
-                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option}</span>
+                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option.label}</span>
                             <input
                               type="radio"
                               name="role"
-                              value={option}
+                              value={option.value}
                               className="sr-only"
-                              checked={role === option}
+                              checked={role === option.value}
                               onChange={(e) => setRole(e.target.value as any)}
                             />
-                            {role === option && (
+                            {role === option.value && (
                               <span className="material-symbols-outlined absolute top-2 right-2 text-primary text-[18px]">
                                 check_circle
                               </span>
