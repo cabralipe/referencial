@@ -217,7 +217,7 @@ class PublicClientesEscolasView(APIView):
     authentication_classes: list = []
 
     def get(self, request):
-        clientes = Cliente.objects.all().order_by("nome")
+        clientes = Cliente.objects.filter(escolas__isnull=False).distinct().order_by("nome")
         escolas = Escola.objects.all().order_by("nome")
         return Response({
             "clientes": PublicClienteSerializer(clientes, many=True).data,
