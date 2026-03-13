@@ -217,9 +217,21 @@ class PublicClientesEscolasView(APIView):
     authentication_classes: list = []
 
     def get(self, request):
-        clientes = Cliente.objects.all().order_by("nome")
+        clientes = Cliente.objects.filter(escolas__isnull=False).distinct().order_by("nome")
         escolas = Escola.objects.all().order_by("nome")
         return Response({
             "clientes": PublicClienteSerializer(clientes, many=True).data,
             "escolas": PublicEscolaSerializer(escolas, many=True).data,
         })
+
+
+class CadastroView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def post(self, request):
+        from .serializers import CadastroSerializer
+        serializer = CadastroSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({"message": "Usuário cadastrado com sucesso", "id": user.id}, status=201)

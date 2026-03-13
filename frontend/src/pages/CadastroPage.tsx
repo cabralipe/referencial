@@ -27,13 +27,17 @@ export function CadastroPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'Diretor' | 'Coordenador Pedagógico' | 'Professor' | ''>('');
+  const [role, setRole] = useState<'diretor' | 'coordenador_pedagogico' | 'professor' | ''>('');
   
   const api = useApiClient();
   const [clientes, setClientes] = useState<ClienteData[]>([]);
   const [escolas, setEscolas] = useState<EscolaData[]>([]);
   const [selectedClienteId, setSelectedClienteId] = useState<number | ''>('');
   const [selectedEscolaId, setSelectedEscolaId] = useState<number | ''>('');
+  const [escolaBusca, setEscolaBusca] = useState('');
+  const [isEscolaDropdownOpen, setIsEscolaDropdownOpen] = useState(false);
+  const [clienteBusca, setClienteBusca] = useState('');
+  const [isClienteDropdownOpen, setIsClienteDropdownOpen] = useState(false);
   
   useEffect(() => {
     async function fetchData() {
@@ -105,16 +109,42 @@ export function CadastroPage() {
 
     setIsSubmitting(true);
     
-    // Simulate API call for registration
+    setIsSubmitting(true);
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In a real scenario, this would call an API like:
-      // await register({ nome, email, password, role, cliente_id: selectedClienteId, escola_id: selectedEscolaId });
-      
-      // Redirect to login after successful registration
+      await api.post('public/cadastro', {
+        body: {
+          nome,
+          email,
+          password,
+          role,
+          cliente_id: selectedClienteId,
+          escola_id: selectedEscolaId,
+        },
+        skipAuth: true
+      });
       navigate('/login', { replace: true });
-    } catch (err) {
-      setLocalError('Não foi possível realizar o cadastro. Tente novamente.');
+    } catch (err: any) {
+      if (err.payload && typeof err.payload === 'object') {
+        const p = err.payload as Record<string, any>;
+        if (p.email?.length > 0) {
+          setLocalError(p.email[0]);
+          return;
+        }
+        if (p.non_field_errors?.length > 0) {
+          setLocalError(p.non_field_errors[0]);
+          return;
+        }
+        if (p.cliente_id?.length > 0) {
+          setLocalError('Município (Cliente) inválido: ' + p.cliente_id[0]);
+          return;
+        }
+        if (p.escola_id?.length > 0) {
+          setLocalError('Escola inválida: ' + p.escola_id[0]);
+          return;
+        }
+      }
+      setLocalError(err.message || 'Não foi possível realizar o cadastro. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -190,28 +220,32 @@ export function CadastroPage() {
                   <div className="space-y-3">
                     <label className="block text-sm font-semibold text-slate-700 ml-1">Eu sou um(a)</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {['Diretor', 'Coordenador Pedagógico', 'Professor'].map((option) => (
+                      {[
+                        { label: 'Diretor', value: 'diretor' },
+                        { label: 'Coordenador Pedagógico', value: 'coordenador_pedagogico' },
+                        { label: 'Professor', value: 'professor' },
+                      ].map((option) => (
                         <label 
-                          key={option} 
+                          key={option.value} 
                           className={`
                             relative flex flex-col cursor-pointer rounded-xl border p-3 focus:outline-none transition-all duration-200
-                            ${role === option 
+                            ${role === option.value 
                               ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
                               : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             }
                           `}
                         >
                           <div className="flex items-center justify-between w-full h-full text-center group">
-                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option}</span>
+                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option.label}</span>
                             <input
                               type="radio"
                               name="role"
-                              value={option}
+                              value={option.value}
                               className="sr-only"
-                              checked={role === option}
+                              checked={role === option.value}
                               onChange={(e) => setRole(e.target.value as any)}
                             />
-                            {role === option && (
+                            {role === option.value && (
                               <span className="material-symbols-outlined absolute top-2 right-2 text-primary text-[18px]">
                                 check_circle
                               </span>
@@ -224,63 +258,122 @@ export function CadastroPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Cliente / Município */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 relative">
                       <label className="block text-sm font-semibold text-slate-700 ml-1">Município (Cliente)</label>
                       <div className="relative group">
-                        <select
-                          className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300 appearance-none"
-                          value={selectedClienteId}
+                        <input
+                          type="text"
+                          className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
+                          placeholder="Digite para buscar um município"
+                          value={clienteBusca}
                           onChange={(e) => {
-                            const nextClienteId = Number(e.target.value);
-                            setSelectedClienteId(Number.isFinite(nextClienteId) && nextClienteId > 0 ? nextClienteId : '');
-                            setSelectedEscolaId(''); // reset escola
+                            setClienteBusca(e.target.value);
+                            setIsClienteDropdownOpen(true);
+                            if (selectedClienteId) {
+                               setSelectedClienteId(''); // clear selection se digitar
+                               setSelectedEscolaId(''); // clear escola together
+                               setEscolaBusca('');
+                            }
                           }}
-                          required
-                        >
-                          <option value="" disabled>Selecione um município</option>
-                          {clientes.map(c => (
-                            <option key={c.id} value={c.id}>{c.nome}</option>
-                          ))}
-                        </select>
+                          onFocus={() => setIsClienteDropdownOpen(true)}
+                          onBlur={() => {
+                             setTimeout(() => setIsClienteDropdownOpen(false), 200);
+                          }}
+                          required={!selectedClienteId}
+                        />
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center">
                           <span className="material-symbols-outlined text-[18px]">location_city</span>
                         </div>
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 flex items-center pointer-events-none">
-                          <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                          <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isClienteDropdownOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
                         </div>
                       </div>
+
+                      {/* Dropdown Options */}
+                      {isClienteDropdownOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                           {clientes.filter(c => c.nome.toLowerCase().includes(clienteBusca.toLowerCase())).length === 0 ? (
+                             <div className="p-3 text-sm text-slate-500 text-center">Nenhum município encontrado</div>
+                           ) : (
+                             clientes
+                               .filter(c => c.nome.toLowerCase().includes(clienteBusca.toLowerCase()))
+                               .map(c => (
+                                 <div 
+                                   key={c.id}
+                                   className={`p-3 text-sm cursor-pointer hover:bg-slate-50 transition-colors ${selectedClienteId === c.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
+                                   onClick={() => {
+                                      setSelectedClienteId(c.id);
+                                      setClienteBusca(c.nome);
+                                      setIsClienteDropdownOpen(false);
+                                      // Reseta a escola quando um novo cliente é escolhido
+                                      setSelectedEscolaId('');
+                                      setEscolaBusca('');
+                                   }}
+                                 >
+                                    {c.nome}
+                                 </div>
+                               ))
+                           )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Escola */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 relative">
                       <label className="block text-sm font-semibold text-slate-700 ml-1">Escola</label>
                       <div className="relative group">
-                        <select
-                          className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300 appearance-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                          value={selectedEscolaId}
+                        <input
+                          type="text"
+                          className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                          placeholder="Digite para buscar uma escola"
+                          value={escolaBusca}
                           onChange={(e) => {
-                            const nextEscolaId = Number(e.target.value);
-                            setSelectedEscolaId(Number.isFinite(nextEscolaId) && nextEscolaId > 0 ? nextEscolaId : '');
+                            setEscolaBusca(e.target.value);
+                            setIsEscolaDropdownOpen(true);
+                            if (selectedEscolaId) {
+                               setSelectedEscolaId(''); // clear selection se digitar
+                            }
                           }}
-                          required
+                          onFocus={() => setIsEscolaDropdownOpen(true)}
+                          onBlur={() => {
+                             // Timeout para permitir o click na opção registrar
+                             setTimeout(() => setIsEscolaDropdownOpen(false), 200);
+                          }}
                           disabled={!selectedClienteId}
-                        >
-                          <option value="" disabled>Selecione uma escola</option>
-                          {selectedClienteId && escolasDoCliente.length === 0 && (
-                            <option value="" disabled>Nenhuma escola cadastrada neste município</option>
-                          )}
-                          {escolasDoCliente
-                            .map(e => (
-                              <option key={e.id} value={e.id}>{e.nome}</option>
-                            ))}
-                        </select>
+                          required={!selectedEscolaId}
+                        />
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center">
                           <span className="material-symbols-outlined text-[18px]">school</span>
                         </div>
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 flex items-center pointer-events-none">
-                          <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                          <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isEscolaDropdownOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
                         </div>
                       </div>
+
+                      {/* Dropdown Options */}
+                      {isEscolaDropdownOpen && selectedClienteId !== '' && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                           {escolasDoCliente.filter(e => e.nome.toLowerCase().includes(escolaBusca.toLowerCase())).length === 0 ? (
+                             <div className="p-3 text-sm text-slate-500 text-center">Nenhuma escola encontrada</div>
+                           ) : (
+                             escolasDoCliente
+                               .filter(e => e.nome.toLowerCase().includes(escolaBusca.toLowerCase()))
+                               .map(e => (
+                                 <div 
+                                   key={e.id}
+                                   className={`p-3 text-sm cursor-pointer hover:bg-slate-50 transition-colors ${selectedEscolaId === e.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
+                                   onClick={() => {
+                                      setSelectedEscolaId(e.id);
+                                      setEscolaBusca(e.nome);
+                                      setIsEscolaDropdownOpen(false);
+                                   }}
+                                 >
+                                    {e.nome}
+                                 </div>
+                               ))
+                           )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

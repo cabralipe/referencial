@@ -66,6 +66,52 @@ class ClienteMeSerializer(serializers.Serializer):
         return cls(coletar_contexto_do_cliente(cliente))
 
 
+class CadastroSerializer(serializers.Serializer):
+    nome = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=[
+        get_user_model().Role.DIRETOR,
+        get_user_model().Role.COORDENADOR_PEDAGOGICO,
+        get_user_model().Role.PROFESSOR,
+    ])
+    cliente_id = serializers.IntegerField()
+    escola_id = serializers.IntegerField()
+
+    def validate_email(self, value):
+        if get_user_model().objects.filter(email=value).exists():
+            raise serializers.ValidationError("Um usuário com este e-mail já existe.")
+        return value
+
+    def validate_cliente_id(self, value):
+        if not Cliente.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Município (Cliente) inválido.")
+        return value
+
+    def validate_escola_id(self, value):
+        if not Escola.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Escola inválida.")
+        return value
+
+    def validate(self, attrs):
+        escola = Escola.objects.get(pk=attrs["escola_id"])
+        if escola.cliente_id != attrs["cliente_id"]:
+            raise serializers.ValidationError({"escola_id": "Escola deve pertencer ao mesmo município (cliente)."})
+        return attrs
+
+    def create(self, validated_data):
+        User = get_user_model()
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+            nome=validated_data["nome"],
+            role=validated_data["role"],
+            cliente_id=validated_data["cliente_id"],
+            escola_id=validated_data["escola_id"],
+        )
+        return user
+
+
 class PublicClienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cliente
