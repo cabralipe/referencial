@@ -6,6 +6,7 @@ import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
 import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 import { useAdminScope } from '@/hooks/useAdminScope';
+import { buildBackendUrl } from '@/config/env';
 
 import './AppLayout.css';
 
@@ -109,9 +110,10 @@ export function AppLayout() {
   const isGtMember = user?.role === 'membro_gt';
   const isRedator = user?.role === 'articulador';
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const avaHref = buildBackendUrl('/ava/');
 
   const navItems = useMemo(() => {
-    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
+    const avaNavItem = { href: avaHref, label: 'Acessar AVA', icon: 'library', external: true } as const;
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
@@ -174,7 +176,7 @@ export function AppLayout() {
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
     return items;
-  }, [isAdmin, isGtMember, isRedator, user?.role]);
+  }, [avaHref, isAdmin, isGtMember, isRedator, user?.role]);
 
   const selectedCliente = useMemo(() => {
     if (!isSuperAdmin) return null;

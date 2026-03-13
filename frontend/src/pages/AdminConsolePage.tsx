@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { useApiClient } from '@/api/client';
+import { buildBackendUrl } from '@/config/env';
 import { useAdminScope } from '@/hooks/useAdminScope';
 import { ADMIN_MODULES } from './adminModules';
 
@@ -36,6 +37,7 @@ export function AdminConsolePage() {
   const client = useApiClient();
   const navigate = useNavigate();
   const { isSuperAdmin, clientes, selectedClienteId, setSelectedClienteId } = useAdminScope();
+  const avaHref = buildBackendUrl('/ava/');
 
   const filteredModules = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -119,7 +121,7 @@ export function AdminConsolePage() {
       id: 'ava',
       label: 'Abrir AVA',
       description: 'Entrar direto no ambiente virtual.',
-      href: '/ava/',
+      href: avaHref,
       external: true,
     },
     {
@@ -389,7 +391,7 @@ export function AdminConsolePage() {
               <div className="admin-console__help-actions">
                 <Link to="/ajuda">Abrir ajuda</Link>
                 <Link to="/admin/cursos">Configurar cursos</Link>
-                <a href="/ava/" target="_blank" rel="noopener noreferrer">Abrir AVA</a>
+                <a href={avaHref} target="_blank" rel="noopener noreferrer">Abrir AVA</a>
                 <Link to="/admin/console/usuarios">Gerenciar usuários</Link>
               </div>
             </div>
