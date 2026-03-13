@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from decimal import Decimal
 from datetime import date, datetime, time
 from typing import Any
 
@@ -14,20 +16,34 @@ from .models import AuditLog, Cliente, ClienteFeatureFlag
 from .threadlocals import get_current_usuario_id
 
 
+def _json_compatible(value: Any) -> Any:
+    if isinstance(value, FieldFile):
+        return value.name or None
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_compatible(item) for item in value]
+
+    try:
+        json.dumps(value)
+    except TypeError:
+        return str(value)
+    return value
+
+
 def _snapshot(instance: TenantModel) -> dict[str, Any]:
     data: dict[str, Any] = {}
     for field in instance._meta.fields:
         if field.name in {"id", "created_at", "updated_at"}:
             continue
         value = getattr(instance, field.name)
-        if isinstance(value, FieldFile):
-            value = value.name or None
-        if isinstance(value, (datetime, date, time)):
-            value = value.isoformat()
         if field.many_to_one or field.one_to_one:
-            data[field.name] = getattr(instance, f"{field.name}_id")
-        else:
-            data[field.name] = value
+            value = getattr(instance, f"{field.name}_id")
+        data[field.name] = _json_compatible(value)
     return data
 
 
