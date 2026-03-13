@@ -20,6 +20,9 @@ from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Taref
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
+from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
+from exports.models import ExportJob
+from library.models import BlocoTexto, Midia
 from notifications.models import Notificacao
 from reviews.models import Revisao, ReviewDecision
 from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
@@ -61,6 +64,18 @@ class ClienteMeSerializer(serializers.Serializer):
     @classmethod
     def from_cliente(cls, cliente: Cliente):
         return cls(coletar_contexto_do_cliente(cliente))
+
+
+class PublicClienteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cliente
+        fields = ("id", "nome")
+
+
+class PublicEscolaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Escola
+        fields = ("id", "nome", "cliente_id")
 
 
 class TarefaSerializer(serializers.ModelSerializer):

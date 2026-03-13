@@ -16,11 +16,12 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.activity import touch_user_session
-from core.models import ClienteTema
+from core.models import Cliente, ClienteTema
 from core.permissions import HasClientScope
 from services.progress import get_next_block_for_user
 from services.diff import diff_last_approved
 from consultas.models import ConsultaPublica, ManifestacaoPublica
+from curriculum.models import Escola
 
 from .serializers import (
     ClienteMeSerializer,
@@ -29,6 +30,8 @@ from .serializers import (
     RoleTokenObtainPairSerializer,
     ManifestacaoPublicaCreateSerializer,
     ManifestacaoPublicaPublicSerializer,
+    PublicClienteSerializer,
+    PublicEscolaSerializer,
 )
 
 
@@ -207,3 +210,16 @@ class ManifestacaoPublicaView(APIView):
         )
         resposta = ManifestacaoPublicaPublicSerializer(manifestacao)
         return Response(resposta.data, status=201)
+
+
+class PublicClientesEscolasView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def get(self, request):
+        clientes = Cliente.objects.all().order_by("nome")
+        escolas = Escola.objects.all().order_by("nome")
+        return Response({
+            "clientes": PublicClienteSerializer(clientes, many=True).data,
+            "escolas": PublicEscolaSerializer(escolas, many=True).data,
+        })
