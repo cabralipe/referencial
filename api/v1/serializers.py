@@ -16,7 +16,7 @@ from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, Cl
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
@@ -140,6 +140,80 @@ class EscolaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Escola
         fields = ("id", "nome")
+
+
+class PppSerializer(serializers.ModelSerializer):
+    etag = serializers.CharField(read_only=True)
+    escola_nome = serializers.CharField(source="escola.nome", read_only=True)
+    ultima_edicao_por_nome = serializers.SerializerMethodField()
+    concluido_por_nome = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_comment = serializers.SerializerMethodField()
+    can_conclude = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PPP
+        fields = (
+            "id",
+            "escola",
+            "escola_nome",
+            "titulo",
+            "conteudo_html",
+            "status",
+            "ultima_edicao_por",
+            "ultima_edicao_por_nome",
+            "concluido_por",
+            "concluido_por_nome",
+            "concluido_em",
+            "version",
+            "updated_at",
+            "etag",
+            "can_edit",
+            "can_comment",
+            "can_conclude",
+        )
+        read_only_fields = (
+            "id",
+            "escola",
+            "escola_nome",
+            "status",
+            "ultima_edicao_por",
+            "ultima_edicao_por_nome",
+            "concluido_por",
+            "concluido_por_nome",
+            "concluido_em",
+            "version",
+            "updated_at",
+            "etag",
+            "can_edit",
+            "can_comment",
+            "can_conclude",
+        )
+
+    def get_ultima_edicao_por_nome(self, obj):
+        usuario = getattr(obj, "ultima_edicao_por", None)
+        if not usuario:
+            return None
+        return usuario.nome or usuario.email
+
+    def get_concluido_por_nome(self, obj):
+        usuario = getattr(obj, "concluido_por", None)
+        if not usuario:
+            return None
+        return usuario.nome or usuario.email
+
+    def _get_flags(self, obj):
+        permissions = self.context.get("ppp_permissions") or {}
+        return permissions.get(obj.id) or {}
+
+    def get_can_edit(self, obj):
+        return bool(self._get_flags(obj).get("can_edit"))
+
+    def get_can_comment(self, obj):
+        return bool(self._get_flags(obj).get("can_comment"))
+
+    def get_can_conclude(self, obj):
+        return bool(self._get_flags(obj).get("can_conclude"))
 
 
 class AreaSerializer(serializers.ModelSerializer):
@@ -872,6 +946,20 @@ class ComentarioSerializer(serializers.ModelSerializer):
             "template": quadro.template,
         }
 
+    def _build_ppp_preview(self, alvo_id: str | int):
+        try:
+            ppp = PPP.raw_objects.select_related("escola").get(pk=alvo_id)
+        except PPP.DoesNotExist:
+            return None
+        return {
+            "type": "ppp",
+            "id": ppp.pk,
+            "escola": ppp.escola_id,
+            "escola_nome": getattr(ppp.escola, "nome", None),
+            "titulo": ppp.titulo,
+            "status": ppp.status,
+        }
+
     def get_alvo_preview(self, obj):
         if obj.alvo_tipo == Comentario.AlvoTipo.RESPOSTA:
             return self._build_resposta_preview(obj.alvo_id)
@@ -879,6 +967,8 @@ class ComentarioSerializer(serializers.ModelSerializer):
             return self._build_texto_unico_preview(obj.alvo_id)
         if obj.alvo_tipo == Comentario.AlvoTipo.QUADRO:
             return self._build_quadro_preview(obj.alvo_id)
+        if obj.alvo_tipo == Comentario.AlvoTipo.PPP:
+            return self._build_ppp_preview(obj.alvo_id)
         return None
 
     def get_mentions_ids(self, obj):

@@ -6,7 +6,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.utils.html import strip_tags
 
-from .models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoUnico
+from .models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoUnico
 from meb.services import deliver_admin_broadcast
 
 
@@ -136,6 +136,14 @@ class EscolaAdmin(admin.ModelAdmin):
     list_display = ("nome", "cliente", "created_at")
     search_fields = ("nome", "cliente__nome")
     list_filter = ("cliente",)
+
+
+@admin.register(PPP)
+class PPPAdmin(admin.ModelAdmin):
+    list_display = ("escola", "status", "ultima_edicao_por", "concluido_por", "updated_at")
+    list_filter = ("cliente", "status")
+    search_fields = ("escola__nome", "titulo", "conteudo_html")
+    readonly_fields = ("version", "concluido_em", "updated_at", "created_at")
 
 
 class TarefaForm(forms.ModelForm):

@@ -16,6 +16,7 @@ const COMMENT_TARGETS = [
   { value: 'resposta', label: 'Resposta' },
   { value: 'texto_unico', label: 'Texto único' },
   { value: 'quadro', label: 'Quadro' },
+  { value: 'ppp', label: 'PPP' },
 ];
 
 export function ComentariosPage() {
@@ -256,6 +257,23 @@ export function ComentariosPage() {
             <span>GT: {preview.gt_nome ?? `#${preview.gt ?? '—'}`}</span>
             <span>Trilha: {preview.tarefa_nome ?? `#${preview.tarefa ?? '—'}`}</span>
             <span>Texto único #{preview.id}</span>
+          </div>
+          {anchor && (anchor.local || anchor.trecho) && (
+            <div className="comentarios__contexto-anchor">
+              {anchor.local && <span>Local: {anchor.local}</span>}
+              {anchor.trecho && <span>Trecho: {anchor.trecho}</span>}
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (preview.type === 'ppp') {
+      return (
+        <div className="comentarios__contexto">
+          <div className="comentarios__contexto-line">
+            <span>Escola: {preview.escola_nome ?? `#${preview.escola ?? '—'}`}</span>
+            <span>{preview.titulo ?? 'PPP'}</span>
+            <span>Status: {preview.status ?? '—'}</span>
           </div>
           {anchor && (anchor.local || anchor.trecho) && (
             <div className="comentarios__contexto-anchor">

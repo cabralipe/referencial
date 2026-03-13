@@ -11,6 +11,7 @@ export interface AuthUser {
   nome: string;
   role: string;
   clienteId: number | null;
+  escolaId?: number | null;
 }
 
 export interface ClienteContextPayload {

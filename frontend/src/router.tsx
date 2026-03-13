@@ -174,7 +174,7 @@ export const router = createBrowserRouter([
       {
         path: 'ppp',
         element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+          <RoleRoute allowed={['diretor', 'coordenador_pedagogico', 'professor', 'articulador', 'admin_cliente', 'super_admin']}>
             <PppPage />
           </RoleRoute>
         ),
@@ -182,7 +182,7 @@ export const router = createBrowserRouter([
       {
         path: 'ppp/:id',
         element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+          <RoleRoute allowed={['diretor', 'coordenador_pedagogico', 'professor', 'articulador', 'admin_cliente', 'super_admin']}>
             <PppDetailPage />
           </RoleRoute>
         ),
@@ -407,7 +407,7 @@ export const router = createBrowserRouter([
       {
         path: 'documentos/ppp',
         element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
+          <RoleRoute allowed={['diretor', 'coordenador_pedagogico', 'professor', 'articulador', 'admin_cliente', 'super_admin']}>
             <PppPage />
           </RoleRoute>
         ),

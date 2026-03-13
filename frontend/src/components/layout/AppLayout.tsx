@@ -9,6 +9,24 @@ import { useAdminScope } from '@/hooks/useAdminScope';
 
 import './AppLayout.css';
 
+type NavItem =
+  | {
+      label: string;
+      icon: string;
+      to: string;
+      only?: string[];
+      external?: false;
+      href?: never;
+    }
+  | {
+      label: string;
+      icon: string;
+      href: string;
+      external: true;
+      only?: string[];
+      to?: never;
+    };
+
 export function AppLayout() {
   const { cliente, user, logout } = useAuth();
   const { isSuperAdmin, clientes, selectedClienteId } = useAdminScope();
@@ -38,6 +56,8 @@ export function AppLayout() {
     const map: Record<string, string> = {
       super_admin: 'Superadmin',
       admin_cliente: 'Admin SEMED',
+      diretor: 'Diretor',
+      coordenador_pedagogico: 'Coordenador Pedagógico',
       articulador: 'Redação',
       revisor: 'Revisor',
       membro_gt: 'Membro GT',
@@ -107,11 +127,13 @@ export function AppLayout() {
   }, [location.search]);
 
   const isGtMember = user?.role === 'membro_gt';
+  const isSchoolLeader = user?.role === 'diretor' || user?.role === 'coordenador_pedagogico';
+  const isProfessor = user?.role === 'professor';
   const isRedator = user?.role === 'articulador';
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
 
   const navItems = useMemo(() => {
-    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
+    const avaNavItem: NavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true };
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
@@ -122,6 +144,20 @@ export function AppLayout() {
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
         { to: '/mural', label: 'Mural', icon: 'comment' },
         { to: '/ppp', label: 'PPP', icon: 'kanban' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (isSchoolLeader) {
+      return [
+        { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (isProfessor) {
+      return [
+        { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
@@ -149,6 +185,7 @@ export function AppLayout() {
         { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
         avaNavItem,
         { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
         { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
         { to: '/redator/mural', label: 'Mural', icon: 'comment' },
@@ -174,7 +211,7 @@ export function AppLayout() {
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
     return items;
-  }, [isAdmin, isGtMember, isRedator, user?.role]);
+  }, [isAdmin, isGtMember, isProfessor, isRedator, isSchoolLeader, user?.role]);
 
   const selectedCliente = useMemo(() => {
     if (!isSuperAdmin) return null;

@@ -72,6 +72,7 @@ function mapUser(payload: any): AuthUser {
     nome: payload?.nome ?? '',
     role: payload?.role ?? 'leitor',
     clienteId: payload?.cliente_id ?? null,
+    escolaId: payload?.escola_id ?? null,
   };
 }
 

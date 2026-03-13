@@ -39,7 +39,7 @@ from core.permissions import (
 from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag, usuario_e_membro_do_gt
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
-from curriculum.models import Area, Anexo, Escola, GT, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
+from curriculum.models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -58,6 +58,7 @@ from tasks.exports import enqueue_export_job, build_export_context
 from workshop.models import CelulaQuadro, Quadro
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from exports.services.pdf import html_to_pdf_bytes
 
 from .serializers import (
     AnexoSerializer,
@@ -71,6 +72,7 @@ from .serializers import (
     PerguntaSerializer,
     AreaSerializer,
     EscolaSerializer,
+    PppSerializer,
     GTSerializer,
     ExportJobSerializer,
     FormularioDinamicoSerializer,
@@ -150,6 +152,132 @@ def _assert_roles(user, allowed_roles):
     if user.role in allowed_roles or user.role == user.Role.SUPER_ADMIN:
         return
     raise PermissionDenied("Ação não permitida para o seu perfil")
+
+
+PPP_ALLOWED_VIEW_ROLES = {
+    "diretor",
+    "coordenador_pedagogico",
+    "professor",
+    "articulador",
+    "admin_cliente",
+    "super_admin",
+}
+PPP_ALLOWED_EDIT_ROLES = {
+    "diretor",
+    "coordenador_pedagogico",
+    "articulador",
+    "admin_cliente",
+    "super_admin",
+}
+PPP_ALLOWED_CONCLUDE_ROLES = {
+    "diretor",
+    "coordenador_pedagogico",
+    "admin_cliente",
+    "super_admin",
+}
+
+
+def _resolve_ppp_escola_id(request, explicit_escola_id=None) -> int:
+    user = request.user
+    role = getattr(user, "role", None)
+    if role not in PPP_ALLOWED_VIEW_ROLES:
+        raise PermissionDenied("Seu perfil não possui acesso ao PPP.")
+
+    if role in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        escola_id = explicit_escola_id or request.query_params.get("escola_id") or request.data.get("escola_id")
+        if not escola_id:
+            raise ValidationError({"escola_id": "Informe a escola para acessar o PPP."})
+        try:
+            return int(escola_id)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"escola_id": "Informe um identificador numérico válido."}) from exc
+
+    if not getattr(user, "escola_id", None):
+        raise ValidationError("Usuário sem escola associada não pode acessar o PPP.")
+    return int(user.escola_id)
+
+
+def _get_or_create_ppp_for_request(request, explicit_escola_id=None):
+    cliente_id = _get_request_cliente_id(request)
+    user = request.user
+    escola_id = _resolve_ppp_escola_id(request, explicit_escola_id=explicit_escola_id)
+    escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
+    if not escola:
+        raise ValidationError({"escola_id": "Escola não encontrada para este cliente."})
+    if getattr(user, "role", None) == user.Role.PROFESSOR:
+        ppp = PPP.objects.filter(cliente_id=cliente_id, escola=escola).first()
+        if not ppp or ppp.status != PPP.Status.CONCLUIDO:
+            raise ValidationError("O PPP da sua escola ainda não foi concluído para visualização.")
+        return ppp
+    ppp, _ = PPP.objects.get_or_create(
+        cliente_id=cliente_id,
+        escola=escola,
+        defaults={"titulo": f"Projeto Político-Pedagógico - {escola.nome}"},
+    )
+    return ppp
+
+
+def _user_can_edit_ppp(user, ppp: PPP) -> bool:
+    if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return True
+    if getattr(user, "role", None) not in {
+        user.Role.DIRETOR,
+        user.Role.COORDENADOR_PEDAGOGICO,
+        user.Role.ARTICULADOR,
+    }:
+        return False
+    return getattr(user, "escola_id", None) == ppp.escola_id
+
+
+def _user_can_comment_ppp(user, ppp: PPP) -> bool:
+    return _user_can_edit_ppp(user, ppp)
+
+
+def _user_can_conclude_ppp(user, ppp: PPP) -> bool:
+    if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return True
+    if getattr(user, "role", None) not in {
+        user.Role.DIRETOR,
+        user.Role.COORDENADOR_PEDAGOGICO,
+    }:
+        return False
+    return getattr(user, "escola_id", None) == ppp.escola_id
+
+
+def _serialize_ppp(serializer_class, ppp: PPP, user):
+    permissions = {
+        ppp.id: {
+            "can_edit": _user_can_edit_ppp(user, ppp),
+            "can_comment": _user_can_comment_ppp(user, ppp),
+            "can_conclude": _user_can_conclude_ppp(user, ppp),
+        }
+    }
+    return serializer_class(ppp, context={"ppp_permissions": permissions}).data
+
+
+def _serialize_ppp_unavailable(escola: Escola, message: str, ppp: PPP | None = None):
+    return {
+        "id": None,
+        "escola": escola.id,
+        "escola_nome": escola.nome,
+        "titulo": "",
+        "conteudo_html": "",
+        "status": getattr(ppp, "status", PPP.Status.EM_ELABORACAO),
+        "ultima_edicao_por": None,
+        "ultima_edicao_por_nome": None,
+        "concluido_por": None,
+        "concluido_por_nome": None,
+        "concluido_em": None,
+        "version": getattr(ppp, "version", 0),
+        "updated_at": getattr(ppp, "updated_at", None),
+        "etag": "",
+        "can_edit": False,
+        "can_comment": False,
+        "can_conclude": False,
+        "comentarios_abertos": 0,
+        "is_available": False,
+        "availability_message": message,
+    }
 
 
 SCORE_CONFIG_KEY = "score.config"
@@ -419,43 +547,140 @@ class PppViewSet(viewsets.ViewSet):
     permission_classes = [HasClientScope]
 
     def list(self, request):
-        cliente_id = _get_request_cliente_id(request)
-        config = _get_ppp_config(cliente_id)
-        tarefa_ids = config.get("tarefa_ids") or []
-        queryset = Tarefa.objects.filter(id__in=tarefa_ids).order_by("ordem")
-        queryset = _filtrar_tarefas_por_usuario(queryset, request.user)
-        gt_id = request.query_params.get("gt_id")
-        if gt_id:
-            queryset = queryset.filter(perguntas__respostas__gt_id=gt_id).distinct()
-        serializer = TarefaSerializer(queryset, many=True)
-        return Response(
-            {
-                "config": config,
-                "trilhas": serializer.data,
-            }
-        )
+        if getattr(request.user, "role", None) == request.user.Role.PROFESSOR:
+            cliente_id = _get_request_cliente_id(request)
+            escola_id = _resolve_ppp_escola_id(request)
+            escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
+            if not escola:
+                raise ValidationError({"escola_id": "Escola não encontrada para este cliente."})
+            ppp = PPP.objects.filter(cliente_id=cliente_id, escola=escola).first()
+            if not ppp or ppp.status != PPP.Status.CONCLUIDO:
+                return Response(
+                    _serialize_ppp_unavailable(
+                        escola,
+                        "O PPP da sua escola ainda não foi concluído para visualização.",
+                        ppp=ppp,
+                    )
+                )
+        ppp = _get_or_create_ppp_for_request(request)
+        data = _serialize_ppp(PppSerializer, ppp, request.user)
+        comentarios_abertos = Comentario.objects.filter(
+            cliente_id=ppp.cliente_id,
+            alvo_tipo=Comentario.AlvoTipo.PPP,
+            alvo_id=str(ppp.id),
+            resolvido=False,
+        ).count()
+        data["comentarios_abertos"] = comentarios_abertos
+        response = Response(data)
+        response["ETag"] = ppp.etag
+        return response
 
-    @action(
-        detail=False,
-        methods=["get", "patch"],
-        url_path="config",
-        permission_classes=[HasClientScope, IsAdminClienteOrReadOnly],
-    )
-    def config(self, request):
+    @action(detail=False, methods=["get"], url_path="overview")
+    def overview(self, request):
+        user = request.user
         cliente_id = _get_request_cliente_id(request)
-        if request.method == "PATCH":
-            _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE})
-            payload = request.data or {}
-            tarefa_ids = payload.get("tarefa_ids") or []
-            if not isinstance(tarefa_ids, (list, tuple)):
-                raise ValidationError({"tarefa_ids": "Envie uma lista de IDs de tarefas."})
-            valid_ids = list(
-                Tarefa.objects.filter(cliente_id=cliente_id, id__in=tarefa_ids).values_list("id", flat=True)
+        if getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            raise PermissionDenied("Somente administradores podem consultar o panorama do PPP.")
+
+        escolas = Escola.objects.filter(cliente_id=cliente_id).order_by("nome")
+        ppps = PPP.objects.filter(cliente_id=cliente_id).select_related("escola")
+        ppp_map = {ppp.escola_id: ppp for ppp in ppps}
+        comentarios = (
+            Comentario.objects.filter(cliente_id=cliente_id, alvo_tipo=Comentario.AlvoTipo.PPP, resolvido=False)
+            .values("alvo_id")
+            .annotate(total=models.Count("id"))
+        )
+        comentarios_map = {int(item["alvo_id"]): item["total"] for item in comentarios if str(item["alvo_id"]).isdigit()}
+
+        payload = []
+        for escola in escolas:
+            ppp = ppp_map.get(escola.id)
+            payload.append(
+                {
+                    "escola_id": escola.id,
+                    "escola_nome": escola.nome,
+                    "ppp_id": getattr(ppp, "id", None),
+                    "status": getattr(ppp, "status", PPP.Status.EM_ELABORACAO),
+                    "updated_at": getattr(ppp, "updated_at", None),
+                    "comentarios_abertos": comentarios_map.get(getattr(ppp, "id", 0), 0),
+                }
             )
-            payload["tarefa_ids"] = valid_ids
-            config = _save_ppp_config(cliente_id, payload)
-            return Response(config)
-        return Response(_get_ppp_config(cliente_id))
+        return Response(payload)
+
+    @action(detail=False, methods=["patch"], url_path="conteudo")
+    def conteudo(self, request):
+        ppp = _get_or_create_ppp_for_request(request)
+        if not _user_can_edit_ppp(request.user, ppp):
+            raise PermissionDenied("Seu perfil não pode editar este PPP.")
+
+        _check_etag(request, ppp)
+        conteudo_html = request.data.get("conteudo_html")
+        titulo = request.data.get("titulo")
+        if conteudo_html is None:
+            raise ValidationError({"conteudo_html": "Informe o conteúdo do PPP."})
+
+        ppp.conteudo_html = str(conteudo_html)
+        if isinstance(titulo, str) and titulo.strip():
+            ppp.titulo = titulo.strip()
+        if ppp.status == PPP.Status.CONCLUIDO:
+            ppp.status = PPP.Status.EM_ELABORACAO
+            ppp.concluido_por = None
+            ppp.concluido_em = None
+        ppp.ultima_edicao_por = request.user
+        ppp.save(
+            update_fields=[
+                "conteudo_html",
+                "titulo",
+                "status",
+                "concluido_por",
+                "concluido_em",
+                "ultima_edicao_por",
+                "updated_at",
+            ]
+        )
+        response = Response(_serialize_ppp(PppSerializer, ppp, request.user))
+        response["ETag"] = ppp.etag
+        return response
+
+    @action(detail=False, methods=["post"], url_path="concluir")
+    def concluir(self, request):
+        ppp = _get_or_create_ppp_for_request(request)
+        if not _user_can_conclude_ppp(request.user, ppp):
+            raise PermissionDenied("Somente Diretor ou Coordenador Pedagógico podem concluir o PPP.")
+        _check_etag(request, ppp)
+        if not (ppp.conteudo_html or "").strip():
+            raise ValidationError({"conteudo_html": "Preencha o texto do PPP antes de concluir."})
+
+        ppp.status = PPP.Status.CONCLUIDO
+        ppp.concluido_por = request.user
+        ppp.concluido_em = timezone.now()
+        ppp.ultima_edicao_por = request.user
+        ppp.save(update_fields=["status", "concluido_por", "concluido_em", "ultima_edicao_por", "updated_at"])
+        response = Response(_serialize_ppp(PppSerializer, ppp, request.user))
+        response["ETag"] = ppp.etag
+        return response
+
+    @action(detail=False, methods=["get"], url_path="pdf")
+    def pdf(self, request):
+        ppp = _get_or_create_ppp_for_request(request)
+        if not _user_can_comment_ppp(request.user, ppp):
+            raise PermissionDenied("Seu perfil não pode acessar este PPP.")
+        if ppp.status != PPP.Status.CONCLUIDO:
+            raise ValidationError("Conclua o PPP antes de gerar o PDF.")
+
+        file_bytes = html_to_pdf_bytes(
+            "ppp_pdf.html",
+            {
+                "ppp": ppp,
+                "escola": ppp.escola,
+                "cliente": ppp.cliente,
+                "generated_at": timezone.localtime(timezone.now()),
+            },
+        )
+        filename = f"ppp-{ppp.escola.nome.lower().replace(' ', '-')}.pdf"
+        response = HttpResponse(file_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 class AiAssistViewSet(viewsets.ViewSet):
     permission_classes = [HasClientScope]
@@ -1695,6 +1920,19 @@ def _notificar_comentario_alvo(comentario, usuario):
         quadro = Quadro.objects.select_related("gt").filter(pk=alvo_id).first()
         if quadro:
             usuario_ids.update(quadro.gt.membros.values_list("id", flat=True))
+    elif alvo_tipo == Comentario.AlvoTipo.PPP:
+        ppp = PPP.objects.select_related("escola").filter(pk=alvo_id).first()
+        if ppp:
+            colaboradores = get_user_model().objects.filter(
+                cliente_id=ppp.cliente_id,
+                escola_id=ppp.escola_id,
+                role__in=[
+                    get_user_model().Role.DIRETOR,
+                    get_user_model().Role.COORDENADOR_PEDAGOGICO,
+                    get_user_model().Role.ARTICULADOR,
+                ],
+            )
+            usuario_ids.update(colaboradores.values_list("id", flat=True))
     if usuario:
         usuario_ids.discard(usuario.id)
     for usuario_id in usuario_ids:
@@ -1704,6 +1942,31 @@ def _notificar_comentario_alvo(comentario, usuario):
             tipo="comentario.novo",
             payload={"comentario_id": comentario.id, "alvo_tipo": comentario.alvo_tipo, "alvo_id": comentario.alvo_id},
         )
+
+
+def _ppp_ids_visiveis_para_usuario(user, cliente_id: int):
+    if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return PPP.objects.filter(cliente_id=cliente_id).annotate(
+            id_text=Cast("id", models.CharField()),
+        ).values("id_text")
+    if getattr(user, "role", None) in {
+        user.Role.DIRETOR,
+        user.Role.COORDENADOR_PEDAGOGICO,
+        user.Role.ARTICULADOR,
+    } and getattr(user, "escola_id", None):
+        return PPP.objects.filter(cliente_id=cliente_id, escola_id=user.escola_id).annotate(
+            id_text=Cast("id", models.CharField()),
+        ).values("id_text")
+    return PPP.objects.none().annotate(id_text=Cast("id", models.CharField())).values("id_text")
+
+
+def _assert_ppp_comment_access(user, cliente_id: int, alvo_id) -> PPP:
+    ppp = PPP.objects.filter(cliente_id=cliente_id, pk=alvo_id).select_related("escola").first()
+    if not ppp:
+        raise ValidationError({"alvo_id": "PPP não encontrado para este cliente."})
+    if not _user_can_comment_ppp(user, ppp):
+        raise PermissionDenied("Comentário fora do escopo permitido para o PPP.")
+    return ppp
 
 
 class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
@@ -1736,6 +1999,12 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
+        elif getattr(user, "role", None) in {
+            user.Role.DIRETOR,
+            user.Role.COORDENADOR_PEDAGOGICO,
+        }:
+            ppp_ids = _ppp_ids_visiveis_para_usuario(user, cliente_id)
+            queryset = queryset.filter(alvo_tipo=Comentario.AlvoTipo.PPP, alvo_id__in=ppp_ids)
         elif getattr(user, "role", None) == user.Role.REVISOR:
             revisoes = get_reviewer_queryset(user)
             resposta_ids = revisoes.filter(alvo_tipo=Comentario.AlvoTipo.RESPOSTA).values_list("alvo_id", flat=True)
@@ -1746,20 +2015,38 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
+        elif getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+            queryset = queryset.none()
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
-        _assert_roles(user, {user.Role.MEMBRO_GT, user.Role.ARTICULADOR, user.Role.ADMIN_CLIENTE, user.Role.REVISOR})
+        _assert_roles(
+            user,
+            {
+                user.Role.MEMBRO_GT,
+                user.Role.DIRETOR,
+                user.Role.COORDENADOR_PEDAGOGICO,
+                user.Role.ARTICULADOR,
+                user.Role.ADMIN_CLIENTE,
+                user.Role.REVISOR,
+            },
+        )
+        cliente_id = _get_request_cliente_id(self.request)
+        alvo_tipo = serializer.validated_data.get("alvo_tipo")
+        alvo_id = serializer.validated_data.get("alvo_id")
+        if getattr(user, "role", None) in {user.Role.DIRETOR, user.Role.COORDENADOR_PEDAGOGICO}:
+            if alvo_tipo != Comentario.AlvoTipo.PPP:
+                raise PermissionDenied("Diretor e Coordenador Pedagógico só podem comentar no PPP.")
+        if alvo_tipo == Comentario.AlvoTipo.PPP:
+            _assert_ppp_comment_access(user, cliente_id, alvo_id)
         if getattr(user, "role", None) == user.Role.REVISOR:
-            alvo_tipo = serializer.validated_data.get("alvo_tipo")
-            alvo_id = serializer.validated_data.get("alvo_id")
             permitido = get_reviewer_queryset(user).filter(alvo_tipo=alvo_tipo, alvo_id=str(alvo_id)).exists()
             if not permitido:
                 raise PermissionDenied("Comentário fora do escopo atribuído.")
         mentions_ids = serializer.validated_data.pop("mentions", [])
         comentario = serializer.save(
-            cliente_id=_get_request_cliente_id(self.request),
+            cliente_id=cliente_id,
             autor=user,
         )
         if mentions_ids:
@@ -1807,7 +2094,12 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             and not instance.resolvido
         )
         if vai_resolver:
-            _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE, request.user.Role.REVISOR})
+            if instance.alvo_tipo == Comentario.AlvoTipo.PPP:
+                ppp = _assert_ppp_comment_access(request.user, instance.cliente_id, instance.alvo_id)
+                if not _user_can_conclude_ppp(request.user, ppp):
+                    raise PermissionDenied("Somente Diretor ou Coordenador Pedagógico podem resolver comentários do PPP.")
+            else:
+                _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE, request.user.Role.REVISOR})
         mentions_ids = serializer.validated_data.pop("mentions", None)
         comentario = serializer.save()
         if mentions_ids is not None:

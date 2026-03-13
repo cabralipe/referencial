@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ ppp.titulo }}</title>
+  <style>
+    @page {
+      margin: 2.4cm 1.8cm 2.1cm 1.8cm;
+      size: A4;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #0f172a;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .eyebrow {
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+    }
+
+    .meta {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 20px 0 28px;
+    }
+
+    .meta p {
+      margin: 0 0 6px;
+    }
+
+    .content {
+      border-top: 1px solid #cbd5e1;
+      padding-top: 20px;
+    }
+
+    .footer {
+      margin-top: 24px;
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="eyebrow">Plataforma PROLUC · PPP Escolar</div>
+  <h1>{{ ppp.titulo }}</h1>
+  <div class="meta">
+    <p><strong>Escola:</strong> {{ escola.nome }}</p>
+    <p><strong>Cliente:</strong> {{ cliente.nome }}</p>
+    <p><strong>Status:</strong> {{ ppp.get_status_display }}</p>
+    <p><strong>Concluído em:</strong> {% if ppp.concluido_em %}{{ ppp.concluido_em|date:"d/m/Y H:i" }}{% else %}—{% endif %}</p>
+    <p><strong>Concluído por:</strong> {% if ppp.concluido_por %}{{ ppp.concluido_por.nome|default:ppp.concluido_por.email }}{% else %}—{% endif %}</p>
+  </div>
+
+  <div class="content">
+    {{ ppp.conteudo_html|safe }}
+  </div>
+
+  <div class="footer">
+    Documento gerado em {{ generated_at|date:"d/m/Y H:i" }}.
+  </div>
+</body>
+</html>

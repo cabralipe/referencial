@@ -31,6 +31,11 @@ export interface GT {
   etapa: string;
 }
 
+export interface Escola {
+  id: number;
+  nome: string;
+}
+
 export interface Area {
   id: number;
   nome: string;
@@ -286,6 +291,14 @@ export type ComentarioAlvoPreview =
     gt?: number | null;
     gt_nome?: string | null;
     template?: string | null;
+  }
+  | {
+    type: 'ppp';
+    id: number;
+    escola?: number | null;
+    escola_nome?: string | null;
+    titulo?: string | null;
+    status?: string | null;
   };
 
 export interface Notificacao {
@@ -313,14 +326,36 @@ export interface MuralPost {
   updated_at: string;
 }
 
-export interface PppConfig {
-  tarefa_ids: number[];
-  descricao?: string;
+export interface PppDocumento {
+  id: number | null;
+  escola: number;
+  escola_nome: string;
+  titulo: string;
+  conteudo_html: string;
+  status: 'em_elaboracao' | 'concluido' | string;
+  ultima_edicao_por: number | null;
+  ultima_edicao_por_nome?: string | null;
+  concluido_por: number | null;
+  concluido_por_nome?: string | null;
+  concluido_em: string | null;
+  version: number;
+  updated_at: string;
+  etag: string;
+  can_edit: boolean;
+  can_comment: boolean;
+  can_conclude: boolean;
+  comentarios_abertos?: number;
+  is_available?: boolean;
+  availability_message?: string | null;
 }
 
-export interface PppTrilhasResponse {
-  config: PppConfig;
-  trilhas: Tarefa[];
+export interface PppOverviewItem {
+  escola_id: number;
+  escola_nome: string;
+  ppp_id: number | null;
+  status: 'em_elaboracao' | 'concluido' | string;
+  updated_at: string | null;
+  comentarios_abertos: number;
 }
 
 export interface CursoAviso {

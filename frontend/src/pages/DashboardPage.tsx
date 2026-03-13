@@ -80,11 +80,12 @@ export function DashboardPage() {
     return <ArticuladorDashboard />;
   }
 
+  if (user.role === 'diretor' || user.role === 'coordenador_pedagogico' || user.role === 'professor') {
+    return <Navigate to="/ppp" replace />;
+  }
+
   if (
     user.role === 'membro_gt'
-    || user.role === 'professor'
-    || user.role === 'diretor'
-    || user.role === 'coordenador_pedagogico'
   ) {
     return <Navigate to="/inicio" replace />;
   }

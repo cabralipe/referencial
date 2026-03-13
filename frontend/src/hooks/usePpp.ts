@@ -1,23 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
-import type { PppConfig, PppTrilhasResponse } from '@/api/types';
+import type { PppDocumento, PppOverviewItem } from '@/api/types';
 
-interface UsePppTrilhasParams {
-  gtId?: number | null;
+interface UsePppDocumentoParams {
+  escolaId?: number | null;
   enabled?: boolean;
 }
 
-export function usePppTrilhas({ gtId, enabled = true }: UsePppTrilhasParams = {}) {
+export function usePppDocumento({ escolaId, enabled = true }: UsePppDocumentoParams = {}) {
   const client = useApiClient();
 
   return useQuery({
-    queryKey: ['ppp', 'trilhas', { gtId }],
+    queryKey: ['ppp', 'documento', { escolaId }],
     enabled,
     queryFn: async () => {
-      const response = await client.get<PppTrilhasResponse>('/ppp', {
+      const response = await client.get<PppDocumento>('/ppp', {
         query: {
-          gt_id: gtId ?? undefined,
+          escola_id: escolaId ?? undefined,
         },
       });
       return response.data;
@@ -25,35 +25,74 @@ export function usePppTrilhas({ gtId, enabled = true }: UsePppTrilhasParams = {}
   });
 }
 
-export function usePppConfig() {
+export function usePppOverview(enabled = true) {
   const client = useApiClient();
 
   return useQuery({
-    queryKey: ['ppp', 'config'],
+    queryKey: ['ppp', 'overview'],
+    enabled,
     queryFn: async () => {
-      const response = await client.get<PppConfig>('/ppp/config');
+      const response = await client.get<PppOverviewItem[]>('/ppp/overview');
       return response.data;
     },
   });
 }
 
-interface UpdatePppConfigInput {
-  tarefa_ids: number[];
-  descricao?: string;
+interface UpdatePppConteudoInput {
+  escolaId?: number | null;
+  etag?: string;
+  titulo?: string;
+  conteudoHtml: string;
 }
 
-export function useUpdatePppConfig() {
+export function useUpdatePppConteudo() {
   const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: UpdatePppConfigInput) => {
-      const response = await client.patch<PppConfig>('/ppp/config', { body: payload });
+    mutationFn: async ({ escolaId, etag, titulo, conteudoHtml }: UpdatePppConteudoInput) => {
+      const response = await client.patch<PppDocumento>('/ppp/conteudo', {
+        query: {
+          escola_id: escolaId ?? undefined,
+        },
+        body: {
+          titulo,
+          conteudo_html: conteudoHtml,
+        },
+        ifMatch: etag,
+      });
       return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ppp'] });
-      queryClient.invalidateQueries({ queryKey: ['ppp', 'config'] });
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ppp', 'documento', { escolaId: variables.escolaId ?? undefined }] });
+      queryClient.invalidateQueries({ queryKey: ['ppp', 'overview'] });
+    },
+  });
+}
+
+interface ConcludePppInput {
+  escolaId?: number | null;
+  etag?: string;
+}
+
+export function useConcludePpp() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ escolaId, etag }: ConcludePppInput) => {
+      const response = await client.post<PppDocumento>('/ppp/concluir', {
+        query: {
+          escola_id: escolaId ?? undefined,
+        },
+        ifMatch: etag,
+      });
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ppp', 'documento', { escolaId: variables.escolaId ?? undefined }] });
+      queryClient.invalidateQueries({ queryKey: ['ppp', 'overview'] });
+      queryClient.invalidateQueries({ queryKey: ['comentarios'] });
     },
   });
 }

@@ -39,6 +39,65 @@ class Escola(TenantModel):
         return self.nome
 
 
+class PPP(TenantModel):
+    class Status(models.TextChoices):
+        EM_ELABORACAO = "em_elaboracao", "Em elaboração"
+        CONCLUIDO = "concluido", "Concluído"
+
+    escola = models.OneToOneField(
+        Escola,
+        on_delete=models.CASCADE,
+        related_name="ppp",
+    )
+    titulo = models.CharField(max_length=255, default="Projeto Político-Pedagógico")
+    conteudo_html = models.TextField(blank=True)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.EM_ELABORACAO)
+    ultima_edicao_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ppps_editados",
+    )
+    concluido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ppps_concluidos",
+    )
+    concluido_em = models.DateTimeField(null=True, blank=True)
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "PPP"
+        verbose_name_plural = "PPPs"
+        ordering = ("escola__nome",)
+        indexes = [
+            models.Index(fields=["cliente", "status"]),
+            models.Index(fields=["cliente", "escola"]),
+        ]
+
+    def save(self, *args, **kwargs):  # type: ignore[override]
+        if self.pk:
+            self.version += 1
+            update_fields = kwargs.get("update_fields")
+            if update_fields:
+                update_fields = set(update_fields)
+                update_fields.update({"version", "updated_at"})
+                kwargs["update_fields"] = list(update_fields)
+        else:
+            self.version = 1
+        super().save(*args, **kwargs)
+
+    @property
+    def etag(self) -> str:
+        return f"W/\"ppp-{self.pk}-v{self.version}\""
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"PPP - {self.escola.nome}"
+
+
 class Area(TenantModel):
     nome = models.CharField(max_length=255)
     descricao_html = models.TextField(blank=True)

@@ -18,9 +18,11 @@ export function RoleRoute({ allowed, children }: RoleRouteProps) {
   const memberAliasRoles = new Set(['professor', 'diretor', 'coordenador_pedagogico']);
   const effectiveRole = memberAliasRoles.has(user.role) ? 'membro_gt' : user.role;
 
-  if (!allowed.includes(effectiveRole)) {
+  if (!allowed.includes(effectiveRole) && !allowed.includes(user.role)) {
     const fallback =
-      effectiveRole === 'membro_gt'
+      user.role === 'diretor' || user.role === 'coordenador_pedagogico'
+        ? '/ppp'
+        : effectiveRole === 'membro_gt'
         ? '/inicio'
         : effectiveRole === 'revisor'
           ? '/revisor/inbox'
