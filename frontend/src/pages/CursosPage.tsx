@@ -5,6 +5,7 @@ import { Card } from '@/components/common/Card';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useCursos } from '@/hooks/useCourses';
 import { useAuth } from '@/context/AuthContext';
+import { buildBackendUrl } from '@/config/env';
 
 import './CursosPage.css';
 
@@ -12,6 +13,7 @@ export function CursosPage() {
   const { data: cursos, isLoading } = useCursos();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const avaHref = buildBackendUrl('/ava/catalogo/');
 
   if (isLoading) {
     return <FullPageLoader message="Carregando cursos..." />;
@@ -26,7 +28,7 @@ export function CursosPage() {
           <>
             <a
               className="cursos-page__header-link"
-              href="/ava/"
+              href={avaHref}
               target="_blank"
               rel="noopener noreferrer"
             >

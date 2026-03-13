@@ -52,6 +52,7 @@ class Certificado(TenantModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        if self.matricula_curso: return f"Certificado: {self.aluno.username} - {self.matricula_curso.curso.titulo}"
-        if self.matricula_trilha: return f"Certificado: {self.aluno.username} - {self.matricula_trilha.trilha.nome}"
+        aluno_nome = self.aluno.get_full_name() or getattr(self.aluno, "nome", "") or self.aluno.email
+        if self.matricula_curso: return f"Certificado: {aluno_nome} - {self.matricula_curso.curso.titulo}"
+        if self.matricula_trilha: return f"Certificado: {aluno_nome} - {self.matricula_trilha.trilha.nome}"
         return f"Certificado {self.codigo_validacao}"

@@ -22,7 +22,8 @@ class ProgressoAula(TenantModel):
         ]
 
     def __str__(self):
-        return f"{self.matricula.aluno.username} em {self.aula.titulo} ({'OK' if self.is_concluida else 'PENDENTE'})"
+        aluno_nome = self.matricula.aluno.get_full_name() or getattr(self.matricula.aluno, "nome", "") or self.matricula.aluno.email
+        return f"{aluno_nome} em {self.aula.titulo} ({'OK' if self.is_concluida else 'PENDENTE'})"
 
 class ProgressoConteudo(TenantModel):
     progresso_aula = models.ForeignKey(ProgressoAula, on_delete=models.CASCADE, related_name="conteudos_visualizados")
@@ -52,4 +53,5 @@ class ProgressoModulo(TenantModel):
         unique_together = ["matricula", "modulo"]
 
     def __str__(self):
-        return f"{self.matricula.aluno.username} no {self.modulo.titulo} ({self.percentual}%)"
+        aluno_nome = self.matricula.aluno.get_full_name() or getattr(self.matricula.aluno, "nome", "") or self.matricula.aluno.email
+        return f"{aluno_nome} no {self.modulo.titulo} ({self.percentual}%)"

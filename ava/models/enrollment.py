@@ -32,7 +32,8 @@ class MatriculaCurso(TenantModel):
         ]
 
     def __str__(self):
-        return f"{self.aluno.get_full_name() or self.aluno.username} em {self.curso.titulo}"
+        aluno_nome = self.aluno.get_full_name() or getattr(self.aluno, "nome", "") or self.aluno.email
+        return f"{aluno_nome} em {self.curso.titulo}"
 
 class MatriculaTrilha(TenantModel):
     class Status(models.TextChoices):
@@ -57,7 +58,8 @@ class MatriculaTrilha(TenantModel):
         ]
 
     def __str__(self):
-        return f"{self.aluno.get_full_name() or self.aluno.username} na {self.trilha.nome}"
+        aluno_nome = self.aluno.get_full_name() or getattr(self.aluno, "nome", "") or self.aluno.email
+        return f"{aluno_nome} na {self.trilha.nome}"
 
 class AutorizacaoCurso(TenantModel):
     """
@@ -79,4 +81,5 @@ class AutorizacaoCurso(TenantModel):
         unique_together = ["curso", "usuario", "papel"]
 
     def __str__(self):
-        return f"{self.usuario.username} como {self.get_papel_display()} em {self.curso.titulo}"
+        usuario_nome = self.usuario.get_full_name() or getattr(self.usuario, "nome", "") or self.usuario.email
+        return f"{usuario_nome} como {self.get_papel_display()} em {self.curso.titulo}"

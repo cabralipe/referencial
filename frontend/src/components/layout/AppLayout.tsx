@@ -6,26 +6,27 @@ import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
 import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 import { useAdminScope } from '@/hooks/useAdminScope';
+import { buildBackendUrl } from '@/config/env';
 
 import './AppLayout.css';
 
 type NavItem =
   | {
-      label: string;
-      icon: string;
-      to: string;
-      only?: string[];
-      external?: false;
-      href?: never;
-    }
+    label: string;
+    icon: string;
+    to: string;
+    only?: string[];
+    external?: false;
+    href?: never;
+  }
   | {
-      label: string;
-      icon: string;
-      href: string;
-      external: true;
-      only?: string[];
-      to?: never;
-    };
+    label: string;
+    icon: string;
+    href: string;
+    external: true;
+    only?: string[];
+    to?: never;
+  };
 
 export function AppLayout() {
   const { cliente, user, logout } = useAuth();
@@ -131,9 +132,10 @@ export function AppLayout() {
   const isProfessor = user?.role === 'professor';
   const isRedator = user?.role === 'articulador';
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
+  const avaHref = buildBackendUrl('/ava/catalogo/');
 
   const navItems = useMemo(() => {
-    const avaNavItem: NavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true };
+    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
@@ -211,7 +213,7 @@ export function AppLayout() {
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
     return items;
-  }, [isAdmin, isGtMember, isProfessor, isRedator, isSchoolLeader, user?.role]);
+  }, [isAdmin, isGtMember, isRedator, user?.role]);
 
   const selectedCliente = useMemo(() => {
     if (!isSuperAdmin) return null;

@@ -7,7 +7,7 @@
     <div class="container d-flex flex-column gap-3">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{% url 'ava:aluno:dashboard' %}"
+                <li class="breadcrumb-item"><a href="{% url 'ava:aluno_dashboard' %}"
                         class="text-white-50 text-decoration-none">Painel</a></li>
                 <li class="breadcrumb-item active text-white" aria-current="page">{{ curso.titulo }}</li>
             </ol>
@@ -69,7 +69,7 @@
                                                 aula.duracao_estimada_minutos }} min</small>
                                         </div>
                                     </div>
-                                    <a href="{% url 'ava:aluno:acessar_aula' curso.slug aula.id %}"
+                                    <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}"
                                         class="btn btn-sm btn-outline-primary rounded-pill px-3">Acessar</a>
                                 </li>
                                 {% empty %}
