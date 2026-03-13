@@ -9,6 +9,15 @@ import { ADMIN_MODULES } from './adminModules';
 
 import './AdminConsolePage.css';
 
+type AdminShortcut = {
+  id: string;
+  label: string;
+  description: string;
+  to?: string;
+  href?: string;
+  external?: boolean;
+};
+
 export function AdminConsolePage() {
   const [search, setSearch] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -63,7 +72,7 @@ export function AdminConsolePage() {
     return filteredModules.slice(0, 6);
   }, [filteredModules, search]);
 
-  const shortcuts = [
+  const shortcuts: AdminShortcut[] = [
     {
       id: 'novo-gt',
       label: 'Criar GT',
@@ -99,6 +108,19 @@ export function AdminConsolePage() {
       label: 'Publicar aviso no mural',
       description: 'Envie comunicados ao GT.',
       to: '/admin/mural',
+    },
+    {
+      id: 'config-cursos',
+      label: 'Configurar cursos',
+      description: 'Ajuste a estrutura e os modulos do AVA.',
+      to: '/admin/cursos',
+    },
+    {
+      id: 'ava',
+      label: 'Abrir AVA',
+      description: 'Entrar direto no ambiente virtual.',
+      href: '/ava/',
+      external: true,
     },
     {
       id: 'relatorios',
@@ -303,12 +325,25 @@ export function AdminConsolePage() {
         <div className="admin-console__hero-grid">
           <Card>
             <div className="admin-console__shortcut-grid">
-              {shortcuts.map((shortcut) => (
-                <Link key={shortcut.id} to={shortcut.to} className="admin-console__shortcut">
-                  <h4>{shortcut.label}</h4>
-                  <p>{shortcut.description}</p>
-                </Link>
-              ))}
+              {shortcuts.map((shortcut) =>
+                shortcut.external ? (
+                  <a
+                    key={shortcut.id}
+                    href={shortcut.href}
+                    className="admin-console__shortcut"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <h4>{shortcut.label}</h4>
+                    <p>{shortcut.description}</p>
+                  </a>
+                ) : (
+                  <Link key={shortcut.id} to={shortcut.to!} className="admin-console__shortcut">
+                    <h4>{shortcut.label}</h4>
+                    <p>{shortcut.description}</p>
+                  </Link>
+                ),
+              )}
             </div>
           </Card>
 
@@ -348,10 +383,13 @@ export function AdminConsolePage() {
               <ul>
                 <li>Comece criando usuários e GTs.</li>
                 <li>Defina trilhas e perguntas antes de liberar escrita.</li>
+                <li>Use Configurar cursos para publicar o fluxo do AVA.</li>
                 <li>Use o mural para avisos de calendário.</li>
               </ul>
               <div className="admin-console__help-actions">
                 <Link to="/ajuda">Abrir ajuda</Link>
+                <Link to="/admin/cursos">Configurar cursos</Link>
+                <a href="/ava/" target="_blank" rel="noopener noreferrer">Abrir AVA</a>
                 <Link to="/admin/console/usuarios">Gerenciar usuários</Link>
               </div>
             </div>
