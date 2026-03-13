@@ -35,7 +35,7 @@ class CertificacaoService:
         carga_horaria = config.carga_horaria_impressa if config.carga_horaria_impressa > 0 else curso.carga_horaria
         
         dados_impressos = {
-            "aluno_nome": matricula.aluno.get_full_name() or matricula.aluno.username,
+            "aluno_nome": matricula.aluno.get_full_name() or getattr(matricula.aluno, "nome", "") or matricula.aluno.email,
             "curso_nome": curso.titulo,
             "carga_horaria": carga_horaria,
             "data_emissao": timezone.now().isoformat(),
