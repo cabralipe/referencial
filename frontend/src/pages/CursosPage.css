@@ -70,9 +70,8 @@
 }
 
 .cursos-page__actions a,
-.cursos-page__admin-link {
+.cursos-page__header-link {
   color: var(--color-primary);
   text-decoration: none;
   font-weight: 600;
 }
-

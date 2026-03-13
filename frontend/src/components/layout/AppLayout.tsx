@@ -111,10 +111,12 @@ export function AppLayout() {
   const isAdmin = user?.role === 'admin_cliente' || user?.role === 'super_admin';
 
   const navItems = useMemo(() => {
+    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
         { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
+        avaNavItem,
         { to: '/minha-trilha', label: 'Minha Trilha', icon: 'tasks' },
         { to: '/texto', label: 'Construção de Texto', icon: 'document' },
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
@@ -128,7 +130,8 @@ export function AppLayout() {
         { to: '/admin/console', label: 'Admin Console', icon: 'settings' },
         { to: '/consultas-publicas', label: 'Consultas públicas', icon: 'document' },
         { to: '/cursos', label: 'Cursos', icon: 'library' },
-        { to: '/admin/cursos', label: 'Admin: Cursos', icon: 'form' },
+        avaNavItem,
+        { to: '/admin/cursos', label: 'Configuracao dos Cursos', icon: 'form' },
         { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
         { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
         { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
@@ -144,6 +147,7 @@ export function AppLayout() {
     if (isRedator) {
       return [
         { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
+        avaNavItem,
         { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
         { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
         { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
@@ -162,7 +166,7 @@ export function AppLayout() {
       { to: '/comentarios', label: 'Comentários', icon: 'comment' },
       { to: '/relatorios', label: 'Relatórios', icon: 'document', only: ['admin_cliente', 'super_admin'] },
       { to: '/biblioteca', label: 'Referências', icon: 'library' },
-      { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true },
+      avaNavItem,
       { to: '/exportacoes', label: 'Exportações', icon: 'export' },
       { to: '/diff', label: 'Diff', icon: 'diff' },
       { to: '/auditoria', label: 'Auditoria', icon: 'audit' },

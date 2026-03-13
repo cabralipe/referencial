@@ -22,7 +22,23 @@ export function CursosPage() {
       <PageHeader
         title="Módulos PROLUC"
         description="Referencial Curricular e Implementação do PPP na Prática Pedagógica"
-        actions={isAdmin ? <Link className="cursos-page__admin-link" to="/admin/cursos">Ir para Admin de Cursos</Link> : undefined}
+        actions={(
+          <>
+            <a
+              className="cursos-page__header-link"
+              href="/ava/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Acessar AVA
+            </a>
+            {isAdmin ? (
+              <Link className="cursos-page__header-link" to="/admin/cursos">
+                Configuracao dos Cursos
+              </Link>
+            ) : null}
+          </>
+        )}
       />
 
       <div className="cursos-page__hero">
