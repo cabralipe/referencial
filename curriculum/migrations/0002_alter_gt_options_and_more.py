@@ -4,6 +4,24 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            migrations.RunSQL(
+                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
+                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
+            ),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -16,16 +34,8 @@ class Migration(migrations.Migration):
             name='gt',
             options={'ordering': ('nome',), 'verbose_name': 'Grupo de Trabalho', 'verbose_name_plural': 'Grupos de Trabalho'},
         ),
-        migrations.RenameIndex(
-            model_name='resposta',
-            new_name='curriculum__cliente_cd9187_idx',
-            old_name='curr_res_client_8be6f8_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='textounico',
-            new_name='curriculum__cliente_46cd17_idx',
-            old_name='curr_text_cliente_3baf05_idx',
-        ),
+        safe_rename_index('resposta', 'curr_res_client_8be6f8_idx', 'curriculum__cliente_cd9187_idx'),
+        safe_rename_index('textounico', 'curr_text_cliente_3baf05_idx', 'curriculum__cliente_46cd17_idx'),
         migrations.AlterField(
             model_name='anexo',
             name='cliente',

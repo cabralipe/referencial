@@ -3,6 +3,24 @@
 from django.db import migrations
 
 
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            migrations.RunSQL(
+                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
+                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
+            ),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -50,49 +68,13 @@ class Migration(migrations.Migration):
             name='trilhaformativa',
             options={'ordering': ['ordem_exibicao', 'nome'], 'verbose_name': 'Trilha Formativa', 'verbose_name_plural': 'Trilhas Formativas'},
         ),
-        migrations.RenameIndex(
-            model_name='atividadetentativa',
-            new_name='ava_ativida_cliente_78e269_idx',
-            old_name='ava_ativtent_cli_alu_ati_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='certificado',
-            new_name='ava_certifi_cliente_49fcdd_idx',
-            old_name='ava_cert_cli_cod_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='certificado',
-            new_name='ava_certifi_cliente_0e7d1c_idx',
-            old_name='ava_cert_cli_alu_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='curso',
-            new_name='ava_curso_cliente_971dd2_idx',
-            old_name='ava_curso_cli_sta_abr_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='curso',
-            new_name='ava_curso_slug_502f07_idx',
-            old_name='ava_curso_slug_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='matriculacurso',
-            new_name='ava_matricu_cliente_a00e1f_idx',
-            old_name='ava_matcurso_cli_alu_cur_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='matriculacurso',
-            new_name='ava_matricu_status_575b09_idx',
-            old_name='ava_matcurso_status_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='matriculatrilha',
-            new_name='ava_matricu_cliente_8966aa_idx',
-            old_name='ava_mattrilha_cli_alu_tri_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='progressoaula',
-            new_name='ava_progres_cliente_2d9e54_idx',
-            old_name='ava_progaula_cli_mat_aul_idx',
-        ),
+        safe_rename_index('atividadetentativa', 'ava_ativtent_cli_alu_ati_idx', 'ava_ativida_cliente_78e269_idx'),
+        safe_rename_index('certificado', 'ava_cert_cli_cod_idx', 'ava_certifi_cliente_49fcdd_idx'),
+        safe_rename_index('certificado', 'ava_cert_cli_alu_idx', 'ava_certifi_cliente_0e7d1c_idx'),
+        safe_rename_index('curso', 'ava_curso_cli_sta_abr_idx', 'ava_curso_cliente_971dd2_idx'),
+        safe_rename_index('curso', 'ava_curso_slug_idx', 'ava_curso_slug_502f07_idx'),
+        safe_rename_index('matriculacurso', 'ava_matcurso_cli_alu_cur_idx', 'ava_matricu_cliente_a00e1f_idx'),
+        safe_rename_index('matriculacurso', 'ava_matcurso_status_idx', 'ava_matricu_status_575b09_idx'),
+        safe_rename_index('matriculatrilha', 'ava_mattrilha_cli_alu_tri_idx', 'ava_matricu_cliente_8966aa_idx'),
+        safe_rename_index('progressoaula', 'ava_progaula_cli_mat_aul_idx', 'ava_progres_cliente_2d9e54_idx'),
     ]

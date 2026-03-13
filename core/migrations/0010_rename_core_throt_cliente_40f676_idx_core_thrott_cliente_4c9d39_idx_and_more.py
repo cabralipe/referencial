@@ -3,6 +3,24 @@
 from django.db import migrations, models
 
 
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            migrations.RunSQL(
+                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
+                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
+            ),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,16 +28,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='throttleblock',
-            new_name='core_thrott_cliente_4c9d39_idx',
-            old_name='core_throt_cliente_40f676_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='throttleblock',
-            new_name='core_thrott_blocked_c6fdc0_idx',
-            old_name='core_throt_blocked_3b02b1_idx',
-        ),
+        safe_rename_index('throttleblock', 'core_throt_cliente_40f676_idx', 'core_thrott_cliente_4c9d39_idx'),
+        safe_rename_index('throttleblock', 'core_throt_blocked_3b02b1_idx', 'core_thrott_blocked_c6fdc0_idx'),
         migrations.AlterField(
             model_name='usuario',
             name='role',

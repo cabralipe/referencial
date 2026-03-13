@@ -5,6 +5,24 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            migrations.RunSQL(
+                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
+                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
+            ),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -141,46 +159,14 @@ class Migration(migrations.Migration):
             managers=[
             ],
         ),
-        migrations.RenameIndex(
-            model_name='curso',
-            new_name='courses_cur_cliente_d28afb_idx',
-            old_name='courses_curs_cliente_390c96_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='cursoitem',
-            new_name='courses_cur_cliente_886e67_idx',
-            old_name='courses_curs_cliente_93b4e6_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='cursoprogresso',
-            new_name='courses_cur_cliente_c693ed_idx',
-            old_name='courses_curs_cliente_b8e56c_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='cursoprogressoitem',
-            new_name='courses_cur_cliente_7bdeea_idx',
-            old_name='courses_curs_cliente_6738be_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='planoaulapublicacao',
-            new_name='courses_pla_cliente_011610_idx',
-            old_name='courses_plan_cliente_1d5031_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='planoaulapublicacao',
-            new_name='courses_pla_cliente_0c6c02_idx',
-            old_name='courses_plan_cliente_45329e_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='planoaularesposta',
-            new_name='courses_pla_cliente_796e13_idx',
-            old_name='courses_plan_cliente_4c734c_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='planoaularesposta',
-            new_name='courses_pla_cliente_2c9645_idx',
-            old_name='courses_plan_cliente_252154_idx',
-        ),
+        safe_rename_index('curso', 'courses_curs_cliente_390c96_idx', 'courses_cur_cliente_d28afb_idx'),
+        safe_rename_index('cursoitem', 'courses_curs_cliente_93b4e6_idx', 'courses_cur_cliente_886e67_idx'),
+        safe_rename_index('cursoprogresso', 'courses_curs_cliente_b8e56c_idx', 'courses_cur_cliente_c693ed_idx'),
+        safe_rename_index('cursoprogressoitem', 'courses_curs_cliente_6738be_idx', 'courses_cur_cliente_7bdeea_idx'),
+        safe_rename_index('planoaulapublicacao', 'courses_plan_cliente_1d5031_idx', 'courses_pla_cliente_011610_idx'),
+        safe_rename_index('planoaulapublicacao', 'courses_plan_cliente_45329e_idx', 'courses_pla_cliente_0c6c02_idx'),
+        safe_rename_index('planoaularesposta', 'courses_plan_cliente_4c734c_idx', 'courses_pla_cliente_796e13_idx'),
+        safe_rename_index('planoaularesposta', 'courses_plan_cliente_252154_idx', 'courses_pla_cliente_2c9645_idx'),
         migrations.AddField(
             model_name='curso',
             name='carga_horaria_plataforma',

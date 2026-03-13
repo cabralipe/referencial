@@ -4,6 +4,24 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            migrations.RunSQL(
+                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
+                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
+            ),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,11 +30,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='textocolaborativo',
-            new_name='curriculum__cliente_813d28_idx',
-            old_name='textocolab_cliente_gt_idx',
-        ),
+        safe_rename_index('textocolaborativo', 'textocolab_cliente_gt_idx', 'curriculum__cliente_813d28_idx'),
         migrations.AddField(
             model_name='pergunta',
             name='gts',
