@@ -65,9 +65,29 @@
                     <span class="ava-chip px-3 py-2 align-self-start mb-3">{{ curso.categoria.nome|default:"Geral" }}</span>
                     <h3 class="h6 fw-bold mb-2">{{ curso.titulo }}</h3>
                     <p class="text-muted small mb-4">{{ curso.descricao_curta|default:"Curso com acompanhamento por modulo." }}</p>
-                    <div class="mt-auto d-flex justify-content-between align-items-center">
-                        <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ curso.carga_horaria }}h</small>
-                        <a href="{% url 'ava:detalhes_curso' curso.slug %}" class="btn btn-primary btn-sm px-3">Detalhes</a>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ curso.carga_horaria }}h</small>
+                            <a href="{% url 'ava:detalhes_curso' curso.slug %}" class="btn btn-outline-primary btn-sm px-3">Detalhes</a>
+                        </div>
+                        {% if user.is_authenticated %}
+                            {% if curso.aluno_matriculado %}
+                            <a href="{% url 'ava:aluno_curso_detalhe' curso.slug %}" class="btn btn-primary btn-sm w-100">
+                                Acessar curso
+                            </a>
+                            {% elif curso.is_aberto %}
+                            <form method="post" action="{% url 'ava:matricular_curso' curso.slug %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever-se no curso</button>
+                            </form>
+                            {% else %}
+                            <button class="btn btn-outline-secondary btn-sm w-100" disabled>Inscricao restrita</button>
+                            {% endif %}
+                        {% else %}
+                        <a href="/admin/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">
+                            Entrar para se inscrever
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </article>

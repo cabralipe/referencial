@@ -261,3 +261,23 @@ class AVAStudentFlowTests(TestCase):
         self.assertContains(response, "Atividade concluida")
         self.assertContains(response, "Anexo enviado:")
         self.assertContains(response, "resposta.pdf")
+
+    def test_catalogo_exibe_botao_inscrever_se_para_curso_aberto_nao_matriculado(self):
+        curso_aberto = Curso.objects.create(
+            cliente=self.cliente,
+            titulo="Curso Livre Novo",
+            slug="curso-livre-novo",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            autor_principal=self.user,
+        )
+        self.assertIsNotNone(curso_aberto.id)
+
+        response = self.client.get(reverse("ava:catalogo"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Inscrever-se no curso")
+
+    def test_catalogo_exibe_botao_acessar_quando_ja_matriculado(self):
+        response = self.client.get(reverse("ava:catalogo"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Acessar curso")
