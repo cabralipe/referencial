@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link " AVA PROLUC" [ref=e4] [cursor=pointer]:
+        - /url: /ava/catalogo/
+        - generic [ref=e6]: 
+        - generic [ref=e7]: AVA PROLUC
+      - generic [ref=e8]:
+        - list [ref=e9]:
+          - listitem [ref=e10]:
+            - link "Catalogo" [ref=e11] [cursor=pointer]:
+              - /url: /ava/catalogo/
+        - link "Entrar" [ref=e13] [cursor=pointer]:
+          - /url: /admin/login/?next=/ava/catalogo/
+  - main [ref=e14]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: Formacao continuada
+      - heading "Trilhas e cursos PROLUC" [level=1] [ref=e18]
+      - paragraph [ref=e19]: Percursos organizados para desenvolvimento profissional com clareza e acompanhamento.
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - heading "Trilhas formativas" [level=2] [ref=e22]
+        - generic [ref=e23]: 1 trilhas
+      - article [ref=e26]:
+        - generic [ref=e28]: 
+        - generic [ref=e29]:
+          - heading "Trilha 01" [level=3] [ref=e30]
+          - paragraph [ref=e31]: Curso
+          - generic [ref=e32]:
+            - generic [ref=e33]: 1 cursos
+            - link "Ver trilha" [ref=e34] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=e35]:
+        - heading "Cursos livres" [level=2] [ref=e36]
+        - generic [ref=e37]: Atualizado
+      - article [ref=e40]:
+        - img "Curso PROLUC Ambiente Virtual para Professores da Educação Básica" [ref=e41]
+        - generic [ref=e42]:
+          - generic [ref=e43]: Educação
+          - heading "Curso PROLUC Ambiente Virtual para Professores da Educação Básica" [level=3] [ref=e44]
+          - paragraph [ref=e45]: Estudo introdutório sobre os fundamentos e a estrutura do Referencial Curricular.
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - generic [ref=e48]:
+                - generic [ref=e49]: 
+                - text: 20h
+              - link "Detalhes" [ref=e50] [cursor=pointer]:
+                - /url: /ava/curso/curso-proluc-ambiente-virtual-para-professores-da-educacao-basica/
+            - link "Inscrever-se no curso" [ref=e51] [cursor=pointer]:
+              - /url: /admin/login/?next=/ava/catalogo/
+  - contentinfo [ref=e52]:
+    - generic [ref=e53]: © 2026 PROLUC. Todos os direitos reservados.

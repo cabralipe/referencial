@@ -7,7 +7,8 @@
     <div class="container text-center py-2">
         <span class="badge text-bg-light mb-3">Formacao continuada</span>
         <h1 class="display-5 fw-bold text-white">Trilhas e cursos PROLUC</h1>
-        <p class="lead text-white-50 mb-0">Percursos organizados para desenvolvimento profissional com clareza e acompanhamento.</p>
+        <p class="lead text-white-50 mb-0">Percursos organizados para desenvolvimento profissional com clareza e
+            acompanhamento.</p>
     </div>
 </section>
 
@@ -23,9 +24,11 @@
         <div class="col">
             <article class="ava-surface h-100 overflow-hidden">
                 {% if trilha.capa %}
-                <img src="{{ trilha.capa.url }}" class="w-100" alt="{{ trilha.nome }}" style="height: 180px; object-fit: cover;">
+                <img src="{{ trilha.capa.url }}" class="w-100" alt="{{ trilha.nome }}"
+                    style="height: 180px; object-fit: cover;">
                 {% else %}
-                <div class="d-flex align-items-center justify-content-center" style="height: 180px; background: var(--surface-elevated); color: var(--text-muted);">
+                <div class="d-flex align-items-center justify-content-center"
+                    style="height: 180px; background: var(--surface-elevated); color: var(--text-muted);">
                     <i class="bi bi-compass fs-1"></i>
                 </div>
                 {% endif %}
@@ -52,44 +55,49 @@
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4">
         {% for curso in cursos %}
         <div class="col">
-            <article class="ava-surface h-100 overflow-hidden">
+            <article class="ava-surface h-100 overflow-hidden d-flex flex-column">
                 {% if curso.capa %}
-                <img src="{{ curso.capa.url }}" class="w-100" alt="{{ curso.titulo }}" style="height: 150px; object-fit: cover;">
+                <img src="{{ curso.capa.url }}" class="w-100" alt="{{ curso.titulo }}"
+                    style="height: 150px; object-fit: cover;">
                 {% else %}
-                <div class="d-flex align-items-center justify-content-center" style="height: 150px; background: var(--surface-elevated); color: var(--text-muted);">
+                <div class="d-flex align-items-center justify-content-center"
+                    style="height: 150px; background: var(--surface-elevated); color: var(--text-muted);">
                     <i class="bi bi-journal-bookmark fs-1"></i>
                 </div>
                 {% endif %}
 
-                <div class="p-4 d-flex flex-column h-100">
-                    <span class="ava-chip px-3 py-2 align-self-start mb-3">{{ curso.categoria.nome|default:"Geral" }}</span>
+                <div class="p-4 d-flex flex-column flex-grow-1">
+                    <span class="ava-chip px-3 py-2 align-self-start mb-3">{{ curso.categoria.nome|default:"Geral"
+                        }}</span>
                     <h3 class="h6 fw-bold mb-2">{{ curso.titulo }}</h3>
-                    <p class="text-muted small mb-4">{{ curso.descricao_curta|default:"Curso com acompanhamento por modulo." }}</p>
+                    <p class="text-muted small mb-4">{{ curso.descricao_curta|default:"Curso com acompanhamento por
+                        modulo." }}</p>
                     <div class="mt-auto">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ curso.carga_horaria }}h</small>
-                            <a href="{% url 'ava:detalhes_curso' curso.slug %}" class="btn btn-outline-primary btn-sm px-3">Detalhes</a>
+                            <a href="{% url 'ava:detalhes_curso' curso.slug %}"
+                                class="btn btn-outline-primary btn-sm px-3">Detalhes</a>
                         </div>
                         {% if curso.aluno_matriculado %}
                         <a href="{% url 'ava:aluno_curso_detalhe' curso.slug %}" class="btn btn-primary btn-sm w-100">
                             Acessar curso
                         </a>
                         {% else %}
-                            {% if user.is_authenticated %}
-                                {% if curso.is_aberto %}
-                                <form method="post" action="{% url 'ava:matricular_curso' curso.slug %}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever-se no curso</button>
-                                </form>
-                                {% else %}
-                                <button class="btn btn-outline-secondary btn-sm w-100" disabled>Inscrever-se no curso</button>
-                                <small class="text-muted d-block mt-2 text-center">Inscricoes fechadas no momento.</small>
-                                {% endif %}
-                            {% else %}
-                            <a href="/admin/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">
-                                Inscrever-se no curso
-                            </a>
-                            {% endif %}
+                        {% if user.is_authenticated %}
+                        {% if curso.is_aberto %}
+                        <form method="post" action="{% url 'ava:matricular_curso' curso.slug %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever-se no curso</button>
+                        </form>
+                        {% else %}
+                        <button class="btn btn-outline-secondary btn-sm w-100" disabled>Inscrever-se no curso</button>
+                        <small class="text-muted d-block mt-2 text-center">Inscricoes fechadas no momento.</small>
+                        {% endif %}
+                        {% else %}
+                        <a href="/admin/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">
+                            Inscrever-se no curso
+                        </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
