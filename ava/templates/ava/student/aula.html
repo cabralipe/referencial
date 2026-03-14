@@ -3,43 +3,37 @@
 {% block title %}{{ aula.titulo }} | {{ aula.modulo.curso.titulo }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar Navigation -->
-        <div class="col-lg-3 p-0 sidebar d-none d-lg-block">
-            <div class="p-3 border-bottom bg-light">
-                <a href="{% url 'ava:aluno_curso_detalhe' aula.modulo.curso.slug %}"
-                    class="btn btn-sm btn-outline-secondary w-100 text-start">
-                    <i class="bi bi-arrow-left me-2"></i>Voltar ao Curso
+<div class="container-fluid px-0">
+    <div class="row g-0">
+        <aside class="col-lg-3 d-none d-lg-block border-end" style="background: var(--surface-card); min-height: calc(100vh - 72px);">
+            <div class="p-3 border-bottom">
+                <a href="{% url 'ava:aluno_curso_detalhe' aula.modulo.curso.slug %}" class="btn btn-outline-primary btn-sm w-100 text-start">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar ao curso
                 </a>
             </div>
 
             <div class="accordion accordion-flush" id="courseSidebar">
-                {% for mod in aula.modulo.curso.modulos.all %}
-                <div class="accordion-item">
+                {% for mod in modulos %}
+                <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header">
-                        <button class="accordion-button collapsed fw-semibold bg-white" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#flush-collapse{{ mod.id }}">
-                            Módulo {{ mod.ordem }}
+                        <button class="accordion-button {% if mod != aula.modulo %}collapsed{% endif %} fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapse{{ mod.id }}" aria-expanded="{% if mod == aula.modulo %}true{% else %}false{% endif %}">
+                            Modulo {{ mod.ordem }}
                         </button>
                     </h2>
-                    <div id="flush-collapse{{ mod.id }}"
-                        class="accordion-collapse collapse {% if mod == aula.modulo %}show{% endif %}"
-                        data-bs-parent="#courseSidebar">
-                        <div class="accordion-body p-0 lesson-nav">
+                    <div id="flush-collapse{{ mod.id }}" class="accordion-collapse collapse {% if mod == aula.modulo %}show{% endif %}" data-bs-parent="#courseSidebar">
+                        <div class="accordion-body p-0">
                             <ul class="list-group list-group-flush">
                                 {% for a in mod.aulas.all %}
-                                <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug a.id %}"
-                                    class="list-group-item list-group-item-action {% if a == aula %}active{% endif %} py-3 px-4 border-0 border-bottom text-dark">
-                                    <div class="d-flex align-items-center gap-2">
+                                <li class="list-group-item border-0 border-bottom px-3 py-2 {% if a == aula %}bg-primary bg-opacity-10{% endif %}">
+                                    <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug a.id %}" class="text-decoration-none d-flex align-items-center gap-2 {% if a == aula %}fw-bold text-primary{% else %}text-dark{% endif %}">
                                         {% if a.progresso_concluido %}
-                                        <i class="bi bi-check-circle-fill text-success fs-6"></i>
+                                        <i class="bi bi-check-circle-fill text-success"></i>
                                         {% else %}
-                                        <i class="bi bi-circle text-secondary fs-6 opacity-50"></i>
+                                        <i class="bi bi-circle text-muted"></i>
                                         {% endif %}
                                         <span class="small">{{ a.titulo }}</span>
-                                    </div>
-                                </a>
+                                    </a>
+                                </li>
                                 {% endfor %}
                             </ul>
                         </div>
@@ -47,118 +41,182 @@
                 </div>
                 {% endfor %}
             </div>
-        </div>
+        </aside>
 
-        <!-- Aula Content -->
-        <div class="col-lg-9 p-0 bg-white min-vh-100">
-            <!-- Mobile Header -->
-            <div class="d-lg-none p-3 border-bottom bg-light">
-                <a href="{% url 'ava:aluno_curso_detalhe' aula.modulo.curso.slug %}"
-                    class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+        <section class="col-lg-9">
+            <div class="d-lg-none p-3 border-bottom bg-white">
+                <a href="{% url 'ava:aluno_curso_detalhe' aula.modulo.curso.slug %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
                 <span class="ms-2 fw-semibold">{{ aula.modulo.titulo|truncatechars:30 }}</span>
             </div>
 
             <div class="p-4 p-md-5">
-                <span class="badge bg-primary mb-3">Aula {{ aula.ordem }}</span>
-                <h2 class="fw-bold mb-4">{{ aula.titulo }}</h2>
+                <header class="mb-4">
+                    <span class="ava-chip px-3 py-2">Aula {{ aula.ordem }}</span>
+                    <h1 class="h2 fw-bold mt-3 mb-2">{{ aula.titulo }}</h1>
+                    {% if aula.resumo %}
+                    <p class="text-muted mb-0">{{ aula.resumo }}</p>
+                    {% endif %}
+                </header>
 
-                {% if aula.resumo %}
-                <p class="lead text-secondary mb-5">{{ aula.resumo }}</p>
-                {% endif %}
-
-                <!-- Renderização dos Conteúdos -->
-                <div class="conteudos-list mb-5">
+                <div class="mb-5">
                     {% for conteudo in conteudos %}
-                    <div class="card border-0 shadow-sm mb-4 rounded-4">
-                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                            <h5 class="fw-bold d-flex align-items-center">
-                                <i class="bi bi-book text-primary me-2"></i> {{ conteudo.titulo }}
-                            </h5>
+                    <article class="ava-surface mb-4">
+                        <div class="p-4 border-bottom">
+                            <h2 class="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-journal-text text-primary"></i>
+                                {{ conteudo.titulo }}
+                            </h2>
                         </div>
-                        <div class="card-body p-4">
+
+                        <div class="p-4">
                             {% if conteudo.tipo == 'texto' %}
-                            <div class="text-content text-dark lh-lg">
-                                {{ conteudo.conteudo_texto|safe }}
-                            </div>
+                            <div class="lh-lg">{{ conteudo.conteudo_texto|safe }}</div>
+
                             {% elif conteudo.tipo == 'video' %}
-                            <div class="ratio ratio-16x9 rounded overflow-hidden">
-                                <!-- Assume YouTube/Vimeo if URL is simple, or raw embed -->
-                                {{ conteudo.embed_code|safe }}
-                            </div>
-                            {% elif conteudo.tipo == 'pdf' or conteudo.tipo == 'arquivo' %}
-                            <div class="d-flex align-items-center p-3 bg-light rounded">
-                                <i class="bi bi-file-earmark-pdf fs-1 text-danger me-3"></i>
-                                <div>
-                                    <h6 class="mb-1">{{ conteudo.titulo }}</h6>
-                                    <a href="{{ conteudo.arquivo.url }}" target="_blank"
-                                        class="btn btn-sm btn-primary">Abrir Documento <i
-                                            class="bi bi-box-arrow-up-right ms-1"></i></a>
-                                </div>
-                            </div>
+                            {% if conteudo.embed_code %}
+                            <div class="ratio ratio-16x9 rounded overflow-hidden">{{ conteudo.embed_code|safe }}</div>
+                            {% elif conteudo.url %}
+                            <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
+                                Abrir video <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                            {% else %}
+                            <p class="text-muted mb-0">Nenhum video cadastrado.</p>
                             {% endif %}
 
-                            <!-- Formulário HTMX para marcar visualização individualmente -->
-                            <form htmx-post="{% url 'ava:aluno_marcar_conteudo' conteudo.id %}" htmx-swap="outerHTML"
-                                class="mt-4 text-end">
-                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3">
-                                    <i class="bi bi-check-circle me-1"></i> Marcar como Lido/Visto
+                            {% elif conteudo.tipo == 'pdf' or conteudo.tipo == 'arquivo' %}
+                            <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: var(--surface-elevated);">
+                                <i class="bi bi-file-earmark-pdf text-danger fs-2"></i>
+                                <div>
+                                    <h3 class="h6 fw-bold mb-1">{{ conteudo.titulo }}</h3>
+                                    {% if conteudo.arquivo %}
+                                    <a href="{{ conteudo.arquivo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Abrir arquivo</a>
+                                    {% elif conteudo.url %}
+                                    <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Abrir link do documento</a>
+                                    {% else %}
+                                    <p class="text-muted mb-0 small">Documento ainda nao disponivel.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% elif conteudo.tipo == 'link' %}
+                            {% if conteudo.url %}
+                            <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
+                                Abrir link externo <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                            {% else %}
+                            <p class="text-muted mb-0">Link externo nao informado.</p>
+                            {% endif %}
+
+                            {% elif conteudo.tipo == 'imagem' %}
+                            {% if conteudo.arquivo %}
+                            <img src="{{ conteudo.arquivo.url }}" alt="{{ conteudo.titulo }}" class="img-fluid rounded">
+                            {% elif conteudo.url %}
+                            <img src="{{ conteudo.url }}" alt="{{ conteudo.titulo }}" class="img-fluid rounded">
+                            {% else %}
+                            <p class="text-muted mb-0">Imagem nao disponivel.</p>
+                            {% endif %}
+
+                            {% elif conteudo.tipo == 'audio' %}
+                            {% if conteudo.arquivo %}
+                            <audio controls class="w-100">
+                                <source src="{{ conteudo.arquivo.url }}">
+                            </audio>
+                            {% elif conteudo.url %}
+                            <audio controls class="w-100">
+                                <source src="{{ conteudo.url }}">
+                            </audio>
+                            {% else %}
+                            <p class="text-muted mb-0">Audio nao disponivel.</p>
+                            {% endif %}
+
+                            {% elif conteudo.tipo == 'embed' %}
+                            {% if conteudo.embed_code %}
+                            <div class="ratio ratio-16x9 rounded overflow-hidden">{{ conteudo.embed_code|safe }}</div>
+                            {% elif conteudo.url %}
+                            <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">Abrir conteudo incorporado</a>
+                            {% else %}
+                            <p class="text-muted mb-0">Conteudo embed nao disponivel.</p>
+                            {% endif %}
+
+                            {% else %}
+                            <p class="text-muted mb-0">Tipo de conteudo ainda nao suportado nesta tela.</p>
+                            {% endif %}
+
+                            <form method="post" action="{% url 'ava:aluno_marcar_conteudo' conteudo.id %}" class="mt-4 text-end">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="btn {% if conteudo.is_visualizado %}btn-success{% else %}btn-outline-success{% endif %} btn-sm px-3 rounded-pill">
+                                    <i class="bi bi-check-circle me-1"></i>{% if conteudo.is_visualizado %}Marcado como lido{% else %}Marcar como lido{% endif %}
                                 </button>
                             </form>
                         </div>
-                    </div>
+                    </article>
+                    {% empty %}
+                    <div class="ava-surface p-4 text-muted">Nenhum conteudo cadastrado nesta aula.</div>
                     {% endfor %}
                 </div>
 
-                <!-- Renderização das Atividades (Quizzes, Envios) -->
                 {% if atividades %}
-                <h4 class="fw-bold mb-4 border-top pt-5">Atividades da Aula</h4>
-                <div class="row row-cols-1 g-4 mb-5">
-                    {% for atividade in atividades %}
-                    <div class="col">
-                        <div class="card border-primary border-opacity-25 shadow-sm rounded-4">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div
-                                            class="bg-primary bg-opacity-10 text-primary rounded d-flex align-items-center justify-content-center p-3 me-3">
-                                            <i class="bi bi-pencil-square fs-4"></i>
+                <section class="pt-2">
+                    <h2 class="h4 fw-bold mb-4">Atividades da aula</h2>
+                    <div class="row row-cols-1 g-3 mb-5">
+                        {% for atividade in atividades %}
+                        <div class="col">
+                            <article class="ava-surface p-4">
+                                <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: var(--accent-subtle); color: var(--accent-primary);">
+                                            <i class="bi bi-pencil-square"></i>
                                         </div>
                                         <div>
-                                            <span class="badge bg-secondary mb-1">{{ atividade.get_tipo_display
-                                                }}</span>
-                                            <h5 class="fw-bold mb-0">{{ atividade.titulo }}</h5>
+                                            <span class="badge text-bg-secondary mb-2">{{ atividade.get_tipo_display }}</span>
+                                            <h3 class="h5 fw-bold mb-1">{{ atividade.titulo }}</h3>
+                                            <p class="text-muted mb-0">{{ atividade.descricao|truncatewords:20 }}</p>
                                         </div>
                                     </div>
+
                                     {% if atividade.tentativas_existentes %}
-                                    <span class="badge bg-success">Enviada</span>
+                                    <span class="badge rounded-pill" style="background: var(--success-subtle); color: #166534;">Enviada</span>
                                     {% else %}
-                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                    <span class="badge rounded-pill" style="background: var(--warning-subtle); color: #92400e;">Pendente</span>
                                     {% endif %}
                                 </div>
-                                <p class="text-muted">{{ atividade.descricao|truncatewords:20 }}</p>
-                                <div class="text-end">
-                                    <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}"
-                                        class="btn btn-primary rounded-pill px-4">Acessar Atividade <i
-                                            class="bi bi-arrow-right ms-1"></i></a>
+
+                                <div class="text-end mt-3">
+                                    <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}" class="btn btn-primary px-4">
+                                        Acessar atividade <i class="bi bi-arrow-right ms-1"></i>
+                                    </a>
                                 </div>
-                            </div>
+                            </article>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
+                </section>
                 {% endif %}
 
-                <!-- Navegação inferior -->
-                <div class="d-flex justify-content-between mt-5 pt-4 border-top">
-                    <!-- Botão anterior simulado (pode ser dinâmico) -->
-                    <button class="btn btn-outline-secondary rounded-pill px-4" disabled><i
-                            class="bi bi-arrow-left me-2"></i>Aula Anterior</button>
+                <nav class="d-flex justify-content-between align-items-center mt-5 pt-4 border-top">
+                    {% if aula_anterior %}
+                    <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug aula_anterior.id %}" class="btn btn-outline-primary px-4">
+                        <i class="bi bi-arrow-left me-2"></i>Aula anterior
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary px-4" disabled>
+                        <i class="bi bi-arrow-left me-2"></i>Aula anterior
+                    </button>
+                    {% endif %}
 
-                    <button class="btn btn-success rounded-pill px-4">Próxima Aula <i
-                            class="bi bi-arrow-right ms-2"></i></button>
-                </div>
+                    {% if proxima_aula %}
+                    <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug proxima_aula.id %}" class="btn btn-primary px-4">
+                        Proxima aula <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary px-4" disabled>
+                        Proxima aula <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                    {% endif %}
+                </nav>
             </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %}

@@ -1,137 +1,115 @@
 {% extends "ava/base.html" %}
 
-{% block title %}Atividade: {{ atividade.titulo }}{% endblock %}
+{% block title %}Atividade: {{ atividade.titulo }} | AVA PROLUC{% endblock %}
 
 {% block content %}
-<div class="bg-primary bg-gradient text-white pt-5 pb-4 mb-4">
-    <div class="container text-center">
-        <h1 class="display-6 fw-bold mb-2">{{ atividade.titulo }}</h1>
-        <p class="lead mb-0"><i class="bi bi-journal-check me-2"></i>{{ atividade.get_tipo_display }} • Peso: {{
-            atividade.nota_maxima }}</p>
+<section class="section-hero py-5">
+    <div class="container text-center py-2">
+        <span class="badge text-bg-light mb-3">Atividade</span>
+        <h1 class="display-6 fw-bold text-white mb-2">{{ atividade.titulo }}</h1>
+        <p class="mb-0 text-white-50">{{ atividade.get_tipo_display }} - Peso: {{ atividade.nota_maxima }}</p>
     </div>
-</div>
+</section>
 
-<div class="container pb-5" style="max-width: 800px;">
-
+<div class="container pb-5" style="max-width: 900px;">
     <div class="mb-4">
-        <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}"
-            class="btn btn-outline-secondary btn-sm rounded-pill">
-            <i class="bi bi-arrow-left me-1"></i> Voltar para Aula
+        <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}" class="btn btn-outline-primary btn-sm px-3">
+            <i class="bi bi-arrow-left me-1"></i>Voltar para a aula
         </a>
     </div>
 
-    <!-- Intruções gerais -->
     {% if atividade.instrucoes %}
-    <div class="card border-0 bg-light rounded-4 shadow-sm mb-5">
-        <div class="card-body p-4">
-            <h5 class="fw-bold mb-3 d-flex align-items-center"><i class="bi bi-info-circle text-primary me-2"></i>
-                Instruções</h5>
-            <div class="text-secondary lh-lg">
-                {{ atividade.instrucoes|safe }}
-            </div>
-        </div>
-    </div>
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Instrucoes</h2>
+        <div class="text-muted lh-lg">{{ atividade.instrucoes|safe }}</div>
+    </section>
     {% endif %}
 
-    {% if tentativa.status == 'EM_ANDAMENTO' %}
-    <form method="post" enctype="multipart/form-data" class="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
+    {% if not tentativa or tentativa.status == 'em_andamento' %}
+    <form method="post" enctype="multipart/form-data" class="ava-surface p-4 p-md-5">
         {% csrf_token %}
 
-        {% if atividade.tipo == 'QUIZ' or atividade.tipo == 'QUESTIONARIO' %}
-
+        {% if atividade.tipo == 'quiz' or atividade.tipo == 'questionario' %}
         {% for questao in questoes %}
-        <div class="mb-5 border-bottom pb-4 {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
-            <h5 class="fw-semibold lh-base mb-3">
-                <span class="badge bg-secondary me-2">{{ forloop.counter }}</span>
+        <div class="mb-4 pb-4 border-bottom {% if forloop.last %}mb-0 pb-0 border-0{% endif %}">
+            <h3 class="h6 fw-semibold lh-base mb-3">
+                <span class="badge text-bg-secondary me-2">{{ forloop.counter }}</span>
                 {{ questao.enunciado|safe }}
-            </h5>
+            </h3>
 
-            {% if questao.tipo == 'MULTIPLA_ESCOLHA' or questao.tipo == 'VERDADEIRO_FALSO' %}
-            <div class="list-group list-group-flush ms-4">
+            {% if questao.alternativas.all %}
+            <div class="list-group list-group-flush ms-1 ms-md-3">
                 {% for alternativa in questao.alternativas.all %}
-                <label
-                    class="list-group-item list-group-item-action border-0 rounded py-2 px-3 mb-2 bg-light cursor-pointer">
-                    <input class="form-check-input me-3 mt-1" type="radio" name="{{ questao.id }}"
-                        value="{{ alternativa.id }}" required>
+                <label class="list-group-item list-group-item-action rounded-3 mb-2 border" style="cursor: pointer;">
+                    <input class="form-check-input me-2" type="radio" name="{{ questao.id }}" value="{{ alternativa.id }}" required>
                     {{ alternativa.texto }}
                 </label>
                 {% endfor %}
             </div>
-            {% elif questao.tipo == 'DISCURSIVA' %}
-            <div class="ms-4 mt-3">
-                <textarea class="form-control bg-light" name="{{ questao.id }}" rows="4" placeholder="Sua resposta..."
-                    required></textarea>
-            </div>
+            {% else %}
+            <textarea class="form-control" name="{{ questao.id }}" rows="4" placeholder="Sua resposta" required></textarea>
             {% endif %}
         </div>
         {% endfor %}
 
-        {% elif atividade.tipo == 'TAREFA' or atividade.tipo == 'PRODUCAO_TEXTUAL' or atividade.tipo == 'REFLEXAO' %}
+        {% elif atividade.tipo == 'tarefa' or atividade.tipo == 'producao_textual' or atividade.tipo == 'reflexao' %}
         <div class="mb-4">
-            <label for="texto_resposta" class="form-label fw-bold">Resposta / Produção</label>
-            <textarea name="texto_resposta" id="texto_resposta" class="form-control bg-light" rows="8"
-                placeholder="Digite aqui a sua produção textual ou resposta da tarefa..."></textarea>
+            <label for="texto_resposta" class="form-label fw-bold">Resposta</label>
+            <textarea name="texto_resposta" id="texto_resposta" class="form-control" rows="8" placeholder="Digite aqui sua resposta..."></textarea>
         </div>
-        {% elif atividade.tipo == 'ENVIO_ARQUIVO' %}
+
+        {% elif atividade.tipo == 'envio_arquivo' %}
         <div class="mb-4">
-            <label for="arquivo_enviado" class="form-label fw-bold">Anexar Arquivo</label>
+            <label for="arquivo_enviado" class="form-label fw-bold">Anexar arquivo</label>
             <input type="file" name="arquivo_enviado" id="arquivo_enviado" class="form-control" required>
-            <div class="form-text mt-2"><i class="bi bi-paperclip"></i> Formatos aceitos dependem do curso (geralmente
-                PDF, DOCX).</div>
+            <div class="form-text mt-2">Formatos aceitos dependem das regras do curso (normalmente PDF, DOCX).</div>
         </div>
+
+        {% else %}
+        <div class="alert alert-warning">Tipo de atividade nao suportado para envio nesta tela.</div>
         {% endif %}
 
-        <div class="d-flex justify-content-end mt-5 pt-3 border-top">
-            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm">
-                Enviar Respostas <i class="bi bi-send ms-2"></i>
+        <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+            <button type="submit" class="btn btn-primary btn-lg px-5">
+                Enviar respostas <i class="bi bi-send ms-2"></i>
             </button>
         </div>
     </form>
 
     {% else %}
-    <!-- Tentativa já não está em andamento (Enviada ou Corrigida) -->
-    <div
-        class="text-center py-5 bg-white rounded-4 shadow-sm border border-success border-opacity-25 relative overflow-hidden">
-        <div class="position-absolute top-0 start-0 w-100 bg-success opacity-10" style="height: 10px;"></div>
-        <div class="d-inline-flex bg-success bg-opacity-10 text-success rounded-circle align-items-center justify-content-center mb-4"
-            style="width: 80px; height: 80px;">
+    <section class="ava-surface text-center py-5 px-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 84px; height: 84px; background: var(--success-subtle); color: #15803d;">
             <i class="bi bi-check-circle-fill fs-1"></i>
         </div>
+        <h2 class="h3 fw-bold mb-2">Atividade concluida</h2>
+        <p class="text-muted mb-4">Voce ja enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y \a\s H:i" }}.</p>
 
-        <h3 class="fw-bold text-dark mb-2">Atividade Concluída</h3>
-        <p class="text-secondary mb-4">Você já enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y às H:i" }}.
+        {% if tentativa.arquivo_enviado %}
+        <p class="mb-3">
+            <a href="{{ tentativa.arquivo_enviado.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                Ver arquivo enviado <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
         </p>
+        {% endif %}
 
-        {% if tentativa.status == 'CORRIGIDA' %}
-        <div class="d-inline-block bg-light px-4 py-3 rounded-4 mb-4">
-            <span class="d-block text-muted small mb-1 fw-bold text-uppercase">Sua Nota</span>
-            <span class="display-5 fw-bold text-primary">{{ tentativa.nota_obtida }} <small class="text-muted fs-5">/ {{
-                    atividade.nota_maxima }}</small></span>
+        {% if tentativa.status == 'corrigida' %}
+        <div class="d-inline-block rounded-4 px-4 py-3 mb-3" style="background: var(--surface-elevated);">
+            <span class="d-block text-muted small fw-bold text-uppercase mb-1">Sua nota</span>
+            <span class="display-6 fw-bold text-primary">{{ tentativa.nota_obtida }} <small class="fs-5 text-muted">/ {{ atividade.nota_maxima }}</small></span>
         </div>
         {% else %}
-        <div class="alert alert-warning border-0 d-inline-block px-4 mb-4">
-            <i class="bi bi-hourglass-split me-2"></i> Aguardando correção manual.
+        <div class="alert alert-warning d-inline-block mb-3">
+            <i class="bi bi-hourglass-split me-1"></i>Aguardando correcao manual.
         </div>
         {% endif %}
 
         <div>
-            <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}"
-                class="btn btn-outline-success rounded-pill px-4">Voltar para a Aula</a>
+            <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}" class="btn btn-outline-success px-4">
+                Voltar para a aula
+            </a>
         </div>
-    </div>
+    </section>
     {% endif %}
-
 </div>
-
-<style>
-    .cursor-pointer {
-        cursor: pointer;
-    }
-
-    .list-group-item-action:hover,
-    .list-group-item-action:focus-within {
-        background-color: #e9ecef !important;
-        border-color: #dee2e6 !important;
-    }
-</style>
 {% endblock %}
+

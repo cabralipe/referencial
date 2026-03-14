@@ -24,8 +24,8 @@ from .views import (
 )
 
 schema_view = get_schema_view(
-    title="PLACI API",
-    description="OpenAPI da Plataforma de Construcao Interativa",
+    title="PROLUC API",
+    description="OpenAPI da Plataforma PROLUC",
     version="1.0.0",
 )
 

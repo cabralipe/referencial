@@ -1,78 +1,80 @@
 {% extends "ava/base.html" %}
 
-{% block title %}Catálogo de Cursos | PLACI{% endblock %}
+{% block title %}Catalogo de Cursos | PROLUC{% endblock %}
 
 {% block content %}
-<section class="hero-section text-center py-5">
-    <div class="container">
-        <h1 class="display-4 fw-bold">Trilhas e Cursos PLACI</h1>
-        <p class="lead">Desenvolva suas habilidades com nossos percursos formativos integrados.</p>
+<section class="section-hero py-5">
+    <div class="container text-center py-2">
+        <span class="badge text-bg-light mb-3">Formacao continuada</span>
+        <h1 class="display-5 fw-bold text-white">Trilhas e cursos PROLUC</h1>
+        <p class="lead text-white-50 mb-0">Percursos organizados para desenvolvimento profissional com clareza e acompanhamento.</p>
     </div>
 </section>
 
-<div class="container py-5">
+<div class="container pb-5">
     {% if trilhas %}
-    <h2 class="h3 mb-4"><i class="bi bi-compass text-primary me-2"></i>Trilhas Formativas</h2>
-    <div class="row row-cols-1 row-cols-md-3 g-4 mb-5">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 fw-bold mb-0">Trilhas formativas</h2>
+        <span class="ava-chip px-3 py-2">{{ trilhas|length }} trilhas</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-5">
         {% for trilha in trilhas %}
         <div class="col">
-            <div class="card h-100 shadow-sm border-0 course-card">
+            <article class="ava-surface h-100 overflow-hidden">
                 {% if trilha.capa %}
-                <img src="{{ trilha.capa.url }}" class="card-img-top" alt="{{ trilha.nome }}"
-                    style="height: 180px; object-fit: cover;">
+                <img src="{{ trilha.capa.url }}" class="w-100" alt="{{ trilha.nome }}" style="height: 180px; object-fit: cover;">
                 {% else %}
-                <div class="bg-secondary text-white d-flex align-items-center justify-content-center"
-                    style="height: 180px;">
-                    <i class="bi bi-image fs-1 opacity-50"></i>
+                <div class="d-flex align-items-center justify-content-center" style="height: 180px; background: var(--surface-elevated); color: var(--text-muted);">
+                    <i class="bi bi-compass fs-1"></i>
                 </div>
                 {% endif %}
-                <div class="card-body">
-                    <h5 class="card-title fw-semibold">{{ trilha.nome }}</h5>
-                    <p class="card-text text-muted small">{{ trilha.descricao|truncatewords:20 }}</p>
+
+                <div class="p-4">
+                    <h3 class="h5 fw-bold mb-2">{{ trilha.nome }}</h3>
+                    <p class="text-muted small mb-3">{{ trilha.descricao|truncatewords:20 }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge text-bg-info">{{ trilha.cursos.count }} cursos</span>
+                        <a href="#" class="btn btn-outline-primary btn-sm">Ver trilha</a>
+                    </div>
                 </div>
-                <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center">
-                    <span class="badge bg-info text-dark">{{ trilha.cursos.count }} cursos</span>
-                    <a href="#" class="btn btn-outline-primary btn-sm">Ver Trilha</a>
-                </div>
-            </div>
+            </article>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <h2 class="h3 mb-4"><i class="bi bi-journal-bookmark-fill text-primary me-2"></i>Cursos Livres</h2>
-    <div class="row row-cols-1 row-cols-md-4 g-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 fw-bold mb-0">Cursos livres</h2>
+        <span class="ava-chip px-3 py-2">Atualizado</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4">
         {% for curso in cursos %}
         <div class="col">
-            <div class="card h-100 shadow-sm border-0 course-card">
+            <article class="ava-surface h-100 overflow-hidden">
                 {% if curso.capa %}
-                <img src="{{ curso.capa.url }}" class="card-img-top" alt="{{ curso.titulo }}"
-                    style="height: 150px; object-fit: cover;">
+                <img src="{{ curso.capa.url }}" class="w-100" alt="{{ curso.titulo }}" style="height: 150px; object-fit: cover;">
                 {% else %}
-                <div class="bg-light text-secondary d-flex align-items-center justify-content-center"
-                    style="height: 150px;">
-                    <i class="bi bi-journal fs-1 opacity-50"></i>
+                <div class="d-flex align-items-center justify-content-center" style="height: 150px; background: var(--surface-elevated); color: var(--text-muted);">
+                    <i class="bi bi-journal-bookmark fs-1"></i>
                 </div>
                 {% endif %}
-                <div class="card-body">
-                    <span class="badge bg-secondary mb-2">{{ curso.categoria.nome|default:"Geral" }}</span>
-                    <h5 class="card-title fs-6 fw-bold mb-2">{{ curso.titulo }}</h5>
-                    <p class="card-text text-muted small mb-0">{{ curso.descricao_curta }}</p>
-                </div>
-                <div class="card-footer bg-white border-top-0">
-                    <div class="d-flex justify-content-between align-items-center">
+
+                <div class="p-4 d-flex flex-column h-100">
+                    <span class="ava-chip px-3 py-2 align-self-start mb-3">{{ curso.categoria.nome|default:"Geral" }}</span>
+                    <h3 class="h6 fw-bold mb-2">{{ curso.titulo }}</h3>
+                    <p class="text-muted small mb-4">{{ curso.descricao_curta|default:"Curso com acompanhamento por modulo." }}</p>
+                    <div class="mt-auto d-flex justify-content-between align-items-center">
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ curso.carga_horaria }}h</small>
-                        <a href="{% url 'ava:detalhes_curso' curso.slug %}"
-                            class="btn btn-primary btn-sm rounded-pill px-3">Detalhes</a>
+                        <a href="{% url 'ava:detalhes_curso' curso.slug %}" class="btn btn-primary btn-sm px-3">Detalhes</a>
                     </div>
                 </div>
-            </div>
+            </article>
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="alert alert-info border-0 shadow-sm">
-                <i class="bi bi-info-circle me-2"></i>Nenhum curso disponível no momento.
-            </div>
+            <div class="ava-surface p-4 text-center text-muted">Nenhum curso disponivel no momento.</div>
         </div>
         {% endfor %}
     </div>

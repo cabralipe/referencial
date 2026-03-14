@@ -1,12 +1,20 @@
+from django.db.models import Q
 from django.utils import timezone
+
 from ava.models import (
-    MatriculaCurso, Aula, ConteudoAula,
-    ProgressoAula, ProgressoConteudo, ProgressoModulo, Atividade
+    Atividade,
+    Aula,
+    ConteudoAula,
+    MatriculaCurso,
+    ProgressoAula,
+    ProgressoConteudo,
+    ProgressoModulo,
 )
+
 
 class ProgressoService:
     """
-    Serviço central de cálculo e registro de progressos no AVA.
+    Servico central de calculo e registro de progressos no AVA.
     """
 
     @staticmethod
@@ -17,21 +25,21 @@ class ProgressoService:
         except (ConteudoAula.DoesNotExist, MatriculaCurso.DoesNotExist):
             return False
 
-        # Cria a árvore de progresso se não existir
+        # Cria a arvore de progresso se nao existir.
         ProgressoService._garantir_progressos(matricula, conteudo.aula)
 
         prog_aula = ProgressoAula.objects.get(matricula=matricula, aula=conteudo.aula)
-        prog_conteudo, created = ProgressoConteudo.objects.get_or_create(
+        prog_conteudo, _ = ProgressoConteudo.objects.get_or_create(
             progresso_aula=prog_aula,
-            conteudo=conteudo
+            conteudo=conteudo,
         )
 
         if not prog_conteudo.is_visualizado:
             prog_conteudo.is_visualizado = True
             prog_conteudo.data_visualizacao = timezone.now()
             prog_conteudo.save(update_fields=["is_visualizado", "data_visualizacao"])
-            
-            # Recalcula aula, modulo, curso
+
+            # Recalcula aula, modulo e curso.
             ProgressoService.recalcular_aula(matricula, conteudo.aula)
             return True
         return False
@@ -44,25 +52,37 @@ class ProgressoService:
     @staticmethod
     def recalcular_aula(matricula: MatriculaCurso, aula: Aula):
         """
-        Verifica se a aula foi concluida baseado nos conteúdos obrigatórios e atividades obrigatórias enviadas.
+        Verifica se a aula foi concluida baseado nos conteudos obrigatorios
+        e atividades obrigatorias validas.
         """
         prog_aula = ProgressoAula.objects.get(matricula=matricula, aula=aula)
-        
+
         qt_conteudos = ConteudoAula.objects.filter(aula=aula, is_obrigatorio=True).count()
         qt_visualizados = ProgressoConteudo.objects.filter(
-            progresso_aula=prog_aula, 
-            conteudo__is_obrigatorio=True, 
-            is_visualizado=True
+            progresso_aula=prog_aula,
+            conteudo__is_obrigatorio=True,
+            is_visualizado=True,
         ).count()
 
-        # Verifica atividades obrigatórias com tentativa enviada/corrigida
-        qt_atividades = Atividade.objects.filter(aula=aula, is_obrigatoria=True).count()
-        qt_tentativas = Atividade.objects.filter(
-            aula=aula, 
-            is_obrigatoria=True,
-            tentativas__aluno=matricula.aluno,
-            tentativas__status__in=["enviada", "corrigida"]
-        ).count()
+        # Para ENVIO_ARQUIVO, so conta se houver arquivo anexado.
+        atividades_obrigatorias = Atividade.objects.filter(aula=aula, is_obrigatoria=True)
+        qt_atividades = atividades_obrigatorias.count()
+        qt_tentativas = (
+            atividades_obrigatorias.filter(
+                tentativas__aluno=matricula.aluno,
+                tentativas__status__in=["enviada", "corrigida"],
+            )
+            .filter(
+                ~Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
+                | (
+                    Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
+                    & Q(tentativas__arquivo_enviado__isnull=False)
+                    & ~Q(tentativas__arquivo_enviado="")
+                )
+            )
+            .distinct()
+            .count()
+        )
 
         is_concluida = (qt_visualizados >= qt_conteudos) and (qt_tentativas >= qt_atividades)
 
@@ -70,7 +90,6 @@ class ProgressoService:
             prog_aula.is_concluida = True
             prog_aula.data_conclusao = timezone.now()
             prog_aula.save(update_fields=["is_concluida", "data_conclusao"])
-            
             ProgressoService.recalcular_modulo(matricula, aula.modulo)
         elif not is_concluida and prog_aula.is_concluida:
             prog_aula.is_concluida = False
@@ -82,12 +101,12 @@ class ProgressoService:
     def recalcular_modulo(matricula: MatriculaCurso, modulo):
         prog_modulo = ProgressoModulo.objects.get(matricula=matricula, modulo=modulo)
         aulas_obrig = Aula.objects.filter(modulo=modulo, is_obigatoria=True).count()
-        
+
         aulas_concluidas = ProgressoAula.objects.filter(
-            matricula=matricula, 
-            aula__modulo=modulo, 
+            matricula=matricula,
+            aula__modulo=modulo,
             aula__is_obigatoria=True,
-            is_concluida=True
+            is_concluida=True,
         ).count()
 
         percent = int((aulas_concluidas / aulas_obrig) * 100) if aulas_obrig > 0 else 100
@@ -101,8 +120,8 @@ class ProgressoService:
             prog_modulo.data_conclusao = None
 
         prog_modulo.save(update_fields=["percentual", "is_concluido", "data_conclusao"])
-        
-        # Propaga recalculo p/ Curso
+
+        # Propaga recalculo para o curso.
         ProgressoService.recalcular_curso(matricula)
 
     @staticmethod
@@ -111,15 +130,15 @@ class ProgressoService:
         modulos_concluidos = ProgressoModulo.objects.filter(
             matricula=matricula,
             modulo__is_active=True,
-            is_concluido=True
+            is_concluido=True,
         ).count()
 
         percent = int((modulos_concluidos / modulos) * 100) if modulos > 0 else 100
         matricula.progresso_percentual = percent
 
         if percent >= matricula.curso.progresso_minimo and matricula.status != "concluida":
-            # Poderia checar nota minima também
+            # Poderia checar nota minima tambem.
             matricula.status = "concluida"
             matricula.data_conclusao = timezone.now()
-        
+
         matricula.save(update_fields=["progresso_percentual", "status", "data_conclusao"])
