@@ -1,0 +1,121 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Resposta da Atividade | Gestao AVA{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 fw-bold mb-0">Resposta do usuario</h1>
+        <a href="{% url 'ava:gestao_dashboard' %}" class="btn btn-outline-primary">Voltar ao dashboard</a>
+    </div>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Dados da tentativa</h2>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <strong>Usuario:</strong>
+                <div>{{ tentativa.aluno.nome|default:tentativa.aluno.email }} ({{ tentativa.aluno.email }})</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Status:</strong>
+                <div>{{ tentativa.get_status_display }}</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Curso:</strong>
+                <div>{{ tentativa.atividade.aula.modulo.curso.titulo }}</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Modulo / Aula:</strong>
+                <div>{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Atividade:</strong>
+                <div>{{ tentativa.atividade.titulo }} ({{ tentativa.atividade.get_tipo_display }})</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Nota:</strong>
+                <div>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Inicio:</strong>
+                <div>{{ tentativa.data_inicio|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="col-md-6">
+                <strong>Envio:</strong>
+                <div>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
+            </div>
+            {% if tentativa.data_correcao %}
+            <div class="col-md-6">
+                <strong>Correcao:</strong>
+                <div>{{ tentativa.data_correcao|date:"d/m/Y H:i" }}</div>
+            </div>
+            {% endif %}
+            <div class="col-md-12">
+                <strong>Resposta textual:</strong>
+                <div class="mt-2 p-3 rounded" style="background: var(--surface-elevated);">
+                    {{ tentativa.texto_resposta|default:"-"|linebreaks }}
+                </div>
+            </div>
+            <div class="col-md-12">
+                <strong>Anexo enviado:</strong>
+                <div class="mt-2">
+                    {% if tentativa.arquivo_enviado %}
+                    <a class="btn btn-sm btn-outline-primary" href="{{ tentativa.arquivo_enviado.url }}" target="_blank" rel="noopener noreferrer">
+                        Abrir arquivo <i class="bi bi-box-arrow-up-right ms-1"></i>
+                    </a>
+                    <small class="text-muted ms-2">{{ tentativa.arquivo_enviado.name }}</small>
+                    {% else %}
+                    <span class="text-muted">Nenhum anexo nesta tentativa.</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4">
+        <h2 class="h5 fw-bold mb-3">Respostas de quiz/questionario</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Questao</th>
+                        <th>Resposta do usuario</th>
+                        <th>Correta?</th>
+                        <th>Nota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in respostas_quiz %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.questao.enunciado|safe }}</td>
+                        <td>
+                            {% if item.alternativa_selecionada %}
+                            {{ item.alternativa_selecionada.texto }}
+                            {% elif item.texto_livre %}
+                            {{ item.texto_livre }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.is_correta %}
+                            <span class="badge text-bg-success">Sim</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Nao</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.nota_item }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">Esta tentativa nao possui itens de quiz.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

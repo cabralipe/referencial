@@ -175,6 +175,8 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     atividade = get_object_or_404(Atividade, id=atividade_id, aula=aula)
+    questoes = list(atividade.questoes.all().prefetch_related("alternativas"))
+    usa_formulario_quiz = atividade.tipo in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO] or bool(questoes)
 
     tentativa_finalizada = (
         AtividadeTentativa.objects.filter(
@@ -216,6 +218,8 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
 
         if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not request.FILES.get("arquivo_enviado"):
             messages.error(request, "Essa atividade exige envio de arquivo.")
+        elif usa_formulario_quiz and not questoes:
+            messages.error(request, "Este quiz ainda nao possui questoes cadastradas.")
         else:
             tentativa = tentativa_em_andamento
             if tentativa is None:
@@ -224,7 +228,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                     messages.warning(request, erro)
                     return redirect("ava:aluno_acessar_aula", curso_slug=curso_slug, aula_id=aula_id)
 
-            if atividade.tipo in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
+            if usa_formulario_quiz:
                 dados_respostas = {k: v for k, v in request.POST.items() if k.isdigit()}
                 AtividadeService.submeter_quiz(tentativa, dados_respostas)
                 messages.success(request, "Questionario enviado com sucesso!")
@@ -234,14 +238,14 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 AtividadeService.submeter_tarefa_discursiva(tentativa, texto, arquivo)
                 messages.success(request, "Atividade enviada com sucesso!")
 
-            return redirect("ava:aluno_acessar_aula", curso_slug=curso_slug, aula_id=aula_id)
+            return redirect(
+                "ava:aluno_responder_atividade",
+                curso_slug=curso_slug,
+                aula_id=aula_id,
+                atividade_id=atividade_id,
+            )
 
-    tentativa = tentativa_finalizada if limite_atingido else tentativa_em_andamento
-
-    # Se for GET, renderiza a prova
-    questoes = []
-    if atividade.tipo in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
-        questoes = atividade.questoes.all().prefetch_related("alternativas")
+    tentativa = tentativa_finalizada or tentativa_em_andamento
 
     return render(
         request,
@@ -251,6 +255,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             "aula": aula,
             "atividade": atividade,
             "questoes": questoes,
+            "usa_formulario_quiz": usa_formulario_quiz,
             "tentativa": tentativa,
         },
     )

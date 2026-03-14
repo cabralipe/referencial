@@ -13,6 +13,8 @@ from ava.models import (
     MatriculaCurso,
     ProgressoAula,
     ProgressoConteudo,
+    QuizAlternativa,
+    QuizQuestao,
 )
 from ava.services import ProgressoService
 from core.models import Cliente
@@ -98,6 +100,38 @@ class AVAStudentFlowTests(TestCase):
         self.assertContains(response, 'name="arquivo_enviado"', html=False)
         self.assertNotContains(response, "Atividade concluida")
         self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
+
+    def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.QUIZ,
+            titulo="Quiz da aula",
+            is_obrigatoria=True,
+        )
+        questao = QuizQuestao.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            enunciado="Qual alternativa esta correta?",
+            ordem=1,
+        )
+        QuizAlternativa.objects.create(
+            cliente=self.cliente,
+            questao=questao,
+            texto="Alternativa A",
+            ordem=1,
+            is_correta=True,
+        )
+
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Qual alternativa esta correta?")
+        self.assertContains(response, "Alternativa A")
 
     def test_marcar_conteudo_visualizado_funciona(self):
         conteudo = ConteudoAula.objects.create(
@@ -205,3 +239,25 @@ class AVAStudentFlowTests(TestCase):
         ProgressoService.recalcular_aula(self.matricula, self.aula_1)
         progresso.refresh_from_db()
         self.assertTrue(progresso.is_concluida)
+
+    def test_post_atividade_mostra_concluida_e_anexo_enviado(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.ENVIO_ARQUIVO,
+            titulo="Entrega final",
+            is_obrigatoria=True,
+        )
+
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        arquivo = SimpleUploadedFile("resposta.pdf", b"%PDF-1.4", content_type="application/pdf")
+
+        response = self.client.post(url, {"arquivo_enviado": arquivo}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.redirect_chain[-1][0], url)
+        self.assertContains(response, "Atividade concluida")
+        self.assertContains(response, "Anexo enviado:")
+        self.assertContains(response, "resposta.pdf")

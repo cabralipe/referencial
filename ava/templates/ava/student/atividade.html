@@ -29,28 +29,34 @@
     <form method="post" enctype="multipart/form-data" class="ava-surface p-4 p-md-5">
         {% csrf_token %}
 
-        {% if atividade.tipo == 'quiz' or atividade.tipo == 'questionario' %}
-        {% for questao in questoes %}
-        <div class="mb-4 pb-4 border-bottom {% if forloop.last %}mb-0 pb-0 border-0{% endif %}">
-            <h3 class="h6 fw-semibold lh-base mb-3">
-                <span class="badge text-bg-secondary me-2">{{ forloop.counter }}</span>
-                {{ questao.enunciado|safe }}
-            </h3>
+        {% if usa_formulario_quiz %}
+        {% if questoes %}
+            {% for questao in questoes %}
+            <div class="mb-4 pb-4 border-bottom {% if forloop.last %}mb-0 pb-0 border-0{% endif %}">
+                <h3 class="h6 fw-semibold lh-base mb-3">
+                    <span class="badge text-bg-secondary me-2">{{ forloop.counter }}</span>
+                    {{ questao.enunciado|safe }}
+                </h3>
 
-            {% if questao.alternativas.all %}
-            <div class="list-group list-group-flush ms-1 ms-md-3">
-                {% for alternativa in questao.alternativas.all %}
-                <label class="list-group-item list-group-item-action rounded-3 mb-2 border" style="cursor: pointer;">
-                    <input class="form-check-input me-2" type="radio" name="{{ questao.id }}" value="{{ alternativa.id }}" required>
-                    {{ alternativa.texto }}
-                </label>
-                {% endfor %}
+                {% if questao.alternativas.exists %}
+                <div class="list-group list-group-flush ms-1 ms-md-3">
+                    {% for alternativa in questao.alternativas.all %}
+                    <label class="list-group-item list-group-item-action rounded-3 mb-2 border" style="cursor: pointer;">
+                        <input class="form-check-input me-2" type="radio" name="{{ questao.id }}" value="{{ alternativa.id }}" required>
+                        {{ alternativa.texto }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <textarea class="form-control" name="{{ questao.id }}" rows="4" placeholder="Sua resposta" required></textarea>
+                {% endif %}
             </div>
-            {% else %}
-            <textarea class="form-control" name="{{ questao.id }}" rows="4" placeholder="Sua resposta" required></textarea>
-            {% endif %}
+            {% endfor %}
+        {% else %}
+        <div class="alert alert-warning mb-0">
+            Este quiz ainda nao possui questoes cadastradas no admin.
         </div>
-        {% endfor %}
+        {% endif %}
 
         {% elif atividade.tipo == 'tarefa' or atividade.tipo == 'producao_textual' or atividade.tipo == 'reflexao' %}
         <div class="mb-4">
@@ -70,9 +76,15 @@
         {% endif %}
 
         <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+            {% if usa_formulario_quiz and not questoes %}
+            <button type="submit" class="btn btn-secondary btn-lg px-5" disabled>
+                Cadastre as questoes no admin
+            </button>
+            {% else %}
             <button type="submit" class="btn btn-primary btn-lg px-5">
                 Enviar respostas <i class="bi bi-send ms-2"></i>
             </button>
+            {% endif %}
         </div>
     </form>
 
@@ -85,9 +97,10 @@
         <p class="text-muted mb-4">Voce ja enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y \a\s H:i" }}.</p>
 
         {% if tentativa.arquivo_enviado %}
+        <p class="small text-muted mb-2">Anexo enviado: {{ tentativa.arquivo_enviado.name }}</p>
         <p class="mb-3">
             <a href="{{ tentativa.arquivo_enviado.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
-                Ver arquivo enviado <i class="bi bi-box-arrow-up-right ms-1"></i>
+                Abrir anexo enviado <i class="bi bi-box-arrow-up-right ms-1"></i>
             </a>
         </p>
         {% endif %}

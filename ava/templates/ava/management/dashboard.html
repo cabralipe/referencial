@@ -1,0 +1,307 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Gestao AVA | PROLUC{% endblock %}
+
+{% block content %}
+<section class="section-hero py-5">
+    <div class="container py-2">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <span class="badge text-bg-light mb-2">Gestao AVA</span>
+                <h1 class="display-6 fw-bold text-white mb-1">Dashboard de respostas e utilizacao</h1>
+                <p class="text-white-50 mb-0">Acompanhe envios, resolucao de questoes e desempenho por usuario, curso e modulo.</p>
+            </div>
+            <a href="{% url 'ava:aluno_dashboard' %}" class="btn btn-light rounded-pill px-4">
+                Ir para AVA do aluno
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="container pb-5">
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Filtros</h2>
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="q" class="form-label">Busca</label>
+                <input id="q" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Aluno, atividade, aula, modulo, curso">
+            </div>
+            <div class="col-md-4">
+                <label for="usuario" class="form-label">Usuario</label>
+                <select id="usuario" name="usuario" class="form-select">
+                    <option value="">Todos</option>
+                    {% for usuario in usuarios %}
+                    <option value="{{ usuario.id }}" {% if filtros.usuario_id == usuario.id %}selected{% endif %}>
+                        {{ usuario.nome|default:usuario.email }} ({{ usuario.email }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="curso" class="form-label">Curso</label>
+                <select id="curso" name="curso" class="form-select">
+                    <option value="">Todos</option>
+                    {% for curso in cursos %}
+                    <option value="{{ curso.id }}" {% if filtros.curso_id == curso.id %}selected{% endif %}>{{ curso.titulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label for="modulo" class="form-label">Modulo</label>
+                <select id="modulo" name="modulo" class="form-select">
+                    <option value="">Todos</option>
+                    {% for modulo in modulos %}
+                    <option value="{{ modulo.id }}" {% if filtros.modulo_id == modulo.id %}selected{% endif %}>
+                        {{ modulo.titulo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="aula" class="form-label">Aula</label>
+                <select id="aula" name="aula" class="form-select">
+                    <option value="">Todas</option>
+                    {% for aula in aulas %}
+                    <option value="{{ aula.id }}" {% if filtros.aula_id == aula.id %}selected{% endif %}>{{ aula.titulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="status" class="form-label">Status da tentativa</label>
+                <select id="status" name="status" class="form-select">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label for="tipo" class="form-label">Tipo de atividade</label>
+                <select id="tipo" name="tipo" class="form-select">
+                    <option value="">Todos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="data_inicio" class="form-label">Data inicial</label>
+                <input id="data_inicio" type="date" name="data_inicio" class="form-control" value="{{ data_inicio_raw }}">
+            </div>
+            <div class="col-md-3">
+                <label for="data_fim" class="form-label">Data final</label>
+                <input id="data_fim" type="date" name="data_fim" class="form-control" value="{{ data_fim_raw }}">
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+            <div class="col-md-2 d-grid">
+                <a href="{% url 'ava:gestao_dashboard' %}" class="btn btn-outline-secondary">Limpar</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Tentativas</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.total_tentativas }}</h3>
+                <small class="text-muted">Total no filtro</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Taxa de envio</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.taxa_envio }}%</h3>
+                <small class="text-muted">{{ metricas.total_enviadas }} enviadas</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Taxa de correcao</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.taxa_correcao }}%</h3>
+                <small class="text-muted">{{ metricas.total_corrigidas }} corrigidas</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Com anexo</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.total_com_anexo }}</h3>
+                <small class="text-muted">Envios com arquivo</small>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Resolucao de questoes</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.quiz.taxa_resolucao }}%</h3>
+                <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas }}</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Taxa de acerto</p>
+                <h3 class="h4 fw-bold mb-0">{{ metricas.quiz.taxa_acerto }}%</h3>
+                <small class="text-muted">{{ metricas.quiz.total_corretas }} corretas</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Media de nota</p>
+                <h3 class="h4 fw-bold mb-0">
+                    {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif %}
+                </h3>
+                <small class="text-muted">Tentativas com nota</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Ultimo envio</p>
+                <h3 class="h6 fw-bold mb-0">
+                    {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{% endif %}
+                </h3>
+                <small class="text-muted">Atualizacao mais recente</small>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <article class="ava-surface p-3 h-100">
+                <h2 class="h6 fw-bold mb-3">Top usuarios</h2>
+                <ul class="list-group list-group-flush">
+                    {% for item in resumo_por_usuario %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ item.aluno__nome|default:item.aluno__email }}</strong>
+                            <div class="small text-muted">{{ item.aluno__email }}</div>
+                        </div>
+                        <span class="badge text-bg-primary rounded-pill">{{ item.total }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item px-0 text-muted">Sem dados para o filtro.</li>
+                    {% endfor %}
+                </ul>
+            </article>
+        </div>
+        <div class="col-lg-4">
+            <article class="ava-surface p-3 h-100">
+                <h2 class="h6 fw-bold mb-3">Top cursos</h2>
+                <ul class="list-group list-group-flush">
+                    {% for item in resumo_por_curso %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <strong>{{ item.atividade__aula__modulo__curso__titulo }}</strong>
+                        <span class="badge text-bg-primary rounded-pill">{{ item.total }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item px-0 text-muted">Sem dados para o filtro.</li>
+                    {% endfor %}
+                </ul>
+            </article>
+        </div>
+        <div class="col-lg-4">
+            <article class="ava-surface p-3 h-100">
+                <h2 class="h6 fw-bold mb-3">Top modulos</h2>
+                <ul class="list-group list-group-flush">
+                    {% for item in resumo_por_modulo %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <strong>{{ item.atividade__aula__modulo__titulo }}</strong>
+                        <span class="badge text-bg-primary rounded-pill">{{ item.total }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item px-0 text-muted">Sem dados para o filtro.</li>
+                    {% endfor %}
+                </ul>
+            </article>
+        </div>
+    </section>
+
+    <section class="ava-surface p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 fw-bold mb-0">Tentativas e respostas dos usuarios</h2>
+            <span class="text-muted small">{{ page_obj.paginator.count }} registros</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Curso / Modulo / Aula</th>
+                        <th>Atividade</th>
+                        <th>Status</th>
+                        <th>Envio</th>
+                        <th>Nota</th>
+                        <th>Anexo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tentativa in page_obj.object_list %}
+                    <tr>
+                        <td>
+                            <strong>{{ tentativa.aluno.nome|default:tentativa.aluno.email }}</strong><br>
+                            <small class="text-muted">{{ tentativa.aluno.email }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ tentativa.atividade.aula.modulo.curso.titulo }}</strong><br>
+                            <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ tentativa.atividade.titulo }}</strong><br>
+                            <small class="text-muted">{{ tentativa.atividade.get_tipo_display }}</small>
+                        </td>
+                        <td>{{ tentativa.get_status_display }}</td>
+                        <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                        <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}</td>
+                        <td>
+                            {% if tentativa.arquivo_enviado %}
+                            <span class="badge text-bg-success">Sim</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Nao</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}" class="btn btn-sm btn-outline-primary">Ver resposta</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros selecionados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav aria-label="Paginacao da gestao AVA">
+            <ul class="pagination mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+
+                <li class="page-item disabled">
+                    <span class="page-link">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Proxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Proxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 
 from .models import (
@@ -146,6 +147,27 @@ class AtividadeInline(AVAStackedInline):
     model = Atividade
 
 
+class QuizAlternativaInline(AVATabularInline):
+    model = QuizAlternativa
+    extra = 2
+    fields = ("ordem", "texto", "is_correta", "feedback_especifico")
+    exclude = ("cliente",)
+
+
+class QuizQuestaoAdminForm(forms.ModelForm):
+    class Meta:
+        model = QuizQuestao
+        fields = "__all__"
+
+    def clean_atividade(self):
+        atividade = self.cleaned_data.get("atividade")
+        if atividade and atividade.tipo not in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
+            raise forms.ValidationError(
+                "A questão de quiz só pode ser vinculada a atividades do tipo Quiz ou Questionário."
+            )
+        return atividade
+
+
 @admin.register(TrilhaFormativa)
 class TrilhaFormativaAdmin(AVAModelAdmin):
     list_display = ("nome", "cliente", "is_active", "ordem_exibicao")
@@ -192,9 +214,19 @@ class AtividadeAdmin(AVAModelAdmin):
 
 @admin.register(QuizQuestao)
 class QuizQuestaoAdmin(AVAModelAdmin):
+    form = QuizQuestaoAdminForm
     list_display = ("ordem", "atividade", "cliente")
     list_filter = ("atividade__aula__modulo__curso",)
     search_fields = ("enunciado", "atividade__titulo")
+    inlines = [QuizAlternativaInline]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "atividade":
+            formfield.queryset = formfield.queryset.filter(
+                tipo__in=[Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]
+            )
+        return formfield
 
 
 @admin.register(QuizAlternativa)
