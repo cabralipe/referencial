@@ -70,23 +70,26 @@
                             <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ curso.carga_horaria }}h</small>
                             <a href="{% url 'ava:detalhes_curso' curso.slug %}" class="btn btn-outline-primary btn-sm px-3">Detalhes</a>
                         </div>
-                        {% if user.is_authenticated %}
-                            {% if curso.aluno_matriculado %}
-                            <a href="{% url 'ava:aluno_curso_detalhe' curso.slug %}" class="btn btn-primary btn-sm w-100">
-                                Acessar curso
-                            </a>
-                            {% elif curso.is_aberto %}
-                            <form method="post" action="{% url 'ava:matricular_curso' curso.slug %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever-se no curso</button>
-                            </form>
-                            {% else %}
-                            <button class="btn btn-outline-secondary btn-sm w-100" disabled>Inscricao restrita</button>
-                            {% endif %}
-                        {% else %}
-                        <a href="/admin/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">
-                            Entrar para se inscrever
+                        {% if curso.aluno_matriculado %}
+                        <a href="{% url 'ava:aluno_curso_detalhe' curso.slug %}" class="btn btn-primary btn-sm w-100">
+                            Acessar curso
                         </a>
+                        {% else %}
+                            {% if user.is_authenticated %}
+                                {% if curso.is_aberto %}
+                                <form method="post" action="{% url 'ava:matricular_curso' curso.slug %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever-se no curso</button>
+                                </form>
+                                {% else %}
+                                <button class="btn btn-outline-secondary btn-sm w-100" disabled>Inscrever-se no curso</button>
+                                <small class="text-muted d-block mt-2 text-center">Inscricoes fechadas no momento.</small>
+                                {% endif %}
+                            {% else %}
+                            <a href="/admin/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">
+                                Inscrever-se no curso
+                            </a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

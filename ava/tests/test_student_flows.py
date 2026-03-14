@@ -281,3 +281,10 @@ class AVAStudentFlowTests(TestCase):
         response = self.client.get(reverse("ava:catalogo"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Acessar curso")
+
+    def test_catalogo_exibe_botao_inscrever_se_quando_usuario_nao_logado(self):
+        self.client.logout()
+
+        response = self.client.get(reverse("ava:catalogo"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Inscrever-se no curso")
