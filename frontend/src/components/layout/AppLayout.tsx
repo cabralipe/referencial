@@ -149,7 +149,7 @@ export function AppLayout() {
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (isSchoolLeader || isProfessor) {
+    if (false && (isSchoolLeader || isProfessor)) {
       return [
         { to: '/inicio', label: 'InÃ­cio', icon: 'dashboard' },
         avaNavItem,
@@ -157,16 +157,24 @@ export function AppLayout() {
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (isSchoolLeader) {
+    if (false && isSchoolLeader) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (isProfessor) {
+    if (false && isProfessor) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (isSchoolLeader || isProfessor) {
+      return [
+        { to: '/inicio', label: 'Inicio', icon: 'dashboard' },
+        avaNavItem,
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
