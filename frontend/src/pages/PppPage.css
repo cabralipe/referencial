@@ -1,11 +1,21 @@
+/* ===== PPP PAGE — BASE ===== */
 .ppp-page {
   min-width: 0;
+  /* Garante que o conteúdo não vaze horizontalmente */
+  overflow-x: hidden;
+}
+
+.ppp-page__header-actions {
+  min-width: 0;
+  /* No mobile o container de actions ocupa toda a largura */
+  width: 100%;
 }
 
 .ppp-page__header-actions > * {
   min-width: 0;
 }
 
+/* ===== EDITOR CKEDITOR ===== */
 .ppp-page .ck.ck-editor,
 .ppp-page .ck.ck-editor__main,
 .ppp-page .ck.ck-editor__top {
@@ -31,13 +41,55 @@
   overscroll-behavior: contain;
 }
 
+/* ===== INFO BOX (metadados do PPP) ===== */
+.ppp-page .ppp-info-box {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ===== MOBILE (≤ 640px) ===== */
 @media (max-width: 640px) {
+  /* Header: actions em coluna, ocupam largura total */
   .ppp-page .page-header__actions {
     width: 100%;
   }
 
+  .ppp-page .page-header__main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Select de escola: ocupa 100% de largura */
+  .ppp-page__header-actions select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Botões de ação no header: 100% de largura */
+  .ppp-page__header-actions button,
+  .ppp-page__header-actions a {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Status badge: centralizado em mobile */
+  .ppp-page__header-actions .ppp-status-badge {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Painel de metadados: não tem min/max-width no mobile */
+  .ppp-page .ppp-info-box {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Editor CKEditor */
   .ppp-page .ck.ck-toolbar {
     padding: 0.5rem;
+    /* Reduz o tamanho dos ícones no mobile para caber mais */
+    gap: 0.15rem;
   }
 
   .ppp-page .ck.ck-toolbar .ck.ck-toolbar__separator {
@@ -45,7 +97,21 @@
   }
 
   .ppp-page .ck.ck-editor__main > .ck-editor__editable {
-    min-height: 180px;
+    min-height: 200px;
     max-height: 60vh;
+    /* Previne zoom acidental em iOS */
+    font-size: 16px;
+  }
+
+  /* Padding interno das seções reduzido */
+  .ppp-page .ppp-section-card {
+    padding: 0.75rem;
+  }
+}
+
+/* ===== TABLET intermediário (641px–1023px) ===== */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .ppp-page__header-actions {
+    width: auto;
   }
 }

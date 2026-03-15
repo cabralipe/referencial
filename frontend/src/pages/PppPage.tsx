@@ -630,7 +630,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               <select
                 value={selectedEscolaId ?? ''}
                 onChange={(event) => setSelectedEscolaId(event.target.value ? Number(event.target.value) : null)}
-                className="w-full sm:min-w-[240px] sm:w-auto"
+                className="w-full sm:min-w-[200px] sm:w-auto"
               >
                 <option value="">Selecione a escola</option>
                 {(escolasQuery.data ?? []).map((escola) => (
@@ -640,7 +640,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                 ))}
               </select>
             )}
-            <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
+            <span className={`ppp-status-badge w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
             {!isProfessor && (
               <>
                 <Button className="w-full sm:w-auto" variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
@@ -672,20 +672,20 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             shouldLoadOverview ? 'lg:grid-cols-[1.4fr_0.6fr]' : 'lg:grid-cols-1'
           }`}
         >
-          <div className={shouldLoadOverview ? 'space-y-4 lg:col-span-2' : 'space-y-4'}>
+          <div className="min-w-0 space-y-4">
             <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-              <div className="space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <span className="inline-flex rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">
                   Documento escolar
                 </span>
                 <div>
-                  <h2 className="text-xl font-extrabold text-[var(--color-text)] sm:text-2xl">{ppp.escola_nome}</h2>
+                  <h2 className="break-words text-xl font-extrabold text-[var(--color-text)] sm:text-2xl">{ppp.escola_nome}</h2>
                   <p className="break-words text-sm text-[var(--color-text-secondary)]">
                     Última edição: {formatDateTime(ppp.updated_at)} · Por {ppp.ultima_edicao_por_nome ?? 'colaborador não identificado'}
                   </p>
                 </div>
               </div>
-              <div className="flex w-full min-w-0 flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)] sm:min-w-[220px] sm:max-w-[320px]">
+              <div className="ppp-info-box flex w-full flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)] sm:w-auto sm:min-w-[200px] sm:max-w-[300px]">
                 <span>
                   <strong className="text-[var(--color-text)]">Comentários abertos:</strong> {isPppAvailable ? comentariosAbertos : 'Disponível após conclusão'}
                 </span>
@@ -746,7 +746,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             </Card>
           </div>
 
-          <div className={shouldLoadOverview ? 'space-y-4 lg:col-span-2' : 'space-y-4'}>
+          <div className="space-y-4">
             {shouldLoadOverview && (
               <Card>
                 <div className="space-y-3">
