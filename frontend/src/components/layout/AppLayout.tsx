@@ -135,7 +135,7 @@ export function AppLayout() {
   const avaHref = buildBackendUrl('/ava/catalogo/');
 
   const navItems = useMemo(() => {
-    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
+    const avaNavItem = { href: avaHref, label: 'Acessar AVA', icon: 'library', external: true } as const;
     if (isGtMember) {
       return [
         { to: '/inicio', label: 'Início', icon: 'dashboard' },
@@ -146,6 +146,14 @@ export function AppLayout() {
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
         { to: '/mural', label: 'Mural', icon: 'comment' },
         { to: '/ppp', label: 'PPP', icon: 'kanban' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (isSchoolLeader || isProfessor) {
+      return [
+        { to: '/inicio', label: 'InÃ­cio', icon: 'dashboard' },
+        avaNavItem,
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
@@ -213,7 +221,7 @@ export function AppLayout() {
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
     return items;
-  }, [isAdmin, isGtMember, isRedator, user?.role]);
+  }, [avaHref, isAdmin, isGtMember, isProfessor, isRedator, isSchoolLeader, user?.role]);
 
   const selectedCliente = useMemo(() => {
     if (!isSuperAdmin) return null;
