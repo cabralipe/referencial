@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useComentarios, useCreateComentario, useUpdateComentario } from '@/hooks/useComentarios';
 import { useConcludePpp, usePppDocumento, usePppOverview, useUpdatePppConteudo } from '@/hooks/usePpp';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
+import './PppPage.css';
 
 type PppPageProps = {
   adminMode?: boolean;
@@ -261,7 +262,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     const error = documentoQuery.error;
     const message = error instanceof ApiError ? error.message : 'Não foi possível carregar o PPP da escola.';
     return (
-      <div className="space-y-6">
+      <div className="ppp-page space-y-6">
         <PageHeader title="PPP" description="Houve um problema ao abrir o documento da escola." />
         <Card>
           <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center">
@@ -275,7 +276,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
 
   if (!ppp) {
     return (
-      <div className="space-y-6">
+      <div className="ppp-page space-y-6">
         <PageHeader
           title="PPP"
           description={
@@ -305,17 +306,17 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   const comentariosAbertos = ppp.comentarios_abertos ?? comentariosOrdenados.filter((item) => !item.resolvido).length;
 
   return (
-    <div className="space-y-6">
+    <div className="ppp-page space-y-6">
       <PageHeader
         title={adminMode ? 'Admin · PPP por escola' : 'PPP da Escola'}
         description={pageDescription}
         actions={(
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="ppp-page__header-actions flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {shouldLoadOverview && (
               <select
                 value={selectedEscolaId ?? ''}
                 onChange={(event) => setSelectedEscolaId(event.target.value ? Number(event.target.value) : null)}
-                className="min-w-[240px]"
+                className="w-full sm:min-w-[240px] sm:w-auto"
               >
                 <option value="">Selecione a escola</option>
                 {(escolasQuery.data ?? []).map((escola) => (
@@ -325,16 +326,16 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                 ))}
               </select>
             )}
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
+            <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
             {!isProfessor && (
               <>
-                <Button variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
                   Baixar PDF
                 </Button>
-                <Button variant="secondary" onClick={handleSave} disabled={!ppp.can_edit || updatePpp.isPending}>
+                <Button className="w-full sm:w-auto" variant="secondary" onClick={handleSave} disabled={!ppp.can_edit || updatePpp.isPending}>
                   {updatePpp.isPending ? 'Salvando...' : 'Salvar texto'}
                 </Button>
-                <Button variant="primary" onClick={handleConclude} disabled={!ppp.can_conclude || concludePpp.isPending}>
+                <Button className="w-full sm:w-auto" variant="primary" onClick={handleConclude} disabled={!ppp.can_conclude || concludePpp.isPending}>
                   {concludePpp.isPending ? 'Concluindo...' : 'Concluir PPP'}
                 </Button>
               </>
@@ -352,21 +353,21 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             backgroundSize: '32px 32px, 32px 32px',
           }}
         />
-        <div className="relative grid gap-4 px-5 py-5 lg:grid-cols-[1.4fr_0.6fr]">
+        <div className="relative grid gap-4 px-3 py-3 sm:px-5 sm:py-5 lg:grid-cols-[1.4fr_0.6fr]">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4">
+            <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <span className="inline-flex rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">
                   Documento escolar
                 </span>
                 <div>
-                  <h2 className="text-2xl font-extrabold text-[var(--color-text)]">{ppp.escola_nome}</h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
+                  <h2 className="text-xl font-extrabold text-[var(--color-text)] sm:text-2xl">{ppp.escola_nome}</h2>
+                  <p className="break-words text-sm text-[var(--color-text-secondary)]">
                     Última edição: {formatDateTime(ppp.updated_at)} · Por {ppp.ultima_edicao_por_nome ?? 'colaborador não identificado'}
                   </p>
                 </div>
               </div>
-              <div className="flex min-w-[220px] flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)]">
+              <div className="flex w-full min-w-0 flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)] sm:min-w-[220px] sm:max-w-[320px]">
                 <span>
                   <strong className="text-[var(--color-text)]">Comentários abertos:</strong> {isPppAvailable ? comentariosAbertos : 'Disponível após conclusão'}
                 </span>
@@ -386,7 +387,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
 
             <Card className="border-none bg-transparent p-0 shadow-none" noPadding>
               {isPppAvailable ? (
-                <div className="space-y-4 rounded-[14px] bg-white p-4">
+                <div className="space-y-4 rounded-[14px] bg-white p-3 sm:p-4">
                   <label className="block space-y-2">
                     <span className="text-sm font-semibold text-[var(--color-text)]">Título do documento</span>
                     <input
@@ -397,7 +398,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     />
                   </label>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-sm font-semibold text-[var(--color-text)]">Texto colaborativo</span>
                       {(isProfessor || !ppp.can_edit) && (
                         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
@@ -414,7 +415,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 rounded-[14px] bg-white p-6">
+                <div className="space-y-3 rounded-[14px] bg-white p-4 sm:p-6">
                   <span className="inline-flex w-fit rounded-full bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-warning)]">
                     Visualização indisponível
                   </span>
@@ -449,13 +450,13 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                             : 'border-[var(--color-border)] bg-white'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <strong className="text-sm text-[var(--color-text)]">{item.escola_nome}</strong>
                           <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_CLASSES[item.status] ?? statusClass}`}>
                             {STATUS_LABELS[item.status] ?? item.status}
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+                        <div className="mt-2 flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
                           <span>{item.comentarios_abertos} comentário(s) aberto(s)</span>
                           <span>{formatDateTime(item.updated_at)}</span>
                         </div>
@@ -485,7 +486,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                 </div>
 
                 {isProfessor ? (
-                  <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-8">
+                  <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
                     <p className="text-sm text-[var(--color-text-secondary)]">
                       Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
                     </p>
@@ -527,7 +528,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                         <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
                         <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
                       </div>
-                      <Button type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
+                      <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
                         {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
                       </Button>
                     </form>
@@ -535,7 +536,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     <div className="space-y-3">
                       {comentariosOrdenados.map((comentario) => (
                         <div key={comentario.id} className="rounded-[14px] border border-[var(--color-border)] bg-white p-4">
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <strong className="text-sm text-[var(--color-text)]">Comentário #{comentario.id}</strong>
@@ -554,14 +555,14 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                               </p>
                             </div>
                             {!comentario.resolvido && ppp.can_conclude && (
-                              <Button size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
+                              <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
                                 Resolver
                               </Button>
                             )}
                           </div>
 
                           {comentario.anchor_json && (
-                            <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                            <div className="mt-3 break-all rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                               <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
                               {typeof comentario.anchor_json === 'string' ? comentario.anchor_json : JSON.stringify(comentario.anchor_json)}
                             </div>
@@ -580,7 +581,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                                 onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
                                 placeholder="Atualize o texto do comentário, se necessário."
                               />
-                              <Button size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
+                              <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
                                 Atualizar comentário
                               </Button>
                             </div>
