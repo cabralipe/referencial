@@ -33,6 +33,15 @@ class Comentario(TenantModel):
         related_name="comentarios_resolvidos",
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
+    resposta_html = models.TextField(blank=True, default="")
+    respondido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comentarios_respondidos",
+    )
+    respondido_em = models.DateTimeField(null=True, blank=True)
     mentions = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="comentarios_mencionado", blank=True)
 
     class Meta:

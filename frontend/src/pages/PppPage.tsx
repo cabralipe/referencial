@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
@@ -26,6 +26,12 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_CLASSES: Record<string, string> = {
   em_elaboracao: 'bg-[rgba(245,158,11,0.12)] text-[var(--color-warning)]',
   concluido: 'bg-[rgba(22,163,74,0.12)] text-[var(--color-success)]',
+};
+
+const COMMENT_ACTION_BUTTON_STYLE = {
+  backgroundColor: '#dbeafe',
+  color: '#1d4ed8',
+  border: '1px solid #93c5fd',
 };
 
 function formatDateTime(value?: string | null) {
@@ -70,6 +76,33 @@ function formatCommentReference(anchor: unknown) {
     .map(([key, value]) => `${labels[key] ?? key}: ${String(value)}`);
 
   return parts.join(' • ');
+}
+
+function extractCommentReference(anchor: unknown) {
+  if (!anchor) return { local: '', trecho: '' };
+
+  let parsed = anchor;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return { local: '', trecho: parsed };
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { local: '', trecho: String(parsed) };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  return {
+    local: typeof record.local === 'string' ? record.local : '',
+    trecho: typeof record.trecho === 'string' ? record.trecho : '',
+  };
+}
+
+function stripHtml(value?: string | null) {
+  return (value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export function PppPage({ adminMode = false }: PppPageProps) {
@@ -151,6 +184,9 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   const [comentarioTrecho, setComentarioTrecho] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [comentarioDrafts, setComentarioDrafts] = useState<Record<number, string>>({});
+  const [comentarioRespostaDrafts, setComentarioRespostaDrafts] = useState<Record<number, string>>({});
+  const [comentarioRespostaAbertaId, setComentarioRespostaAbertaId] = useState<number | null>(null);
+  const comentarioTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!ppp) return;
@@ -282,6 +318,26 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     refetchComentarios();
   };
 
+  const handleReplyComentario = (comentario: Comentario) => {
+    setComentarioRespostaAbertaId(comentario.id);
+    setComentarioRespostaDrafts((prev) => ({
+      ...prev,
+      [comentario.id]: prev[comentario.id] ?? stripHtml(comentario.resposta_html),
+    }));
+  };
+
+  const handleSubmitRespostaComentario = async (comentario: Comentario) => {
+    const draft = comentarioRespostaDrafts[comentario.id];
+    if (!draft?.trim()) return;
+    await updateComentario.mutateAsync({
+      comentarioId: comentario.id,
+      payload: { resposta_html: ensureHtml(draft) },
+      etag: comentario.etag,
+    });
+    setComentarioRespostaAbertaId(null);
+    refetchComentarios();
+  };
+
   if ((documentoQuery.isLoading && !ppp) || (shouldLoadOverview && overviewQuery.isLoading && !overviewQuery.data)) {
     return <FullPageLoader message="Carregando PPP da escola..." />;
   }
@@ -400,6 +456,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               <label className="block space-y-2">
                 <span className="text-sm font-semibold text-[var(--color-text)]">Novo comentário</span>
                 <textarea
+                  ref={comentarioTextareaRef}
                   rows={4}
                   value={comentarioTexto}
                   onChange={(event) => setComentarioTexto(event.target.value)}
@@ -476,7 +533,20 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
                   />
 
-                  {!comentario.resolvido && ppp.can_comment && (
+                  {comentario.resposta_html && (
+                    <div className="mt-3 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                        <strong className="text-[var(--color-text)]">Resposta</strong>
+                        {comentario.respondido_em && <span>Respondido em {formatDateTime(comentario.respondido_em)}</span>}
+                      </div>
+                      <div
+                        className="prose prose-sm max-w-none text-[var(--color-text)]"
+                        dangerouslySetInnerHTML={{ __html: comentario.resposta_html }}
+                      />
+                    </div>
+                  )}
+
+                  {!comentario.resolvido && ppp.can_comment && comentario.autor === user?.id && (
                     <div className="mt-3 space-y-2">
                       <textarea
                         rows={3}
@@ -484,9 +554,51 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                         onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
                         placeholder="Atualize o texto do comentário, se necessário."
                       />
-                      <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
+                      <Button
+                        className="w-full sm:w-auto"
+                        size="sm"
+                        variant="ghost"
+                        style={COMMENT_ACTION_BUTTON_STYLE}
+                        onClick={() => handleUpdateComentario(comentario)}
+                      >
                         Atualizar comentário
                       </Button>
+                    </div>
+                  )}
+
+                  {!comentario.resolvido &&
+                    ppp.can_comment &&
+                    comentario.autor !== user?.id &&
+                    (!comentario.respondido_por || comentario.respondido_por === user?.id) && (
+                    <div className="mt-3">
+                      {comentarioRespostaAbertaId === comentario.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            rows={3}
+                            value={comentarioRespostaDrafts[comentario.id] ?? ''}
+                            onChange={(event) => setComentarioRespostaDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                            placeholder="Escreva a resposta para este comentário."
+                          />
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button className="w-full sm:w-auto" size="sm" variant="primary" onClick={() => handleSubmitRespostaComentario(comentario)}>
+                              {comentario.resposta_html ? 'Atualizar resposta' : 'Enviar resposta'}
+                            </Button>
+                            <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setComentarioRespostaAbertaId(null)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full sm:w-auto"
+                          size="sm"
+                          variant="ghost"
+                          style={COMMENT_ACTION_BUTTON_STYLE}
+                          onClick={() => handleReplyComentario(comentario)}
+                        >
+                          {comentario.resposta_html ? 'Editar resposta' : 'Responder comentário'}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -779,7 +891,20 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                             dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
                           />
 
-                          {!comentario.resolvido && ppp.can_comment && (
+                          {comentario.resposta_html && (
+                            <div className="mt-3 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-3">
+                              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                                <strong className="text-[var(--color-text)]">Resposta</strong>
+                                {comentario.respondido_em && <span>Respondido em {formatDateTime(comentario.respondido_em)}</span>}
+                              </div>
+                              <div
+                                className="prose prose-sm max-w-none text-[var(--color-text)]"
+                                dangerouslySetInnerHTML={{ __html: comentario.resposta_html }}
+                              />
+                            </div>
+                          )}
+
+                          {!comentario.resolvido && ppp.can_comment && comentario.autor === user?.id && (
                             <div className="mt-3 space-y-2">
                               <textarea
                                 rows={3}
@@ -787,9 +912,51 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                                 onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
                                 placeholder="Atualize o texto do comentário, se necessário."
                               />
-                              <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
+                              <Button
+                                className="w-full sm:w-auto"
+                                size="sm"
+                                variant="ghost"
+                                style={COMMENT_ACTION_BUTTON_STYLE}
+                                onClick={() => handleUpdateComentario(comentario)}
+                              >
                                 Atualizar comentário
                               </Button>
+                            </div>
+                          )}
+
+                          {!comentario.resolvido &&
+                            ppp.can_comment &&
+                            comentario.autor !== user?.id &&
+                            (!comentario.respondido_por || comentario.respondido_por === user?.id) && (
+                            <div className="mt-3">
+                              {comentarioRespostaAbertaId === comentario.id ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    rows={3}
+                                    value={comentarioRespostaDrafts[comentario.id] ?? ''}
+                                    onChange={(event) => setComentarioRespostaDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                                    placeholder="Escreva a resposta para este comentário."
+                                  />
+                                  <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Button className="w-full sm:w-auto" size="sm" variant="primary" onClick={() => handleSubmitRespostaComentario(comentario)}>
+                                      {comentario.resposta_html ? 'Atualizar resposta' : 'Enviar resposta'}
+                                    </Button>
+                                    <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setComentarioRespostaAbertaId(null)}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button
+                                  className="w-full sm:w-auto"
+                                  size="sm"
+                                  variant="ghost"
+                                  style={COMMENT_ACTION_BUTTON_STYLE}
+                                  onClick={() => handleReplyComentario(comentario)}
+                                >
+                                  {comentario.resposta_html ? 'Editar resposta' : 'Responder comentário'}
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

@@ -255,10 +255,13 @@ export interface Comentario {
   alvo_preview?: ComentarioAlvoPreview | null;
   anchor_json: string | Record<string, unknown> | null;
   conteudo_html: string;
+  resposta_html: string;
   autor: number | null;
   resolvido: boolean;
   resolvido_por: number | null;
   resolved_at: string | null;
+  respondido_por: number | null;
+  respondido_em: string | null;
   mentions_ids: number[];
   created_at: string;
   updated_at: string;

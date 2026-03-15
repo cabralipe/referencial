@@ -124,6 +124,125 @@ def test_redator_visualiza_comentarios_do_proprio_ppp(api_client, cliente, escol
 
 
 @pytest.mark.django_db
+def test_apenas_autor_atualiza_comentario_ppp(api_client, cliente, escola, django_user_model):
+    diretor = django_user_model.objects.create_user(
+        email="diretor.update.ppp@teste.com",
+        password="senha123",
+        nome="Diretora Update PPP",
+        cliente=cliente,
+        escola=escola,
+        role=Usuario.Role.DIRETOR,
+    )
+    redator = django_user_model.objects.create_user(
+        email="redator.update.ppp@teste.com",
+        password="senha123",
+        nome="Redator Update PPP",
+        cliente=cliente,
+        escola=escola,
+        role=Usuario.Role.ARTICULADOR,
+    )
+
+    api_client.force_authenticate(redator)
+    ppp_resp = api_client.get("/api/v1/ppp")
+    ppp_id = ppp_resp.json()["id"]
+
+    create_resp = api_client.post(
+        "/api/v1/comentarios",
+        {
+            "alvo_tipo": "ppp",
+            "alvo_id": ppp_id,
+            "conteudo_html": "<p>Comentário original.</p>",
+            "anchor_json": {"local": "Apresentação"},
+        },
+        format="json",
+    )
+
+    assert create_resp.status_code == 201
+
+    comentario_id = create_resp.json()["id"]
+    comentario_etag = create_resp["ETag"]
+
+    api_client.force_authenticate(diretor)
+    forbidden_resp = api_client.put(
+        f"/api/v1/comentarios/{comentario_id}",
+        {"conteudo_html": "<p>Tentativa sem autoria.</p>"},
+        format="json",
+        HTTP_IF_MATCH=comentario_etag,
+    )
+
+    assert forbidden_resp.status_code == 403
+
+    api_client.force_authenticate(redator)
+    update_resp = api_client.put(
+        f"/api/v1/comentarios/{comentario_id}",
+        {"conteudo_html": "<p>Comentário atualizado pelo autor.</p>"},
+        format="json",
+        HTTP_IF_MATCH=comentario_etag,
+    )
+
+    assert update_resp.status_code == 200
+    assert update_resp.json()["conteudo_html"] == "<p>Comentário atualizado pelo autor.</p>"
+
+
+@pytest.mark.django_db
+def test_resposta_fica_no_mesmo_comentario_ppp(api_client, cliente, escola, django_user_model):
+    diretor = django_user_model.objects.create_user(
+        email="diretor.reply.ppp@teste.com",
+        password="senha123",
+        nome="Diretora Reply PPP",
+        cliente=cliente,
+        escola=escola,
+        role=Usuario.Role.DIRETOR,
+    )
+    redator = django_user_model.objects.create_user(
+        email="redator.reply.ppp@teste.com",
+        password="senha123",
+        nome="Redator Reply PPP",
+        cliente=cliente,
+        escola=escola,
+        role=Usuario.Role.ARTICULADOR,
+    )
+
+    api_client.force_authenticate(redator)
+    ppp_resp = api_client.get("/api/v1/ppp")
+    ppp_id = ppp_resp.json()["id"]
+
+    create_resp = api_client.post(
+        "/api/v1/comentarios",
+        {
+            "alvo_tipo": "ppp",
+            "alvo_id": ppp_id,
+            "conteudo_html": "<p>Comentário base.</p>",
+            "anchor_json": {"local": "Apresentação"},
+        },
+        format="json",
+    )
+
+    assert create_resp.status_code == 201
+
+    comentario_id = create_resp.json()["id"]
+    comentario_etag = create_resp["ETag"]
+
+    api_client.force_authenticate(diretor)
+    resposta_resp = api_client.put(
+        f"/api/v1/comentarios/{comentario_id}",
+        {"resposta_html": "<p>Resposta registrada no mesmo comentário.</p>"},
+        format="json",
+        HTTP_IF_MATCH=comentario_etag,
+    )
+
+    assert resposta_resp.status_code == 200
+    assert resposta_resp.json()["resposta_html"] == "<p>Resposta registrada no mesmo comentário.</p>"
+    assert resposta_resp.json()["id"] == comentario_id
+
+    list_resp = api_client.get(f"/api/v1/comentarios?alvo_tipo=ppp&alvo_id={ppp_id}")
+    results = list_resp.json()["results"]
+    assert len(results) == 1
+    assert results[0]["resposta_html"] == "<p>Resposta registrada no mesmo comentário.</p>"
+    assert results[0]["respondido_por"] == diretor.id
+
+
+@pytest.mark.django_db
 def test_apenas_direcao_ou_coordenacao_concluem_ppp(api_client, cliente, escola, django_user_model):
     diretor = django_user_model.objects.create_user(
         email="diretor.final@teste.com",
