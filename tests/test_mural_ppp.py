@@ -87,6 +87,43 @@ def test_redator_comenta_ppp_da_escola_e_diretor_visualiza(api_client, cliente, 
 
 
 @pytest.mark.django_db
+def test_redator_visualiza_comentarios_do_proprio_ppp(api_client, cliente, escola, django_user_model):
+    redator = django_user_model.objects.create_user(
+        email="redator.lista.ppp@teste.com",
+        password="senha123",
+        nome="Redator Lista PPP",
+        cliente=cliente,
+        escola=escola,
+        role=Usuario.Role.ARTICULADOR,
+    )
+
+    api_client.force_authenticate(redator)
+    ppp_resp = api_client.get("/api/v1/ppp")
+    ppp_id = ppp_resp.json()["id"]
+
+    create_resp = api_client.post(
+        "/api/v1/comentarios",
+        {
+            "alvo_tipo": "ppp",
+            "alvo_id": ppp_id,
+            "conteudo_html": "<p>Comentário de revisão do PPP.</p>",
+            "anchor_json": {"local": "Apresentação"},
+        },
+        format="json",
+    )
+
+    assert create_resp.status_code == 201
+
+    list_resp = api_client.get(f"/api/v1/comentarios?alvo_tipo=ppp&alvo_id={ppp_id}")
+
+    assert list_resp.status_code == 200
+    results = list_resp.json()["results"]
+    assert len(results) == 1
+    assert results[0]["conteudo_html"] == "<p>Comentário de revisão do PPP.</p>"
+    assert results[0]["alvo_preview"]["type"] == "ppp"
+
+
+@pytest.mark.django_db
 def test_apenas_direcao_ou_coordenacao_concluem_ppp(api_client, cliente, escola, django_user_model):
     diretor = django_user_model.objects.create_user(
         email="diretor.final@teste.com",

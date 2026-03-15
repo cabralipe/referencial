@@ -2015,7 +2015,11 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
-        elif getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        elif getattr(user, "role", None) not in {
+            user.Role.ADMIN_CLIENTE,
+            user.Role.SUPER_ADMIN,
+            user.Role.ARTICULADOR,
+        }:
             queryset = queryset.none()
         return queryset
 
