@@ -25,6 +25,10 @@
 .ppp-page .ck.ck-editor__main > .ck-editor__editable {
   overflow-wrap: anywhere;
   word-break: break-word;
+  max-height: min(70vh, 56rem);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 @media (max-width: 640px) {
@@ -42,5 +46,6 @@
 
   .ppp-page .ck.ck-editor__main > .ck-editor__editable {
     min-height: 180px;
+    max-height: 60vh;
   }
 }
