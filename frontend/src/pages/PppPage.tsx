@@ -44,6 +44,34 @@ function ensureHtml(text: string) {
   return `<p>${trimmed.replace(/\n/g, '<br />')}</p>`;
 }
 
+function formatCommentReference(anchor: unknown) {
+  if (!anchor) return '';
+
+  let parsed = anchor;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return parsed;
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return String(parsed);
+  }
+
+  const labels: Record<string, string> = {
+    local: 'Local',
+    trecho: 'Trecho',
+  };
+
+  const parts = Object.entries(parsed)
+    .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([key, value]) => `${labels[key] ?? key}: ${String(value)}`);
+
+  return parts.join(' • ');
+}
+
 export function PppPage({ adminMode = false }: PppPageProps) {
   const client = useApiClient();
   const { user } = useAuth();
@@ -304,6 +332,180 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   const statusLabel = STATUS_LABELS[ppp.status] ?? ppp.status;
   const statusClass = STATUS_CLASSES[ppp.status] ?? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]';
   const comentariosAbertos = ppp.comentarios_abertos ?? comentariosOrdenados.filter((item) => !item.resolvido).length;
+  const overviewPanel = shouldLoadOverview ? (
+    <Card>
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-extrabold text-[var(--color-text)]">Panorama por escola</h3>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Visão rápida do avanço do PPP em cada unidade.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {(overviewQuery.data ?? []).map((item) => (
+            <button
+              key={item.escola_id}
+              type="button"
+              onClick={() => setSelectedEscolaId(item.escola_id)}
+              className={`w-full rounded-[14px] border px-4 py-3 text-left transition ${
+                selectedEscolaId === item.escola_id
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                  : 'border-[var(--color-border)] bg-white'
+              }`}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <strong className="text-sm text-[var(--color-text)]">{item.escola_nome}</strong>
+                <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_CLASSES[item.status] ?? statusClass}`}>
+                  {STATUS_LABELS[item.status] ?? item.status}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+                <span>{item.comentarios_abertos} comentário(s) aberto(s)</span>
+                <span>{formatDateTime(item.updated_at)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        {selectedOverview && (
+          <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+            Escola ativa: <strong className="text-[var(--color-text)]">{selectedOverview.escola_nome}</strong>
+          </div>
+        )}
+      </div>
+    </Card>
+  ) : null;
+  const comentariosPanel = (
+    <Card>
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-extrabold text-[var(--color-text)]">
+            {isProfessor ? 'Acesso do professor' : 'Fila de comentários'}
+          </h3>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {isProfessor
+              ? 'Professores visualizam apenas a versão concluída do PPP da escola.'
+              : 'O redator pode comentar o texto; Diretor e Coordenação acompanham e fecham as pendências.'}
+          </p>
+        </div>
+
+        {isProfessor ? (
+          <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
+            </p>
+          </div>
+        ) : (
+          <>
+            <form className="space-y-3" onSubmit={handleCreateComentario}>
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-[var(--color-text)]">Novo comentário</span>
+                <textarea
+                  rows={4}
+                  value={comentarioTexto}
+                  onChange={(event) => setComentarioTexto(event.target.value)}
+                  disabled={!ppp.can_comment || createComentario.isPending}
+                  placeholder="Descreva o ajuste, a dúvida ou o encaminhamento desejado."
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Local</span>
+                  <input
+                    value={comentarioLocal}
+                    onChange={(event) => setComentarioLocal(event.target.value)}
+                    disabled={!ppp.can_comment || createComentario.isPending}
+                    placeholder="Ex.: capítulo 2"
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Trecho</span>
+                  <input
+                    value={comentarioTrecho}
+                    onChange={(event) => setComentarioTrecho(event.target.value)}
+                    disabled={!ppp.can_comment || createComentario.isPending}
+                    placeholder="Palavras-chave ou trecho"
+                  />
+                </label>
+              </div>
+              <div className="rounded-[14px] bg-[var(--color-surface-muted)] p-3 text-xs text-[var(--color-text-secondary)]">
+                <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
+                <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
+              </div>
+              <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
+                {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
+              </Button>
+            </form>
+
+            <div className="space-y-3">
+              {comentariosOrdenados.map((comentario) => (
+                <div key={comentario.id} className="rounded-[14px] border border-[var(--color-border)] bg-white p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm text-[var(--color-text)]">Comentário</strong>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                            comentario.resolvido
+                              ? 'bg-[rgba(22,163,74,0.12)] text-[var(--color-success)]'
+                              : 'bg-[rgba(245,158,11,0.12)] text-[var(--color-warning)]'
+                          }`}
+                        >
+                          {comentario.resolvido ? 'Resolvido' : 'Aberto'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                        Criado em {formatDateTime(comentario.created_at)}
+                      </p>
+                    </div>
+                    {!comentario.resolvido && ppp.can_conclude && (
+                      <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
+                        Resolver
+                      </Button>
+                    )}
+                  </div>
+
+                  {comentario.anchor_json && (
+                    <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                      <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
+                      {formatCommentReference(comentario.anchor_json)}
+                    </div>
+                  )}
+
+                  <div
+                    className="prose prose-sm mt-3 max-w-none text-[var(--color-text)]"
+                    dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
+                  />
+
+                  {!comentario.resolvido && ppp.can_comment && (
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        rows={3}
+                        value={comentarioDrafts[comentario.id] ?? ''}
+                        onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                        placeholder="Atualize o texto do comentário, se necessário."
+                      />
+                      <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
+                        Atualizar comentário
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {comentariosOrdenados.length === 0 && (
+                <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-8 text-center">
+                  <h4 className="text-base font-extrabold text-[var(--color-text)]">Nenhum comentário registrado</h4>
+                  <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                    Use este painel para orientar a construção do texto e registrar pendências.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
 
   return (
     <div className="ppp-page space-y-6">
@@ -353,7 +555,11 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             backgroundSize: '32px 32px, 32px 32px',
           }}
         />
-        <div className="relative grid gap-4 px-3 py-3 sm:px-5 sm:py-5 lg:grid-cols-[1.4fr_0.6fr]">
+        <div
+          className={`relative grid gap-4 px-3 py-3 sm:px-5 sm:py-5 ${
+            shouldLoadOverview ? 'lg:grid-cols-[1.4fr_0.6fr]' : 'lg:grid-cols-1'
+          }`}
+        >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
@@ -539,7 +745,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <strong className="text-sm text-[var(--color-text)]">Comentário #{comentario.id}</strong>
+                                <strong className="text-sm text-[var(--color-text)]">Comentário</strong>
                                 <span
                                   className={`rounded-full px-2 py-1 text-[11px] font-bold ${
                                     comentario.resolvido
@@ -562,9 +768,9 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                           </div>
 
                           {comentario.anchor_json && (
-                            <div className="mt-3 break-all rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                            <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                               <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
-                              {typeof comentario.anchor_json === 'string' ? comentario.anchor_json : JSON.stringify(comentario.anchor_json)}
+                              {formatCommentReference(comentario.anchor_json)}
                             </div>
                           )}
 
