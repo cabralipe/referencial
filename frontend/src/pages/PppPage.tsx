@@ -667,11 +667,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             backgroundSize: '32px 32px, 32px 32px',
           }}
         />
-        <div
-          className={`relative grid gap-4 px-3 py-3 sm:px-5 sm:py-5 ${
-            shouldLoadOverview ? 'lg:grid-cols-[1.4fr_0.6fr]' : 'lg:grid-cols-1'
-          }`}
-        >
+        <div className="relative grid grid-cols-1 gap-4 px-3 py-3 sm:px-5 sm:py-5">
           <div className="min-w-0 space-y-4">
             <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1 space-y-2">
