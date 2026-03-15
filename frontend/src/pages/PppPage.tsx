@@ -672,7 +672,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             shouldLoadOverview ? 'lg:grid-cols-[1.4fr_0.6fr]' : 'lg:grid-cols-1'
           }`}
         >
-          <div className="space-y-4">
+          <div className={shouldLoadOverview ? 'space-y-4 lg:col-span-2' : 'space-y-4'}>
             <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <span className="inline-flex rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">
@@ -746,7 +746,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             </Card>
           </div>
 
-          <div className="space-y-4">
+          <div className={shouldLoadOverview ? 'space-y-4 lg:col-span-2' : 'space-y-4'}>
             {shouldLoadOverview && (
               <Card>
                 <div className="space-y-3">
