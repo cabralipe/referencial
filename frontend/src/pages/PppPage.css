@@ -23,13 +23,36 @@
   min-width: 0;
 }
 
-.ppp-page .ck.ck-toolbar {
-  flex-wrap: wrap;
-  row-gap: 0.35rem;
+.ppp-page .ppp-page__editor {
+  min-width: 0;
+  max-width: 100%;
 }
 
-.ppp-page .ck.ck-toolbar > .ck-toolbar__items {
+.ppp-page .ppp-page__editor .ck.ck-editor {
+  max-width: 100%;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar {
   flex-wrap: wrap;
+  row-gap: 0.35rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
+.ppp-page .ppp-page__editor .ck.ck-toolbar > .ck-toolbar__items {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-dropdown,
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text {
+  max-width: 100%;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text .ck-button__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ppp-page .ck.ck-editor__main > .ck-editor__editable {
@@ -86,14 +109,24 @@
   }
 
   /* Editor CKEditor */
-  .ppp-page .ck.ck-toolbar {
+  .ppp-page .ppp-page__editor .ck.ck-toolbar {
     padding: 0.5rem;
     /* Reduz o tamanho dos ícones no mobile para caber mais */
     gap: 0.15rem;
   }
 
-  .ppp-page .ck.ck-toolbar .ck.ck-toolbar__separator {
+  .ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
+  .ppp-page .ppp-page__editor .ck.ck-toolbar > .ck-toolbar__items {
+    flex-wrap: wrap !important;
+  }
+
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-toolbar__separator {
     display: none;
+  }
+
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-dropdown,
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text {
+    max-width: calc(100vw - 4rem);
   }
 
   .ppp-page .ck.ck-editor__main > .ck-editor__editable {

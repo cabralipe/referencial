@@ -725,10 +725,31 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                       )}
                     </div>
                     <RichTextEditor
+                      className="ppp-page__editor"
                       value={conteudo}
                       onChange={setConteudo}
                       placeholder="Escreva o PPP da escola com objetivos, princípios, organização pedagógica e compromissos institucionais."
                       disabled={isProfessor || !ppp.can_edit}
+                      config={{
+                        toolbar: {
+                          items: [
+                            'heading',
+                            '|',
+                            'bold',
+                            'italic',
+                            'link',
+                            'bulletedList',
+                            'numberedList',
+                            '|',
+                            'blockQuote',
+                            'insertTable',
+                            '|',
+                            'undo',
+                            'redo',
+                          ],
+                          shouldNotGroupWhenFull: true,
+                        },
+                      }}
                     />
                   </div>
                 </div>
