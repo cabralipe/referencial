@@ -380,6 +380,7 @@
     left: 0;
     top: 0;
     width: min(18.5rem, 86vw);
+    z-index: 1400;
     transform: translateX(-110%);
     transition: transform 0.2s ease;
     box-shadow: 0 24px 50px -36px rgba(15, 23, 42, 0.5);
@@ -469,7 +470,7 @@
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.42);
-    z-index: 15;
+    z-index: 1300;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;

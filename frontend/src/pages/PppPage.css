@@ -35,8 +35,21 @@
 .ppp-page .ppp-page__editor .ck.ck-toolbar {
   flex-wrap: wrap;
   row-gap: 0.35rem;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  overflow: visible;
+}
+
+.ppp-page .ppp-page__editor,
+.ppp-page .ppp-page__editor .ck.ck-editor,
+.ppp-page .ppp-page__editor .ck.ck-editor__top,
+.ppp-page .ppp-page__editor .ck.ck-toolbar,
+.ppp-page .ppp-page__editor .ck.ck-dropdown {
+  position: relative;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-dropdown__panel,
+.ppp-page .ppp-page__editor .ck.ck-balloon-panel,
+.ppp-page .ppp-page__editor .ck-body-wrapper {
+  z-index: 1200 !important;
 }
 
 .ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
@@ -113,6 +126,7 @@
     padding: 0.5rem;
     /* Reduz o tamanho dos ícones no mobile para caber mais */
     gap: 0.15rem;
+    overflow: visible;
   }
 
   .ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,

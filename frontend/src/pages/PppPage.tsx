@@ -648,7 +648,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
         )}
       />
 
-      <div className="relative overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
+      <div className="relative overflow-visible rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
           style={{
