@@ -148,3 +148,7 @@
     width: auto;
   }
 }
+
+.ppp-page form.space-y-3 > div:has(> code) {
+  display: none;
+}

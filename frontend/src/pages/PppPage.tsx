@@ -199,17 +199,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     [comentarios],
   );
 
-  const anchorPreview = useMemo(() => {
-    if (!comentarioLocal.trim() && !comentarioTrecho.trim()) return '';
-    return JSON.stringify(
-      {
-        ...(comentarioLocal.trim() ? { local: comentarioLocal.trim() } : {}),
-        ...(comentarioTrecho.trim() ? { trecho: comentarioTrecho.trim() } : {}),
-      },
-      null,
-      2,
-    );
-  }, [comentarioLocal, comentarioTrecho]);
+  const anchorPreview = '';
 
   const selectedOverview = useMemo(
     () => overviewQuery.data?.find((item) => item.escola_id === selectedEscolaId) ?? null,

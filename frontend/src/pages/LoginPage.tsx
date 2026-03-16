@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
@@ -9,8 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export function LoginPage() {
   const queryClient = useQueryClient();
-  const { isAuthenticated, login, status, error } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, login, status, error, user } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +21,16 @@ export function LoginPage() {
     queryClient.clear();
   }, [queryClient]);
 
-  const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? '/';
+  const requestedPath = (location.state as { from?: Location })?.from?.pathname;
+
+  const resolveDefaultRoute = (role?: string | null) => {
+    if (role === 'diretor' || role === 'coordenador_pedagogico' || role === 'professor') {
+      return '/inicio';
+    }
+    return '/';
+  };
+
+  const redirectTo = requestedPath ?? resolveDefaultRoute(user?.role);
 
   if (isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
@@ -34,7 +42,6 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      navigate(redirectTo, { replace: true });
     } catch (err) {
       const message =
         err instanceof ApiError

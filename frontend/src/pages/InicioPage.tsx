@@ -79,9 +79,6 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
             <a href={avaHref} target="_blank" rel="noopener noreferrer">
               <Button variant="secondary">Acessar AVA</Button>
             </a>
-            <Link to="/mural">
-              <Button variant="ghost">Ver Mural</Button>
-            </Link>
           </div>
         )}
       />
