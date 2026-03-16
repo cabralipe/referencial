@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
@@ -150,7 +150,7 @@ export function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center ml-1">
                       <label className="block text-sm font-semibold text-slate-700">Senha</label>
-                      <a className="text-xs font-semibold text-primary hover:text-blue-700 transition-colors" href="#">Esqueceu a senha?</a>
+                      <Link className="text-xs font-semibold text-primary hover:text-blue-700 transition-colors" to="/cadastro">Cadastro Escola</Link>
                     </div>
                     <div className="relative group">
                       <input
