@@ -3,11 +3,12 @@
 from django.contrib import admin
 from django.db import transaction
 
+from core.admin_mixins import ClienteScopedAdminMixin
 from .models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 
 
 @admin.register(Quadro)
-class QuadroAdmin(admin.ModelAdmin):
+class QuadroAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("gt", "area", "template", "version", "updated_at")
     list_filter = ("template", "gt", "area")
     change_form_template = "admin/workshop/quadro/change_form.html"
@@ -318,18 +319,18 @@ class QuadroAdmin(admin.ModelAdmin):
 
 
 @admin.register(CelulaQuadro)
-class CelulaQuadroAdmin(admin.ModelAdmin):
+class CelulaQuadroAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("quadro", "linha", "coluna", "valor_html")
     list_filter = ("quadro",)
 
 
 @admin.register(QuadroLinha)
-class QuadroLinhaAdmin(admin.ModelAdmin):
+class QuadroLinhaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("quadro", "linha", "ordem", "nome")
     list_filter = ("quadro",)
 
 
 @admin.register(QuadroColuna)
-class QuadroColunaAdmin(admin.ModelAdmin):
+class QuadroColunaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("quadro", "coluna", "ordem", "nome")
     list_filter = ("quadro",)

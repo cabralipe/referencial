@@ -1,87 +1,168 @@
-.ppp {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* ===== PPP PAGE — BASE ===== */
+.ppp-page {
+  min-width: 0;
+  /* Garante que o conteúdo não vaze horizontalmente */
+  overflow-x: hidden;
 }
 
-.ppp__filters {
-  display: flex;
-  gap: 1rem;
-}
-
-.ppp__filters label {
-  display: grid;
-  gap: 0.35rem;
-  min-width: 220px;
-}
-
-.ppp__grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-.ppp__card {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.ppp__status {
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.ppp__status.status-nao_iniciado {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.ppp__status.status-em_andamento {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-.ppp__status.status-em_revisao {
-  background: #fef9c3;
-  color: #92400e;
-}
-
-.ppp__status.status-devolvido {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.ppp__status.status-concluido {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.ppp__progress {
+.ppp-page__header-actions {
+  min-width: 0;
+  /* No mobile o container de actions ocupa toda a largura */
   width: 100%;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--color-border);
-  margin: 0.75rem 0;
+}
+
+.ppp-page__header-actions > * {
+  min-width: 0;
+}
+
+/* ===== EDITOR CKEDITOR ===== */
+.ppp-page .ck.ck-editor,
+.ppp-page .ck.ck-editor__main,
+.ppp-page .ck.ck-editor__top {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ppp-page .ppp-page__editor {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-editor {
+  max-width: 100%;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar {
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
+  overflow: visible;
+}
+
+.ppp-page .ppp-page__editor,
+.ppp-page .ppp-page__editor .ck.ck-editor,
+.ppp-page .ppp-page__editor .ck.ck-editor__top,
+.ppp-page .ppp-page__editor .ck.ck-toolbar,
+.ppp-page .ppp-page__editor .ck.ck-dropdown {
+  position: relative;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-dropdown__panel,
+.ppp-page .ppp-page__editor .ck.ck-balloon-panel,
+.ppp-page .ppp-page__editor .ck-body-wrapper {
+  z-index: 1200 !important;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
+.ppp-page .ppp-page__editor .ck.ck-toolbar > .ck-toolbar__items {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-dropdown,
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text {
+  max-width: 100%;
+}
+
+.ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text .ck-button__label {
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ppp__progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--app-primary), var(--app-secondary));
+.ppp-page .ck.ck-editor__main > .ck-editor__editable {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: min(70vh, 56rem);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
-.ppp__meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.75rem;
+/* ===== INFO BOX (metadados do PPP) ===== */
+.ppp-page .ppp-info-box {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.ppp__empty {
-  color: var(--color-text-secondary);
+/* ===== MOBILE (≤ 640px) ===== */
+@media (max-width: 640px) {
+  /* Header: actions em coluna, ocupam largura total */
+  .ppp-page .page-header__actions {
+    width: 100%;
+  }
+
+  .ppp-page .page-header__main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Select de escola: ocupa 100% de largura */
+  .ppp-page__header-actions select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Botões de ação no header: 100% de largura */
+  .ppp-page__header-actions button,
+  .ppp-page__header-actions a {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Status badge: centralizado em mobile */
+  .ppp-page__header-actions .ppp-status-badge {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Painel de metadados: não tem min/max-width no mobile */
+  .ppp-page .ppp-info-box {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Editor CKEditor */
+  .ppp-page .ppp-page__editor .ck.ck-toolbar {
+    padding: 0.5rem;
+    /* Reduz o tamanho dos ícones no mobile para caber mais */
+    gap: 0.15rem;
+    overflow: visible;
+  }
+
+  .ppp-page .ppp-page__editor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
+  .ppp-page .ppp-page__editor .ck.ck-toolbar > .ck-toolbar__items {
+    flex-wrap: wrap !important;
+  }
+
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-toolbar__separator {
+    display: none;
+  }
+
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-dropdown,
+  .ppp-page .ppp-page__editor .ck.ck-toolbar .ck.ck-button_with-text {
+    max-width: calc(100vw - 4rem);
+  }
+
+  .ppp-page .ck.ck-editor__main > .ck-editor__editable {
+    min-height: 200px;
+    max-height: 60vh;
+    /* Previne zoom acidental em iOS */
+    font-size: 16px;
+  }
+
+  /* Padding interno das seções reduzido */
+  .ppp-page .ppp-section-card {
+    padding: 0.75rem;
+  }
+}
+
+/* ===== TABLET intermediário (641px–1023px) ===== */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .ppp-page__header-actions {
+    width: auto;
+  }
+}
+
+.ppp-page form.space-y-3 > div:has(> code) {
+  display: none;
 }

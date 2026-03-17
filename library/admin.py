@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 
+from core.admin_mixins import ClienteScopedAdminMixin
 from meb.services import deliver_admin_broadcast
 
 from .models import BlocoTexto, Midia
@@ -19,7 +20,7 @@ class MidiaAdminForm(forms.ModelForm):
 
 
 @admin.register(Midia)
-class MidiaAdmin(admin.ModelAdmin):
+class MidiaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     form = MidiaAdminForm
     list_display = ("titulo", "url", "gt", "pergunta", "uploaded_by", "created_at")
     search_fields = ("titulo", "url", "descricao")
@@ -42,7 +43,7 @@ class MidiaAdmin(admin.ModelAdmin):
 
 
 @admin.register(BlocoTexto)
-class BlocoTextoAdmin(admin.ModelAdmin):
+class BlocoTextoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("titulo", "gt", "pergunta", "created_by", "updated_at")
     search_fields = ("titulo", "conteudo_html")
     list_filter = ("created_by", "gt")

@@ -1,6 +1,7 @@
 from django.db import transaction
 from ava.models import Curso, MatriculaCurso, TrilhaFormativa, MatriculaTrilha
 
+
 class InscricaoService:
     """
     Serviço responsável por matricular alunos em cursos e trilhas.
@@ -12,12 +13,24 @@ class InscricaoService:
         matricula, created = MatriculaCurso.objects.get_or_create(
             curso=curso,
             aluno=aluno,
-            defaults={"matriculado_por": autor_matricula}
+            defaults={
+                "cliente_id": curso.cliente_id,
+                "matriculado_por": autor_matricula,
+            },
         )
 
-        if not created and matricula.status in [MatriculaCurso.Status.SUSPENSA, MatriculaCurso.Status.CANCELADA]:
+        if not created and matricula.status in [
+            MatriculaCurso.Status.SUSPENSA,
+            MatriculaCurso.Status.CANCELADA,
+            MatriculaCurso.Status.CONCLUIDA,
+        ]:
             matricula.status = MatriculaCurso.Status.ATIVA
-            matricula.save(update_fields=["status"])
+            matricula.data_conclusao = None
+            if not matricula.cliente_id:
+                matricula.cliente_id = curso.cliente_id
+            if autor_matricula and not matricula.matriculado_por_id:
+                matricula.matriculado_por = autor_matricula
+            matricula.save(update_fields=["status", "data_conclusao", "cliente", "matriculado_por"])
 
         return matricula, created
 
@@ -26,15 +39,19 @@ class InscricaoService:
     def matricular_aluno_trilha(aluno, trilha: TrilhaFormativa, matricular_cursos=True):
         matricula, created = MatriculaTrilha.objects.get_or_create(
             trilha=trilha,
-            aluno=aluno
+            aluno=aluno,
+            defaults={"cliente_id": trilha.cliente_id},
         )
 
         if not created and matricula.status != MatriculaTrilha.Status.ATIVA:
             matricula.status = MatriculaTrilha.Status.ATIVA
-            matricula.save(update_fields=["status"])
+            matricula.data_conclusao = None
+            if not matricula.cliente_id:
+                matricula.cliente_id = trilha.cliente_id
+            matricula.save(update_fields=["status", "data_conclusao", "cliente"])
 
         if matricular_cursos:
-            for curso in trilha.cursos.filter(is_aberto=True): # Ou ignorar is_aberto na trilha
+            for curso in trilha.cursos.filter(is_aberto=True):
                 InscricaoService.matricular_aluno_curso(aluno, curso)
 
         return matricula, created

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, useApiClient } from '@/api/client';
@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useComentarios, useCreateComentario, useUpdateComentario } from '@/hooks/useComentarios';
 import { useConcludePpp, usePppDocumento, usePppOverview, useUpdatePppConteudo } from '@/hooks/usePpp';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
+import './PppPage.css';
 
 type PppPageProps = {
   adminMode?: boolean;
@@ -25,6 +26,12 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_CLASSES: Record<string, string> = {
   em_elaboracao: 'bg-[rgba(245,158,11,0.12)] text-[var(--color-warning)]',
   concluido: 'bg-[rgba(22,163,74,0.12)] text-[var(--color-success)]',
+};
+
+const COMMENT_ACTION_BUTTON_STYLE = {
+  backgroundColor: '#dbeafe',
+  color: '#1d4ed8',
+  border: '1px solid #93c5fd',
 };
 
 function formatDateTime(value?: string | null) {
@@ -41,6 +48,61 @@ function ensureHtml(text: string) {
     return trimmed;
   }
   return `<p>${trimmed.replace(/\n/g, '<br />')}</p>`;
+}
+
+function formatCommentReference(anchor: unknown) {
+  if (!anchor) return '';
+
+  let parsed = anchor;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return parsed;
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return String(parsed);
+  }
+
+  const labels: Record<string, string> = {
+    local: 'Local',
+    trecho: 'Trecho',
+  };
+
+  const parts = Object.entries(parsed)
+    .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([key, value]) => `${labels[key] ?? key}: ${String(value)}`);
+
+  return parts.join(' • ');
+}
+
+function extractCommentReference(anchor: unknown) {
+  if (!anchor) return { local: '', trecho: '' };
+
+  let parsed = anchor;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return { local: '', trecho: parsed };
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { local: '', trecho: String(parsed) };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  return {
+    local: typeof record.local === 'string' ? record.local : '',
+    trecho: typeof record.trecho === 'string' ? record.trecho : '',
+  };
+}
+
+function stripHtml(value?: string | null) {
+  return (value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export function PppPage({ adminMode = false }: PppPageProps) {
@@ -122,6 +184,9 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   const [comentarioTrecho, setComentarioTrecho] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [comentarioDrafts, setComentarioDrafts] = useState<Record<number, string>>({});
+  const [comentarioRespostaDrafts, setComentarioRespostaDrafts] = useState<Record<number, string>>({});
+  const [comentarioRespostaAbertaId, setComentarioRespostaAbertaId] = useState<number | null>(null);
+  const comentarioTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!ppp) return;
@@ -134,17 +199,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     [comentarios],
   );
 
-  const anchorPreview = useMemo(() => {
-    if (!comentarioLocal.trim() && !comentarioTrecho.trim()) return '';
-    return JSON.stringify(
-      {
-        ...(comentarioLocal.trim() ? { local: comentarioLocal.trim() } : {}),
-        ...(comentarioTrecho.trim() ? { trecho: comentarioTrecho.trim() } : {}),
-      },
-      null,
-      2,
-    );
-  }, [comentarioLocal, comentarioTrecho]);
+  const anchorPreview = '';
 
   const selectedOverview = useMemo(
     () => overviewQuery.data?.find((item) => item.escola_id === selectedEscolaId) ?? null,
@@ -253,6 +308,26 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     refetchComentarios();
   };
 
+  const handleReplyComentario = (comentario: Comentario) => {
+    setComentarioRespostaAbertaId(comentario.id);
+    setComentarioRespostaDrafts((prev) => ({
+      ...prev,
+      [comentario.id]: prev[comentario.id] ?? stripHtml(comentario.resposta_html),
+    }));
+  };
+
+  const handleSubmitRespostaComentario = async (comentario: Comentario) => {
+    const draft = comentarioRespostaDrafts[comentario.id];
+    if (!draft?.trim()) return;
+    await updateComentario.mutateAsync({
+      comentarioId: comentario.id,
+      payload: { resposta_html: ensureHtml(draft) },
+      etag: comentario.etag,
+    });
+    setComentarioRespostaAbertaId(null);
+    refetchComentarios();
+  };
+
   if ((documentoQuery.isLoading && !ppp) || (shouldLoadOverview && overviewQuery.isLoading && !overviewQuery.data)) {
     return <FullPageLoader message="Carregando PPP da escola..." />;
   }
@@ -261,7 +336,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     const error = documentoQuery.error;
     const message = error instanceof ApiError ? error.message : 'Não foi possível carregar o PPP da escola.';
     return (
-      <div className="space-y-6">
+      <div className="ppp-page space-y-6">
         <PageHeader title="PPP" description="Houve um problema ao abrir o documento da escola." />
         <Card>
           <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center">
@@ -275,7 +350,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
 
   if (!ppp) {
     return (
-      <div className="space-y-6">
+      <div className="ppp-page space-y-6">
         <PageHeader
           title="PPP"
           description={
@@ -303,19 +378,249 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   const statusLabel = STATUS_LABELS[ppp.status] ?? ppp.status;
   const statusClass = STATUS_CLASSES[ppp.status] ?? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]';
   const comentariosAbertos = ppp.comentarios_abertos ?? comentariosOrdenados.filter((item) => !item.resolvido).length;
+  const overviewPanel = shouldLoadOverview ? (
+    <Card>
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-extrabold text-[var(--color-text)]">Panorama por escola</h3>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Visão rápida do avanço do PPP em cada unidade.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {(overviewQuery.data ?? []).map((item) => (
+            <button
+              key={item.escola_id}
+              type="button"
+              onClick={() => setSelectedEscolaId(item.escola_id)}
+              className={`w-full rounded-[14px] border px-4 py-3 text-left transition ${
+                selectedEscolaId === item.escola_id
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                  : 'border-[var(--color-border)] bg-white'
+              }`}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <strong className="text-sm text-[var(--color-text)]">{item.escola_nome}</strong>
+                <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_CLASSES[item.status] ?? statusClass}`}>
+                  {STATUS_LABELS[item.status] ?? item.status}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+                <span>{item.comentarios_abertos} comentário(s) aberto(s)</span>
+                <span>{formatDateTime(item.updated_at)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        {selectedOverview && (
+          <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+            Escola ativa: <strong className="text-[var(--color-text)]">{selectedOverview.escola_nome}</strong>
+          </div>
+        )}
+      </div>
+    </Card>
+  ) : null;
+  const comentariosPanel = (
+    <Card>
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-extrabold text-[var(--color-text)]">
+            {isProfessor ? 'Acesso do professor' : 'Fila de comentários'}
+          </h3>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {isProfessor
+              ? 'Professores visualizam apenas a versão concluída do PPP da escola.'
+              : 'O redator pode comentar o texto; Diretor e Coordenação acompanham e fecham as pendências.'}
+          </p>
+        </div>
+
+        {isProfessor ? (
+          <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
+            </p>
+          </div>
+        ) : (
+          <>
+            <form className="space-y-3" onSubmit={handleCreateComentario}>
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-[var(--color-text)]">Novo comentário</span>
+                <textarea
+                  ref={comentarioTextareaRef}
+                  rows={4}
+                  value={comentarioTexto}
+                  onChange={(event) => setComentarioTexto(event.target.value)}
+                  disabled={!ppp.can_comment || createComentario.isPending}
+                  placeholder="Descreva o ajuste, a dúvida ou o encaminhamento desejado."
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Local</span>
+                  <input
+                    value={comentarioLocal}
+                    onChange={(event) => setComentarioLocal(event.target.value)}
+                    disabled={!ppp.can_comment || createComentario.isPending}
+                    placeholder="Ex.: capítulo 2"
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Trecho</span>
+                  <input
+                    value={comentarioTrecho}
+                    onChange={(event) => setComentarioTrecho(event.target.value)}
+                    disabled={!ppp.can_comment || createComentario.isPending}
+                    placeholder="Palavras-chave ou trecho"
+                  />
+                </label>
+              </div>
+              <div className="rounded-[14px] bg-[var(--color-surface-muted)] p-3 text-xs text-[var(--color-text-secondary)]">
+                <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
+                <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
+              </div>
+              <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
+                {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
+              </Button>
+            </form>
+
+            <div className="space-y-3">
+              {comentariosOrdenados.map((comentario) => (
+                <div key={comentario.id} className="rounded-[14px] border border-[var(--color-border)] bg-white p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm text-[var(--color-text)]">Comentário</strong>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                            comentario.resolvido
+                              ? 'bg-[rgba(22,163,74,0.12)] text-[var(--color-success)]'
+                              : 'bg-[rgba(245,158,11,0.12)] text-[var(--color-warning)]'
+                          }`}
+                        >
+                          {comentario.resolvido ? 'Resolvido' : 'Aberto'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                        Criado em {formatDateTime(comentario.created_at)}
+                      </p>
+                    </div>
+                    {!comentario.resolvido && ppp.can_conclude && (
+                      <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
+                        Resolver
+                      </Button>
+                    )}
+                  </div>
+
+                  {comentario.anchor_json && (
+                    <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                      <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
+                      {formatCommentReference(comentario.anchor_json)}
+                    </div>
+                  )}
+
+                  <div
+                    className="prose prose-sm mt-3 max-w-none text-[var(--color-text)]"
+                    dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
+                  />
+
+                  {comentario.resposta_html && (
+                    <div className="mt-3 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                        <strong className="text-[var(--color-text)]">Resposta</strong>
+                        {comentario.respondido_em && <span>Respondido em {formatDateTime(comentario.respondido_em)}</span>}
+                      </div>
+                      <div
+                        className="prose prose-sm max-w-none text-[var(--color-text)]"
+                        dangerouslySetInnerHTML={{ __html: comentario.resposta_html }}
+                      />
+                    </div>
+                  )}
+
+                  {!comentario.resolvido && ppp.can_comment && comentario.autor === user?.id && (
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        rows={3}
+                        value={comentarioDrafts[comentario.id] ?? ''}
+                        onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                        placeholder="Atualize o texto do comentário, se necessário."
+                      />
+                      <Button
+                        className="w-full sm:w-auto"
+                        size="sm"
+                        variant="ghost"
+                        style={COMMENT_ACTION_BUTTON_STYLE}
+                        onClick={() => handleUpdateComentario(comentario)}
+                      >
+                        Atualizar comentário
+                      </Button>
+                    </div>
+                  )}
+
+                  {!comentario.resolvido &&
+                    ppp.can_comment &&
+                    comentario.autor !== user?.id &&
+                    (!comentario.respondido_por || comentario.respondido_por === user?.id) && (
+                    <div className="mt-3">
+                      {comentarioRespostaAbertaId === comentario.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            rows={3}
+                            value={comentarioRespostaDrafts[comentario.id] ?? ''}
+                            onChange={(event) => setComentarioRespostaDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                            placeholder="Escreva a resposta para este comentário."
+                          />
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button className="w-full sm:w-auto" size="sm" variant="primary" onClick={() => handleSubmitRespostaComentario(comentario)}>
+                              {comentario.resposta_html ? 'Atualizar resposta' : 'Enviar resposta'}
+                            </Button>
+                            <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setComentarioRespostaAbertaId(null)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full sm:w-auto"
+                          size="sm"
+                          variant="ghost"
+                          style={COMMENT_ACTION_BUTTON_STYLE}
+                          onClick={() => handleReplyComentario(comentario)}
+                        >
+                          {comentario.resposta_html ? 'Editar resposta' : 'Responder comentário'}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {comentariosOrdenados.length === 0 && (
+                <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-8 text-center">
+                  <h4 className="text-base font-extrabold text-[var(--color-text)]">Nenhum comentário registrado</h4>
+                  <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                    Use este painel para orientar a construção do texto e registrar pendências.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="ppp-page space-y-6">
       <PageHeader
         title={adminMode ? 'Admin · PPP por escola' : 'PPP da Escola'}
         description={pageDescription}
         actions={(
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="ppp-page__header-actions flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {shouldLoadOverview && (
               <select
                 value={selectedEscolaId ?? ''}
                 onChange={(event) => setSelectedEscolaId(event.target.value ? Number(event.target.value) : null)}
-                className="min-w-[240px]"
+                className="w-full sm:min-w-[200px] sm:w-auto"
               >
                 <option value="">Selecione a escola</option>
                 {(escolasQuery.data ?? []).map((escola) => (
@@ -325,16 +630,16 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                 ))}
               </select>
             )}
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
+            <span className={`ppp-status-badge w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
             {!isProfessor && (
               <>
-                <Button variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
                   Baixar PDF
                 </Button>
-                <Button variant="secondary" onClick={handleSave} disabled={!ppp.can_edit || updatePpp.isPending}>
+                <Button className="w-full sm:w-auto" variant="secondary" onClick={handleSave} disabled={!ppp.can_edit || updatePpp.isPending}>
                   {updatePpp.isPending ? 'Salvando...' : 'Salvar texto'}
                 </Button>
-                <Button variant="primary" onClick={handleConclude} disabled={!ppp.can_conclude || concludePpp.isPending}>
+                <Button className="w-full sm:w-auto" variant="primary" onClick={handleConclude} disabled={!ppp.can_conclude || concludePpp.isPending}>
                   {concludePpp.isPending ? 'Concluindo...' : 'Concluir PPP'}
                 </Button>
               </>
@@ -343,7 +648,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
         )}
       />
 
-      <div className="relative overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
+      <div className="relative overflow-visible rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
           style={{
@@ -352,21 +657,21 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             backgroundSize: '32px 32px, 32px 32px',
           }}
         />
-        <div className="relative grid gap-4 px-5 py-5 lg:grid-cols-[1.4fr_0.6fr]">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4">
-              <div className="space-y-2">
+        <div className="relative grid grid-cols-1 gap-4 px-3 py-3 sm:px-5 sm:py-5">
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1 space-y-2">
                 <span className="inline-flex rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">
                   Documento escolar
                 </span>
                 <div>
-                  <h2 className="text-2xl font-extrabold text-[var(--color-text)]">{ppp.escola_nome}</h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
+                  <h2 className="break-words text-xl font-extrabold text-[var(--color-text)] sm:text-2xl">{ppp.escola_nome}</h2>
+                  <p className="break-words text-sm text-[var(--color-text-secondary)]">
                     Última edição: {formatDateTime(ppp.updated_at)} · Por {ppp.ultima_edicao_por_nome ?? 'colaborador não identificado'}
                   </p>
                 </div>
               </div>
-              <div className="flex min-w-[220px] flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)]">
+              <div className="ppp-info-box flex w-full flex-col gap-2 rounded-[14px] border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-text-secondary)] sm:w-auto sm:min-w-[200px] sm:max-w-[300px]">
                 <span>
                   <strong className="text-[var(--color-text)]">Comentários abertos:</strong> {isPppAvailable ? comentariosAbertos : 'Disponível após conclusão'}
                 </span>
@@ -386,7 +691,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
 
             <Card className="border-none bg-transparent p-0 shadow-none" noPadding>
               {isPppAvailable ? (
-                <div className="space-y-4 rounded-[14px] bg-white p-4">
+                <div className="space-y-4 rounded-[14px] bg-white p-3 sm:p-4">
                   <label className="block space-y-2">
                     <span className="text-sm font-semibold text-[var(--color-text)]">Título do documento</span>
                     <input
@@ -397,7 +702,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     />
                   </label>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-sm font-semibold text-[var(--color-text)]">Texto colaborativo</span>
                       {(isProfessor || !ppp.can_edit) && (
                         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
@@ -406,15 +711,36 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                       )}
                     </div>
                     <RichTextEditor
+                      className="ppp-page__editor"
                       value={conteudo}
                       onChange={setConteudo}
                       placeholder="Escreva o PPP da escola com objetivos, princípios, organização pedagógica e compromissos institucionais."
                       disabled={isProfessor || !ppp.can_edit}
+                      config={{
+                        toolbar: {
+                          items: [
+                            'heading',
+                            '|',
+                            'bold',
+                            'italic',
+                            'link',
+                            'bulletedList',
+                            'numberedList',
+                            '|',
+                            'blockQuote',
+                            'insertTable',
+                            '|',
+                            'undo',
+                            'redo',
+                          ],
+                          shouldNotGroupWhenFull: true,
+                        },
+                      }}
                     />
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 rounded-[14px] bg-white p-6">
+                <div className="space-y-3 rounded-[14px] bg-white p-4 sm:p-6">
                   <span className="inline-flex w-fit rounded-full bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-warning)]">
                     Visualização indisponível
                   </span>
@@ -449,13 +775,13 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                             : 'border-[var(--color-border)] bg-white'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <strong className="text-sm text-[var(--color-text)]">{item.escola_nome}</strong>
                           <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_CLASSES[item.status] ?? statusClass}`}>
                             {STATUS_LABELS[item.status] ?? item.status}
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+                        <div className="mt-2 flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
                           <span>{item.comentarios_abertos} comentário(s) aberto(s)</span>
                           <span>{formatDateTime(item.updated_at)}</span>
                         </div>
@@ -485,7 +811,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                 </div>
 
                 {isProfessor ? (
-                  <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-8">
+                  <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
                     <p className="text-sm text-[var(--color-text-secondary)]">
                       Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
                     </p>
@@ -527,7 +853,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                         <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
                         <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
                       </div>
-                      <Button type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
+                      <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
                         {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
                       </Button>
                     </form>
@@ -535,10 +861,10 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     <div className="space-y-3">
                       {comentariosOrdenados.map((comentario) => (
                         <div key={comentario.id} className="rounded-[14px] border border-[var(--color-border)] bg-white p-4">
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <strong className="text-sm text-[var(--color-text)]">Comentário #{comentario.id}</strong>
+                                <strong className="text-sm text-[var(--color-text)]">Comentário</strong>
                                 <span
                                   className={`rounded-full px-2 py-1 text-[11px] font-bold ${
                                     comentario.resolvido
@@ -554,7 +880,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                               </p>
                             </div>
                             {!comentario.resolvido && ppp.can_conclude && (
-                              <Button size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
+                              <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
                                 Resolver
                               </Button>
                             )}
@@ -563,7 +889,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                           {comentario.anchor_json && (
                             <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                               <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
-                              {typeof comentario.anchor_json === 'string' ? comentario.anchor_json : JSON.stringify(comentario.anchor_json)}
+                              {formatCommentReference(comentario.anchor_json)}
                             </div>
                           )}
 
@@ -572,7 +898,20 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                             dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
                           />
 
-                          {!comentario.resolvido && ppp.can_comment && (
+                          {comentario.resposta_html && (
+                            <div className="mt-3 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-3">
+                              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                                <strong className="text-[var(--color-text)]">Resposta</strong>
+                                {comentario.respondido_em && <span>Respondido em {formatDateTime(comentario.respondido_em)}</span>}
+                              </div>
+                              <div
+                                className="prose prose-sm max-w-none text-[var(--color-text)]"
+                                dangerouslySetInnerHTML={{ __html: comentario.resposta_html }}
+                              />
+                            </div>
+                          )}
+
+                          {!comentario.resolvido && ppp.can_comment && comentario.autor === user?.id && (
                             <div className="mt-3 space-y-2">
                               <textarea
                                 rows={3}
@@ -580,9 +919,51 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                                 onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
                                 placeholder="Atualize o texto do comentário, se necessário."
                               />
-                              <Button size="sm" variant="ghost" onClick={() => handleUpdateComentario(comentario)}>
+                              <Button
+                                className="w-full sm:w-auto"
+                                size="sm"
+                                variant="ghost"
+                                style={COMMENT_ACTION_BUTTON_STYLE}
+                                onClick={() => handleUpdateComentario(comentario)}
+                              >
                                 Atualizar comentário
                               </Button>
+                            </div>
+                          )}
+
+                          {!comentario.resolvido &&
+                            ppp.can_comment &&
+                            comentario.autor !== user?.id &&
+                            (!comentario.respondido_por || comentario.respondido_por === user?.id) && (
+                            <div className="mt-3">
+                              {comentarioRespostaAbertaId === comentario.id ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    rows={3}
+                                    value={comentarioRespostaDrafts[comentario.id] ?? ''}
+                                    onChange={(event) => setComentarioRespostaDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
+                                    placeholder="Escreva a resposta para este comentário."
+                                  />
+                                  <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Button className="w-full sm:w-auto" size="sm" variant="primary" onClick={() => handleSubmitRespostaComentario(comentario)}>
+                                      {comentario.resposta_html ? 'Atualizar resposta' : 'Enviar resposta'}
+                                    </Button>
+                                    <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setComentarioRespostaAbertaId(null)}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button
+                                  className="w-full sm:w-auto"
+                                  size="sm"
+                                  variant="ghost"
+                                  style={COMMENT_ACTION_BUTTON_STYLE}
+                                  onClick={() => handleReplyComentario(comentario)}
+                                >
+                                  {comentario.resposta_html ? 'Editar resposta' : 'Responder comentário'}
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

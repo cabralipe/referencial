@@ -80,9 +80,15 @@ export function CadastroPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const filteredClientes = clientes.filter((cliente) =>
+    cliente.nome.toLowerCase().includes(clienteBusca.toLowerCase())
+  );
   const escolasDoCliente = selectedClienteId
     ? escolas.filter((e) => Number(e.cliente_id) === Number(selectedClienteId))
     : [];
+  const filteredEscolas = escolasDoCliente.filter((escola) =>
+    escola.nome.toLowerCase().includes(escolaBusca.toLowerCase())
+  );
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -204,7 +210,7 @@ export function CadastroPage() {
         <div className="w-full lg:w-1/2 flex flex-col items-center justify-start relative z-20 px-4 lg:px-12 -mt-16 lg:mt-0 pb-8 lg:pb-0 lg:bg-white lg:shadow-none lg:h-screen lg:overflow-y-auto">
           <div className="w-full max-w-md flex flex-col pt-4 lg:py-12 lg:my-auto">
 
-            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col lg:bg-transparent lg:rounded-none lg:shadow-none lg:border-none lg:overflow-visible relative">
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-visible flex flex-col lg:bg-transparent lg:rounded-none lg:shadow-none lg:border-none relative">
 
               <div className="pt-8 pb-4 px-8 text-center lg:p-0 lg:mb-8 lg:text-left">
                 <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 lg:text-slate-900 tracking-tight">Criar Conta</h2>
@@ -292,16 +298,16 @@ export function CadastroPage() {
                       {/* Dropdown Options */}
                       {isClienteDropdownOpen && (
                         <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                           {clientes.filter(c => c.nome.toLowerCase().includes(clienteBusca.toLowerCase())).length === 0 ? (
+                           {filteredClientes.length === 0 ? (
                              <div className="p-3 text-sm text-slate-500 text-center">Nenhum município encontrado</div>
                            ) : (
-                             clientes
-                               .filter(c => c.nome.toLowerCase().includes(clienteBusca.toLowerCase()))
-                               .map(c => (
-                                 <div 
+                              filteredClientes.map(c => (
+                                 <button
                                    key={c.id}
-                                   className={`p-3 text-sm cursor-pointer hover:bg-slate-50 transition-colors ${selectedClienteId === c.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
-                                   onClick={() => {
+                                   type="button"
+                                   className={`block w-full p-3 text-left text-sm hover:bg-slate-50 transition-colors ${selectedClienteId === c.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
+                                   onMouseDown={(event) => {
+                                      event.preventDefault();
                                       setSelectedClienteId(c.id);
                                       setClienteBusca(c.nome);
                                       setIsClienteDropdownOpen(false);
@@ -311,7 +317,7 @@ export function CadastroPage() {
                                    }}
                                  >
                                     {c.nome}
-                                 </div>
+                                 </button>
                                ))
                            )}
                         </div>
@@ -353,23 +359,23 @@ export function CadastroPage() {
                       {/* Dropdown Options */}
                       {isEscolaDropdownOpen && selectedClienteId !== '' && (
                         <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                           {escolasDoCliente.filter(e => e.nome.toLowerCase().includes(escolaBusca.toLowerCase())).length === 0 ? (
+                           {filteredEscolas.length === 0 ? (
                              <div className="p-3 text-sm text-slate-500 text-center">Nenhuma escola encontrada</div>
                            ) : (
-                             escolasDoCliente
-                               .filter(e => e.nome.toLowerCase().includes(escolaBusca.toLowerCase()))
-                               .map(e => (
-                                 <div 
+                              filteredEscolas.map(e => (
+                                 <button
                                    key={e.id}
-                                   className={`p-3 text-sm cursor-pointer hover:bg-slate-50 transition-colors ${selectedEscolaId === e.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
-                                   onClick={() => {
+                                   type="button"
+                                   className={`block w-full p-3 text-left text-sm hover:bg-slate-50 transition-colors ${selectedEscolaId === e.id ? 'bg-primary/5 text-primary font-medium' : 'text-slate-700'}`}
+                                   onMouseDown={(event) => {
+                                      event.preventDefault();
                                       setSelectedEscolaId(e.id);
                                       setEscolaBusca(e.nome);
                                       setIsEscolaDropdownOpen(false);
                                    }}
                                  >
                                     {e.nome}
-                                 </div>
+                                 </button>
                                ))
                            )}
                         </div>

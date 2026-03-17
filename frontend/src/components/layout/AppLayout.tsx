@@ -58,8 +58,8 @@ export function AppLayout() {
       super_admin: 'Superadmin',
       admin_cliente: 'Admin SEMED',
       diretor: 'Diretor',
-      coordenador_pedagogico: 'Coordenador Pedagógico',
-      articulador: 'Redação',
+      coordenador_pedagogico: 'Coordenador PedagÃ³gico',
+      articulador: 'RedaÃ§Ã£o',
       revisor: 'Revisor',
       membro_gt: 'Membro GT',
       leitor: 'Leitor',
@@ -135,30 +135,45 @@ export function AppLayout() {
   const avaHref = buildBackendUrl('/ava/catalogo/');
 
   const navItems = useMemo(() => {
-    const avaNavItem = { href: '/ava/', label: 'Acessar AVA', icon: 'library', external: true } as const;
+    const avaNavItem = { href: avaHref, label: 'Acessar AVA', icon: 'library', external: true } as const;
     if (isGtMember) {
       return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
-        { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
+        { to: '/inicio', label: 'InÃ­cio', icon: 'dashboard' },
         avaNavItem,
         { to: '/minha-trilha', label: 'Minha Trilha', icon: 'tasks' },
-        { to: '/texto', label: 'Construção de Texto', icon: 'document' },
+        { to: '/texto', label: 'ConstruÃ§Ã£o de Texto', icon: 'document' },
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
         { to: '/mural', label: 'Mural', icon: 'comment' },
         { to: '/ppp', label: 'PPP', icon: 'kanban' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (isSchoolLeader) {
+    if (false && (isSchoolLeader || isProfessor)) {
       return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/inicio', label: 'InÃƒÂ­cio', icon: 'dashboard' },
+        avaNavItem,
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (isProfessor) {
+    if (false && isSchoolLeader) {
       return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
+        { to: '/inicio', label: 'InÃ­cio', icon: 'dashboard' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (false && isProfessor) {
+      return [
+        { to: '/inicio', label: 'InÃ­cio', icon: 'dashboard' },
+        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
+        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
+      ];
+    }
+    if (isSchoolLeader || isProfessor) {
+      return [
+        { to: '/inicio', label: 'Inicio', icon: 'dashboard' },
+        avaNavItem,
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
@@ -167,9 +182,7 @@ export function AppLayout() {
       const adminItems = [
         { to: '/admin/console', label: 'Admin Console', icon: 'settings' },
         { to: '/consultas-publicas', label: 'Consultas públicas', icon: 'document' },
-        { to: '/cursos', label: 'Cursos', icon: 'library' },
         avaNavItem,
-        { to: '/admin/cursos', label: 'Configuracao dos Cursos', icon: 'form' },
         { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
         { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },
         { to: '/admin/ppp', label: 'Admin: PPP', icon: 'document' },
@@ -177,7 +190,7 @@ export function AppLayout() {
       if (user?.role === 'super_admin') {
         adminItems.unshift(
           { to: '/admin/console/clientes', label: 'Clientes', icon: 'users' },
-          { to: '/admin/console/clientes-config', label: 'Configuração do cliente', icon: 'settings' },
+          { to: '/admin/console/clientes-config', label: 'ConfiguraÃ§Ã£o do cliente', icon: 'settings' },
         );
       }
       return adminItems;
@@ -186,34 +199,33 @@ export function AppLayout() {
       return [
         { to: '/redator/painel', label: 'Painel', icon: 'dashboard' },
         avaNavItem,
-        { to: '/cursos', label: 'Módulos PROLUC', icon: 'library' },
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
-        { to: '/redator/revisoes', label: 'Revisões', icon: 'review' },
-        { to: '/redator/conteudos', label: 'Conteúdos', icon: 'library' },
+        { to: '/redator/revisoes', label: 'RevisÃµes', icon: 'review' },
+        { to: '/redator/conteudos', label: 'ConteÃºdos', icon: 'library' },
         { to: '/redator/mural', label: 'Mural', icon: 'comment' },
-        { to: '/redator/exportacoes', label: 'Exportações', icon: 'export' },
+        { to: '/redator/exportacoes', label: 'ExportaÃ§Ãµes', icon: 'export' },
       ];
     }
     const items = [
       { to: '/', label: 'Painel', icon: 'dashboard' },
-      { to: '/tarefas', label: 'Trilhas pedagógicas', icon: 'tasks' },
-      { to: '/texto-unico', label: 'Texto único', icon: 'document' },
+      { to: '/tarefas', label: 'Trilhas pedagÃ³gicas', icon: 'tasks' },
+      { to: '/texto-unico', label: 'Texto Ãºnico', icon: 'document' },
       { to: '/quadros', label: 'Quadros', icon: 'kanban' },
-      { to: '/formularios', label: 'Formulários', icon: 'form' },
-      { to: '/revisoes', label: 'Revisões', icon: 'review' },
+      { to: '/formularios', label: 'FormulÃ¡rios', icon: 'form' },
+      { to: '/revisoes', label: 'RevisÃµes', icon: 'review' },
       { to: '/pareceres', label: 'Pareceres', icon: 'review', only: ['membro_gt', 'articulador'] },
-      { to: '/comentarios', label: 'Comentários', icon: 'comment' },
-      { to: '/relatorios', label: 'Relatórios', icon: 'document', only: ['admin_cliente', 'super_admin'] },
-      { to: '/biblioteca', label: 'Referências', icon: 'library' },
+      { to: '/comentarios', label: 'ComentÃ¡rios', icon: 'comment' },
+      { to: '/relatorios', label: 'RelatÃ³rios', icon: 'document', only: ['admin_cliente', 'super_admin'] },
+      { to: '/biblioteca', label: 'ReferÃªncias', icon: 'library' },
       avaNavItem,
-      { to: '/exportacoes', label: 'Exportações', icon: 'export' },
+      { to: '/exportacoes', label: 'ExportaÃ§Ãµes', icon: 'export' },
       { to: '/diff', label: 'Diff', icon: 'diff' },
       { to: '/auditoria', label: 'Auditoria', icon: 'audit' },
       { to: '/bloqueios', label: 'Bloqueios', icon: 'audit', only: ['admin_cliente', 'super_admin'] },
-      { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
+      { to: '/gamificacao', label: 'GamificaÃ§Ã£o', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
     return items;
-  }, [isAdmin, isGtMember, isRedator, user?.role]);
+  }, [avaHref, isAdmin, isGtMember, isProfessor, isRedator, isSchoolLeader, user?.role]);
 
   const selectedCliente = useMemo(() => {
     if (!isSuperAdmin) return null;
@@ -350,12 +362,12 @@ export function AppLayout() {
         </div>
 
         <div className="app-shell__user">
-          <button type="button" className="app-shell__notify" aria-label="Notificações">
+          <button type="button" className="app-shell__notify" aria-label="NotificaÃ§Ãµes">
             <Icon name="notifications" className="menu__icon" ariaHidden />
             <span className="app-shell__notify-dot" />
           </button>
           <div className="app-shell__user-meta">
-            <strong>{user?.nome ?? 'Usuário'}</strong>
+            <strong>{user?.nome ?? 'UsuÃ¡rio'}</strong>
             <small>{roleLabel}</small>
           </div>
           <div className="app-shell__avatar" aria-hidden="true">{userInitials}</div>

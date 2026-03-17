@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 
+from core.admin_mixins import ClienteScopedAdminMixin
 from .models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 
 
@@ -11,7 +12,7 @@ class CampoDinamicoInline(admin.TabularInline):
 
 
 @admin.register(FormularioDinamico)
-class FormularioDinamicoAdmin(admin.ModelAdmin):
+class FormularioDinamicoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("nome", "cliente", "ativo")
     list_filter = ("cliente", "ativo")
     search_fields = ("nome", "descricao")
@@ -19,12 +20,12 @@ class FormularioDinamicoAdmin(admin.ModelAdmin):
 
 
 @admin.register(CampoDinamico)
-class CampoDinamicoAdmin(admin.ModelAdmin):
+class CampoDinamicoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("formulario", "chave", "tipo", "ordem")
     list_filter = ("formulario", "tipo")
 
 
 @admin.register(RespostaCampoDinamico)
-class RespostaCampoDinamicoAdmin(admin.ModelAdmin):
+class RespostaCampoDinamicoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("campo", "owner_type", "owner_id", "updated_at")
     list_filter = ("owner_type", "campo__formulario")

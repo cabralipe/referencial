@@ -5,18 +5,26 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
+import { buildBackendUrl } from '@/config/env';
+import { useAuth } from '@/context/AuthContext';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
+import { useContinuar } from '@/hooks/useContinuar';
+import { usePppDocumento } from '@/hooks/usePpp';
 import { useRespostas } from '@/hooks/useRespostas';
 import { useRevisoes } from '@/hooks/useRevisoes';
-import { useContinuar } from '@/hooks/useContinuar';
 import type { Revisao } from '@/api/types';
 
 import './InicioPage.css';
 
+const PPP_STATUS_LABELS: Record<string, string> = {
+  em_elaboracao: 'Em elaboracao',
+  concluido: 'Concluido',
+};
+
 const formatDateTime = (value?: string | null) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 };
 
@@ -26,6 +34,163 @@ const stripHtml = (html?: string | null) => {
 };
 
 export function InicioPage() {
+  const { user } = useAuth();
+  const isSchoolLeader = user?.role === 'diretor' || user?.role === 'coordenador_pedagogico';
+  const isProfessor = user?.role === 'professor';
+
+  if (isSchoolLeader || isProfessor) {
+    return <SchoolInicioContent isProfessor={isProfessor} />;
+  }
+
+  return <MemberInicioContent />;
+}
+
+function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
+  const { user } = useAuth();
+  const avaHref = buildBackendUrl('/ava/catalogo/');
+  const pppQuery = usePppDocumento({
+    escolaId: user?.escolaId,
+    enabled: Boolean(user?.escolaId),
+  });
+
+  if (pppQuery.isLoading) {
+    return <FullPageLoader message="Carregando inicio..." />;
+  }
+
+  const ppp = pppQuery.data;
+  const statusLabel = PPP_STATUS_LABELS[ppp?.status ?? ''] ?? (ppp?.status || 'Nao iniciado');
+  const comentariosAbertos = ppp?.comentarios_abertos ?? 0;
+  const isAvailable = ppp?.is_available !== false;
+  const title = isProfessor ? 'Acompanhamento da escola' : 'Painel da escola';
+  const description = isProfessor
+    ? 'Consulte o PPP liberado, acompanhe os avisos e acesse rapidamente o AVA.'
+    : 'Acompanhe o andamento do PPP da escola, comentarios abertos e atalhos principais.';
+
+  return (
+    <div className="inicio">
+      <PageHeader
+        title={title}
+        description={description}
+        actions={(
+          <div className="inicio__actions">
+            <Link to="/ppp">
+              <Button variant="primary" disabled={!user?.escolaId}>Abrir PPP</Button>
+            </Link>
+            <a href={avaHref} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary">Acessar AVA</Button>
+            </a>
+          </div>
+        )}
+      />
+
+      <section className="inicio__stats">
+        <Card>
+          <div className="inicio__stat">
+            <span>Escola vinculada</span>
+            <strong>{ppp?.escola_nome || 'Nao informada'}</strong>
+            <p>
+              {user?.escolaId
+                ? 'Os dados desta pagina consideram a escola associada ao seu usuario.'
+                : 'Associe uma escola ao usuario para liberar os dados institucionais.'}
+            </p>
+          </div>
+        </Card>
+        <Card>
+          <div className="inicio__stat">
+            <span>Status do PPP</span>
+            <strong>{statusLabel}</strong>
+            <p>
+              {isProfessor
+                ? 'Professores consultam a versao disponibilizada pela gestao.'
+                : 'Direcao e coordenacao acompanham a elaboracao e publicacao do documento.'}
+            </p>
+          </div>
+        </Card>
+        <Card>
+          <div className="inicio__stat">
+            <span>{isProfessor ? 'Disponibilidade' : 'Comentarios abertos'}</span>
+            <strong>{isProfessor ? (isAvailable ? 'Liberado' : 'Aguardando') : comentariosAbertos}</strong>
+            <p>
+              {isProfessor
+                ? (ppp?.availability_message ?? 'O documento sera exibido assim que a versao concluida estiver disponivel.')
+                : 'Pendencias e observacoes registradas no fluxo do PPP da escola.'}
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      <section className="inicio__school-grid">
+        <Card>
+          <div className="inicio__panel">
+            <div className="inicio__panel-header">
+              <div>
+                <h2>Resumo do PPP</h2>
+                <p>Situacao atual do documento institucional da escola.</p>
+              </div>
+            </div>
+            {ppp ? (
+              <div className="inicio__meta-list">
+                <div className="inicio__meta-item">
+                  <span>Titulo</span>
+                  <strong>{ppp.titulo || 'Titulo ainda nao definido'}</strong>
+                </div>
+                <div className="inicio__meta-item">
+                  <span>Ultima edicao</span>
+                  <strong>{formatDateTime(ppp.updated_at)}</strong>
+                </div>
+                <div className="inicio__meta-item">
+                  <span>Responsavel pela ultima edicao</span>
+                  <strong>{ppp.ultima_edicao_por_nome ?? 'Nao identificado'}</strong>
+                </div>
+                <div className="inicio__meta-item">
+                  <span>Versao</span>
+                  <strong>{ppp.version}</strong>
+                </div>
+                <div className="inicio__meta-item">
+                  <span>Conclusao</span>
+                  <strong>{ppp.concluido_em ? formatDateTime(ppp.concluido_em) : 'Ainda nao concluido'}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="inicio__empty">Nenhum PPP foi localizado para a escola vinculada.</div>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <div className="inicio__panel">
+            <div className="inicio__panel-header">
+              <div>
+                <h2>Proximos acessos</h2>
+                <p>Atalhos uteis para a rotina escolar.</p>
+              </div>
+            </div>
+            <div className="inicio__quick-links">
+              <Link className="inicio__quick-link" to="/ppp">
+                <strong>{isProfessor ? 'Consultar PPP' : 'Gerenciar PPP'}</strong>
+                <span>
+                  {isProfessor
+                    ? 'Abra a versao disponivel do documento da escola.'
+                    : 'Edite, acompanhe comentarios e finalize o documento.'}
+                </span>
+              </Link>
+              <a className="inicio__quick-link" href={avaHref} target="_blank" rel="noopener noreferrer">
+                <strong>Acessar AVA</strong>
+                <span>Entre no ambiente virtual para acompanhar conteudos e percursos formativos.</span>
+              </a>
+              <Link className="inicio__quick-link" to="/mural">
+                <strong>Acompanhar mural</strong>
+                <span>Consulte comunicados e atualizacoes recentes publicados para sua escola.</span>
+              </Link>
+            </div>
+          </div>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+function MemberInicioContent() {
   const navigate = useNavigate();
   const { gtOptions, isLoading: gtsLoading } = useAvailableGts();
   const { data: respostas, isLoading: respostasLoading } = useRespostas({ includeAll: true });
@@ -42,14 +207,14 @@ export function InicioPage() {
   }, [revisoes, respostaIds]);
 
   if (gtsLoading || respostasLoading || revisoesLoading) {
-    return <FullPageLoader message="Carregando início..." />;
+    return <FullPageLoader message="Carregando inicio..." />;
   }
 
   return (
     <div className="inicio">
       <PageHeader
         title="Bem-vindo(a) ao PROLUC"
-        description="Aqui você acompanha suas trilhas e os pareceres do redator."
+        description="Aqui voce acompanha suas trilhas e os pareceres do redator."
         actions={(
           <div className="inicio__actions">
             <Button
@@ -76,7 +241,7 @@ export function InicioPage() {
           <div className="inicio__stat">
             <span>GTs vinculados</span>
             <strong>{gtOptions.length}</strong>
-            <p>Esses são os grupos em que você atua.</p>
+            <p>Esses sao os grupos em que voce atua.</p>
           </div>
         </Card>
         <Card>
@@ -115,7 +280,7 @@ export function InicioPage() {
               return (
                 <div key={rev.id} className="inicio__parecer">
                   <div>
-                    <strong>Revisão #{rev.id}</strong>
+                    <strong>Revisao #{rev.id}</strong>
                     <span>{stripHtml(rev.parecer_html) || 'Sem parecer detalhado.'}</span>
                   </div>
                   <div className="inicio__parecer-meta">
@@ -130,7 +295,7 @@ export function InicioPage() {
             })}
           </div>
         ) : (
-          <div className="inicio__empty">Nenhum parecer disponível ainda.</div>
+          <div className="inicio__empty">Nenhum parecer disponivel ainda.</div>
         )}
       </Card>
     </div>

@@ -65,6 +65,7 @@ interface UpdateComentarioInput {
   comentarioId: number;
   payload: Partial<{
     conteudo_html: string;
+    resposta_html: string;
     resolvido: boolean;
     anchor_json: string | null;
     mentions: number[];

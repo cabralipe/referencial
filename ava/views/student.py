@@ -33,10 +33,26 @@ def _aplicar_status_progresso_aulas(matricula, aulas):
 @login_required
 def dashboard(request):
     """
-    Dashboard do Aluno mostrando matriculas ativas e resumo.
+    Dashboard do Aluno mostrando cursos em andamento e concluidos.
     """
-    matriculas = MatriculaCurso.objects.filter(aluno=request.user, status="ativa").select_related("curso")
-    return render(request, "ava/student/dashboard.html", {"matriculas": matriculas})
+    matriculas = list(
+        MatriculaCurso.objects.filter(
+            aluno=request.user,
+            status__in=[MatriculaCurso.Status.ATIVA, MatriculaCurso.Status.CONCLUIDA],
+        ).select_related("curso")
+    )
+    for matricula in matriculas:
+        ProgressoService.sincronizar_matricula(matricula)
+    matriculas_em_andamento = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.ATIVA]
+    matriculas_concluidas = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.CONCLUIDA]
+    return render(
+        request,
+        "ava/student/dashboard.html",
+        {
+            "matriculas_em_andamento": matriculas_em_andamento,
+            "matriculas_concluidas": matriculas_concluidas,
+        },
+    )
 
 
 @login_required
@@ -49,6 +65,7 @@ def curso_detalhe(request, slug):
         aluno=request.user,
         curso__slug=slug,
     )
+    ProgressoService.sincronizar_matricula(matricula)
 
     modulos = list(
         matricula.curso.modulos.filter(is_active=True)
@@ -80,6 +97,7 @@ def acessar_aula(request, curso_slug, aula_id):
     Pagina de consumo da aula (video, textos).
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
+    ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     conteudos = aula.conteudos.all().order_by("ordem", "id")
     atividades = list(aula.atividades.all().order_by("titulo", "id"))
@@ -173,6 +191,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     Pagina de resposta da atividade/questionario.
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
+    ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     atividade = get_object_or_404(Atividade, id=atividade_id, aula=aula)
     questoes = list(atividade.questoes.all().prefetch_related("alternativas"))

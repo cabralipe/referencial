@@ -2015,7 +2015,11 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.TEXTO_UNICO, alvo_id__in=texto_unico_ids)
                 | models.Q(alvo_tipo=Comentario.AlvoTipo.QUADRO, alvo_id__in=quadro_ids)
             )
-        elif getattr(user, "role", None) not in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        elif getattr(user, "role", None) not in {
+            user.Role.ADMIN_CLIENTE,
+            user.Role.SUPER_ADMIN,
+            user.Role.ARTICULADOR,
+        }:
             queryset = queryset.none()
         return queryset
 
@@ -2089,6 +2093,8 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         _check_etag(request, instance)
         serializer = self.get_serializer(instance, data=request.data, partial=parcial)
         serializer.is_valid(raise_exception=True)
+        campos_atualizados = set(serializer.validated_data.keys())
+        is_author = request.user == instance.autor
         vai_resolver = (
             serializer.validated_data.get("resolvido")
             and not instance.resolvido
@@ -2100,8 +2106,21 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                     raise PermissionDenied("Somente Diretor ou Coordenador Pedagógico podem resolver comentários do PPP.")
             else:
                 _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE, request.user.Role.REVISOR})
+        elif not is_author:
+            if instance.alvo_tipo == Comentario.AlvoTipo.PPP:
+                _assert_ppp_comment_access(request.user, instance.cliente_id, instance.alvo_id)
+            else:
+                _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE, request.user.Role.REVISOR})
+            if not campos_atualizados or campos_atualizados - {"resposta_html"}:
+                raise PermissionDenied("Somente o autor pode atualizar este comentário.")
+            if instance.respondido_por_id and instance.respondido_por_id != request.user.id:
+                raise PermissionDenied("Este comentário já possui resposta registrada por outro usuário.")
         mentions_ids = serializer.validated_data.pop("mentions", None)
-        comentario = serializer.save()
+        save_kwargs = {}
+        if not vai_resolver and not is_author and "resposta_html" in campos_atualizados:
+            save_kwargs["respondido_por"] = request.user
+            save_kwargs["respondido_em"] = timezone.now()
+        comentario = serializer.save(**save_kwargs)
         if mentions_ids is not None:
             usuarios = get_user_model().objects.filter(id__in=mentions_ids, cliente_id=comentario.cliente_id)
             comentario.mentions.set(usuarios)
@@ -2113,7 +2132,11 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             payload = {"comentario_id": comentario.id, "resolvido": True}
         else:
             evento = "comment:updated"
-            payload = {"comentario_id": comentario.id, "conteudo_html": comentario.conteudo_html}
+            payload = {
+                "comentario_id": comentario.id,
+                "conteudo_html": comentario.conteudo_html,
+                "resposta_html": comentario.resposta_html,
+            }
         broadcast_stream_event(comentario.alvo_tipo, comentario.alvo_id, evento, payload)
         serializer = self.get_serializer(comentario)
         response = Response(serializer.data)

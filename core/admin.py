@@ -5,6 +5,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
+from .admin_mixins import ClienteScopedAdminMixin
 from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
 from .forms import UsuarioCreationForm, UsuarioChangeForm, ClienteTemaAdminForm
 from meb.services import deliver_admin_broadcast
@@ -18,7 +19,8 @@ class BroadcastMessageForm(ActionForm):
 
 
 @admin.register(Cliente)
-class ClienteAdmin(admin.ModelAdmin):
+class ClienteAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
+    cliente_scope_lookup = "pk"
     list_display = ("nome", "slug", "ativo", "created_at")
     list_filter = ("ativo",)
     search_fields = ("nome", "slug")
@@ -26,21 +28,21 @@ class ClienteAdmin(admin.ModelAdmin):
 
 
 @admin.register(ClienteConfig)
-class ClienteConfigAdmin(admin.ModelAdmin):
+class ClienteConfigAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("cliente", "chave", "valor_texto", "updated_at")
     search_fields = ("cliente__nome", "chave")
     list_filter = ("cliente",)
 
 
 @admin.register(ClienteFeatureFlag)
-class ClienteFeatureFlagAdmin(admin.ModelAdmin):
+class ClienteFeatureFlagAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("cliente", "flag", "ativo")
     list_filter = ("cliente", "ativo")
     search_fields = ("flag",)
 
 
 @admin.register(ClienteTema)
-class ClienteTemaAdmin(admin.ModelAdmin):
+class ClienteTemaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     form = ClienteTemaAdminForm
     list_display = (
         "cliente",
@@ -55,7 +57,7 @@ class ClienteTemaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Usuario)
-class UsuarioAdmin(DjangoUserAdmin):
+class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
@@ -168,7 +170,7 @@ class UsuarioAdmin(DjangoUserAdmin):
 
 
 @admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
+class AuditLogAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("cliente", "entidade", "entidade_id", "acao", "timestamp")
     search_fields = ("entidade", "entidade_id", "acao")
     list_filter = ("cliente", "acao")

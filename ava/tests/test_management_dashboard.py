@@ -140,6 +140,56 @@ class AVAManagementDashboardTests(TestCase):
             nota_item=100,
         )
 
+        self.outro_cliente = Cliente.objects.create(nome="Cliente Externo", slug="cliente-externo")
+        self.aluno_externo = User.objects.create_user(
+            email="aluno@externo.com",
+            nome="Aluno Externo",
+            password="123456",
+            cliente=self.outro_cliente,
+            role=User.Role.LEITOR,
+        )
+        self.curso_externo = Curso.objects.create(
+            cliente=self.outro_cliente,
+            titulo="Curso Externo",
+            slug="curso-externo",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            autor_principal=self.aluno_externo,
+        )
+        modulo_externo = CursoModulo.objects.create(
+            cliente=self.outro_cliente,
+            curso=self.curso_externo,
+            titulo="Modulo Externo",
+            ordem=1,
+            is_active=True,
+        )
+        aula_externa = Aula.objects.create(
+            cliente=self.outro_cliente,
+            modulo=modulo_externo,
+            titulo="Aula Externa",
+            ordem=1,
+            is_active=True,
+        )
+        atividade_externa = Atividade.objects.create(
+            cliente=self.outro_cliente,
+            aula=aula_externa,
+            tipo=Atividade.Tipo.TAREFA,
+            titulo="Tarefa Externa",
+        )
+        MatriculaCurso.objects.create(
+            cliente=self.outro_cliente,
+            curso=self.curso_externo,
+            aluno=self.aluno_externo,
+            matriculado_por=self.aluno_externo,
+        )
+        self.tentativa_externa = AtividadeTentativa.objects.create(
+            cliente=self.outro_cliente,
+            atividade=atividade_externa,
+            aluno=self.aluno_externo,
+            status=AtividadeTentativa.Status.ENVIADA,
+            texto_resposta="Resposta externa",
+        )
+
     def test_dashboard_requires_admin_or_redator_role(self):
         self.client.force_login(self.leitor)
         response = self.client.get(reverse("ava:gestao_dashboard"))
@@ -164,9 +214,52 @@ class AVAManagementDashboardTests(TestCase):
         tentativa_ids = {tentativa.id for tentativa in response.context["page_obj"].object_list}
         self.assertEqual(tentativa_ids, {self.tentativa_1.id})
 
+    def test_dashboard_exibe_visao_geral_real_do_cliente(self):
+        curso_sem_tentativa = Curso.objects.create(
+            cliente=self.cliente,
+            titulo="Curso Sem Tentativa",
+            slug="curso-sem-tentativa",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            autor_principal=self.admin,
+        )
+        MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=curso_sem_tentativa,
+            aluno=self.aluno_1,
+            matriculado_por=self.admin,
+        )
+
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["visao_geral"]["total_alunos"], 2)
+        self.assertEqual(response.context["visao_geral"]["total_matriculas"], 3)
+        self.assertEqual(response.context["visao_geral"]["total_cursos"], 2)
+        self.assertEqual(response.context["visao_geral"]["total_atividades"], 2)
+        curso_ids = {curso.id for curso in response.context["cursos"]}
+        self.assertIn(curso_sem_tentativa.id, curso_ids)
+
+    def test_dashboard_restringe_metricas_ao_cliente_do_admin(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["metricas"]["total_tentativas"], 2)
+        tentativa_ids = {tentativa.id for tentativa in response.context["page_obj"].object_list}
+        self.assertNotIn(self.tentativa_externa.id, tentativa_ids)
+        curso_ids = {curso.id for curso in response.context["cursos"]}
+        self.assertNotIn(self.curso_externo.id, curso_ids)
+
     def test_tentativa_detalhe_shows_quiz_resposta(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_1.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Questao da gestao?")
         self.assertContains(response, "Alternativa correta")
+
+    def test_tentativa_detalhe_bloqueia_acesso_a_dado_de_outro_cliente(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_externa.id]))
+        self.assertEqual(response.status_code, 404)

@@ -112,12 +112,6 @@ export function AdminConsolePage() {
       to: '/admin/mural',
     },
     {
-      id: 'config-cursos',
-      label: 'Configurar cursos',
-      description: 'Ajuste a estrutura e os modulos do AVA.',
-      to: '/admin/cursos',
-    },
-    {
       id: 'ava',
       label: 'Abrir AVA',
       description: 'Entrar direto no ambiente virtual.',
@@ -385,12 +379,10 @@ export function AdminConsolePage() {
               <ul>
                 <li>Comece criando usuários e GTs.</li>
                 <li>Defina trilhas e perguntas antes de liberar escrita.</li>
-                <li>Use Configurar cursos para publicar o fluxo do AVA.</li>
                 <li>Use o mural para avisos de calendário.</li>
               </ul>
               <div className="admin-console__help-actions">
                 <Link to="/ajuda">Abrir ajuda</Link>
-                <Link to="/admin/cursos">Configurar cursos</Link>
                 <a href={avaHref} target="_blank" rel="noopener noreferrer">Abrir AVA</a>
                 <Link to="/admin/console/usuarios">Gerenciar usuários</Link>
               </div>

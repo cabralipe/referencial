@@ -44,10 +44,6 @@ import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
 import { ThrottleBlocksPage } from './pages/ThrottleBlocksPage';
-import { CursosPage } from './pages/CursosPage';
-import { CursoDetailPage } from './pages/CursoDetailPage';
-import { AdminCursosPage } from './pages/AdminCursosPage';
-import { AdminCursoBancoPlanosPage } from './pages/AdminCursoBancoPlanosPage';
 import { PlanoEditorPage } from './pages/PlanoEditorPage';
 
 export const router = createBrowserRouter([
@@ -69,27 +65,15 @@ export const router = createBrowserRouter([
       },
       {
         path: 'cursos',
-        element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
-            <CursosPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/" replace />,
       },
       {
         path: 'cursos/:id',
-        element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
-            <CursoDetailPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/" replace />,
       },
       {
         path: 'cursos/:id/modulo/:moduloId',
-        element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
-            <CursoDetailPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/" replace />,
       },
       {
         path: 'plano/:id/editar',
@@ -266,19 +250,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin/cursos',
-        element: (
-          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
-            <AdminCursosPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/admin/console" replace />,
       },
       {
         path: 'admin/cursos/:id/banco-planos',
-        element: (
-          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
-            <AdminCursoBancoPlanosPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/admin/console" replace />,
       },
       {
         path: 'admin/mural',
@@ -398,11 +374,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'banco',
-        element: (
-          <RoleRoute allowed={['membro_gt', 'articulador', 'admin_cliente', 'super_admin']}>
-            <CursosPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/" replace />,
       },
       {
         path: 'documentos/ppp',

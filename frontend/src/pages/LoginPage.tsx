@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
@@ -9,8 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export function LoginPage() {
   const queryClient = useQueryClient();
-  const { isAuthenticated, login, status, error } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, login, status, error, user } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +21,16 @@ export function LoginPage() {
     queryClient.clear();
   }, [queryClient]);
 
-  const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? '/';
+  const requestedPath = (location.state as { from?: Location })?.from?.pathname;
+
+  const resolveDefaultRoute = (role?: string | null) => {
+    if (role === 'diretor' || role === 'coordenador_pedagogico' || role === 'professor') {
+      return '/inicio';
+    }
+    return '/';
+  };
+
+  const redirectTo = requestedPath ?? resolveDefaultRoute(user?.role);
 
   if (isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
@@ -34,7 +42,6 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      navigate(redirectTo, { replace: true });
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -143,7 +150,7 @@ export function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center ml-1">
                       <label className="block text-sm font-semibold text-slate-700">Senha</label>
-                      <a className="text-xs font-semibold text-primary hover:text-blue-700 transition-colors" href="#">Esqueceu a senha?</a>
+                      <Link className="text-xs font-semibold text-primary hover:text-blue-700 transition-colors" to="/cadastro">Cadastro Escola</Link>
                     </div>
                     <div className="relative group">
                       <input

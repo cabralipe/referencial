@@ -20,8 +20,8 @@ export function RoleRoute({ allowed, children }: RoleRouteProps) {
 
   if (!allowed.includes(effectiveRole) && !allowed.includes(user.role)) {
     const fallback =
-      user.role === 'diretor' || user.role === 'coordenador_pedagogico'
-        ? '/ppp'
+      user.role === 'diretor' || user.role === 'coordenador_pedagogico' || user.role === 'professor'
+        ? '/inicio'
         : effectiveRole === 'membro_gt'
         ? '/inicio'
         : effectiveRole === 'revisor'
