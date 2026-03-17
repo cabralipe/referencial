@@ -19,6 +19,37 @@
 </section>
 
 <div class="container pb-5">
+    <section class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Alunos com matricula</p>
+                <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_alunos }}</h3>
+                <small class="text-muted">Base real do ambiente</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Matriculas</p>
+                <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_matriculas }}</h3>
+                <small class="text-muted">Cursos vinculados a usuarios</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Cursos</p>
+                <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_cursos }}</h3>
+                <small class="text-muted">Cursos cadastrados no AVA</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="ava-surface h-100 p-3">
+                <p class="text-muted small mb-1">Atividades</p>
+                <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_atividades }}</h3>
+                <small class="text-muted">Atividades ativas no ambiente</small>
+            </article>
+        </div>
+    </section>
+
     <section class="ava-surface p-4 mb-4">
         <h2 class="h5 fw-bold mb-3">Filtros</h2>
         <form method="get" class="row g-3 align-items-end">

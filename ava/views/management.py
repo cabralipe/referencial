@@ -16,6 +16,7 @@ from ava.models import (
     Aula,
     Curso,
     CursoModulo,
+    MatriculaCurso,
     QuizQuestao,
     QuizRespostaItem,
 )
@@ -58,22 +59,38 @@ def ava_management_required(view_func):
     return _wrapped
 
 
+def _is_super_admin(user) -> bool:
+    return getattr(user, "role", None) == Usuario.Role.SUPER_ADMIN
+
+
 def _options_queryset_for_user(user):
     user_model = get_user_model()
-    usuarios = user_model.objects.filter(cursos_matriculados__isnull=False).distinct().order_by("nome", "email")
-    if user.role != Usuario.Role.SUPER_ADMIN:
+    usuarios = user_model.objects.filter(cursos_matriculados__isnull=False).distinct()
+    cursos = Curso.objects.all()
+    modulos = CursoModulo.objects.select_related("curso").all()
+    aulas = Aula.objects.select_related("modulo", "modulo__curso").all()
+
+    if not _is_super_admin(user):
         usuarios = usuarios.filter(cliente_id=user.cliente_id)
-    cursos = Curso.objects.filter(modulos__aulas__atividades__tentativas__isnull=False).distinct().order_by("titulo")
-    modulos = CursoModulo.objects.filter(aulas__atividades__tentativas__isnull=False).distinct().order_by("titulo")
-    aulas = Aula.objects.filter(atividades__tentativas__isnull=False).distinct().order_by("titulo")
+        cursos = cursos.filter(cliente_id=user.cliente_id)
+        modulos = modulos.filter(curso__cliente_id=user.cliente_id)
+        aulas = aulas.filter(modulo__curso__cliente_id=user.cliente_id)
+
+    usuarios = usuarios.order_by("nome", "email")
+    cursos = cursos.distinct().order_by("titulo")
+    modulos = modulos.distinct().order_by("titulo")
+    aulas = aulas.distinct().order_by("titulo")
     return usuarios, cursos, modulos, aulas
 
 
-def _base_queryset():
-    return AtividadeTentativa.objects.select_related(
+def _base_queryset(user):
+    qs = AtividadeTentativa.objects.select_related(
         "aluno",
         "atividade__aula__modulo__curso",
     ).prefetch_related("respostas_quiz")
+    if not _is_super_admin(user):
+        qs = qs.filter(cliente_id=user.cliente_id)
+    return qs
 
 
 def _apply_filters(qs, filtros):
@@ -161,7 +178,15 @@ def dashboard(request):
         "data_fim": _parse_date(data_fim_raw),
     }
 
-    tentativas_qs = _apply_filters(_base_queryset(), filtros)
+    tentativas_qs = _apply_filters(_base_queryset(request.user), filtros)
+
+    matriculas_qs = MatriculaCurso.objects.select_related("curso", "aluno")
+    cursos_qs = Curso.objects.all()
+    atividades_qs = Atividade.objects.all()
+    if not _is_super_admin(request.user):
+        matriculas_qs = matriculas_qs.filter(cliente_id=request.user.cliente_id)
+        cursos_qs = cursos_qs.filter(cliente_id=request.user.cliente_id)
+        atividades_qs = atividades_qs.filter(cliente_id=request.user.cliente_id)
 
     total_tentativas = tentativas_qs.count()
     total_enviadas = tentativas_qs.filter(status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA]).count()
@@ -218,6 +243,12 @@ def dashboard(request):
         "aulas": aulas,
         "page_obj": page_obj,
         "querystring": query_params.urlencode(),
+        "visao_geral": {
+            "total_alunos": matriculas_qs.values("aluno_id").distinct().count(),
+            "total_matriculas": matriculas_qs.count(),
+            "total_cursos": cursos_qs.count(),
+            "total_atividades": atividades_qs.count(),
+        },
         "metricas": {
             "total_tentativas": total_tentativas,
             "total_enviadas": total_enviadas,
@@ -238,13 +269,13 @@ def dashboard(request):
 
 @ava_management_required
 def tentativa_detalhe(request, tentativa_id):
-    tentativa = get_object_or_404(
-        AtividadeTentativa.objects.select_related(
-            "aluno",
-            "atividade__aula__modulo__curso",
-        ).prefetch_related("respostas_quiz__questao", "respostas_quiz__alternativa_selecionada"),
-        id=tentativa_id,
-    )
+    tentativa_qs = AtividadeTentativa.objects.select_related(
+        "aluno",
+        "atividade__aula__modulo__curso",
+    ).prefetch_related("respostas_quiz__questao", "respostas_quiz__alternativa_selecionada")
+    if not _is_super_admin(request.user):
+        tentativa_qs = tentativa_qs.filter(cliente_id=request.user.cliente_id)
+    tentativa = get_object_or_404(tentativa_qs, id=tentativa_id)
     respostas_quiz = tentativa.respostas_quiz.all().order_by("questao__ordem", "questao_id")
     return render(
         request,
