@@ -6,6 +6,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.utils.html import strip_tags
 
+from core.admin_mixins import ClienteScopedAdminMixin
 from .models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoUnico
 from meb.services import deliver_admin_broadcast
 
@@ -37,7 +38,7 @@ class AreaForm(forms.ModelForm):
 
 
 @admin.register(GT)
-class GTAdmin(admin.ModelAdmin):
+class GTAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("nome", "etapa", "cliente", "created_at")
     search_fields = ("nome", "etapa", "cliente__nome")
     filter_horizontal = ("membros",)
@@ -112,7 +113,7 @@ class GTAdmin(admin.ModelAdmin):
 
 
 @admin.register(Area)
-class AreaAdmin(admin.ModelAdmin):
+class AreaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     form = AreaForm
     list_display = ("nome", "cliente", "created_at")
     search_fields = ("nome", "cliente__nome")
@@ -132,14 +133,14 @@ class AreaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Escola)
-class EscolaAdmin(admin.ModelAdmin):
+class EscolaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("nome", "cliente", "created_at")
     search_fields = ("nome", "cliente__nome")
     list_filter = ("cliente",)
 
 
 @admin.register(PPP)
-class PPPAdmin(admin.ModelAdmin):
+class PPPAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("escola", "status", "ultima_edicao_por", "concluido_por", "updated_at")
     list_filter = ("cliente", "status")
     search_fields = ("escola__nome", "titulo", "conteudo_html")
@@ -177,7 +178,7 @@ class TarefaForm(forms.ModelForm):
 
 
 @admin.register(Tarefa)
-class TarefaAdmin(admin.ModelAdmin):
+class TarefaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     form = TarefaForm
     list_display = ("nome", "ordem", "tipo", "status", "cliente", "id")
     list_filter = ("cliente", "tipo", "status")
@@ -222,7 +223,7 @@ class TarefaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Pergunta)
-class PerguntaAdmin(admin.ModelAdmin):
+class PerguntaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("tarefa", "ordem", "obrigatoria", "permite_upload")
     list_filter = ("tarefa", "permite_upload", "obrigatoria")
     search_fields = ("texto",)
@@ -335,7 +336,7 @@ class RespostaForm(forms.ModelForm):
 
 
 @admin.register(Resposta)
-class RespostaAdmin(admin.ModelAdmin):
+class RespostaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     form = RespostaForm
     list_display = ("gt", "pergunta", "autor", "version", "updated_at")
     list_filter = ("gt", "pergunta", "autor")
@@ -376,13 +377,13 @@ class RespostaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Anexo)
-class AnexoAdmin(admin.ModelAdmin):
+class AnexoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("resposta", "url", "ordem")
     list_filter = ("resposta",)
 
 
 @admin.register(TextoUnico)
-class TextoUnicoAdmin(admin.ModelAdmin):
+class TextoUnicoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("gt", "tarefa", "responsavel", "version", "updated_at")
     list_filter = ("gt", "tarefa")
     
