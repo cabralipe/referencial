@@ -288,3 +288,70 @@ class AVAStudentFlowTests(TestCase):
         response = self.client.get(reverse("ava:catalogo"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Inscrever-se no curso")
+
+
+class AVAEnrollmentFlowTests(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(nome="Cliente Matricula", slug="cliente-matricula")
+        self.user = User.objects.create_user(
+            email="aluno-matricula@teste.com",
+            nome="Aluno Matricula",
+            password="123456",
+            cliente=self.cliente,
+            role=User.Role.LEITOR,
+        )
+        self.curso = Curso.objects.create(
+            cliente=self.cliente,
+            titulo="Curso de Matricula",
+            slug="curso-de-matricula",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            carga_horaria=12,
+            autor_principal=self.user,
+        )
+        self.client.force_login(self.user)
+
+    def test_auto_inscricao_cria_matricula_e_exibe_curso_no_painel(self):
+        response = self.client.post(reverse("ava:matricular_curso", args=[self.curso.slug]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        matricula = MatriculaCurso.objects.get(curso=self.curso, aluno=self.user)
+        self.assertEqual(matricula.cliente_id, self.cliente.id)
+        self.assertEqual(matricula.status, MatriculaCurso.Status.ATIVA)
+
+        dashboard_response = self.client.get(reverse("ava:aluno_dashboard"))
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertContains(dashboard_response, self.curso.titulo)
+
+    def test_catalogo_trata_matricula_concluida_como_curso_ja_disponivel(self):
+        MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            aluno=self.user,
+            status=MatriculaCurso.Status.CONCLUIDA,
+            matriculado_por=self.user,
+        )
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Acessar curso")
+        self.assertNotContains(response, "Inscrever-se no curso")
+
+    def test_post_rematricula_reativa_matricula_concluida(self):
+        MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            aluno=self.user,
+            status=MatriculaCurso.Status.CONCLUIDA,
+            matriculado_por=self.user,
+        )
+
+        response = self.client.post(reverse("ava:matricular_curso", args=[self.curso.slug]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        matricula = MatriculaCurso.objects.get(curso=self.curso, aluno=self.user)
+        self.assertEqual(matricula.status, MatriculaCurso.Status.ATIVA)
+
+        dashboard_response = self.client.get(reverse("ava:aluno_dashboard"))
+        self.assertContains(dashboard_response, self.curso.titulo)
