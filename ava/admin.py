@@ -168,6 +168,25 @@ class QuizQuestaoAdminForm(forms.ModelForm):
         return atividade
 
 
+class CursoAdminForm(forms.ModelForm):
+    class Meta:
+        model = Curso
+        fields = "__all__"
+
+    def clean_slug(self):
+        slug = self.cleaned_data.get("slug")
+        if not slug:
+            return slug
+
+        existing = Curso.raw_objects.filter(slug=slug)
+        if self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+
+        if existing.exists():
+            raise forms.ValidationError("JÃ¡ existe um curso com este slug. Informe um slug diferente.")
+        return slug
+
+
 @admin.register(TrilhaFormativa)
 class TrilhaFormativaAdmin(AVAModelAdmin):
     list_display = ("nome", "cliente", "is_active", "ordem_exibicao")
@@ -183,6 +202,7 @@ class CursoCategoriaAdmin(AVAModelAdmin):
 
 @admin.register(Curso)
 class CursoAdmin(AVAModelAdmin):
+    form = CursoAdminForm
     list_display = ("titulo", "slug", "cliente", "status", "is_aberto")
     list_filter = ("status", "cliente", "is_aberto")
     search_fields = ("titulo", "descricao_curta")
