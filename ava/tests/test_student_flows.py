@@ -289,6 +289,82 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Inscrever-se no curso")
 
+    def test_dashboard_recalcula_curso_concluido_quando_novo_conteudo_obrigatorio_e_adicionado(self):
+        conteudo = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo inicial",
+            conteudo_texto="Base",
+            ordem=1,
+        )
+
+        ProgressoService.marcar_conteudo_visualizado(self.user, conteudo.id)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.status, MatriculaCurso.Status.CONCLUIDA)
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+
+        ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo novo",
+            conteudo_texto="Novo requisito",
+            ordem=2,
+        )
+
+        response = self.client.get(reverse("ava:aluno_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.status, MatriculaCurso.Status.ATIVA)
+        self.assertEqual(self.matricula.progresso_percentual, 0)
+
+    def test_dashboard_recalcula_curso_concluido_quando_novo_modulo_e_adicionado(self):
+        conteudo = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo inicial modulo 1",
+            conteudo_texto="Base",
+            ordem=1,
+        )
+
+        ProgressoService.marcar_conteudo_visualizado(self.user, conteudo.id)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.status, MatriculaCurso.Status.CONCLUIDA)
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+
+        modulo_2 = CursoModulo.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            titulo="Modulo 2",
+            ordem=2,
+            is_active=True,
+        )
+        aula_4 = Aula.objects.create(
+            cliente=self.cliente,
+            modulo=modulo_2,
+            titulo="Aula 4",
+            ordem=1,
+            is_active=True,
+        )
+        ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=aula_4,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo novo modulo 2",
+            conteudo_texto="Novo requisito",
+            ordem=1,
+        )
+
+        response = self.client.get(reverse("ava:aluno_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.status, MatriculaCurso.Status.ATIVA)
+        self.assertEqual(self.matricula.progresso_percentual, 50)
+
 
 class AVAEnrollmentFlowTests(TestCase):
     def setUp(self):
@@ -355,3 +431,20 @@ class AVAEnrollmentFlowTests(TestCase):
 
         dashboard_response = self.client.get(reverse("ava:aluno_dashboard"))
         self.assertContains(dashboard_response, self.curso.titulo)
+
+    def test_dashboard_exibe_secao_de_cursos_concluidos(self):
+        MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            aluno=self.user,
+            status=MatriculaCurso.Status.CONCLUIDA,
+            progresso_percentual=100,
+            matriculado_por=self.user,
+        )
+
+        response = self.client.get(reverse("ava:aluno_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cursos concluidos (1)")
+        self.assertContains(response, self.curso.titulo)
+        self.assertContains(response, "Rever curso")

@@ -46,8 +46,46 @@ class ProgressoService:
 
     @staticmethod
     def _garantir_progressos(matricula, aula):
-        ProgressoModulo.objects.get_or_create(matricula=matricula, modulo=aula.modulo)
-        ProgressoAula.objects.get_or_create(matricula=matricula, aula=aula)
+        ProgressoModulo.objects.get_or_create(
+            matricula=matricula,
+            modulo=aula.modulo,
+            defaults={"cliente_id": matricula.cliente_id},
+        )
+        ProgressoAula.objects.get_or_create(
+            matricula=matricula,
+            aula=aula,
+            defaults={"cliente_id": matricula.cliente_id},
+        )
+
+    @staticmethod
+    def sincronizar_matricula(matricula: MatriculaCurso):
+        """
+        Recalcula a matrícula contra a estrutura atual do curso.
+
+        Isso cobre cenários em que módulos, aulas ou conteúdos obrigatórios
+        foram adicionados após o aluno já ter concluído o curso.
+        """
+        modulos = list(
+            matricula.curso.modulos.filter(is_active=True)
+            .prefetch_related("aulas")
+            .order_by("ordem", "id")
+        )
+
+        for modulo in modulos:
+            ProgressoModulo.objects.get_or_create(
+                matricula=matricula,
+                modulo=modulo,
+                defaults={"cliente_id": matricula.cliente_id},
+            )
+            aulas = list(modulo.aulas.filter(is_active=True).order_by("ordem", "id"))
+            for aula in aulas:
+                ProgressoService._garantir_progressos(matricula, aula)
+                ProgressoService.recalcular_aula(matricula, aula)
+            ProgressoService.recalcular_modulo(matricula, modulo)
+
+        ProgressoService.recalcular_curso(matricula)
+        matricula.refresh_from_db(fields=["status", "progresso_percentual", "data_conclusao"])
+        return matricula
 
     @staticmethod
     def recalcular_aula(matricula: MatriculaCurso, aula: Aula):
@@ -140,5 +178,8 @@ class ProgressoService:
             # Poderia checar nota minima tambem.
             matricula.status = "concluida"
             matricula.data_conclusao = timezone.now()
+        elif percent < matricula.curso.progresso_minimo and matricula.status == MatriculaCurso.Status.CONCLUIDA:
+            matricula.status = MatriculaCurso.Status.ATIVA
+            matricula.data_conclusao = None
 
         matricula.save(update_fields=["progresso_percentual", "status", "data_conclusao"])

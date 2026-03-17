@@ -20,19 +20,16 @@
 
 <div class="container pb-5">
     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
-        <h2 class="h4 fw-bold mb-0">Cursos em andamento ({{ matriculas|length }})</h2>
+        <h2 class="h4 fw-bold mb-0">Cursos em andamento ({{ matriculas_em_andamento|length }})</h2>
         <span class="ava-chip px-3 py-2">Trilha PROLUC</span>
     </div>
 
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-        {% for matricula in matriculas %}
+        {% for matricula in matriculas_em_andamento %}
         <div class="col">
             <article class="ava-surface h-100 p-4 d-flex flex-column">
                 <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
                     <span class="ava-chip px-3 py-2">{{ matricula.curso.categoria.nome|default:"Geral" }}</span>
-                    {% if matricula.status == 'concluida' %}
-                    <span class="badge text-bg-success rounded-pill">Concluido</span>
-                    {% endif %}
                 </div>
 
                 <h3 class="h5 fw-bold mb-2">{{ matricula.curso.titulo }}</h3>
@@ -71,5 +68,47 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if matriculas_concluidas %}
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mt-5 mb-4">
+        <h2 class="h4 fw-bold mb-0">Cursos concluidos ({{ matriculas_concluidas|length }})</h2>
+        <span class="ava-chip px-3 py-2">Historico</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for matricula in matriculas_concluidas %}
+        <div class="col">
+            <article class="ava-surface h-100 p-4 d-flex flex-column">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                    <span class="ava-chip px-3 py-2">{{ matricula.curso.categoria.nome|default:"Geral" }}</span>
+                    <span class="badge text-bg-success rounded-pill">Concluido</span>
+                </div>
+
+                <h3 class="h5 fw-bold mb-2">{{ matricula.curso.titulo }}</h3>
+                <p class="text-muted small mb-4">Curso finalizado com sucesso e mantido no seu historico.</p>
+
+                <div class="mt-auto">
+                    <div class="d-flex justify-content-between small fw-semibold mb-2">
+                        <span>Progresso final</span>
+                        <span>{{ matricula.progresso_percentual }}%</span>
+                    </div>
+                    <div class="progress mb-4" style="height: 10px; border-radius: 999px; background: var(--surface-elevated);">
+                        <div class="progress-bar bg-success"
+                            role="progressbar"
+                            style="width: {{ matricula.progresso_percentual }}%; border-radius: 999px;"
+                            aria-valuenow="{{ matricula.progresso_percentual }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"></div>
+                    </div>
+
+                    <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-outline-success w-100">
+                        Rever curso <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
