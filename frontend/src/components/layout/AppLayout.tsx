@@ -181,7 +181,7 @@ export function AppLayout() {
     if (isAdmin) {
       const adminItems = [
         { to: '/admin/console', label: 'Admin Console', icon: 'settings' },
-        { to: '/consultas-publicas', label: 'Consultas pÃºblicas', icon: 'document' },
+        { to: '/consultas-publicas', label: 'Consultas públicas', icon: 'document' },
         avaNavItem,
         { to: '/admin/trilhas', label: 'Admin: Trilhas', icon: 'tasks' },
         { to: '/admin/mural', label: 'Admin: Mural', icon: 'comment' },

@@ -87,3 +87,41 @@ def test_admin_cliente_form_usuario_oculta_cliente_e_filtra_escolas(django_user_
     assert "cliente" not in form.fields
     assert list(form.fields["escola"].queryset.values_list("id", flat=True)) == [escola_a.id]
     assert escola_b.id not in form.fields["escola"].queryset.values_list("id", flat=True)
+
+
+@pytest.mark.django_db
+def test_admin_cliente_consegue_criar_usuario_sem_campo_cliente(django_user_model):
+    cliente_a = Cliente.objects.create(nome="Cliente Admin", slug="cliente-admin")
+    escola_a = Escola.objects.create(cliente=cliente_a, nome="Escola Admin")
+
+    admin_cliente: Usuario = django_user_model.objects.create_user(
+        email="admin-criador@teste.com",
+        password="senha123",
+        nome="Admin Criador",
+        cliente=cliente_a,
+        role=Usuario.Role.ADMIN_CLIENTE,
+        is_staff=True,
+    )
+    _grant_admin_permissions(admin_cliente)
+
+    client = Client()
+    client.force_login(admin_cliente)
+
+    response = client.post(
+        reverse("admin:core_usuario_add"),
+        data={
+            "email": "novo-usuario@teste.com",
+            "nome": "Novo Usuario",
+            "escola": str(escola_a.id),
+            "role": Usuario.Role.MEMBRO_GT,
+            "password1": "Senha123forte!",
+            "password2": "Senha123forte!",
+            "is_active": "on",
+            "_save": "Salvar",
+        },
+    )
+
+    assert response.status_code == 302
+    usuario = django_user_model.objects.get(email="novo-usuario@teste.com")
+    assert usuario.cliente_id == cliente_a.id
+    assert usuario.escola_id == escola_a.id

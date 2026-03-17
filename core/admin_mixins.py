@@ -21,6 +21,12 @@ class ClienteScopedAdminMixin:
     def _is_super_admin(self, request) -> bool:
         return bool(getattr(request.user, "is_superuser", False)) or getattr(request.user, "role", None) == "super_admin"
 
+    def _get_request_cliente_id(self, request) -> int | None:
+        cliente_id = getattr(request, "cliente_id", None)
+        if cliente_id is not None:
+            return cliente_id
+        return getattr(request.user, "cliente_id", None)
+
     def _get_scope_lookup(self, model=None) -> str | None:
         model = model or self.model
         if model._meta.label_lower == "core.cliente":
@@ -39,7 +45,7 @@ class ClienteScopedAdminMixin:
         if not lookup:
             return queryset
 
-        cliente_id = getattr(request.user, "cliente_id", None)
+        cliente_id = self._get_request_cliente_id(request)
         if cliente_id is None:
             return queryset.none()
         return queryset.filter(**{lookup: cliente_id})
@@ -56,7 +62,7 @@ class ClienteScopedAdminMixin:
             obj_cliente_id = obj.pk
         else:
             obj_cliente_id = getattr(obj, lookup, None)
-        return obj_cliente_id == getattr(request.user, "cliente_id", None)
+        return obj_cliente_id == self._get_request_cliente_id(request)
 
     def _strip_cliente_from_fields(self, fields):
         cleaned = []
@@ -114,6 +120,23 @@ class ClienteScopedAdminMixin:
             cleaned_fieldsets.append((name, fieldset_options))
         return cleaned_fieldsets
 
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form_class = super().get_form(request, obj, **kwargs)
+        if self._is_super_admin(request) or not _model_has_field(self.model, "cliente"):
+            return form_class
+
+        cliente_id = self._get_request_cliente_id(request)
+        if cliente_id is None:
+            return form_class
+
+        class ClienteScopedForm(form_class):
+            def __init__(self, *args, **form_kwargs):
+                super().__init__(*args, **form_kwargs)
+                if getattr(self.instance, "cliente_id", None) is None:
+                    self.instance.cliente_id = cliente_id
+
+        return ClienteScopedForm
+
     def has_view_permission(self, request, obj=None):
         return super().has_view_permission(request, obj) and self._belongs_to_cliente(request, obj)
 
@@ -125,14 +148,14 @@ class ClienteScopedAdminMixin:
 
     def save_model(self, request, obj, form, change):
         if not self._is_super_admin(request) and hasattr(obj, "cliente_id"):
-            obj.cliente_id = getattr(request.user, "cliente_id", None)
+            obj.cliente_id = self._get_request_cliente_id(request)
         super().save_model(request, obj, form, change)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if not self._is_super_admin(request):
             related_model = getattr(db_field.remote_field, "model", None)
             if db_field.name == "cliente" and related_model is not None:
-                kwargs["queryset"] = related_model._default_manager.filter(pk=getattr(request.user, "cliente_id", None))
+                kwargs["queryset"] = related_model._default_manager.filter(pk=self._get_request_cliente_id(request))
             elif related_model is not None and self._get_scope_lookup(related_model):
                 manager = getattr(related_model, "raw_objects", related_model._default_manager)
                 related_qs = manager.all()
