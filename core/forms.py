@@ -13,7 +13,7 @@ from .models import ClienteTema, Usuario
 class UsuarioCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = Usuario
-        fields = ("email", "nome", "cliente", "escola", "role", "is_active", "is_staff", "is_superuser")
+        fields = ("email", "nome", "cliente", "escola", "role", "seguimento", "is_active", "is_staff", "is_superuser")
 
 
 class UsuarioChangeForm(UserChangeForm):
@@ -25,6 +25,7 @@ class UsuarioChangeForm(UserChangeForm):
             "cliente",
             "escola",
             "role",
+            "seguimento",
             "is_active",
             "is_staff",
             "is_superuser",

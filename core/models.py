@@ -128,6 +128,12 @@ class Usuario(AbstractUser):
         MEMBRO_GT = "membro_gt", "Membro GT"
         LEITOR = "leitor", "Leitor"
 
+    class Seguimento(models.TextChoices):
+        PROFISSIONAL_APOIO = "profissional_apoio", "Profissional de Apoio"
+        PROFESSOR_ANOS_INICIAIS = "professor_anos_iniciais", "Professor - Anos Iniciais"
+        PROFESSOR_ANOS_FINAIS = "professor_anos_finais", "Professor - Anos Finais"
+        PROFESSOR_EJA = "professor_eja", "Professor - EJA"
+
     ESCOLA_REQUIRED_ROLES = {
         Role.DIRETOR,
         Role.COORDENADOR_PEDAGOGICO,
@@ -152,6 +158,7 @@ class Usuario(AbstractUser):
         blank=True,
     )
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.LEITOR)
+    seguimento = models.CharField(max_length=40, choices=Seguimento.choices, blank=True, default="")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = ["nome"]

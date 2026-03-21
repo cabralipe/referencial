@@ -1,14 +1,15 @@
-"""Configurações do Django Admin para entidades centrais."""
+"""Configuracoes do Django Admin para entidades centrais."""
 
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .admin_mixins import ClienteScopedAdminMixin
-from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
-from .forms import UsuarioCreationForm, UsuarioChangeForm, ClienteTemaAdminForm
 from meb.services import deliver_admin_broadcast
+
+from .admin_mixins import ClienteScopedAdminMixin
+from .forms import ClienteTemaAdminForm, UsuarioChangeForm, UsuarioCreationForm
+from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
 
 
 class BroadcastMessageForm(ActionForm):
@@ -61,16 +62,16 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
-    list_display = ("email", "nome", "cliente", "escola", "role", "is_active", "last_login")
-    list_filter = ("role", "is_active", "cliente", "escola")
+    list_display = ("email", "nome", "cliente", "escola", "role", "seguimento", "is_active", "last_login")
+    list_filter = ("role", "seguimento", "is_active", "cliente", "escola")
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Informações pessoais", {"fields": ("nome", "cliente", "escola", "role")}),
+        ("Informacoes pessoais", {"fields": ("nome", "cliente", "escola", "role", "seguimento")}),
         (
-            "Permissões",
+            "Permissoes",
             {
                 "fields": (
                     "is_active",
@@ -94,6 +95,7 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                     "cliente",
                     "escola",
                     "role",
+                    "seguimento",
                     "password1",
                     "password2",
                     "is_active",
@@ -116,7 +118,7 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                 kwargs["queryset"] = Escola.objects.filter(cliente_id=getattr(request, "cliente_id", None))
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    @admin.action(description="Disparar mensagem no chat para os usuários selecionados")
+    @admin.action(description="Disparar mensagem no chat para os usuarios selecionados")
     def broadcast_chat_message(self, request, queryset):
         user_role = getattr(request.user, "role", None)
         if user_role not in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}:
@@ -158,14 +160,14 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
         if total_enviados == 0:
             self.message_user(
                 request,
-                "Nenhum destinatário elegível encontrado para este disparo.",
+                "Nenhum destinatario elegivel encontrado para este disparo.",
                 level=messages.WARNING,
             )
             return
 
-        msg = f"Disparo enviado para {total_enviados} destinatário(s)."
+        msg = f"Disparo enviado para {total_enviados} destinatario(s)."
         if skipped:
-            msg += f" {skipped} usuário(s) sem cliente foram ignorados."
+            msg += f" {skipped} usuario(s) sem cliente foram ignorados."
         self.message_user(request, msg, level=messages.SUCCESS)
 
 
