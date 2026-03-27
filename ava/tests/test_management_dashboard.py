@@ -36,6 +36,13 @@ class AVAManagementDashboardTests(TestCase):
             cliente=self.cliente,
             role=User.Role.ARTICULADOR,
         )
+        self.revisor = User.objects.create_user(
+            email="revisor@gestao.com",
+            nome="Revisor Gestao",
+            password="123456",
+            cliente=self.cliente,
+            role=User.Role.REVISOR,
+        )
         self.leitor = User.objects.create_user(
             email="leitor@gestao.com",
             nome="Leitor Gestao",
@@ -195,7 +202,7 @@ class AVAManagementDashboardTests(TestCase):
         response = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response.status_code, 403)
 
-    def test_dashboard_allows_admin_and_redator(self):
+    def test_dashboard_allows_admin_redator_and_revisor(self):
         self.client.force_login(self.admin)
         response_admin = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response_admin.status_code, 200)
@@ -205,6 +212,11 @@ class AVAManagementDashboardTests(TestCase):
         response_redator = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response_redator.status_code, 200)
         self.assertContains(response_redator, "Tentativas e respostas dos usuarios")
+
+        self.client.force_login(self.revisor)
+        response_revisor = self.client.get(reverse("ava:gestao_dashboard"))
+        self.assertEqual(response_revisor.status_code, 200)
+        self.assertContains(response_revisor, "Tentativas e respostas dos usuarios")
 
     def test_dashboard_can_filter_by_usuario(self):
         self.client.force_login(self.admin)
@@ -258,6 +270,29 @@ class AVAManagementDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Questao da gestao?")
         self.assertContains(response, "Alternativa correta")
+        self.assertContains(response, "Salvar correcao")
+
+    def test_tentativa_detalhe_permite_corrigir_tentativa_pelo_ava(self):
+        self.client.force_login(self.revisor)
+        response = self.client.post(
+            reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_2.id]),
+            {
+                "status": AtividadeTentativa.Status.CORRIGIDA,
+                "nota_obtida": "87.50",
+                "feedback_tutor": "Resposta consistente com os criterios do modulo.",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Correcao salva com sucesso.")
+
+        self.tentativa_2.refresh_from_db()
+        self.assertEqual(self.tentativa_2.status, AtividadeTentativa.Status.CORRIGIDA)
+        self.assertEqual(str(self.tentativa_2.nota_obtida), "87.50")
+        self.assertEqual(self.tentativa_2.feedback_tutor, "Resposta consistente com os criterios do modulo.")
+        self.assertEqual(self.tentativa_2.corrigido_por, self.revisor)
+        self.assertIsNotNone(self.tentativa_2.data_correcao)
 
     def test_tentativa_detalhe_bloqueia_acesso_a_dado_de_outro_cliente(self):
         self.client.force_login(self.admin)

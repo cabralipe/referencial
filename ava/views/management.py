@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import date
 from functools import wraps
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Max, Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
+from ava.forms import AtividadeTentativaCorrecaoForm
 from ava.models import (
     Atividade,
     AtividadeTentativa,
@@ -20,12 +22,14 @@ from ava.models import (
     QuizQuestao,
     QuizRespostaItem,
 )
+from ava.services import AtividadeService
 from core.models import Usuario
 
 
 ALLOWED_AVA_MANAGEMENT_ROLES = {
     Usuario.Role.ADMIN_CLIENTE,
     Usuario.Role.ARTICULADOR,
+    Usuario.Role.REVISOR,
     Usuario.Role.SUPER_ADMIN,
 }
 
@@ -277,11 +281,28 @@ def tentativa_detalhe(request, tentativa_id):
         tentativa_qs = tentativa_qs.filter(cliente_id=request.user.cliente_id)
     tentativa = get_object_or_404(tentativa_qs, id=tentativa_id)
     respostas_quiz = tentativa.respostas_quiz.all().order_by("questao__ordem", "questao_id")
+
+    correcao_form = AtividadeTentativaCorrecaoForm(instance=tentativa)
+    if request.method == "POST":
+        correcao_form = AtividadeTentativaCorrecaoForm(request.POST, instance=tentativa)
+        if correcao_form.is_valid():
+            AtividadeService.corrigir_tentativa(
+                tentativa,
+                corretor=request.user,
+                status=correcao_form.cleaned_data["status"],
+                nota_obtida=correcao_form.cleaned_data["nota_obtida"],
+                feedback_tutor=correcao_form.cleaned_data["feedback_tutor"],
+            )
+            messages.success(request, "Correcao salva com sucesso.")
+            return redirect("ava:gestao_tentativa_detalhe", tentativa_id=tentativa.id)
+        messages.error(request, "Nao foi possivel salvar a correcao. Revise os campos do formulario.")
+
     return render(
         request,
         "ava/management/tentativa_detalhe.html",
         {
             "tentativa": tentativa,
             "respostas_quiz": respostas_quiz,
+            "correcao_form": correcao_form,
         },
     )

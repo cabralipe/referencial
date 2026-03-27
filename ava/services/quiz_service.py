@@ -136,3 +136,45 @@ class AtividadeService:
             pass
 
         return tentativa
+
+    @staticmethod
+    @transaction.atomic
+    def corrigir_tentativa(
+        tentativa: AtividadeTentativa,
+        *,
+        corretor,
+        status: str,
+        nota_obtida,
+        feedback_tutor: str,
+    ):
+        """
+        Aplica a correcao manual de uma tentativa enviada pelo aluno.
+        """
+        tentativa.status = status
+        tentativa.nota_obtida = nota_obtida
+        tentativa.feedback_tutor = feedback_tutor
+
+        update_fields = ["status", "nota_obtida", "feedback_tutor"]
+
+        if status in {AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA} and tentativa.data_envio is None:
+            tentativa.data_envio = timezone.now()
+            update_fields.append("data_envio")
+
+        if status == AtividadeTentativa.Status.CORRIGIDA:
+            tentativa.corrigido_por = corretor
+            tentativa.data_correcao = timezone.now()
+            update_fields.extend(["corrigido_por", "data_correcao"])
+        else:
+            tentativa.corrigido_por = None
+            tentativa.data_correcao = None
+            update_fields.extend(["corrigido_por", "data_correcao"])
+
+        tentativa.save(update_fields=list(dict.fromkeys(update_fields)))
+
+        try:
+            matricula = MatriculaCurso.objects.get(curso=tentativa.atividade.aula.modulo.curso, aluno=tentativa.aluno)
+            ProgressoService.recalcular_aula(matricula, tentativa.atividade.aula)
+        except MatriculaCurso.DoesNotExist:
+            pass
+
+        return tentativa
