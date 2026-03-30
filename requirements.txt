@@ -27,6 +27,7 @@ google-genai>=1.9.0
 # Utilidades
 python-dateutil>=2.9
 Pillow>=10.2
+openpyxl>=3.1
 
 # Qualidade e testes
 pytest>=8.2

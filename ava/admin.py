@@ -1,8 +1,17 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
+
+from ava.forms import CursoEstruturaCopyForm
+from ava.services import CourseCloneService
+from ava.services.course_copy_service import CourseCopyOptions
 
 from .models import (
     Atividade,
+    AtividadeForumAnexo,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
     Certificado,
@@ -116,7 +125,12 @@ class AVAModelAdmin(AVAAdminPermissionMixin, admin.ModelAdmin):
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         related_model = getattr(db_field.remote_field, "model", None)
-        if not self._is_super_admin(request) and related_model is not None and hasattr(related_model, "_meta") and _model_has_cliente(related_model):
+        if (
+            not self._is_super_admin(request)
+            and related_model is not None
+            and hasattr(related_model, "_meta")
+            and _model_has_cliente(related_model)
+        ):
             manager = getattr(related_model, "raw_objects", related_model._default_manager)
             related_qs = manager.filter(cliente_id=request.user.cliente_id)
             if _model_has_soft_delete(related_model):
@@ -163,7 +177,7 @@ class QuizQuestaoAdminForm(forms.ModelForm):
         atividade = self.cleaned_data.get("atividade")
         if atividade and atividade.tipo not in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
             raise forms.ValidationError(
-                "A questão de quiz só pode ser vinculada a atividades do tipo Quiz ou Questionário."
+                "A questao de quiz so pode ser vinculada a atividades do tipo Quiz ou Questionario."
             )
         return atividade
 
@@ -183,7 +197,7 @@ class CursoAdminForm(forms.ModelForm):
             existing = existing.exclude(pk=self.instance.pk)
 
         if existing.exists():
-            raise forms.ValidationError("JÃ¡ existe um curso com este slug. Informe um slug diferente.")
+            raise forms.ValidationError("Ja existe um curso com este slug. Informe um slug diferente.")
         return slug
 
 
@@ -203,10 +217,54 @@ class CursoCategoriaAdmin(AVAModelAdmin):
 @admin.register(Curso)
 class CursoAdmin(AVAModelAdmin):
     form = CursoAdminForm
+    change_list_template = "admin/ava/curso/change_list.html"
     list_display = ("titulo", "slug", "cliente", "status", "is_aberto")
     list_filter = ("status", "cliente", "is_aberto")
     search_fields = ("titulo", "descricao_curta")
     prepopulated_fields = {"slug": ("titulo",)}
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "copiar-estrutura/",
+                self.admin_site.admin_view(self.copy_structure_view),
+                name="ava_curso_copy_structure",
+            ),
+        ]
+        return custom_urls + urls
+
+    def copy_structure_view(self, request):
+        if not self._is_super_admin(request):
+            raise PermissionDenied("A copia entre municipios esta disponivel apenas para super admins.")
+
+        form = CursoEstruturaCopyForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            curso_copiado = CourseCloneService.clone_course(
+                CourseCopyOptions(
+                    curso_origem=form.cleaned_data["curso_origem"],
+                    cliente_destino=form.cleaned_data["cliente_destino"],
+                    novo_titulo=form.cleaned_data["novo_titulo"],
+                    novo_slug=form.cleaned_data["novo_slug"],
+                    copiar_atividades=form.cleaned_data["copiar_atividades"],
+                    manter_status_publicacao=form.cleaned_data["manter_status_publicacao"],
+                    usuario_executor=request.user,
+                )
+            )
+            messages.success(
+                request,
+                f"Estrutura copiada com sucesso para '{curso_copiado.cliente.nome}' no curso '{curso_copiado.titulo}'.",
+            )
+            return redirect(reverse("admin:ava_curso_change", args=[curso_copiado.id]))
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Copiar estrutura de curso entre municipios",
+            "opts": self.model._meta,
+            "form": form,
+            "media": self.media + form.media,
+        }
+        return render(request, "admin/ava/curso/copy_structure.html", context)
 
 
 @admin.register(CursoModulo)
@@ -261,6 +319,20 @@ class AtividadeTentativaAdmin(AVAModelAdmin):
     list_display = ("aluno", "atividade", "status", "data_inicio")
     list_filter = ("status", "atividade__aula__modulo__curso")
     search_fields = ("aluno__nome", "aluno__email", "atividade__titulo")
+
+
+@admin.register(AtividadeForumMensagem)
+class AtividadeForumMensagemAdmin(AVAModelAdmin):
+    list_display = ("atividade", "autor", "created_at", "cliente")
+    list_filter = ("atividade__aula__modulo__curso",)
+    search_fields = ("texto", "autor__nome", "autor__email", "atividade__titulo")
+
+
+@admin.register(AtividadeForumAnexo)
+class AtividadeForumAnexoAdmin(AVAModelAdmin):
+    list_display = ("mensagem", "nome_original", "created_at", "cliente")
+    list_filter = ("mensagem__atividade__aula__modulo__curso",)
+    search_fields = ("nome_original", "mensagem__autor__nome", "mensagem__atividade__titulo")
 
 
 @admin.register(MatriculaCurso)

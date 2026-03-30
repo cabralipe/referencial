@@ -8,12 +8,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.http import Http404, HttpResponse
 from django.db.models import Avg, Count, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ava.forms import AtividadeTentativaCorrecaoForm
 from ava.models import (
     Atividade,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
     Curso,
@@ -22,7 +24,7 @@ from ava.models import (
     QuizQuestao,
     QuizRespostaItem,
 )
-from ava.services import AtividadeService
+from ava.services import AVAManagementReportService, AtividadeService
 from core.models import Usuario
 
 
@@ -50,6 +52,23 @@ def _parse_date(raw_value: str | None) -> date | None:
         return date.fromisoformat(raw_value)
     except ValueError:
         return None
+
+
+def _extract_dashboard_filters(request):
+    data_inicio_raw = request.GET.get("data_inicio", "").strip()
+    data_fim_raw = request.GET.get("data_fim", "").strip()
+    filtros = {
+        "q": request.GET.get("q", "").strip(),
+        "usuario_id": _parse_int(request.GET.get("usuario")),
+        "curso_id": _parse_int(request.GET.get("curso")),
+        "modulo_id": _parse_int(request.GET.get("modulo")),
+        "aula_id": _parse_int(request.GET.get("aula")),
+        "status": request.GET.get("status", "").strip(),
+        "tipo": request.GET.get("tipo", "").strip(),
+        "data_inicio": _parse_date(data_inicio_raw),
+        "data_fim": _parse_date(data_fim_raw),
+    }
+    return filtros, data_inicio_raw, data_fim_raw
 
 
 def ava_management_required(view_func):
@@ -168,19 +187,7 @@ def _quiz_resolution_metrics(tentativas_filtradas):
 
 @ava_management_required
 def dashboard(request):
-    data_inicio_raw = request.GET.get("data_inicio", "").strip()
-    data_fim_raw = request.GET.get("data_fim", "").strip()
-    filtros = {
-        "q": request.GET.get("q", "").strip(),
-        "usuario_id": _parse_int(request.GET.get("usuario")),
-        "curso_id": _parse_int(request.GET.get("curso")),
-        "modulo_id": _parse_int(request.GET.get("modulo")),
-        "aula_id": _parse_int(request.GET.get("aula")),
-        "status": request.GET.get("status", "").strip(),
-        "tipo": request.GET.get("tipo", "").strip(),
-        "data_inicio": _parse_date(data_inicio_raw),
-        "data_fim": _parse_date(data_fim_raw),
-    }
+    filtros, data_inicio_raw, data_fim_raw = _extract_dashboard_filters(request)
 
     tentativas_qs = _apply_filters(_base_queryset(request.user), filtros)
 
@@ -272,6 +279,34 @@ def dashboard(request):
 
 
 @ava_management_required
+def dashboard_relatorio(request, formato):
+    if formato not in {"pdf", "xlsx"}:
+        raise Http404("Formato de relatorio nao suportado.")
+
+    filtros, _, _ = _extract_dashboard_filters(request)
+    report_data = AVAManagementReportService.build_report(request.user, filtros)
+
+    timestamp = report_data["generated_at"].strftime("%Y%m%d-%H%M%S")
+    if formato == "pdf":
+        payload = AVAManagementReportService.render_pdf_bytes(report_data)
+        response = HttpResponse(payload, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="relatorio-ava-nominal-{timestamp}.pdf"'
+        )
+        return response
+
+    payload = AVAManagementReportService.render_xlsx_bytes(report_data)
+    response = HttpResponse(
+        payload,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="relatorio-ava-nominal-{timestamp}.xlsx"'
+    )
+    return response
+
+
+@ava_management_required
 def tentativa_detalhe(request, tentativa_id):
     tentativa_qs = AtividadeTentativa.objects.select_related(
         "aluno",
@@ -281,6 +316,14 @@ def tentativa_detalhe(request, tentativa_id):
         tentativa_qs = tentativa_qs.filter(cliente_id=request.user.cliente_id)
     tentativa = get_object_or_404(tentativa_qs, id=tentativa_id)
     respostas_quiz = tentativa.respostas_quiz.all().order_by("questao__ordem", "questao_id")
+    forum_messages = []
+    if tentativa.atividade.tipo == Atividade.Tipo.FORUM:
+        forum_messages = list(
+            AtividadeForumMensagem.objects.filter(atividade=tentativa.atividade)
+            .select_related("autor", "resposta_para__autor")
+            .prefetch_related("anexos")
+            .order_by("created_at", "id")
+        )
 
     correcao_form = AtividadeTentativaCorrecaoForm(instance=tentativa)
     if request.method == "POST":
@@ -304,5 +347,6 @@ def tentativa_detalhe(request, tentativa_id):
             "tentativa": tentativa,
             "respostas_quiz": respostas_quiz,
             "correcao_form": correcao_form,
+            "forum_messages": forum_messages,
         },
     )

@@ -32,6 +32,7 @@ class ProgressoService:
         prog_conteudo, _ = ProgressoConteudo.objects.get_or_create(
             progresso_aula=prog_aula,
             conteudo=conteudo,
+            defaults={"cliente_id": matricula.cliente_id},
         )
 
         if not prog_conteudo.is_visualizado:
@@ -137,8 +138,24 @@ class ProgressoService:
 
     @staticmethod
     def recalcular_modulo(matricula: MatriculaCurso, modulo):
+        aulas_modulo = list(Aula.objects.filter(modulo=modulo, is_obigatoria=True))
+        for aula in aulas_modulo:
+            prog_aula, _ = ProgressoAula.objects.get_or_create(
+                matricula=matricula,
+                aula=aula,
+                defaults={"cliente_id": matricula.cliente_id},
+            )
+            tem_obrigacoes = ConteudoAula.objects.filter(aula=aula, is_obrigatorio=True).exists() or Atividade.objects.filter(
+                aula=aula,
+                is_obrigatoria=True,
+            ).exists()
+            if not tem_obrigacoes and not prog_aula.is_concluida:
+                prog_aula.is_concluida = True
+                prog_aula.data_conclusao = timezone.now()
+                prog_aula.save(update_fields=["is_concluida", "data_conclusao"])
+
         prog_modulo = ProgressoModulo.objects.get(matricula=matricula, modulo=modulo)
-        aulas_obrig = Aula.objects.filter(modulo=modulo, is_obigatoria=True).count()
+        aulas_obrig = len(aulas_modulo)
 
         aulas_concluidas = ProgressoAula.objects.filter(
             matricula=matricula,
@@ -171,7 +188,12 @@ class ProgressoService:
             is_concluido=True,
         ).count()
 
-        percent = int((modulos_concluidos / modulos) * 100) if modulos > 0 else 100
+        if modulos > 0:
+            percent = int((modulos_concluidos / modulos) * 100)
+        elif matricula.status == MatriculaCurso.Status.CONCLUIDA:
+            percent = max(matricula.progresso_percentual, 100)
+        else:
+            percent = matricula.progresso_percentual
         matricula.progresso_percentual = percent
 
         if percent >= matricula.curso.progresso_minimo and matricula.status != "concluida":

@@ -176,7 +176,9 @@
                                     </div>
 
                                     {% if atividade.tentativas_existentes %}
-                                    <span class="badge rounded-pill" style="background: var(--success-subtle); color: #166534;">Enviada</span>
+                                    <span class="badge rounded-pill" style="background: var(--success-subtle); color: #166534;">
+                                        {% if atividade.tipo == 'forum' %}Participando{% else %}Enviada{% endif %}
+                                    </span>
                                     {% else %}
                                     <span class="badge rounded-pill" style="background: var(--warning-subtle); color: #92400e;">Pendente</span>
                                     {% endif %}
@@ -184,7 +186,8 @@
 
                                 <div class="text-end mt-3">
                                     <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}" class="btn btn-primary px-4">
-                                        Acessar atividade <i class="bi bi-arrow-right ms-1"></i>
+                                        {% if atividade.tipo == 'forum' %}Entrar no forum{% else %}Acessar atividade{% endif %}
+                                        <i class="bi bi-arrow-right ms-1"></i>
                                     </a>
                                 </div>
                             </article>

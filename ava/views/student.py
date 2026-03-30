@@ -4,8 +4,10 @@ from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from ava.forms import AtividadeForumMensagemForm
 from ava.models import (
     Atividade,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
     MatriculaCurso,
@@ -30,10 +32,19 @@ def _aplicar_status_progresso_aulas(matricula, aulas):
     return aulas
 
 
+def _forum_messages_queryset(atividade: Atividade):
+    return (
+        AtividadeForumMensagem.objects.filter(atividade=atividade)
+        .select_related("autor", "resposta_para__autor")
+        .prefetch_related("anexos")
+        .order_by("created_at", "id")
+    )
+
+
 @login_required
 def dashboard(request):
     """
-    Dashboard do Aluno mostrando cursos em andamento e concluidos.
+    Dashboard do aluno mostrando cursos em andamento e concluidos.
     """
     matriculas = list(
         MatriculaCurso.objects.filter(
@@ -114,7 +125,6 @@ def acessar_aula(request, curso_slug, aula_id):
     )
     aulas_ordenadas = [a for modulo in modulos for a in modulo.aulas.all()]
 
-    # Marca a aula como iniciada / cria o progresso
     ProgressoService._garantir_progressos(matricula, aula)
     _aplicar_status_progresso_aulas(matricula, aulas_ordenadas)
 
@@ -194,7 +204,9 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     atividade = get_object_or_404(Atividade, id=atividade_id, aula=aula)
+
     questoes = list(atividade.questoes.all().prefetch_related("alternativas"))
+    is_forum = atividade.tipo == Atividade.Tipo.FORUM
     usa_formulario_quiz = atividade.tipo in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO] or bool(questoes)
 
     tentativa_finalizada = (
@@ -206,15 +218,6 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
         .order_by("-data_envio", "-data_inicio")
         .first()
     )
-    tentativas_finalizadas_count = AtividadeTentativa.objects.filter(
-        aluno=request.user,
-        atividade=atividade,
-        status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA],
-    ).count()
-    limite_atingido = (
-        atividade.tentativas_permitidas > 0
-        and tentativas_finalizadas_count >= atividade.tentativas_permitidas
-    )
     tentativa_em_andamento = (
         AtividadeTentativa.objects.filter(
             aluno=request.user,
@@ -224,47 +227,90 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
         .order_by("-data_inicio")
         .first()
     )
+    tentativa = tentativa_finalizada or tentativa_em_andamento
+
+    forum_form = AtividadeForumMensagemForm(request.POST or None) if is_forum else None
+    forum_messages = list(_forum_messages_queryset(atividade)) if is_forum else []
+    forum_participantes = len({mensagem.autor_id for mensagem in forum_messages}) if is_forum else 0
+
+    tentativas_finalizadas_count = AtividadeTentativa.objects.filter(
+        aluno=request.user,
+        atividade=atividade,
+        status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA],
+    ).count()
+    limite_atingido = (
+        atividade.tentativas_permitidas > 0
+        and tentativas_finalizadas_count >= atividade.tentativas_permitidas
+    )
 
     if request.method == "POST":
-        if limite_atingido and tentativa_em_andamento is None:
-            messages.info(request, "Limite de tentativas alcancado para esta atividade.")
-            return redirect(
-                "ava:aluno_responder_atividade",
-                curso_slug=curso_slug,
-                aula_id=aula_id,
-                atividade_id=atividade_id,
-            )
-
-        if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not request.FILES.get("arquivo_enviado"):
-            messages.error(request, "Essa atividade exige envio de arquivo.")
-        elif usa_formulario_quiz and not questoes:
-            messages.error(request, "Este quiz ainda nao possui questoes cadastradas.")
-        else:
-            tentativa = tentativa_em_andamento
-            if tentativa is None:
-                tentativa, erro = AtividadeService.iniciar_tentativa(request.user, atividade)
-                if erro:
-                    messages.warning(request, erro)
-                    return redirect("ava:aluno_acessar_aula", curso_slug=curso_slug, aula_id=aula_id)
-
-            if usa_formulario_quiz:
-                dados_respostas = {k: v for k, v in request.POST.items() if k.isdigit()}
-                AtividadeService.submeter_quiz(tentativa, dados_respostas)
-                messages.success(request, "Questionario enviado com sucesso!")
+        if is_forum:
+            arquivos = request.FILES.getlist("arquivos")
+            if forum_form.is_valid():
+                resposta_para_id = forum_form.cleaned_data.get("resposta_para")
+                resposta_para = None
+                if resposta_para_id:
+                    resposta_para = atividade.mensagens_forum.select_related("autor").filter(pk=resposta_para_id).first()
+                    if resposta_para is None:
+                        messages.error(request, "Nao foi possivel localizar a mensagem que voce tentou responder.")
+                        return redirect(
+                            "ava:aluno_responder_atividade",
+                            curso_slug=curso_slug,
+                            aula_id=aula_id,
+                            atividade_id=atividade_id,
+                        )
+                try:
+                    AtividadeService.publicar_mensagem_forum(
+                        aluno=request.user,
+                        atividade=atividade,
+                        texto=forum_form.cleaned_data["mensagem"],
+                        arquivos=arquivos,
+                        resposta_para=resposta_para,
+                    )
+                    messages.success(request, "Mensagem publicada no forum.")
+                    return redirect(f"{request.path}#forum-thread")
+                except ValueError as exc:
+                    messages.error(request, str(exc))
             else:
-                texto = request.POST.get("texto_resposta", "")
-                arquivo = request.FILES.get("arquivo_enviado")
-                AtividadeService.submeter_tarefa_discursiva(tentativa, texto, arquivo)
-                messages.success(request, "Atividade enviada com sucesso!")
+                messages.error(request, "Nao foi possivel publicar a mensagem. Revise os campos do formulario.")
+        else:
+            if limite_atingido and tentativa_em_andamento is None:
+                messages.info(request, "Limite de tentativas alcancado para esta atividade.")
+                return redirect(
+                    "ava:aluno_responder_atividade",
+                    curso_slug=curso_slug,
+                    aula_id=aula_id,
+                    atividade_id=atividade_id,
+                )
 
-            return redirect(
-                "ava:aluno_responder_atividade",
-                curso_slug=curso_slug,
-                aula_id=aula_id,
-                atividade_id=atividade_id,
-            )
+            if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not request.FILES.get("arquivo_enviado"):
+                messages.error(request, "Essa atividade exige envio de arquivo.")
+            elif usa_formulario_quiz and not questoes:
+                messages.error(request, "Este quiz ainda nao possui questoes cadastradas.")
+            else:
+                tentativa_processada = tentativa_em_andamento
+                if tentativa_processada is None:
+                    tentativa_processada, erro = AtividadeService.iniciar_tentativa(request.user, atividade)
+                    if erro:
+                        messages.warning(request, erro)
+                        return redirect("ava:aluno_acessar_aula", curso_slug=curso_slug, aula_id=aula_id)
 
-    tentativa = tentativa_finalizada or tentativa_em_andamento
+                if usa_formulario_quiz:
+                    dados_respostas = {k: v for k, v in request.POST.items() if k.isdigit()}
+                    AtividadeService.submeter_quiz(tentativa_processada, dados_respostas)
+                    messages.success(request, "Questionario enviado com sucesso!")
+                else:
+                    texto = request.POST.get("texto_resposta", "")
+                    arquivo = request.FILES.get("arquivo_enviado")
+                    AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivo)
+                    messages.success(request, "Atividade enviada com sucesso!")
+
+                return redirect(
+                    "ava:aluno_responder_atividade",
+                    curso_slug=curso_slug,
+                    aula_id=aula_id,
+                    atividade_id=atividade_id,
+                )
 
     return render(
         request,
@@ -276,5 +322,10 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             "questoes": questoes,
             "usa_formulario_quiz": usa_formulario_quiz,
             "tentativa": tentativa,
+            "is_forum": is_forum,
+            "forum_form": forum_form,
+            "forum_messages": forum_messages,
+            "forum_total_mensagens": len(forum_messages),
+            "forum_total_participantes": forum_participantes,
         },
     )

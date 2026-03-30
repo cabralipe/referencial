@@ -3,55 +3,44 @@
 from django.db import migrations
 
 
+def _rename_index_if_supported(old_name: str, new_name: str):
+    def forwards(apps, schema_editor):
+        if schema_editor.connection.vendor == "sqlite":
+            return
+        schema_editor.execute(f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}"')
+
+    def backwards(apps, schema_editor):
+        if schema_editor.connection.vendor == "sqlite":
+            return
+        schema_editor.execute(f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}"')
+
+    return migrations.RunPython(forwards, backwards)
+
+
+def safe_rename_index(model_name: str, old_name: str, new_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[
+            _rename_index_if_supported(old_name, new_name),
+        ],
+        state_operations=[
+            migrations.RenameIndex(
+                model_name=model_name,
+                old_name=old_name,
+                new_name=new_name,
+            ),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('library', '0004_midia_titulo_descricao'),
+        ("library", "0004_midia_titulo_descricao"),
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql="ALTER INDEX IF EXISTS library_blo_cliente_c9172d_idx RENAME TO library_blo_cliente_0b5b85_idx",
-            reverse_sql="ALTER INDEX IF EXISTS library_blo_cliente_0b5b85_idx RENAME TO library_blo_cliente_c9172d_idx",
-            state_operations=[
-                migrations.RenameIndex(
-                    model_name='blocotexto',
-                    new_name='library_blo_cliente_0b5b85_idx',
-                    old_name='library_blo_cliente_c9172d_idx',
-                ),
-            ],
-        ),
-        migrations.RunSQL(
-            sql="ALTER INDEX IF EXISTS library_blo_cliente_2f9fe0_idx RENAME TO library_blo_cliente_48a405_idx",
-            reverse_sql="ALTER INDEX IF EXISTS library_blo_cliente_48a405_idx RENAME TO library_blo_cliente_2f9fe0_idx",
-            state_operations=[
-                migrations.RenameIndex(
-                    model_name='blocotexto',
-                    new_name='library_blo_cliente_48a405_idx',
-                    old_name='library_blo_cliente_2f9fe0_idx',
-                ),
-            ],
-        ),
-        migrations.RunSQL(
-            sql="ALTER INDEX IF EXISTS library_mid_cliente_89b671_idx RENAME TO library_mid_cliente_df384b_idx",
-            reverse_sql="ALTER INDEX IF EXISTS library_mid_cliente_df384b_idx RENAME TO library_mid_cliente_89b671_idx",
-            state_operations=[
-                migrations.RenameIndex(
-                    model_name='midia',
-                    new_name='library_mid_cliente_df384b_idx',
-                    old_name='library_mid_cliente_89b671_idx',
-                ),
-            ],
-        ),
-        migrations.RunSQL(
-            sql="ALTER INDEX IF EXISTS library_mid_cliente_3c4a78_idx RENAME TO library_mid_cliente_63d651_idx",
-            reverse_sql="ALTER INDEX IF EXISTS library_mid_cliente_63d651_idx RENAME TO library_mid_cliente_3c4a78_idx",
-            state_operations=[
-                migrations.RenameIndex(
-                    model_name='midia',
-                    new_name='library_mid_cliente_63d651_idx',
-                    old_name='library_mid_cliente_3c4a78_idx',
-                ),
-            ],
-        ),
+        safe_rename_index("blocotexto", "library_blo_cliente_c9172d_idx", "library_blo_cliente_0b5b85_idx"),
+        safe_rename_index("blocotexto", "library_blo_cliente_2f9fe0_idx", "library_blo_cliente_48a405_idx"),
+        safe_rename_index("midia", "library_mid_cliente_89b671_idx", "library_mid_cliente_df384b_idx"),
+        safe_rename_index("midia", "library_mid_cliente_3c4a78_idx", "library_mid_cliente_63d651_idx"),
     ]
