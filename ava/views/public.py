@@ -1,9 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from ava.models import Curso, MatriculaCurso, TrilhaFormativa
 from ava.services import InscricaoService
+from core.models import Usuario
 
 
 VISIBLE_ENROLLMENT_STATUSES = [
@@ -11,13 +14,36 @@ VISIBLE_ENROLLMENT_STATUSES = [
     MatriculaCurso.Status.CONCLUIDA,
 ]
 
+CURSO_PPP_SLUG = "implementacao-referencial-curricular-ppp-2"
+
+
+def _deve_exigir_seguimento(request):
+    return (
+        request.user.is_authenticated
+        and getattr(request.user, "role", None) == Usuario.Role.PROFESSOR
+        and not getattr(request.user, "seguimento", "")
+    )
+
+
+def _next_or_catalogo(request):
+    return request.POST.get("next") or request.META.get("HTTP_REFERER") or redirect("ava:catalogo").url
+
 
 def catalogo_cursos(request):
     """
     Pagina publica exibindo os cursos disponiveis.
     """
-    cursos = list(Curso.objects.filter(status="publicado").order_by("-created_at"))
+    cursos_qs = Curso.objects.filter(status=Curso.Status.PUBLICADO)
+    if (
+        request.user.is_authenticated
+        and getattr(request.user, "role", None) == Usuario.Role.PROFESSOR
+        and getattr(request.user, "seguimento", "") == Usuario.Seguimento.PROFISSIONAL_APOIO
+    ):
+        cursos_qs = cursos_qs.exclude(slug=CURSO_PPP_SLUG)
+
+    cursos = list(cursos_qs.order_by("-created_at"))
     trilhas = TrilhaFormativa.objects.filter(is_active=True)
+    deve_exigir_seguimento = _deve_exigir_seguimento(request)
 
     matriculados_ids = set()
     if request.user.is_authenticated and cursos:
@@ -38,6 +64,8 @@ def catalogo_cursos(request):
         {
             "cursos": cursos,
             "trilhas": trilhas,
+            "deve_exigir_seguimento": deve_exigir_seguimento,
+            "seguimento_choices": Usuario.Seguimento.choices if deve_exigir_seguimento else (),
         },
     )
 
@@ -54,6 +82,27 @@ def detalhes_curso_publico(request, slug):
             return redirect("ava:aluno_curso_detalhe", slug=slug)
 
     return render(request, "ava/public/detalhes.html", {"curso": curso})
+
+
+@login_required
+@require_POST
+def registrar_seguimento_professor(request):
+    if getattr(request.user, "role", None) != Usuario.Role.PROFESSOR:
+        messages.error(request, "Apenas usuarios com perfil de professor podem registrar seguimento.")
+        return HttpResponseRedirect(_next_or_catalogo(request))
+
+    if getattr(request.user, "seguimento", ""):
+        return HttpResponseRedirect(_next_or_catalogo(request))
+
+    seguimento = (request.POST.get("seguimento") or "").strip()
+    if seguimento not in Usuario.Seguimento.values:
+        messages.error(request, "Selecione um seguimento valido para continuar.")
+        return HttpResponseRedirect(_next_or_catalogo(request))
+
+    request.user.seguimento = seguimento
+    request.user.save(update_fields=["seguimento"])
+    messages.success(request, "Seguimento registrado com sucesso.")
+    return HttpResponseRedirect(_next_or_catalogo(request))
 
 
 @login_required

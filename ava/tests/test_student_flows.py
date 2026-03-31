@@ -20,6 +20,7 @@ from ava.models import (
 )
 from ava.services import ProgressoService
 from core.models import Cliente
+from curriculum.models import Escola
 
 
 User = get_user_model()
@@ -522,3 +523,88 @@ class AVAEnrollmentFlowTests(TestCase):
         self.assertContains(response, "Cursos concluidos (1)")
         self.assertContains(response, self.curso.titulo)
         self.assertContains(response, "Rever curso")
+
+
+class AVATeacherCatalogFlowTests(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(nome="Cliente Professor", slug="cliente-professor")
+        self.escola = Escola.objects.create(cliente=self.cliente, nome="Escola Teste")
+        self.professor = User.objects.create_user(
+            email="professor@teste.com",
+            nome="Professor Teste",
+            password="123456",
+            cliente=self.cliente,
+            escola=self.escola,
+            role=User.Role.PROFESSOR,
+        )
+        self.leitor = User.objects.create_user(
+            email="leitor@teste.com",
+            nome="Leitor Teste",
+            password="123456",
+            cliente=self.cliente,
+            role=User.Role.LEITOR,
+        )
+        self.curso_ppp = Curso.objects.create(
+            cliente=self.cliente,
+            titulo="Implementação do Referencial Curricular - Elaboração e Atualização do Projeto Político-Pedagógico",
+            slug="implementacao-referencial-curricular-ppp-2",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            autor_principal=self.professor,
+        )
+        self.curso_visivel = Curso.objects.create(
+            cliente=self.cliente,
+            titulo="Outro Curso",
+            slug="outro-curso",
+            status=Curso.Status.PUBLICADO,
+            is_aberto=True,
+            autor_principal=self.professor,
+        )
+
+    def test_catalogo_exibe_modal_obrigatorio_para_professor_sem_seguimento(self):
+        self.client.force_login(self.professor)
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Qual seu seguimento?")
+        self.assertContains(response, "Profissional de Apoio")
+        self.assertContains(response, "Professor - Anos Iniciais")
+        self.assertContains(response, "Professor - Anos Finais")
+        self.assertContains(response, "Professor - EJA")
+
+    def test_catalogo_nao_exibe_modal_para_nao_professor(self):
+        self.client.force_login(self.leitor)
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Qual seu seguimento?")
+
+    def test_registrar_seguimento_salva_no_usuario_e_modal_nao_reaparece(self):
+        self.client.force_login(self.professor)
+
+        response = self.client.post(
+            reverse("ava:registrar_seguimento_professor"),
+            {"seguimento": User.Seguimento.PROFESSOR_ANOS_INICIAIS, "next": reverse("ava:catalogo")},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.professor.refresh_from_db()
+        self.assertEqual(self.professor.seguimento, User.Seguimento.PROFESSOR_ANOS_INICIAIS)
+        self.assertNotContains(response, "Qual seu seguimento?")
+
+    def test_profissional_de_apoio_nao_visualiza_curso_ppp(self):
+        self.professor.seguimento = User.Seguimento.PROFISSIONAL_APOIO
+        self.professor.save(update_fields=["seguimento"])
+        self.client.force_login(self.professor)
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "Implementação do Referencial Curricular - Elaboração e Atualização do Projeto Político-Pedagógico",
+        )
+        self.assertContains(response, self.curso_visivel.titulo)
