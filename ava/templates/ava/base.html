@@ -192,7 +192,7 @@
                     <li class="nav-item">
                         <a class="nav-link ava-nav-link" href="{% url 'ava:aluno_dashboard' %}">Meu painel</a>
                     </li>
-                    {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'super_admin' %}
+                    {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'revisor' or user.role == 'super_admin' %}
                     <li class="nav-item">
                         <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestao AVA</a>
                     </li>

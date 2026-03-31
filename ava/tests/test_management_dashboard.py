@@ -1,14 +1,23 @@
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+from openpyxl import load_workbook
 
 from ava.models import (
     Atividade,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
+    ConteudoAula,
     Curso,
     CursoModulo,
     MatriculaCurso,
+    ProgressoAula,
+    ProgressoConteudo,
+    ProgressoModulo,
     QuizAlternativa,
     QuizQuestao,
     QuizRespostaItem,
@@ -35,6 +44,13 @@ class AVAManagementDashboardTests(TestCase):
             password="123456",
             cliente=self.cliente,
             role=User.Role.ARTICULADOR,
+        )
+        self.revisor = User.objects.create_user(
+            email="revisor@gestao.com",
+            nome="Revisor Gestao",
+            password="123456",
+            cliente=self.cliente,
+            role=User.Role.REVISOR,
         )
         self.leitor = User.objects.create_user(
             email="leitor@gestao.com",
@@ -80,6 +96,20 @@ class AVAManagementDashboardTests(TestCase):
             ordem=1,
             is_active=True,
         )
+        self.modulo_2 = CursoModulo.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            titulo="Modulo Complementar",
+            ordem=2,
+            is_active=True,
+        )
+        self.aula_2 = Aula.objects.create(
+            cliente=self.cliente,
+            modulo=self.modulo_2,
+            titulo="Aula Complementar",
+            ordem=1,
+            is_active=True,
+        )
         self.atividade_quiz = Atividade.objects.create(
             cliente=self.cliente,
             aula=self.aula,
@@ -91,6 +121,28 @@ class AVAManagementDashboardTests(TestCase):
             aula=self.aula,
             tipo=Atividade.Tipo.TAREFA,
             titulo="Tarefa Gestao",
+        )
+        self.atividade_forum = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_2,
+            tipo=Atividade.Tipo.FORUM,
+            titulo="Forum Gestao",
+        )
+        self.conteudo_1 = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo base",
+            conteudo_texto="Texto principal",
+            ordem=1,
+        )
+        self.conteudo_2 = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_2,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo complementar",
+            conteudo_texto="Texto complementar",
+            ordem=1,
         )
 
         self.questao = QuizQuestao.objects.create(
@@ -114,8 +166,18 @@ class AVAManagementDashboardTests(TestCase):
             ordem=2,
         )
 
-        MatriculaCurso.objects.create(cliente=self.cliente, curso=self.curso, aluno=self.aluno_1, matriculado_por=self.admin)
-        MatriculaCurso.objects.create(cliente=self.cliente, curso=self.curso, aluno=self.aluno_2, matriculado_por=self.admin)
+        self.matricula_1 = MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            aluno=self.aluno_1,
+            matriculado_por=self.admin,
+        )
+        self.matricula_2 = MatriculaCurso.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            aluno=self.aluno_2,
+            matriculado_por=self.admin,
+        )
 
         self.tentativa_1 = AtividadeTentativa.objects.create(
             cliente=self.cliente,
@@ -138,6 +200,85 @@ class AVAManagementDashboardTests(TestCase):
             alternativa_selecionada=self.alt_correta,
             is_correta=True,
             nota_item=100,
+        )
+
+        agora = timezone.now()
+        progresso_aula_1 = ProgressoAula.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_1,
+            aula=self.aula,
+            is_concluida=True,
+            data_conclusao=agora,
+        )
+        progresso_aula_2 = ProgressoAula.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_1,
+            aula=self.aula_2,
+            is_concluida=False,
+        )
+        ProgressoConteudo.objects.create(
+            cliente=self.cliente,
+            progresso_aula=progresso_aula_1,
+            conteudo=self.conteudo_1,
+            is_visualizado=True,
+            data_visualizacao=agora,
+        )
+        ProgressoConteudo.objects.create(
+            cliente=self.cliente,
+            progresso_aula=progresso_aula_2,
+            conteudo=self.conteudo_2,
+            is_visualizado=True,
+            data_visualizacao=agora,
+        )
+        ProgressoModulo.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_1,
+            modulo=self.modulo,
+            is_concluido=True,
+            percentual=100,
+            data_conclusao=agora,
+        )
+        ProgressoModulo.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_1,
+            modulo=self.modulo_2,
+            is_concluido=False,
+            percentual=50,
+        )
+        ProgressoModulo.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_2,
+            modulo=self.modulo,
+            is_concluido=False,
+            percentual=0,
+        )
+        ProgressoAula.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_2,
+            aula=self.aula,
+            is_concluida=False,
+        )
+        self.matricula_1.progresso_percentual = 50
+        self.matricula_1.save(update_fields=["progresso_percentual"])
+
+        self.forum_msg_1 = AtividadeForumMensagem.objects.create(
+            cliente=self.cliente,
+            atividade=self.atividade_forum,
+            autor=self.aluno_1,
+            texto="Primeira interacao no forum",
+        )
+        AtividadeForumMensagem.objects.create(
+            cliente=self.cliente,
+            atividade=self.atividade_forum,
+            autor=self.aluno_1,
+            texto="Resposta em thread",
+            resposta_para=self.forum_msg_1,
+        )
+        AtividadeForumMensagem.objects.create(
+            cliente=self.cliente,
+            atividade=self.atividade_forum,
+            autor=self.aluno_2,
+            texto="Participacao do aluno dois",
         )
 
         self.outro_cliente = Cliente.objects.create(nome="Cliente Externo", slug="cliente-externo")
@@ -195,7 +336,7 @@ class AVAManagementDashboardTests(TestCase):
         response = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response.status_code, 403)
 
-    def test_dashboard_allows_admin_and_redator(self):
+    def test_dashboard_allows_admin_redator_and_revisor(self):
         self.client.force_login(self.admin)
         response_admin = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response_admin.status_code, 200)
@@ -205,6 +346,11 @@ class AVAManagementDashboardTests(TestCase):
         response_redator = self.client.get(reverse("ava:gestao_dashboard"))
         self.assertEqual(response_redator.status_code, 200)
         self.assertContains(response_redator, "Tentativas e respostas dos usuarios")
+
+        self.client.force_login(self.revisor)
+        response_revisor = self.client.get(reverse("ava:gestao_dashboard"))
+        self.assertEqual(response_revisor.status_code, 200)
+        self.assertContains(response_revisor, "Tentativas e respostas dos usuarios")
 
     def test_dashboard_can_filter_by_usuario(self):
         self.client.force_login(self.admin)
@@ -237,7 +383,7 @@ class AVAManagementDashboardTests(TestCase):
         self.assertEqual(response.context["visao_geral"]["total_alunos"], 2)
         self.assertEqual(response.context["visao_geral"]["total_matriculas"], 3)
         self.assertEqual(response.context["visao_geral"]["total_cursos"], 2)
-        self.assertEqual(response.context["visao_geral"]["total_atividades"], 2)
+        self.assertEqual(response.context["visao_geral"]["total_atividades"], 3)
         curso_ids = {curso.id for curso in response.context["cursos"]}
         self.assertIn(curso_sem_tentativa.id, curso_ids)
 
@@ -258,8 +404,88 @@ class AVAManagementDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Questao da gestao?")
         self.assertContains(response, "Alternativa correta")
+        self.assertContains(response, "Salvar correcao")
+
+    def test_tentativa_detalhe_permite_corrigir_tentativa_pelo_ava(self):
+        self.client.force_login(self.revisor)
+        response = self.client.post(
+            reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_2.id]),
+            {
+                "status": AtividadeTentativa.Status.CORRIGIDA,
+                "nota_obtida": "87.50",
+                "feedback_tutor": "Resposta consistente com os criterios do modulo.",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Correcao salva com sucesso.")
+
+        self.tentativa_2.refresh_from_db()
+        self.assertEqual(self.tentativa_2.status, AtividadeTentativa.Status.CORRIGIDA)
+        self.assertEqual(str(self.tentativa_2.nota_obtida), "87.50")
+        self.assertEqual(self.tentativa_2.feedback_tutor, "Resposta consistente com os criterios do modulo.")
+        self.assertEqual(self.tentativa_2.corrigido_por, self.revisor)
+        self.assertIsNotNone(self.tentativa_2.data_correcao)
 
     def test_tentativa_detalhe_bloqueia_acesso_a_dado_de_outro_cliente(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_externa.id]))
         self.assertEqual(response.status_code, 404)
+
+    def test_dashboard_relatorio_xlsx_exporta_dados_nominais(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard_relatorio", args=["xlsx"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("relatorio-ava-nominal-", response["Content-Disposition"])
+
+        workbook = load_workbook(BytesIO(response.content))
+        self.assertEqual(workbook.sheetnames, ["Resumo", "Alunos", "Top interacao", "Pendentes"])
+
+        alunos_sheet = workbook["Alunos"]
+        alunos = {
+            row[0]: row
+            for row in alunos_sheet.iter_rows(min_row=2, values_only=True)
+            if row[0]
+        }
+        self.assertIn("Aluno Um", alunos)
+        self.assertIn("Aluno Dois", alunos)
+        self.assertNotIn("Aluno Externo", alunos)
+
+        aluno_um = alunos["Aluno Um"]
+        self.assertEqual(aluno_um[2], "Curso Gestao AVA")
+        self.assertEqual(aluno_um[5], 1)
+        self.assertEqual(aluno_um[6], 1)
+        self.assertIn("Modulo Gestao", aluno_um[7])
+        self.assertIn("Modulo Complementar (50%)", aluno_um[8])
+        self.assertEqual(aluno_um[9], 1)
+        self.assertEqual(aluno_um[12], 2)
+        self.assertEqual(aluno_um[14], 2)
+        self.assertEqual(aluno_um[15], 5)
+
+    def test_dashboard_relatorio_xlsx_respeita_filtro_de_usuario(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(
+            reverse("ava:gestao_dashboard_relatorio", args=["xlsx"]),
+            {"usuario": str(self.aluno_1.id)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(BytesIO(response.content))
+        alunos_sheet = workbook["Alunos"]
+        alunos = [row[0] for row in alunos_sheet.iter_rows(min_row=2, values_only=True) if row[0]]
+        self.assertEqual(alunos, ["Aluno Um"])
+
+    def test_dashboard_relatorio_pdf_retorna_arquivo_valido(self):
+        self.client.force_login(self.revisor)
+        response = self.client.get(reverse("ava:gestao_dashboard_relatorio", args=["pdf"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("relatorio-ava-nominal-", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"%PDF"))

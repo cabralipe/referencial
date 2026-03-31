@@ -2,16 +2,122 @@
 
 {% block title %}Atividade: {{ atividade.titulo }} | AVA PROLUC{% endblock %}
 
+{% block head %}
+{% if is_forum %}
+<style>
+    .forum-thread {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .forum-card {
+        border: 1px solid var(--border-soft);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        box-shadow: 0 20px 35px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+
+    .forum-card.own {
+        border-color: rgba(37, 99, 235, 0.3);
+        box-shadow: 0 22px 36px rgba(37, 99, 235, 0.12);
+    }
+
+    .forum-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .forum-avatar {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg, #1d4ed8, #0f172a);
+    }
+
+    .forum-reply {
+        border-left: 3px solid rgba(37, 99, 235, 0.3);
+        background: rgba(37, 99, 235, 0.08);
+        border-radius: 1rem;
+    }
+
+    .forum-attachments {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .forum-attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 0.95rem;
+        border-radius: 999px;
+        background: var(--surface-elevated);
+        border: 1px solid var(--border-soft);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .forum-attachment:hover {
+        color: var(--accent-primary);
+        border-color: rgba(37, 99, 235, 0.35);
+    }
+
+    .forum-composer {
+        position: sticky;
+        top: 1.25rem;
+    }
+
+    .forum-emoticons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .forum-emoticon {
+        border: 1px solid var(--border-soft);
+        background: #fff;
+        border-radius: 999px;
+        padding: 0.45rem 0.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .forum-emoticon:hover,
+    .forum-emoticon:focus {
+        border-color: rgba(37, 99, 235, 0.35);
+        color: var(--accent-primary);
+    }
+</style>
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <section class="section-hero py-5">
     <div class="container text-center py-2">
         <span class="badge text-bg-light mb-3">Atividade</span>
         <h1 class="display-6 fw-bold text-white mb-2">{{ atividade.titulo }}</h1>
+        {% if is_forum %}
+        <p class="mb-0 text-white-50">
+            Forum interativo da aula - {{ forum_total_mensagens }} mensagens -
+            {{ forum_total_participantes }} participante{{ forum_total_participantes|pluralize }}
+        </p>
+        {% else %}
         <p class="mb-0 text-white-50">{{ atividade.get_tipo_display }} - Peso: {{ atividade.nota_maxima }}</p>
+        {% endif %}
     </div>
 </section>
 
-<div class="container pb-5" style="max-width: 900px;">
+<div class="container pb-5" style="max-width: 1100px;">
     <div class="mb-4">
         <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}" class="btn btn-outline-primary btn-sm px-3">
             <i class="bi bi-arrow-left me-1"></i>Voltar para a aula
@@ -25,6 +131,154 @@
     </section>
     {% endif %}
 
+    {% if is_forum %}
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <section id="forum-thread" class="ava-surface p-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                    <div>
+                        <h2 class="h4 fw-bold mb-1">Discussao da turma</h2>
+                        <p class="text-muted mb-0">Texto livre, links, arquivos e respostas em thread no mesmo espaco.</p>
+                    </div>
+                    {% if tentativa %}
+                    <span class="badge rounded-pill px-3 py-2" style="background: var(--success-subtle); color: #166534;">
+                        Participacao registrada
+                    </span>
+                    {% else %}
+                    <span class="badge rounded-pill px-3 py-2" style="background: var(--warning-subtle); color: #92400e;">
+                        Envie ao menos uma mensagem para concluir
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="forum-thread">
+                    {% for mensagem in forum_messages %}
+                    <article id="mensagem-{{ mensagem.id }}" class="forum-card {% if mensagem.autor_id == request.user.id %}own{% endif %}">
+                        <div class="p-4">
+                            <div class="forum-meta mb-3">
+                                <span class="forum-avatar">
+                                    {{ mensagem.autor.nome|default:mensagem.autor.email|slice:":1"|upper }}
+                                </span>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold text-dark">{{ mensagem.autor.nome|default:mensagem.autor.email }}</div>
+                                    <div class="small text-muted">{{ mensagem.created_at|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-primary btn-sm forum-reply-button"
+                                    data-message-id="{{ mensagem.id }}"
+                                    data-author="{{ mensagem.autor.nome|default:mensagem.autor.email }}"
+                                    data-excerpt="{{ mensagem.texto|default:'Anexo compartilhado'|truncatechars:80|escape }}"
+                                >
+                                    Responder
+                                </button>
+                            </div>
+
+                            {% if mensagem.resposta_para %}
+                            <div class="forum-reply p-3 mb-3">
+                                <div class="small fw-bold text-primary mb-1">
+                                    Respondendo a {{ mensagem.resposta_para.autor.nome|default:mensagem.resposta_para.autor.email }}
+                                </div>
+                                <div class="small text-muted">
+                                    {{ mensagem.resposta_para.texto|default:"Anexo compartilhado"|truncatechars:120 }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if mensagem.texto %}
+                            <div class="lh-lg text-dark mb-3">{{ mensagem.texto|urlize|linebreaksbr }}</div>
+                            {% endif %}
+
+                            {% if mensagem.anexos.all %}
+                            <div class="forum-attachments">
+                                {% for anexo in mensagem.anexos.all %}
+                                <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener noreferrer" class="forum-attachment">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span>{{ anexo.nome_original|default:anexo.arquivo.name }}</span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </article>
+                    {% empty %}
+                    <div class="ava-surface p-4 text-center text-muted">
+                        Ainda nao ha mensagens. Abra a conversa com sua primeira contribuicao.
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="ava-surface p-4 forum-composer">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h2 class="h4 fw-bold mb-1">Nova mensagem</h2>
+                        <p class="text-muted mb-0">Links sao reconhecidos automaticamente e os anexos ficam visiveis para a turma.</p>
+                    </div>
+                    <span class="ava-chip px-3 py-2">{{ atividade.get_tipo_display }}</span>
+                </div>
+
+                {% if forum_form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in forum_form.non_field_errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ forum_form.resposta_para }}
+
+                    <div id="forum-reply-target" class="alert alert-primary d-none">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="fw-bold mb-1">Respondendo a <span id="forum-reply-author"></span></div>
+                                <div class="small text-muted" id="forum-reply-excerpt"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="forum-cancel-reply">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ forum_form.mensagem.id_for_label }}" class="form-label fw-bold">Mensagem</label>
+                        {{ forum_form.mensagem }}
+                        {% for error in forum_form.mensagem.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Atalhos de emoticons</label>
+                        <div class="forum-emoticons">
+                            <button type="button" class="forum-emoticon" data-emoticon=":)">:)</button>
+                            <button type="button" class="forum-emoticon" data-emoticon=":D">:D</button>
+                            <button type="button" class="forum-emoticon" data-emoticon=";)">;)</button>
+                            <button type="button" class="forum-emoticon" data-emoticon="<3">&lt;3</button>
+                            <button type="button" class="forum-emoticon" data-emoticon="o/">o/</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_arquivos" class="form-label fw-bold">Arquivos</label>
+                        <input id="id_arquivos" type="file" name="arquivos" class="form-control" multiple>
+                        <div class="form-text">Voce pode mandar apenas texto, apenas arquivo ou combinar os dois.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center gap-3 pt-3 border-top">
+                        <div class="small text-muted">Cada nova postagem mantem sua participacao concluida e amplia a discussao.</div>
+                        <button type="submit" class="btn btn-primary px-4">
+                            Publicar mensagem <i class="bi bi-send ms-1"></i>
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    {% else %}
     {% if not tentativa or tentativa.status == 'em_andamento' %}
     <form method="post" enctype="multipart/form-data" class="ava-surface p-4 p-md-5">
         {% csrf_token %}
@@ -94,10 +348,10 @@
             <i class="bi bi-check-circle-fill fs-1"></i>
         </div>
         <h2 class="h3 fw-bold mb-2">Atividade concluida</h2>
-        <p class="text-muted mb-4">Voce ja enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y \a\s H:i" }}.</p>
+        <p class="text-muted mb-4">Voce ja enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y \\a\\s H:i" }}.</p>
 
         {% if tentativa.arquivo_enviado %}
-        <p class="small text-muted mb-2">Anexo enviado: {{ tentativa.arquivo_enviado.name }}</p>
+        <p class="small text-muted mb-2">Anexo enviado: {{ tentativa.arquivo_enviado.name|cut:"ava/tentativas/arquivos/" }}</p>
         <p class="mb-3">
             <a href="{{ tentativa.arquivo_enviado.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
                 Abrir anexo enviado <i class="bi bi-box-arrow-up-right ms-1"></i>
@@ -123,6 +377,62 @@
         </div>
     </section>
     {% endif %}
+    {% endif %}
 </div>
 {% endblock %}
 
+{% block scripts %}
+{% if is_forum %}
+<script>
+    (() => {
+        const textarea = document.getElementById("{{ forum_form.mensagem.id_for_label }}");
+        const replyInput = document.getElementById("{{ forum_form.resposta_para.id_for_label }}");
+        const replyBox = document.getElementById("forum-reply-target");
+        const replyAuthor = document.getElementById("forum-reply-author");
+        const replyExcerpt = document.getElementById("forum-reply-excerpt");
+        const cancelReply = document.getElementById("forum-cancel-reply");
+
+        document.querySelectorAll(".forum-reply-button").forEach((button) => {
+            button.addEventListener("click", () => {
+                if (!replyInput || !replyBox || !replyAuthor || !replyExcerpt || !textarea) {
+                    return;
+                }
+                replyInput.value = button.dataset.messageId || "";
+                replyAuthor.textContent = button.dataset.author || "";
+                replyExcerpt.textContent = button.dataset.excerpt || "";
+                replyBox.classList.remove("d-none");
+                textarea.focus();
+            });
+        });
+
+        if (cancelReply) {
+            cancelReply.addEventListener("click", () => {
+                if (!replyInput || !replyBox) {
+                    return;
+                }
+                replyInput.value = "";
+                replyBox.classList.add("d-none");
+            });
+        }
+
+        document.querySelectorAll(".forum-emoticon").forEach((button) => {
+            button.addEventListener("click", () => {
+                if (!textarea) {
+                    return;
+                }
+                const value = button.dataset.emoticon || "";
+                const start = textarea.selectionStart || 0;
+                const end = textarea.selectionEnd || 0;
+                const before = textarea.value.slice(0, start);
+                const after = textarea.value.slice(end);
+                const spacer = before && !before.endsWith(" ") && !before.endsWith("\\n") ? " " : "";
+                textarea.value = `${before}${spacer}${value} ${after}`;
+                const cursor = before.length + spacer.length + value.length + 1;
+                textarea.focus();
+                textarea.setSelectionRange(cursor, cursor);
+            });
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

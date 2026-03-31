@@ -5,13 +5,24 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def _rename_index_if_supported(old_name: str, new_name: str):
+    def forwards(apps, schema_editor):
+        if schema_editor.connection.vendor == "sqlite":
+            return
+        schema_editor.execute(f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";')
+
+    def backwards(apps, schema_editor):
+        if schema_editor.connection.vendor == "sqlite":
+            return
+        schema_editor.execute(f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";')
+
+    return migrations.RunPython(forwards, backwards)
+
+
 def safe_rename_index(model_name: str, old_name: str, new_name: str):
     return migrations.SeparateDatabaseAndState(
         database_operations=[
-            migrations.RunSQL(
-                sql=f'ALTER INDEX IF EXISTS "{old_name}" RENAME TO "{new_name}";',
-                reverse_sql=f'ALTER INDEX IF EXISTS "{new_name}" RENAME TO "{old_name}";',
-            ),
+            _rename_index_if_supported(old_name, new_name),
         ],
         state_operations=[
             migrations.RenameIndex(

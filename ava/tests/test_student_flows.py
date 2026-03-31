@@ -5,6 +5,8 @@ from django.urls import reverse
 
 from ava.models import (
     Atividade,
+    AtividadeForumAnexo,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
     ConteudoAula,
@@ -261,7 +263,79 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.redirect_chain[-1][0], url)
         self.assertContains(response, "Atividade concluida")
         self.assertContains(response, "Anexo enviado:")
-        self.assertContains(response, "resposta.pdf")
+        self.assertContains(response, "resposta")
+        self.assertContains(response, ".pdf")
+
+    def test_forum_cria_mensagem_com_anexo_e_conclui_aula(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.FORUM,
+            titulo="Forum da aula",
+            is_obrigatoria=True,
+        )
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        arquivo = SimpleUploadedFile("forum.txt", b"anotacao", content_type="text/plain")
+
+        response = self.client.post(
+            url,
+            {
+                "mensagem": "Minha primeira contribuicao com link https://example.com",
+                "arquivos": arquivo,
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mensagem publicada no forum.")
+        self.assertContains(response, "Participacao registrada")
+        self.assertContains(response, "Minha primeira contribuicao")
+
+        tentativa = AtividadeTentativa.objects.get(aluno=self.user, atividade=atividade)
+        self.assertEqual(tentativa.status, AtividadeTentativa.Status.CORRIGIDA)
+
+        mensagem = AtividadeForumMensagem.objects.get(atividade=atividade, autor=self.user)
+        self.assertEqual(mensagem.texto, "Minha primeira contribuicao com link https://example.com")
+        self.assertTrue(AtividadeForumAnexo.objects.filter(mensagem=mensagem, nome_original="forum.txt").exists())
+
+        progresso = ProgressoAula.objects.get(matricula=self.matricula, aula=self.aula_1)
+        self.assertTrue(progresso.is_concluida)
+
+    def test_forum_permite_responder_sem_criar_nova_tentativa(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.FORUM,
+            titulo="Forum permanente",
+            is_obrigatoria=True,
+        )
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+
+        self.client.post(url, {"mensagem": "Mensagem inicial"}, follow=True)
+        primeira = AtividadeForumMensagem.objects.get(atividade=atividade, autor=self.user)
+
+        response = self.client.post(
+            url,
+            {
+                "mensagem": "Resposta em thread",
+                "resposta_para": str(primeira.id),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).count(), 1)
+        self.assertEqual(AtividadeForumMensagem.objects.filter(atividade=atividade, autor=self.user).count(), 2)
+
+        resposta = AtividadeForumMensagem.objects.exclude(pk=primeira.pk).get(atividade=atividade, autor=self.user)
+        self.assertEqual(resposta.resposta_para, primeira)
+        self.assertContains(response, "Resposta em thread")
 
     def test_catalogo_exibe_botao_inscrever_se_para_curso_aberto_nao_matriculado(self):
         curso_aberto = Curso.objects.create(

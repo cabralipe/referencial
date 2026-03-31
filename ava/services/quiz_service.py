@@ -3,6 +3,8 @@ from django.utils import timezone
 
 from ava.models import (
     Atividade,
+    AtividadeForumAnexo,
+    AtividadeForumMensagem,
     AtividadeTentativa,
     MatriculaCurso,
     QuizAlternativa,
@@ -42,6 +44,7 @@ class AtividadeService:
             return None, "Limite de tentativas alcancado."
 
         tentativa = AtividadeTentativa.objects.create(
+            cliente_id=atividade.cliente_id,
             aluno=aluno,
             atividade=atividade,
             status=AtividadeTentativa.Status.EM_ANDAMENTO,
@@ -58,14 +61,12 @@ class AtividadeService:
         atividade = tentativa.atividade
         nota_total = 0.0
 
-        # Obter todas as questoes da atividade.
         questoes = QuizQuestao.objects.filter(atividade=atividade)
         peso_total = sum(q.peso for q in questoes) or 1.0
 
         for questao in questoes:
             resposta_dada = dados_respostas.get(str(questao.id))
 
-            # Para quiz objetivo, resposta deve ser ID de alternativa.
             alternativa_obj = None
             is_correta = False
             nota_item = 0.0
@@ -77,7 +78,6 @@ class AtividadeService:
                         alternativa_obj = QuizAlternativa.objects.get(id=int(resposta_dada), questao=questao)
                         is_correta = alternativa_obj.is_correta
                         if is_correta:
-                            # Formula de nota ponderada.
                             nota_item = float(atividade.nota_maxima) * (float(questao.peso) / float(peso_total))
                             nota_total += nota_item
                     except QuizAlternativa.DoesNotExist:
@@ -86,6 +86,7 @@ class AtividadeService:
                     texto_livre = str(resposta_dada)
 
             QuizRespostaItem.objects.create(
+                cliente_id=tentativa.cliente_id,
                 tentativa=tentativa,
                 questao=questao,
                 alternativa_selecionada=alternativa_obj,
@@ -104,14 +105,7 @@ class AtividadeService:
             tentativa.status = AtividadeTentativa.Status.ENVIADA
 
         tentativa.save()
-
-        # Recalcular progresso da aula que contempla esta atividade.
-        try:
-            matricula = MatriculaCurso.objects.get(curso=atividade.aula.modulo.curso, aluno=tentativa.aluno)
-            ProgressoService.recalcular_aula(matricula, atividade.aula)
-        except MatriculaCurso.DoesNotExist:
-            pass
-
+        AtividadeService._recalcular_progresso_da_atividade(tentativa)
         return tentativa
 
     @staticmethod
@@ -127,12 +121,124 @@ class AtividadeService:
         tentativa.data_envio = timezone.now()
         tentativa.status = AtividadeTentativa.Status.ENVIADA
         tentativa.save()
+        AtividadeService._recalcular_progresso_da_atividade(tentativa)
+        return tentativa
 
-        # Recalcular progresso da aula que contempla esta atividade.
+    @staticmethod
+    @transaction.atomic
+    def publicar_mensagem_forum(
+        *,
+        aluno,
+        atividade: Atividade,
+        texto: str,
+        arquivos,
+        resposta_para: AtividadeForumMensagem | None = None,
+    ):
+        texto = (texto or "").strip()
+        arquivos_validos = [arquivo for arquivo in arquivos if getattr(arquivo, "name", "")]
+
+        if not texto and not arquivos_validos:
+            raise ValueError("Escreva uma mensagem ou envie pelo menos um arquivo.")
+
+        if resposta_para and resposta_para.atividade_id != atividade.id:
+            raise ValueError("A resposta selecionada nao pertence a este forum.")
+
+        tentativa = (
+            AtividadeTentativa.objects.filter(aluno=aluno, atividade=atividade)
+            .order_by("-data_inicio")
+            .first()
+        )
+        now = timezone.now()
+
+        if tentativa is None:
+            tentativa = AtividadeTentativa.objects.create(
+                cliente_id=atividade.cliente_id,
+                atividade=atividade,
+                aluno=aluno,
+                status=AtividadeTentativa.Status.CORRIGIDA,
+                texto_resposta=texto,
+                data_envio=now,
+                data_correcao=now,
+            )
+        else:
+            update_fields = []
+            if tentativa.status != AtividadeTentativa.Status.CORRIGIDA:
+                tentativa.status = AtividadeTentativa.Status.CORRIGIDA
+                update_fields.append("status")
+            if not tentativa.data_envio:
+                tentativa.data_envio = now
+                update_fields.append("data_envio")
+            if not tentativa.data_correcao:
+                tentativa.data_correcao = now
+                update_fields.append("data_correcao")
+            if texto and not tentativa.texto_resposta:
+                tentativa.texto_resposta = texto
+                update_fields.append("texto_resposta")
+            if update_fields:
+                tentativa.save(update_fields=update_fields)
+
+        mensagem = AtividadeForumMensagem.objects.create(
+            cliente_id=atividade.cliente_id,
+            atividade=atividade,
+            autor=aluno,
+            resposta_para=resposta_para,
+            texto=texto,
+        )
+
+        for arquivo in arquivos_validos:
+            AtividadeForumAnexo.objects.create(
+                cliente_id=atividade.cliente_id,
+                mensagem=mensagem,
+                arquivo=arquivo,
+                nome_original=getattr(arquivo, "name", ""),
+            )
+
+        AtividadeService._recalcular_progresso_da_atividade(tentativa)
+        return mensagem, tentativa
+
+    @staticmethod
+    @transaction.atomic
+    def corrigir_tentativa(
+        tentativa: AtividadeTentativa,
+        *,
+        corretor,
+        status: str,
+        nota_obtida,
+        feedback_tutor: str,
+    ):
+        """
+        Aplica a correcao manual de uma tentativa enviada pelo aluno.
+        """
+        tentativa.status = status
+        tentativa.nota_obtida = nota_obtida
+        tentativa.feedback_tutor = feedback_tutor
+
+        update_fields = ["status", "nota_obtida", "feedback_tutor"]
+
+        if status in {AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA} and tentativa.data_envio is None:
+            tentativa.data_envio = timezone.now()
+            update_fields.append("data_envio")
+
+        if status == AtividadeTentativa.Status.CORRIGIDA:
+            tentativa.corrigido_por = corretor
+            tentativa.data_correcao = timezone.now()
+            update_fields.extend(["corrigido_por", "data_correcao"])
+        else:
+            tentativa.corrigido_por = None
+            tentativa.data_correcao = None
+            update_fields.extend(["corrigido_por", "data_correcao"])
+
+        tentativa.save(update_fields=list(dict.fromkeys(update_fields)))
+        AtividadeService._recalcular_progresso_da_atividade(tentativa)
+        return tentativa
+
+    @staticmethod
+    def _recalcular_progresso_da_atividade(tentativa: AtividadeTentativa):
         try:
-            matricula = MatriculaCurso.objects.get(curso=tentativa.atividade.aula.modulo.curso, aluno=tentativa.aluno)
+            matricula = MatriculaCurso.objects.get(
+                curso=tentativa.atividade.aula.modulo.curso,
+                aluno=tentativa.aluno,
+            )
             ProgressoService.recalcular_aula(matricula, tentativa.atividade.aula)
         except MatriculaCurso.DoesNotExist:
             pass
-
-        return tentativa

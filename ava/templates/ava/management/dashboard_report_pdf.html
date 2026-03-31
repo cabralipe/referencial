@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.1cm;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #0f172a;
+            font-size: 10px;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+            color: #0f172a;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        .header {
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #1d4ed8;
+        }
+
+        .subtitle {
+            margin-top: 6px;
+            color: #475569;
+            font-size: 11px;
+        }
+
+        .meta-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        .meta-grid td {
+            width: 50%;
+            padding: 5px 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .section {
+            margin-top: 18px;
+        }
+
+        .filter-list {
+            margin: 8px 0 0;
+            padding-left: 18px;
+            color: #334155;
+        }
+
+        .cards {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 8px;
+            margin: 8px -8px 0;
+        }
+
+        .card {
+            width: 20%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .card-label {
+            text-transform: uppercase;
+            font-size: 8px;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        .card-value {
+            display: block;
+            margin-top: 6px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+            vertical-align: top;
+        }
+
+        .table th {
+            background: #e2e8f0;
+            color: #0f172a;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+
+        .muted {
+            color: #64748b;
+        }
+
+        .small {
+            font-size: 9px;
+        }
+
+        .list {
+            margin: 4px 0 0;
+            padding-left: 16px;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <section class="header">
+        <h1>Relatorio nominal de progresso e interacoes do AVA</h1>
+        <p class="subtitle">
+            Snapshot atual das matriculas com contagem de envios e interacoes conforme os filtros aplicados na gestao.
+        </p>
+
+        <table class="meta-grid">
+            <tr>
+                <td><strong>Cliente:</strong> {{ cliente_label }}</td>
+                <td><strong>Escopo:</strong> {{ escopo_label }}</td>
+            </tr>
+            <tr>
+                <td><strong>Gerado em:</strong> {{ generated_at|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <strong>Ultima interacao geral:</strong>
+                    {% if metricas.ultima_interacao_geral %}
+                    {{ metricas.ultima_interacao_geral|date:"d/m/Y H:i" }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2>Filtros aplicados</h2>
+        <ul class="filter-list">
+            {% for filtro in applied_filters %}
+            <li>{{ filtro }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="section">
+        <h2>Visao consolidada</h2>
+        <table class="cards">
+            <tr>
+                <td class="card">
+                    <span class="card-label">Alunos unicos</span>
+                    <span class="card-value">{{ metricas.total_alunos_unicos }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Matriculas</span>
+                    <span class="card-value">{{ metricas.total_matriculas }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Concluidas</span>
+                    <span class="card-value">{{ metricas.concluidos }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Pendentes</span>
+                    <span class="card-value">{{ metricas.pendentes }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Taxa de conclusao</span>
+                    <span class="card-value">{{ metricas.taxa_conclusao }}%</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="card">
+                    <span class="card-label">Progresso medio</span>
+                    <span class="card-value">{{ metricas.progresso_medio }}%</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Envios de atividade</span>
+                    <span class="card-value">{{ metricas.envios_atividade }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Mensagens no forum</span>
+                    <span class="card-value">{{ metricas.mensagens_forum }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Conteudos visualizados</span>
+                    <span class="card-value">{{ metricas.conteudos_visualizados }}</span>
+                </td>
+                <td class="card">
+                    <span class="card-label">Sem interacao</span>
+                    <span class="card-value">{{ metricas.sem_interacao }}</span>
+                </td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2>Top alunos que mais interagiram</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Curso</th>
+                    <th>Total</th>
+                    <th>Envios</th>
+                    <th>Forum</th>
+                    <th>Conteudos</th>
+                    <th>Ultima interacao</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in top_interacao %}
+                <tr>
+                    <td>{{ linha.aluno_nome }}</td>
+                    <td>{{ linha.curso_titulo }}</td>
+                    <td>{{ linha.total_interacoes }}</td>
+                    <td>{{ linha.envios_atividade }}</td>
+                    <td>{{ linha.mensagens_forum }}</td>
+                    <td>{{ linha.conteudos_visualizados }}</td>
+                    <td>{% if linha.ultima_interacao %}{{ linha.ultima_interacao|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="muted">Nenhuma interacao encontrada para o escopo selecionado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2>Matriculas pendentes</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Curso</th>
+                    <th>Status</th>
+                    <th>Progresso</th>
+                    <th>Modulos pendentes</th>
+                    <th>Ultima interacao</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in pendentes %}
+                <tr>
+                    <td>{{ linha.aluno_nome }}</td>
+                    <td>{{ linha.curso_titulo }}</td>
+                    <td><span class="pill">{{ linha.status_label }}</span></td>
+                    <td>{{ linha.progresso_percentual }}%</td>
+                    <td>
+                        {% if linha.lista_modulos_pendentes %}
+                        <ul class="list">
+                            {% for modulo in linha.lista_modulos_pendentes %}
+                            <li>{{ modulo }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{% if linha.ultima_interacao %}{{ linha.ultima_interacao|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="muted">Nao ha matriculas pendentes neste recorte.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="section page-break">
+        <h2>Detalhamento nominal dos alunos</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Curso</th>
+                    <th>Status</th>
+                    <th>Progresso</th>
+                    <th>Modulos concluidos</th>
+                    <th>Modulos pendentes</th>
+                    <th>Envios / Corrigidas</th>
+                    <th>Forum</th>
+                    <th>Conteudos</th>
+                    <th>Total</th>
+                    <th>Ultima interacao</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in linhas %}
+                <tr>
+                    <td>
+                        <strong>{{ linha.aluno_nome }}</strong><br>
+                        <span class="muted small">{{ linha.aluno_email }}</span>
+                    </td>
+                    <td>{{ linha.curso_titulo }}</td>
+                    <td>{{ linha.status_label }}</td>
+                    <td>{{ linha.progresso_percentual }}%</td>
+                    <td>
+                        <strong>{{ linha.modulos_concluidos }}/{{ linha.modulos_total }}</strong>
+                        {% if linha.lista_modulos_concluidos %}
+                        <ul class="list">
+                            {% for modulo in linha.lista_modulos_concluidos %}
+                            <li>{{ modulo }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div class="muted small">Nenhum modulo concluido.</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if linha.lista_modulos_pendentes %}
+                        <ul class="list">
+                            {% for modulo in linha.lista_modulos_pendentes %}
+                            <li>{{ modulo }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div class="muted small">Sem pendencias.</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ linha.envios_atividade }}</strong> envios<br>
+                        <span class="muted small">{{ linha.atividades_corrigidas }} corrigidas / {{ linha.envios_com_anexo }} com anexo</span>
+                    </td>
+                    <td>
+                        <strong>{{ linha.mensagens_forum }}</strong> mensagens<br>
+                        <span class="muted small">{{ linha.respostas_forum }} respostas</span>
+                    </td>
+                    <td>{{ linha.conteudos_visualizados }}</td>
+                    <td>{{ linha.total_interacoes }}</td>
+                    <td>
+                        {% if linha.ultima_interacao %}
+                        {{ linha.ultima_interacao|date:"d/m/Y H:i" }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="muted">Nenhuma matricula encontrada para os filtros atuais.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

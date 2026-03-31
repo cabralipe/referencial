@@ -135,6 +135,36 @@
     </section>
 
     <section class="row g-3 mb-4">
+        <div class="col-12">
+            <article class="ava-surface p-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div>
+                        <h2 class="h5 fw-bold mb-2">Relatorio nominal dos alunos</h2>
+                        <p class="text-muted mb-0">
+                            Exporte em XLSX ou PDF a fotografia atual das matriculas com modulos concluidos, modulos pendentes,
+                            envios de atividades, top de interacoes, alunos que ainda nao finalizaram e demais indicadores da gestao.
+                        </p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a
+                            href="{% url 'ava:gestao_dashboard_relatorio' 'xlsx' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-primary"
+                        >
+                            Baixar XLSX
+                        </a>
+                        <a
+                            href="{% url 'ava:gestao_dashboard_relatorio' 'pdf' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-outline-primary"
+                        >
+                            Baixar PDF
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4">
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Tentativas</p>
@@ -296,7 +326,7 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}" class="btn btn-sm btn-outline-primary">Ver resposta</a>
+                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}" class="btn btn-sm btn-outline-primary">Ver / corrigir</a>
                         </td>
                     </tr>
                     {% empty %}
