@@ -86,7 +86,6 @@ export function MinhaTrilhaPage() {
     return (tarefas ?? []).map((tarefa) => {
       const perguntas = (perguntaMap.get(tarefa.id) ?? []).filter((pergunta) => {
         if (!selectedGtId) return true;
-        if (!pergunta.gts || pergunta.gts.length === 0) return true;
         return pergunta.gts.includes(selectedGtId);
       });
       const respostasDaTrilha = (respostas ?? []).filter((resp) => resp.tarefa_id === tarefa.id);

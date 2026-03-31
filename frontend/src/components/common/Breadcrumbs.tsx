@@ -54,11 +54,7 @@ export function Breadcrumbs() {
         const isLast = index === paths.length - 1;
         return (
           <span key={item.path} className={isLast ? 'breadcrumbs__current' : 'breadcrumbs__item'}>
-            {isLast ? (
-              item.label
-            ) : (
-              <Link to={item.path}>{item.label}</Link>
-            )}
+            {isLast ? item.label : <Link to={item.path}>{item.label}</Link>}
           </span>
         );
       })}

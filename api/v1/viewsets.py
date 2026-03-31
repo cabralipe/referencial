@@ -159,13 +159,17 @@ def _validate_gt_access(request, gt_id: int) -> None:
 
 
 def _filtrar_perguntas_por_usuario(queryset, user):
-    if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+    role = getattr(user, "role", None)
+    if role in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
         user_gt_ids = _get_user_gt_ids(user)
         if not user_gt_ids:
             return queryset.none()
-        queryset = queryset.filter(
-            models.Q(gts__id__in=user_gt_ids) | models.Q(gts__isnull=True)
-        ).distinct()
+        if role == user.Role.MEMBRO_GT:
+            queryset = queryset.filter(gts__id__in=user_gt_ids).distinct()
+        else:
+            queryset = queryset.filter(
+                models.Q(gts__id__in=user_gt_ids) | models.Q(gts__isnull=True)
+            ).distinct()
     return queryset
 
 
@@ -445,15 +449,19 @@ def _save_ppp_config(cliente_id: int, payload):
 
 
 def _filtrar_tarefas_por_usuario(queryset, user):
-    if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+    role = getattr(user, "role", None)
+    if role in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
         user_gt_ids = _get_user_gt_ids(user)
         if not user_gt_ids:
             return queryset.none()
-        queryset = queryset.filter(
-            models.Q(perguntas__gts__id__in=user_gt_ids)
-            | models.Q(perguntas__gts__isnull=True)
-            | models.Q(perguntas__isnull=True)
-        ).distinct()
+        if role == user.Role.MEMBRO_GT:
+            queryset = queryset.filter(perguntas__gts__id__in=user_gt_ids).distinct()
+        else:
+            queryset = queryset.filter(
+                models.Q(perguntas__gts__id__in=user_gt_ids)
+                | models.Q(perguntas__gts__isnull=True)
+                | models.Q(perguntas__isnull=True)
+            ).distinct()
     return queryset
 
 

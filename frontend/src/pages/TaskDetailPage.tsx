@@ -260,11 +260,7 @@ export function TaskDetailPage() {
       return sortedPerguntas;
     }
     
-    // Filtrar perguntas que estão associadas ao GT selecionado
-    // Se uma pergunta não tem GTs associados (array vazio), ela aparece para todos os GTs
-    return sortedPerguntas.filter(pergunta => 
-      !pergunta.gts || pergunta.gts.length === 0 || pergunta.gts.includes(selectedGtId)
-    );
+    return sortedPerguntas.filter((pergunta) => pergunta.gts.includes(selectedGtId));
   }, [sortedPerguntas, selectedGtId]);
 
   const buildErrorMessage = (err: unknown, fallback: string) => {

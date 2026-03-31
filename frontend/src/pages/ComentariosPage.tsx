@@ -127,7 +127,7 @@ export function ComentariosPage() {
       return perguntas;
     }
     return perguntas
-      .filter((pergunta) => pergunta.gts.length === 0 || pergunta.gts.includes(gtSelecionadoNumero))
+      .filter((pergunta) => pergunta.gts.includes(gtSelecionadoNumero))
       .sort((a, b) => a.ordem - b.ordem);
   }, [gtSelecionadoNumero, perguntasQuery.data]);
 

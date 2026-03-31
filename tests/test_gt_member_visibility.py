@@ -58,7 +58,7 @@ def test_membro_gt_ve_apenas_tarefas_relacionadas(api_client, cliente, membro_gt
     assert resposta.status_code == 200
     nomes = {item["nome"] for item in resposta.json().get("results", [])}
     assert tarefa_propria.nome in nomes
-    assert tarefa_sem_gt.nome in nomes
+    assert tarefa_sem_gt.nome not in nomes
     assert tarefa_outro_gt.nome not in nomes
 
 
@@ -165,7 +165,7 @@ def test_membro_gt_filtra_tarefas_pelo_gt_selecionado(api_client, cliente, membr
 
     assert resposta.status_code == 200
     nomes = {item["nome"] for item in resposta.json().get("results", [])}
-    assert nomes == {tarefa_propria.nome, tarefa_sem_gt.nome}
+    assert nomes == {tarefa_propria.nome}
 
 
 @pytest.mark.django_db
@@ -207,7 +207,7 @@ def test_membro_gt_ve_apenas_perguntas_da_trilha_para_o_gt_selecionado(api_clien
 
     assert resposta.status_code == 200
     textos = [item["texto"] for item in resposta.json()]
-    assert textos == ["Pergunta do meu GT", "Pergunta para todos"]
+    assert textos == ["Pergunta do meu GT"]
 
 
 @pytest.mark.django_db

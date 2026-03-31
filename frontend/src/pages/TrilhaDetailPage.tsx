@@ -74,7 +74,6 @@ export function TrilhaDetailPage() {
   const blocos = useMemo(() => {
     const perguntasFiltradas = (perguntas ?? []).filter((pergunta) => {
       if (!selectedGtId) return true;
-      if (!pergunta.gts || pergunta.gts.length === 0) return true;
       return pergunta.gts.includes(selectedGtId);
     });
 
