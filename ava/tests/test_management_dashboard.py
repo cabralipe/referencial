@@ -245,6 +245,19 @@ class AVAManagementDashboardTests(TestCase):
             is_concluido=False,
             percentual=50,
         )
+        ProgressoModulo.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_2,
+            modulo=self.modulo,
+            is_concluido=False,
+            percentual=0,
+        )
+        ProgressoAula.objects.create(
+            cliente=self.cliente,
+            matricula=self.matricula_2,
+            aula=self.aula,
+            is_concluida=False,
+        )
         self.matricula_1.progresso_percentual = 50
         self.matricula_1.save(update_fields=["progresso_percentual"])
 

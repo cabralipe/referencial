@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from io import BytesIO
 from typing import Any
+from xml.sax.saxutils import escape
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Max, Q
@@ -28,6 +29,17 @@ try:  # pragma: no cover - dependencia validada pelo ambiente
 except ImportError:  # pragma: no cover - fallback defensivo
     Workbook = None  # type: ignore[assignment]
     Alignment = Font = PatternFill = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - dependencia validada pelo ambiente
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    REPORTLAB_AVAILABLE = True
+except ImportError:  # pragma: no cover - fallback defensivo
+    REPORTLAB_AVAILABLE = False
 
 
 class AVAManagementReportService:
@@ -452,12 +464,340 @@ class AVAManagementReportService:
 
     @classmethod
     def render_pdf_bytes(cls, report_data: dict[str, Any]) -> bytes:
+        if REPORTLAB_AVAILABLE:
+            return cls._render_pdf_reportlab(report_data)
+
         context = {
             "titulo": "Relatorio nominal de progresso e interacoes do AVA",
             **report_data,
             "top_interacao": report_data["top_interacao"][:10],
         }
         return html_to_pdf_bytes("ava/management/dashboard_report_pdf.html", context)
+
+    @classmethod
+    def _paragraph(cls, texto: str, style):
+        return Paragraph(escape(texto or "-").replace("\n", "<br/>"), style)
+
+    @classmethod
+    def _modules_cell(cls, titulo: str, items: list[str], style):
+        if not items:
+            conteudo = f"<b>{escape(titulo)}:</b><br/>-"
+        else:
+            conteudo = f"<b>{escape(titulo)}:</b><br/>" + "<br/>".join(escape(item) for item in items)
+        return Paragraph(conteudo, style)
+
+    @classmethod
+    def _datetime_text(cls, value) -> str:
+        value = cls._to_local_datetime(value)
+        return value.strftime("%d/%m/%Y %H:%M") if value else "-"
+
+    @classmethod
+    def _render_pdf_reportlab(cls, report_data: dict[str, Any]) -> bytes:
+        buffer = BytesIO()
+        document = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            leftMargin=1.1 * cm,
+            rightMargin=1.1 * cm,
+            topMargin=1.1 * cm,
+            bottomMargin=1.1 * cm,
+            title="Relatorio nominal de progresso e interacoes do AVA",
+        )
+
+        sample_styles = getSampleStyleSheet()
+        styles = {
+            "title": ParagraphStyle(
+                "AVATitle",
+                parent=sample_styles["Title"],
+                fontSize=18,
+                leading=22,
+                textColor=colors.HexColor("#0F172A"),
+                spaceAfter=6,
+            ),
+            "subtitle": ParagraphStyle(
+                "AVASubtitle",
+                parent=sample_styles["BodyText"],
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#475569"),
+                spaceAfter=12,
+            ),
+            "section": ParagraphStyle(
+                "AVASection",
+                parent=sample_styles["Heading2"],
+                fontSize=12,
+                leading=15,
+                textColor=colors.HexColor("#0F172A"),
+                spaceBefore=8,
+                spaceAfter=6,
+            ),
+            "body": ParagraphStyle(
+                "AVABody",
+                parent=sample_styles["BodyText"],
+                fontSize=8,
+                leading=10,
+                textColor=colors.HexColor("#334155"),
+            ),
+            "small": ParagraphStyle(
+                "AVASmall",
+                parent=sample_styles["BodyText"],
+                fontSize=7,
+                leading=9,
+                textColor=colors.HexColor("#334155"),
+            ),
+            "metric": ParagraphStyle(
+                "AVAMetric",
+                parent=sample_styles["BodyText"],
+                fontSize=10,
+                leading=12,
+                alignment=1,
+                textColor=colors.HexColor("#0F172A"),
+            ),
+        }
+
+        story = [
+            cls._paragraph("Relatorio nominal de progresso e interacoes do AVA", styles["title"]),
+            cls._paragraph(
+                "Snapshot atual das matriculas com contagem de envios e interacoes conforme os filtros aplicados na gestao.",
+                styles["subtitle"],
+            ),
+        ]
+
+        meta_table = Table(
+            [
+                [
+                    cls._paragraph(f"Cliente: {report_data['cliente_label']}", styles["body"]),
+                    cls._paragraph(f"Escopo: {report_data['escopo_label']}", styles["body"]),
+                ],
+                [
+                    cls._paragraph(
+                        f"Gerado em: {cls._datetime_text(report_data['generated_at'])}",
+                        styles["body"],
+                    ),
+                    cls._paragraph(
+                        f"Ultima interacao geral: {cls._datetime_text(report_data['metricas']['ultima_interacao_geral'])}",
+                        styles["body"],
+                    ),
+                ],
+            ],
+            colWidths=[13 * cm, 13 * cm],
+        )
+        meta_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.extend([meta_table, Spacer(1, 0.25 * cm)])
+
+        story.append(cls._paragraph("Filtros aplicados", styles["section"]))
+        for filtro in report_data["applied_filters"]:
+            story.append(cls._paragraph(f"- {filtro}", styles["body"]))
+        story.append(Spacer(1, 0.2 * cm))
+
+        metricas = report_data["metricas"]
+        metric_cells = [
+            ("Alunos unicos", metricas["total_alunos_unicos"]),
+            ("Matriculas", metricas["total_matriculas"]),
+            ("Concluidas", metricas["concluidos"]),
+            ("Pendentes", metricas["pendentes"]),
+            ("Taxa de conclusao", f"{metricas['taxa_conclusao']}%"),
+            ("Progresso medio", f"{metricas['progresso_medio']}%"),
+            ("Envios", metricas["envios_atividade"]),
+            ("Forum", metricas["mensagens_forum"]),
+            ("Conteudos", metricas["conteudos_visualizados"]),
+            ("Sem interacao", metricas["sem_interacao"]),
+        ]
+        metric_rows = []
+        for inicio in range(0, len(metric_cells), 5):
+            row = []
+            for label, value in metric_cells[inicio:inicio + 5]:
+                row.append(
+                    Paragraph(
+                        f"<font size='7' color='#64748B'>{escape(label.upper())}</font><br/><b>{escape(str(value))}</b>",
+                        styles["metric"],
+                    )
+                )
+            metric_rows.append(row)
+
+        metrics_table = Table(metric_rows, colWidths=[5.2 * cm] * 5)
+        metrics_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        story.extend([cls._paragraph("Visao consolidada", styles["section"]), metrics_table, Spacer(1, 0.25 * cm)])
+
+        story.append(cls._paragraph("Top alunos que mais interagiram", styles["section"]))
+        top_table_data = [[
+            cls._paragraph("Aluno", styles["small"]),
+            cls._paragraph("Curso", styles["small"]),
+            cls._paragraph("Total", styles["small"]),
+            cls._paragraph("Envios", styles["small"]),
+            cls._paragraph("Forum", styles["small"]),
+            cls._paragraph("Conteudos", styles["small"]),
+            cls._paragraph("Ultima interacao", styles["small"]),
+        ]]
+        top_rows = report_data["top_interacao"][:10] or []
+        if top_rows:
+            for linha in top_rows:
+                top_table_data.append(
+                    [
+                        cls._paragraph(linha["aluno_nome"], styles["body"]),
+                        cls._paragraph(linha["curso_titulo"], styles["body"]),
+                        cls._paragraph(str(linha["total_interacoes"]), styles["body"]),
+                        cls._paragraph(str(linha["envios_atividade"]), styles["body"]),
+                        cls._paragraph(str(linha["mensagens_forum"]), styles["body"]),
+                        cls._paragraph(str(linha["conteudos_visualizados"]), styles["body"]),
+                        cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["body"]),
+                    ]
+                )
+        else:
+            top_table_data.append([cls._paragraph("Nenhuma interacao encontrada para o escopo selecionado.", styles["body"])] + [""] * 6)
+
+        top_table = Table(top_table_data, colWidths=[4.2 * cm, 5.8 * cm, 2 * cm, 2 * cm, 2 * cm, 2.3 * cm, 3.5 * cm], repeatRows=1)
+        top_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E2E8F0")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.extend([top_table, Spacer(1, 0.25 * cm)])
+
+        story.append(cls._paragraph("Matriculas pendentes", styles["section"]))
+        pendentes_table_data = [[
+            cls._paragraph("Aluno", styles["small"]),
+            cls._paragraph("Curso", styles["small"]),
+            cls._paragraph("Status", styles["small"]),
+            cls._paragraph("Progresso", styles["small"]),
+            cls._paragraph("Modulos pendentes", styles["small"]),
+            cls._paragraph("Ultima interacao", styles["small"]),
+        ]]
+        if report_data["pendentes"]:
+            for linha in report_data["pendentes"]:
+                pendentes_table_data.append(
+                    [
+                        cls._paragraph(linha["aluno_nome"], styles["body"]),
+                        cls._paragraph(linha["curso_titulo"], styles["body"]),
+                        cls._paragraph(linha["status_label"], styles["body"]),
+                        cls._paragraph(f"{linha['progresso_percentual']}%", styles["body"]),
+                        cls._modules_cell("Pendentes", linha["lista_modulos_pendentes"], styles["small"]),
+                        cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["body"]),
+                    ]
+                )
+        else:
+            pendentes_table_data.append([cls._paragraph("Nao ha matriculas pendentes neste recorte.", styles["body"])] + [""] * 5)
+
+        pendentes_table = Table(
+            pendentes_table_data,
+            colWidths=[4.2 * cm, 5.8 * cm, 3 * cm, 2 * cm, 8 * cm, 3.2 * cm],
+            repeatRows=1,
+        )
+        pendentes_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E2E8F0")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.extend([pendentes_table, PageBreak(), cls._paragraph("Detalhamento nominal dos alunos", styles["section"])])
+
+        detalhe_table_data = [[
+            cls._paragraph("Aluno", styles["small"]),
+            cls._paragraph("Curso", styles["small"]),
+            cls._paragraph("Status", styles["small"]),
+            cls._paragraph("Progresso", styles["small"]),
+            cls._paragraph("Modulos", styles["small"]),
+            cls._paragraph("Envios", styles["small"]),
+            cls._paragraph("Forum", styles["small"]),
+            cls._paragraph("Conteudos", styles["small"]),
+            cls._paragraph("Total", styles["small"]),
+            cls._paragraph("Ultima interacao", styles["small"]),
+        ]]
+        for linha in report_data["linhas"]:
+            detalhe_table_data.append(
+                [
+                    cls._paragraph(f"{linha['aluno_nome']}<br/>{linha['aluno_email']}", styles["small"]),
+                    cls._paragraph(linha["curso_titulo"], styles["small"]),
+                    cls._paragraph(linha["status_label"], styles["small"]),
+                    cls._paragraph(f"{linha['progresso_percentual']}%", styles["small"]),
+                    Paragraph(
+                        "<b>Concluidos:</b> "
+                        + escape(", ".join(linha["lista_modulos_concluidos"]) or "-")
+                        + "<br/><b>Pendentes:</b> "
+                        + escape(", ".join(linha["lista_modulos_pendentes"]) or "-"),
+                        styles["small"],
+                    ),
+                    cls._paragraph(
+                        f"{linha['envios_atividade']} envios<br/>{linha['atividades_corrigidas']} corrigidas<br/>{linha['envios_com_anexo']} com anexo",
+                        styles["small"],
+                    ),
+                    cls._paragraph(
+                        f"{linha['mensagens_forum']} mensagens<br/>{linha['respostas_forum']} respostas",
+                        styles["small"],
+                    ),
+                    cls._paragraph(str(linha["conteudos_visualizados"]), styles["small"]),
+                    cls._paragraph(str(linha["total_interacoes"]), styles["small"]),
+                    cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["small"]),
+                ]
+            )
+
+        detalhe_table = Table(
+            detalhe_table_data,
+            colWidths=[4.5 * cm, 4.5 * cm, 2.3 * cm, 1.8 * cm, 7.3 * cm, 2.3 * cm, 2.3 * cm, 1.8 * cm, 1.6 * cm, 3.2 * cm],
+            repeatRows=1,
+        )
+        detalhe_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E2E8F0")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.append(detalhe_table)
+
+        document.build(story)
+        buffer.seek(0)
+        return buffer.read()
 
     @classmethod
     def render_xlsx_bytes(cls, report_data: dict[str, Any]) -> bytes:
