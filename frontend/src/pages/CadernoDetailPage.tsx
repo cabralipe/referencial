@@ -23,9 +23,12 @@ export function CadernoDetailPage() {
   const createBloco = useCreateBloco();
   const updateBloco = useUpdateBloco();
 
-  const { data: tarefas } = useTarefas({ tipo: 'PERGUNTAS' });
+  const { data: tarefas } = useTarefas({ tipo: 'PERGUNTAS', gtId: selectedGtId ?? undefined });
   const [selectedTarefaId, setSelectedTarefaId] = useState<number | ''>('');
-  const { data: perguntas } = usePerguntas(typeof selectedTarefaId === 'number' ? selectedTarefaId : undefined);
+  const { data: perguntas } = usePerguntas(
+    typeof selectedTarefaId === 'number' ? selectedTarefaId : undefined,
+    selectedGtId ?? undefined,
+  );
   const [selectedPerguntaId, setSelectedPerguntaId] = useState<number | ''>('');
 
   const [titulo, setTitulo] = useState('');

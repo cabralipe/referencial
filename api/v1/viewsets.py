@@ -139,6 +139,42 @@ def _get_user_gt_ids(user) -> list[int]:
     return list(GT.objects.filter(membros=user).values_list("id", flat=True))
 
 
+def _get_requested_gt_id(request) -> int | None:
+    raw_gt_id = request.query_params.get("gt_id") or request.query_params.get("gt")
+    if raw_gt_id in {None, ""}:
+        return None
+    try:
+        return int(raw_gt_id)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("gt_id inválido.") from exc
+
+
+def _validate_gt_access(request, gt_id: int) -> None:
+    cliente_id = _get_request_cliente_id(request)
+    gt = GT.objects.filter(cliente_id=cliente_id, pk=gt_id).only("id").first()
+    if not gt:
+        raise ValidationError("GT não encontrado para este cliente.")
+    if not usuario_e_membro_do_gt(request.user, gt_id):
+        raise PermissionDenied("GT não disponível para o usuário.")
+
+
+def _filtrar_perguntas_por_usuario(queryset, user):
+    if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
+        user_gt_ids = _get_user_gt_ids(user)
+        if not user_gt_ids:
+            return queryset.none()
+        queryset = queryset.filter(
+            models.Q(gts__id__in=user_gt_ids) | models.Q(gts__isnull=True)
+        ).distinct()
+    return queryset
+
+
+def _filtrar_perguntas_por_gt(queryset, gt_id: int):
+    return queryset.filter(
+        models.Q(gts__id=gt_id) | models.Q(gts__isnull=True)
+    ).distinct()
+
+
 class FeatureFlagMixin:
     feature_flag: str | None = None
 
@@ -419,6 +455,14 @@ def _filtrar_tarefas_por_usuario(queryset, user):
             | models.Q(perguntas__isnull=True)
         ).distinct()
     return queryset
+
+
+def _filtrar_tarefas_por_gt(queryset, gt_id: int):
+    return queryset.filter(
+        models.Q(perguntas__gts__id=gt_id)
+        | models.Q(perguntas__gts__isnull=True)
+        | models.Q(perguntas__isnull=True)
+    ).distinct()
 
 
 def _registrar_score(request, cliente_id: int, tarefa_id: int | None, origem_tipo: str, origem_id: str | int, descricao: str = ""):
@@ -853,21 +897,29 @@ class TarefaViewSet(viewsets.ModelViewSet):
     filterset_fields = ("tipo", "status")
 
     def get_queryset(self):
-        queryset = Tarefa.objects.all().order_by("ordem")
+        cliente_id = _get_request_cliente_id(self.request)
+        queryset = Tarefa.objects.filter(cliente_id=cliente_id).order_by("ordem")
         user = self.request.user
         queryset = _filtrar_tarefas_por_usuario(queryset, user)
         etapa = self.request.query_params.get("etapa")
-        gt_id = self.request.query_params.get("gt_id")
+        gt_id = _get_requested_gt_id(self.request)
         if etapa:
             queryset = queryset.filter(etapa=etapa)
         if gt_id:
-            queryset = queryset.filter(perguntas__respostas__gt_id=gt_id).distinct()
+            _validate_gt_access(self.request, gt_id)
+            queryset = _filtrar_tarefas_por_gt(queryset, gt_id)
         return queryset
 
     @action(detail=True, methods=["get"], url_path="perguntas")
     def perguntas(self, request, pk=None):
         tarefa = self.get_object()
-        perguntas = tarefa.perguntas.order_by("ordem")
+        perguntas = tarefa.perguntas.all()
+        perguntas = _filtrar_perguntas_por_usuario(perguntas, request.user)
+        gt_id = _get_requested_gt_id(request)
+        if gt_id:
+            _validate_gt_access(request, gt_id)
+            perguntas = _filtrar_perguntas_por_gt(perguntas, gt_id)
+        perguntas = perguntas.order_by("ordem")
         serializer = PerguntaSerializer(perguntas, many=True)
         return Response(serializer.data)
 
@@ -992,14 +1044,11 @@ class PerguntaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         cliente_id = _get_request_cliente_id(self.request)
         queryset = Pergunta.objects.filter(cliente_id=cliente_id)
-        user = self.request.user
-        if getattr(user, "role", None) in {user.Role.MEMBRO_GT, user.Role.ARTICULADOR}:
-            user_gt_ids = _get_user_gt_ids(user)
-            if not user_gt_ids:
-                return queryset.none()
-            queryset = queryset.filter(
-                models.Q(gts__id__in=user_gt_ids) | models.Q(gts__isnull=True)
-            ).distinct()
+        queryset = _filtrar_perguntas_por_usuario(queryset, self.request.user)
+        gt_id = _get_requested_gt_id(self.request)
+        if gt_id:
+            _validate_gt_access(self.request, gt_id)
+            queryset = _filtrar_perguntas_por_gt(queryset, gt_id)
         return queryset.order_by("tarefa_id", "ordem")
 
     def get_serializer_class(self):

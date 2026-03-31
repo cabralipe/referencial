@@ -38,7 +38,7 @@ export function BibliotecaPage() {
 
   const { gtOptions } = useAvailableGts();
   const { data: tarefas } = useTarefas({ gtId: gtId ?? undefined, tipo: 'PERGUNTAS' });
-  const { data: perguntas } = usePerguntas(tarefaId ?? undefined);
+  const { data: perguntas } = usePerguntas(tarefaId ?? undefined, gtId ?? undefined);
   const { data: midias, isLoading: midiasLoading } = useMidias({
     query: filtroPalavra || undefined,
     tags: tagsList,

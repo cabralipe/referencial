@@ -41,15 +41,23 @@ export function MinhaTrilhaPage() {
   const selectedGtId = searchParams.get('gt') ? Number(searchParams.get('gt')) : gtOptions[0]?.id ?? null;
   const continuar = useContinuar();
 
-  const { data: tarefas, isLoading: tarefasLoading } = useTarefas({ tipo: 'PERGUNTAS' });
+  const { data: tarefas, isLoading: tarefasLoading } = useTarefas({
+    tipo: 'PERGUNTAS',
+    gtId: selectedGtId ?? undefined,
+  });
   const { data: respostas, isLoading: respostasLoading } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes, isLoading: revisoesLoading } = useRevisoes({ alvoTipo: 'resposta', pageSize: 300 });
 
   const perguntasQuery = useQuery({
-    queryKey: ['perguntas', 'todas', tarefas?.map((t) => t.id)],
+    queryKey: ['perguntas', 'todas', selectedGtId ?? null, tarefas?.map((t) => t.id)],
     enabled: Boolean(tarefas?.length),
     queryFn: async () => {
-      return fetchAllPaginated<Pergunta>(client.get, '/perguntas', { query: { page_size: 500 } });
+      return fetchAllPaginated<Pergunta>(client.get, '/perguntas', {
+        query: {
+          page_size: 500,
+          gt_id: selectedGtId ?? undefined,
+        },
+      });
     },
   });
 

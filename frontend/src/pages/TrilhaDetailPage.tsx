@@ -37,7 +37,7 @@ export function TrilhaDetailPage() {
   const selectedGtId = gtParam ? Number(gtParam) : gtOptions[0]?.id ?? null;
 
   const { data: tarefa, isLoading: tarefaLoading } = useTarefa(trilhaId);
-  const { data: perguntas, isLoading: perguntasLoading } = usePerguntas(trilhaId);
+  const { data: perguntas, isLoading: perguntasLoading } = usePerguntas(trilhaId, selectedGtId ?? undefined);
   const { data: respostas, isLoading: respostasLoading } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes, isLoading: revisoesLoading } = useRevisoes({ alvoTipo: 'resposta', pageSize: 300 });
 

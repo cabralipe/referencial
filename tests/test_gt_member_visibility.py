@@ -108,3 +108,139 @@ def test_membro_gt_ve_apenas_respostas_do_seu_gt(api_client, cliente, membro_gt)
     assert resposta.status_code == 200
     resultados = resposta.json().get("results", [])
     assert {item["gt"] for item in resultados} == {gt_proprio.id}
+
+
+@pytest.mark.django_db
+def test_membro_gt_filtra_tarefas_pelo_gt_selecionado(api_client, cliente, membro_gt):
+    gt_proprio = GT.objects.create(cliente=cliente, nome="GT EducaÃ§Ã£o Especial", etapa="I")
+    gt_outro = GT.objects.create(cliente=cliente, nome="GT EJA", etapa="II")
+    gt_proprio.membros.add(membro_gt)
+
+    tarefa_propria = Tarefa.objects.create(
+        cliente=cliente,
+        nome="Tarefa do meu GT",
+        ordem=1,
+        etapa="I",
+        tipo=Tarefa.Tipo.PERGUNTAS,
+    )
+    pergunta_propria = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa_propria,
+        ordem=1,
+        texto="Pergunta do meu GT",
+    )
+    pergunta_propria.gts.add(gt_proprio)
+
+    tarefa_sem_gt = Tarefa.objects.create(
+        cliente=cliente,
+        nome="Tarefa aberta",
+        ordem=2,
+        etapa="I",
+        tipo=Tarefa.Tipo.PERGUNTAS,
+    )
+    Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa_sem_gt,
+        ordem=1,
+        texto="Pergunta sem GT especÃ­fico",
+    )
+
+    tarefa_outro_gt = Tarefa.objects.create(
+        cliente=cliente,
+        nome="Tarefa de outro GT",
+        ordem=3,
+        etapa="II",
+        tipo=Tarefa.Tipo.PERGUNTAS,
+    )
+    pergunta_outro = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa_outro_gt,
+        ordem=1,
+        texto="Pergunta de outro GT",
+    )
+    pergunta_outro.gts.add(gt_outro)
+
+    api_client.force_authenticate(membro_gt)
+    resposta = api_client.get(f"/api/v1/tarefas?gt_id={gt_proprio.id}")
+
+    assert resposta.status_code == 200
+    nomes = {item["nome"] for item in resposta.json().get("results", [])}
+    assert nomes == {tarefa_propria.nome, tarefa_sem_gt.nome}
+
+
+@pytest.mark.django_db
+def test_membro_gt_ve_apenas_perguntas_da_trilha_para_o_gt_selecionado(api_client, cliente, membro_gt):
+    gt_proprio = GT.objects.create(cliente=cliente, nome="GT EducaÃ§Ã£o Especial", etapa="I")
+    gt_outro = GT.objects.create(cliente=cliente, nome="GT EJA", etapa="II")
+    gt_proprio.membros.add(membro_gt)
+
+    tarefa = Tarefa.objects.create(
+        cliente=cliente,
+        nome="Tarefa compartilhada",
+        ordem=1,
+        etapa="I",
+        tipo=Tarefa.Tipo.PERGUNTAS,
+    )
+    pergunta_propria = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa,
+        ordem=1,
+        texto="Pergunta do meu GT",
+    )
+    pergunta_propria.gts.add(gt_proprio)
+    pergunta_outro = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa,
+        ordem=2,
+        texto="Pergunta de outro GT",
+    )
+    pergunta_outro.gts.add(gt_outro)
+    Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa,
+        ordem=3,
+        texto="Pergunta para todos",
+    )
+
+    api_client.force_authenticate(membro_gt)
+    resposta = api_client.get(f"/api/v1/tarefas/{tarefa.id}/perguntas?gt_id={gt_proprio.id}")
+
+    assert resposta.status_code == 200
+    textos = [item["texto"] for item in resposta.json()]
+    assert textos == ["Pergunta do meu GT", "Pergunta para todos"]
+
+
+@pytest.mark.django_db
+def test_membro_gt_filtra_lista_global_de_perguntas_pelo_gt(api_client, cliente, membro_gt):
+    gt_proprio = GT.objects.create(cliente=cliente, nome="GT EducaÃ§Ã£o Especial", etapa="I")
+    gt_outro = GT.objects.create(cliente=cliente, nome="GT EJA", etapa="II")
+    gt_proprio.membros.add(membro_gt)
+
+    tarefa = Tarefa.objects.create(
+        cliente=cliente,
+        nome="Tarefa compartilhada",
+        ordem=1,
+        etapa="I",
+        tipo=Tarefa.Tipo.PERGUNTAS,
+    )
+    pergunta_propria = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa,
+        ordem=1,
+        texto="Pergunta do meu GT",
+    )
+    pergunta_propria.gts.add(gt_proprio)
+    pergunta_outro = Pergunta.objects.create(
+        cliente=cliente,
+        tarefa=tarefa,
+        ordem=2,
+        texto="Pergunta de outro GT",
+    )
+    pergunta_outro.gts.add(gt_outro)
+
+    api_client.force_authenticate(membro_gt)
+    resposta = api_client.get(f"/api/v1/perguntas?gt_id={gt_proprio.id}")
+
+    assert resposta.status_code == 200
+    resultados = resposta.json().get("results", [])
+    assert [item["texto"] for item in resultados] == ["Pergunta do meu GT"]

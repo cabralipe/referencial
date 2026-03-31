@@ -56,18 +56,38 @@ const RESPOSTA_SNIPPETS: Snippet[] = [
   },
 ];
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const decodeHtmlEntities = (value: string) => {
+  if (!value) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(value, 'text/html');
+  return doc.documentElement.textContent ?? value;
+};
+
 const ensureHtml = (value: string) => {
-  const text = value.trim();
+  const raw = value ?? '';
+  const text = raw.trim();
   if (!text) return '';
   const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(text);
   if (hasHtmlTag) {
-    return value;
+    return raw;
+  }
+  const decoded = decodeHtmlEntities(text);
+  if (decoded !== text && /<\/?[a-z][\s\S]*>/i.test(decoded)) {
+    return decoded;
   }
   const paragraphs = text
     .split(/\n{2,}/)
-    .map((block) => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br />')}</p>`)
     .join('');
-  return paragraphs || `<p>${text}</p>`;
+  return paragraphs || `<p>${escapeHtml(text)}</p>`;
 };
 
 const stripHtml = (value: string) => {
@@ -111,7 +131,7 @@ export function TaskDetailPage() {
     isError: perguntasError,
     error: perguntasErrorObj,
     refetch: refetchPerguntas,
-  } = usePerguntas(tarefaId);
+  } = usePerguntas(tarefaId, selectedGtId ?? undefined);
   const {
     data: respostas,
     isFetching: respostasFetching,
@@ -193,8 +213,8 @@ export function TaskDetailPage() {
       const next = { ...prev } as Record<number, string>;
       perguntas.forEach((pergunta) => {
         const resposta = respostas?.find((item) => item.pergunta === pergunta.id);
-        const conteudoServer = resposta?.conteudo_html ?? '';
-        if (!(pergunta.id in prev) || prev[pergunta.id] === conteudoServer) {
+        const conteudoServer = ensureHtml(resposta?.conteudo_html ?? '');
+        if (!(pergunta.id in prev) || ensureHtml(prev[pergunta.id] ?? '') === conteudoServer) {
           next[pergunta.id] = conteudoServer;
         }
       });
@@ -290,7 +310,7 @@ export function TaskDetailPage() {
     const resposta = respostas?.find((item) => item.pergunta === pergunta.id);
     setDrafts((prev) => ({
       ...prev,
-      [pergunta.id]: resposta?.conteudo_html ?? '',
+      [pergunta.id]: ensureHtml(resposta?.conteudo_html ?? ''),
     }));
     setFeedback((prev) => ({
       ...prev,
@@ -366,10 +386,8 @@ export function TaskDetailPage() {
   const renderPergunta = (pergunta: Pergunta) => {
     const respostaAtual = respostas?.find((item) => item.pergunta === pergunta.id);
     const draft = drafts[pergunta.id] ?? '';
-    const salvo = respostaAtual?.conteudo_html ?? '';
-    const pendente = Boolean(
-      isGtMember && selectedGtId && (!respostaAtual || !respostaAtual.conteudo_html?.trim()),
-    );
+    const salvo = ensureHtml(respostaAtual?.conteudo_html ?? '');
+    const pendente = Boolean(isGtMember && selectedGtId && (!respostaAtual || !stripHtml(salvo)));
     const alterado = draft !== salvo;
     const feedbackEntry = feedback[pergunta.id];
     const atualizacao = lastUpdated[pergunta.id];
@@ -479,7 +497,7 @@ export function TaskDetailPage() {
             </h2>
             <div
               className="pergunta-card__texto"
-              dangerouslySetInnerHTML={{ __html: pergunta.texto }}
+              dangerouslySetInnerHTML={{ __html: ensureHtml(pergunta.texto) }}
             />
           </div>
           {atualizacao && (
@@ -571,7 +589,11 @@ export function TaskDetailPage() {
               {revisoesDaResposta.map((rev) => (
                 <div key={rev.id} className="pergunta-card__revisao">
                   <span className={`pergunta-card__revisao-status status-${rev.status}`}>{rev.status}</span>
-                  <div dangerouslySetInnerHTML={{ __html: rev.parecer_html || '<p>Sem parecer.</p>' }} />
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: ensureHtml(rev.parecer_html || '<p>Sem parecer.</p>'),
+                    }}
+                  />
                   <small>Revisão #{rev.id}</small>
                 </div>
               ))}
@@ -580,7 +602,11 @@ export function TaskDetailPage() {
 
           <details className="pergunta-card__preview">
             <summary>Pré-visualização</summary>
-            <div dangerouslySetInnerHTML={{ __html: draft || '<p>Sem conteúdo para exibir ainda.</p>' }} />
+            <div
+              dangerouslySetInnerHTML={{
+                __html: ensureHtml(draft) || '<p>Sem conteúdo para exibir ainda.</p>',
+              }}
+            />
           </details>
 
           {canReview && (

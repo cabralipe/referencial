@@ -58,7 +58,7 @@ export function ComentariosPage() {
   const tarefaSelecionadaNumero = typeof tarefaSelecionada === 'number' ? tarefaSelecionada : null;
   const perguntaSelecionadaNumero = typeof perguntaSelecionada === 'number' ? perguntaSelecionada : null;
   const tarefasQuery = useTarefas({ gtId: gtSelecionadoNumero ?? undefined });
-  const perguntasQuery = usePerguntas(tarefaSelecionadaNumero ?? undefined);
+  const perguntasQuery = usePerguntas(tarefaSelecionadaNumero ?? undefined, gtSelecionadoNumero ?? undefined);
   const client = useApiClient();
 
   useStreamSubscription({
