@@ -16,7 +16,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.activity import touch_user_session
-from core.models import Cliente, ClienteTema
+from core.models import Cliente, ClienteTema, TipoUsuarioCadastro
 from core.permissions import HasClientScope
 from services.progress import get_next_block_for_user
 from services.diff import diff_last_approved
@@ -32,6 +32,7 @@ from .serializers import (
     ManifestacaoPublicaPublicSerializer,
     PublicClienteSerializer,
     PublicEscolaSerializer,
+    PublicTipoUsuarioCadastroSerializer,
 )
 
 
@@ -219,9 +220,19 @@ class PublicClientesEscolasView(APIView):
     def get(self, request):
         clientes = Cliente.objects.filter(escolas__isnull=False).distinct().order_by("nome")
         escolas = Escola.objects.all().order_by("nome")
+        tipos_cadastro = TipoUsuarioCadastro.raw_objects.filter(
+            is_deleted=False,
+            ativo=True,
+            exibir_no_cadastro=True,
+        ).order_by(
+            "cliente_id",
+            "ordem_exibicao",
+            "nome",
+        )
         return Response({
             "clientes": PublicClienteSerializer(clientes, many=True).data,
             "escolas": PublicEscolaSerializer(escolas, many=True).data,
+            "tipos_cadastro": PublicTipoUsuarioCadastroSerializer(tipos_cadastro, many=True).data,
         })
 
 

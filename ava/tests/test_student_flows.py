@@ -19,7 +19,7 @@ from ava.models import (
     QuizQuestao,
 )
 from ava.services import ProgressoService
-from core.models import Cliente
+from core.models import Cliente, TipoUsuarioCadastro
 from curriculum.models import Escola
 
 
@@ -529,12 +529,35 @@ class AVATeacherCatalogFlowTests(TestCase):
     def setUp(self):
         self.cliente = Cliente.objects.create(nome="Cliente Professor", slug="cliente-professor")
         self.escola = Escola.objects.create(cliente=self.cliente, nome="Escola Teste")
+        self.tipo_professor = TipoUsuarioCadastro.objects.create(
+            cliente=self.cliente,
+            nome="Professor - Anos Iniciais",
+            slug="professor-anos-iniciais",
+            role_interno=User.Role.PROFESSOR,
+            seguimento=User.Seguimento.PROFESSOR_ANOS_INICIAIS,
+            acesso_ppp=TipoUsuarioCadastro.AcessoPPP.VISUALIZAR,
+            exibir_no_cadastro=True,
+            ativo=True,
+            ordem_exibicao=10,
+        )
+        self.tipo_apoio = TipoUsuarioCadastro.objects.create(
+            cliente=self.cliente,
+            nome="Profissional de Apoio",
+            slug="profissional-apoio",
+            role_interno=User.Role.PROFESSOR,
+            seguimento=User.Seguimento.PROFISSIONAL_APOIO,
+            acesso_ppp=TipoUsuarioCadastro.AcessoPPP.VISUALIZAR,
+            exibir_no_cadastro=True,
+            ativo=True,
+            ordem_exibicao=20,
+        )
         self.professor = User.objects.create_user(
             email="professor@teste.com",
             nome="Professor Teste",
             password="123456",
             cliente=self.cliente,
             escola=self.escola,
+            tipo_cadastro=self.tipo_professor,
             role=User.Role.PROFESSOR,
         )
         self.leitor = User.objects.create_user(
@@ -561,17 +584,13 @@ class AVATeacherCatalogFlowTests(TestCase):
             autor_principal=self.professor,
         )
 
-    def test_catalogo_exibe_modal_obrigatorio_para_professor_sem_seguimento(self):
+    def test_catalogo_nao_exibe_modal_de_seguimento_para_professor(self):
         self.client.force_login(self.professor)
 
         response = self.client.get(reverse("ava:catalogo"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Qual seu seguimento?")
-        self.assertContains(response, "Profissional de Apoio")
-        self.assertContains(response, "Professor - Anos Iniciais")
-        self.assertContains(response, "Professor - Anos Finais")
-        self.assertContains(response, "Professor - EJA")
+        self.assertNotContains(response, "Qual seu seguimento?")
 
     def test_catalogo_nao_exibe_modal_para_nao_professor(self):
         self.client.force_login(self.leitor)
@@ -581,23 +600,9 @@ class AVATeacherCatalogFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Qual seu seguimento?")
 
-    def test_registrar_seguimento_salva_no_usuario_e_modal_nao_reaparece(self):
-        self.client.force_login(self.professor)
-
-        response = self.client.post(
-            reverse("ava:registrar_seguimento_professor"),
-            {"seguimento": User.Seguimento.PROFESSOR_ANOS_INICIAIS, "next": reverse("ava:catalogo")},
-            follow=True,
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.professor.refresh_from_db()
-        self.assertEqual(self.professor.seguimento, User.Seguimento.PROFESSOR_ANOS_INICIAIS)
-        self.assertNotContains(response, "Qual seu seguimento?")
-
     def test_profissional_de_apoio_nao_visualiza_curso_ppp(self):
-        self.professor.seguimento = User.Seguimento.PROFISSIONAL_APOIO
-        self.professor.save(update_fields=["seguimento"])
+        self.professor.tipo_cadastro = self.tipo_apoio
+        self.professor.save(update_fields=["tipo_cadastro"])
         self.client.force_login(self.professor)
 
         response = self.client.get(reverse("ava:catalogo"))

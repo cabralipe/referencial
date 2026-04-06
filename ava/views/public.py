@@ -16,15 +16,6 @@ VISIBLE_ENROLLMENT_STATUSES = [
 
 CURSO_PPP_SLUG = "implementacao-referencial-curricular-ppp-2"
 
-
-def _deve_exigir_seguimento(request):
-    return (
-        request.user.is_authenticated
-        and getattr(request.user, "role", None) == Usuario.Role.PROFESSOR
-        and not getattr(request.user, "seguimento", "")
-    )
-
-
 def _next_or_catalogo(request):
     return request.POST.get("next") or request.META.get("HTTP_REFERER") or redirect("ava:catalogo").url
 
@@ -43,8 +34,6 @@ def catalogo_cursos(request):
 
     cursos = list(cursos_qs.order_by("-created_at"))
     trilhas = TrilhaFormativa.objects.filter(is_active=True)
-    deve_exigir_seguimento = _deve_exigir_seguimento(request)
-
     matriculados_ids = set()
     if request.user.is_authenticated and cursos:
         matriculados_ids = set(
@@ -64,8 +53,6 @@ def catalogo_cursos(request):
         {
             "cursos": cursos,
             "trilhas": trilhas,
-            "deve_exigir_seguimento": deve_exigir_seguimento,
-            "seguimento_choices": Usuario.Seguimento.choices if deve_exigir_seguimento else (),
         },
     )
 
