@@ -9,6 +9,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 
 from .mixins import TenantModel, TimeStampedModel
 
@@ -83,6 +84,7 @@ class UsuarioManager(BaseUserManager):
             extra_fields.setdefault("cliente_id", getattr(tipo_cadastro, "cliente_id", None))
             extra_fields.setdefault("seguimento", getattr(tipo_cadastro, "seguimento", "") or "")
             extra_fields["role"] = getattr(tipo_cadastro, "role_interno", extra_fields.get("role"))
+            extra_fields.setdefault("area_atuacao_confirmada_em", timezone.now())
         user = self.model(email=email, **extra_fields)
         role = extra_fields.get("role") or Usuario.Role.LEITOR
         if role != Usuario.Role.SUPER_ADMIN and not user.cliente_id:
@@ -126,6 +128,13 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AbstractUser):
+    AREA_ATUACAO_GENERIC_SLUGS = {
+        "diretor",
+        "coordenador-pedagogico",
+        "professor",
+        "professor-geral",
+    }
+
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "Super Admin"
         ADMIN_CLIENTE = "admin_cliente", "Admin do Cliente"
@@ -173,6 +182,7 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
     )
+    area_atuacao_confirmada_em = models.DateTimeField(null=True, blank=True)
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.LEITOR)
     seguimento = models.CharField(max_length=40, choices=Seguimento.choices, blank=True, default="")
 
@@ -197,6 +207,21 @@ class Usuario(AbstractUser):
         self.seguimento = tipo_cadastro.seguimento or ""
         if not self.cliente_id:
             self.cliente_id = tipo_cadastro.cliente_id
+
+    def confirmar_area_atuacao(self, tipo_cadastro: "TipoUsuarioCadastro") -> None:
+        self.tipo_cadastro = tipo_cadastro
+        self.area_atuacao_confirmada_em = timezone.now()
+        self.save(update_fields=["tipo_cadastro", "area_atuacao_confirmada_em"])
+
+    @property
+    def area_atuacao_pendente(self) -> bool:
+        if self.role not in self.ESCOLA_REQUIRED_ROLES or not self.cliente_id:
+            return False
+        if self.area_atuacao_confirmada_em:
+            return False
+        if not self.tipo_cadastro_id:
+            return True
+        return (getattr(self.tipo_cadastro, "slug", "") or "") in self.AREA_ATUACAO_GENERIC_SLUGS
 
     def clean(self):  # type: ignore[override]
         self._sync_from_tipo_cadastro()

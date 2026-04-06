@@ -218,6 +218,133 @@
   color: var(--color-text-secondary);
 }
 
+.app-shell__modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.app-shell__modal {
+  width: min(100%, 42rem);
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+  background: #fff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  padding: 1.5rem;
+}
+
+.app-shell__modal-header h2 {
+  margin: 0.35rem 0 0.45rem;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.app-shell__modal-header p {
+  margin: 0;
+  color: #475569;
+}
+
+.app-shell__modal-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-primary);
+}
+
+.app-shell__modal-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.app-shell__modal-option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.4rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.app-shell__modal-option input {
+  margin: 0;
+  accent-color: var(--app-primary);
+}
+
+.app-shell__modal-option span {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.app-shell__modal-option.is-selected {
+  border-color: var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 8%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-primary) 26%, transparent);
+}
+
+.app-shell__modal-state,
+.app-shell__modal-error {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  font-size: 0.94rem;
+}
+
+.app-shell__modal-state {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.app-shell__modal-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.app-shell__modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.app-shell__modal-button {
+  min-width: 9rem;
+  height: 2.85rem;
+  border: 0;
+  border-radius: 0.85rem;
+  background: var(--app-primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.16s ease, opacity 0.16s ease;
+}
+
+.app-shell__modal-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.app-shell__modal-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .app-shell__client-context strong {
   color: var(--color-text);
 }

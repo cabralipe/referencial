@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from django.contrib.auth import login
+from django.db.models.functions import Lower
 from django.core.files.storage import default_storage
 from django.middleware.csrf import get_token
 from django.utils.text import slugify
@@ -40,6 +41,20 @@ class RoleTokenObtainPairView(TokenObtainPairView):
     serializer_class = RoleTokenObtainPairSerializer
 
 
+def _serialize_auth_user(user) -> dict:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "nome": getattr(user, "nome", ""),
+        "role": user.role,
+        "cliente_id": user.cliente_id,
+        "escola_id": getattr(user, "escola_id", None),
+        "tipo_cadastro_id": getattr(user, "tipo_cadastro_id", None),
+        "tipo_cadastro_nome": getattr(getattr(user, "tipo_cadastro", None), "nome", None),
+        "area_atuacao_pendente": bool(getattr(user, "area_atuacao_pendente", False)),
+    }
+
+
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = []
@@ -51,16 +66,7 @@ class SessionLoginView(APIView):
         login(request, user)
         request.cliente_id = getattr(user, "cliente_id", None)
         touch_user_session(request)
-        data = {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "nome": getattr(user, "nome", ""),
-                "role": user.role,
-                "cliente_id": user.cliente_id,
-                "escola_id": getattr(user, "escola_id", None),
-            }
-        }
+        data = {"user": _serialize_auth_user(user)}
         if user.cliente:
             data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
         return Response(data)
@@ -71,19 +77,54 @@ class AuthMeView(APIView):
 
     def get(self, request):
         user = request.user
-        data = {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "nome": getattr(user, "nome", ""),
-                "role": user.role,
-                "cliente_id": user.cliente_id,
-                "escola_id": getattr(user, "escola_id", None),
-            }
-        }
+        data = {"user": _serialize_auth_user(user)}
         if user.cliente:
             data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
         return Response(data)
+
+
+class AreaAtuacaoView(APIView):
+    permission_classes = [HasClientScope]
+
+    def _get_tipos(self, request):
+        cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
+        return TipoUsuarioCadastro.raw_objects.filter(
+            cliente_id=cliente_id,
+            is_deleted=False,
+            ativo=True,
+        ).order_by(Lower("nome"), "id")
+
+    def get(self, request):
+        user = request.user
+        tipos = self._get_tipos(request) if user.area_atuacao_pendente else TipoUsuarioCadastro.raw_objects.none()
+        return Response(
+            {
+                "required": bool(user.area_atuacao_pendente),
+                "title": "Qual sua área de atuação?",
+                "tipos": [
+                    {"id": tipo.id, "nome": tipo.nome}
+                    for tipo in tipos
+                ],
+                "current_tipo_cadastro_id": getattr(user, "tipo_cadastro_id", None),
+            }
+        )
+
+    def post(self, request):
+        user = request.user
+        if not user.area_atuacao_pendente:
+            return Response({"required": False, "user": _serialize_auth_user(user)})
+
+        tipo_cadastro_id = request.data.get("tipo_cadastro_id")
+        if not tipo_cadastro_id:
+            raise ValidationError({"tipo_cadastro_id": "Selecione um tipo de usuário."})
+
+        tipo_cadastro = self._get_tipos(request).filter(pk=tipo_cadastro_id).first()
+        if not tipo_cadastro:
+            raise ValidationError({"tipo_cadastro_id": "Tipo de usuário inválido para este município."})
+
+        user.confirmar_area_atuacao(tipo_cadastro)
+        user.refresh_from_db(fields=["tipo_cadastro", "role", "seguimento", "cliente", "area_atuacao_confirmada_em"])
+        return Response({"required": False, "user": _serialize_auth_user(user)})
 
 
 class CsrfTokenView(APIView):
