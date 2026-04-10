@@ -14,9 +14,16 @@ interface EscolaData {
   cliente_id: number;
 }
 
+interface TipoCadastroData {
+  id: number;
+  nome: string;
+  cliente_id: number;
+}
+
 interface CadastroData {
   clientes: ClienteData[];
   escolas: EscolaData[];
+  tipos_cadastro: TipoCadastroData[];
 }
 
 export function CadastroPage() {
@@ -27,11 +34,12 @@ export function CadastroPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'diretor' | 'coordenador_pedagogico' | 'professor' | ''>('');
+  const [selectedTipoCadastroId, setSelectedTipoCadastroId] = useState<number | ''>('');
   
   const api = useApiClient();
   const [clientes, setClientes] = useState<ClienteData[]>([]);
   const [escolas, setEscolas] = useState<EscolaData[]>([]);
+  const [tiposCadastro, setTiposCadastro] = useState<TipoCadastroData[]>([]);
   const [selectedClienteId, setSelectedClienteId] = useState<number | ''>('');
   const [selectedEscolaId, setSelectedEscolaId] = useState<number | ''>('');
   const [escolaBusca, setEscolaBusca] = useState('');
@@ -44,6 +52,7 @@ export function CadastroPage() {
       try {
         const response = await api.get<CadastroData>('public/cadastro-data', { skipAuth: true });
         setClientes(response.data.clientes || []);
+        setTiposCadastro(response.data.tipos_cadastro || []);
 
         // Normaliza formatos alternativos de relacionamento cliente/escola.
         const normalizedEscolas: EscolaData[] = (response.data.escolas || [])
@@ -83,6 +92,9 @@ export function CadastroPage() {
   const filteredClientes = clientes.filter((cliente) =>
     cliente.nome.toLowerCase().includes(clienteBusca.toLowerCase())
   );
+  const tiposCadastroDoCliente = selectedClienteId
+    ? tiposCadastro.filter((tipo) => Number(tipo.cliente_id) === Number(selectedClienteId))
+    : [];
   const escolasDoCliente = selectedClienteId
     ? escolas.filter((e) => Number(e.cliente_id) === Number(selectedClienteId))
     : [];
@@ -98,7 +110,7 @@ export function CadastroPage() {
     event.preventDefault();
     setLocalError(null);
 
-    if (!role) {
+    if (!selectedTipoCadastroId) {
       setLocalError('Por favor, selecione um tipo de usuário.');
       return;
     }
@@ -115,15 +127,13 @@ export function CadastroPage() {
 
     setIsSubmitting(true);
     
-    setIsSubmitting(true);
-    
     try {
       await api.post('public/cadastro', {
         body: {
           nome,
           email,
           password,
-          role,
+          tipo_cadastro_id: selectedTipoCadastroId,
           cliente_id: selectedClienteId,
           escola_id: selectedEscolaId,
         },
@@ -225,33 +235,36 @@ export function CadastroPage() {
                   {/* Tipo de Usuário */}
                   <div className="space-y-3">
                     <label className="block text-sm font-semibold text-slate-700 ml-1">Eu sou um(a)</label>
+                    {!selectedClienteId ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                        Selecione primeiro o municÃ­pio para carregar os tipos de usuÃ¡rio disponÃ­veis.
+                      </div>
+                    ) : null}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {[
-                        { label: 'Diretor', value: 'diretor' },
-                        { label: 'Coordenador Pedagógico', value: 'coordenador_pedagogico' },
-                        { label: 'Professor', value: 'professor' },
-                      ].map((option) => (
-                        <label 
-                          key={option.value} 
+                      {tiposCadastroDoCliente.map((option) => (
+                        <label
+                          key={option.id}
                           className={`
                             relative flex flex-col cursor-pointer rounded-xl border p-3 focus:outline-none transition-all duration-200
-                            ${role === option.value 
+                            ${selectedTipoCadastroId === option.id
                               ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
                               : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             }
+                            ${!selectedClienteId ? 'pointer-events-none opacity-50' : ''}
                           `}
                         >
                           <div className="flex items-center justify-between w-full h-full text-center group">
-                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option.label}</span>
+                            <span className="text-sm font-medium text-slate-900 mx-auto leading-tight">{option.nome}</span>
                             <input
                               type="radio"
-                              name="role"
-                              value={option.value}
+                              name="tipo_cadastro"
+                              value={option.id}
                               className="sr-only"
-                              checked={role === option.value}
-                              onChange={(e) => setRole(e.target.value as any)}
+                              checked={selectedTipoCadastroId === option.id}
+                              onChange={() => setSelectedTipoCadastroId(option.id)}
+                              disabled={!selectedClienteId}
                             />
-                            {role === option.value && (
+                            {selectedTipoCadastroId === option.id && (
                               <span className="material-symbols-outlined absolute top-2 right-2 text-primary text-[18px]">
                                 check_circle
                               </span>
@@ -260,6 +273,11 @@ export function CadastroPage() {
                         </label>
                       ))}
                     </div>
+                    {selectedClienteId && tiposCadastroDoCliente.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                        Nenhum tipo de usuÃ¡rio estÃ¡ disponÃ­vel para este municÃ­pio no momento.
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -277,6 +295,7 @@ export function CadastroPage() {
                             setIsClienteDropdownOpen(true);
                             if (selectedClienteId) {
                                setSelectedClienteId(''); // clear selection se digitar
+                               setSelectedTipoCadastroId('');
                                setSelectedEscolaId(''); // clear escola together
                                setEscolaBusca('');
                             }
@@ -311,6 +330,7 @@ export function CadastroPage() {
                                       setSelectedClienteId(c.id);
                                       setClienteBusca(c.nome);
                                       setIsClienteDropdownOpen(false);
+                                      setSelectedTipoCadastroId('');
                                       // Reseta a escola quando um novo cliente é escolhido
                                       setSelectedEscolaId('');
                                       setEscolaBusca('');

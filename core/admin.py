@@ -9,7 +9,7 @@ from meb.services import deliver_admin_broadcast
 
 from .admin_mixins import ClienteScopedAdminMixin
 from .forms import ClienteTemaAdminForm, UsuarioChangeForm, UsuarioCreationForm
-from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Usuario
+from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, TipoUsuarioCadastro, Usuario
 
 
 class BroadcastMessageForm(ActionForm):
@@ -57,19 +57,82 @@ class ClienteTemaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     search_fields = ("cliente__nome",)
 
 
+class TipoUsuarioCadastroAdminForm(forms.ModelForm):
+    class Meta:
+        model = TipoUsuarioCadastro
+        fields = "__all__"
+        widgets = {"role_interno": forms.HiddenInput()}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["role_interno"].initial = Usuario.Role.DIRETOR
+
+    def clean_role_interno(self):
+        return Usuario.Role.DIRETOR
+
+
+@admin.register(TipoUsuarioCadastro)
+class TipoUsuarioCadastroAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
+    form = TipoUsuarioCadastroAdminForm
+    list_display = (
+        "nome",
+        "cliente",
+        "role_interno",
+        "seguimento",
+        "acesso_ppp",
+        "exibir_no_cadastro",
+        "ativo",
+        "ordem_exibicao",
+    )
+    list_filter = ("role_interno", "acesso_ppp", "exibir_no_cadastro", "ativo", "cliente")
+    search_fields = ("nome", "slug")
+    ordering = ("cliente", "ordem_exibicao", "nome")
+    prepopulated_fields = {"slug": ("nome",)}
+    exclude = ("seguimento",)
+
+    def _has_admin_access(self, request) -> bool:
+        if not getattr(request.user, "is_active", False) or not getattr(request.user, "is_staff", False):
+            return False
+        return getattr(request.user, "role", None) in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}
+
+    def has_module_permission(self, request):
+        return self._has_admin_access(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
+    def has_add_permission(self, request):
+        return self._has_admin_access(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
+
 @admin.register(Usuario)
 class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
+<<<<<<< HEAD
     list_display = ("email", "nome", "cliente", "clientes_resumo", "escola", "role", "seguimento", "is_active", "last_login")
     list_filter = ("role", "seguimento", "is_active", "cliente", "escola")
+=======
+    list_display = ("email", "nome", "cliente", "escola", "tipo_cadastro", "role", "seguimento", "is_active", "last_login")
+    list_filter = ("role", "tipo_cadastro", "seguimento", "is_active", "cliente", "escola")
+>>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
+<<<<<<< HEAD
         ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "role", "seguimento")}),
+=======
+        ("Informacoes pessoais", {"fields": ("nome", "cliente", "escola", "tipo_cadastro", "role", "seguimento")}),
+>>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
         (
             "Permissoes",
             {
@@ -95,6 +158,7 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                     "cliente",
                     "clientes",
                     "escola",
+                    "tipo_cadastro",
                     "role",
                     "seguimento",
                     "password1",

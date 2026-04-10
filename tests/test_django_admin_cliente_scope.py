@@ -3,7 +3,7 @@ from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
 
-from core.models import Cliente, Usuario
+from core.models import Cliente, TipoUsuarioCadastro, Usuario
 from curriculum.models import Escola
 
 
@@ -125,3 +125,35 @@ def test_admin_cliente_consegue_criar_usuario_sem_campo_cliente(django_user_mode
     usuario = django_user_model.objects.get(email="novo-usuario@teste.com")
     assert usuario.cliente_id == cliente_a.id
     assert usuario.escola_id == escola_a.id
+
+
+@pytest.mark.django_db
+def test_admin_cliente_ve_tipousuariocadastro_sem_permissao_manual(django_user_model):
+    cliente = Cliente.objects.create(nome="Cliente Tipo", slug="cliente-tipo")
+    admin_cliente: Usuario = django_user_model.objects.create_user(
+        email="admin-tipo@teste.com",
+        password="senha123",
+        nome="Admin Tipo",
+        cliente=cliente,
+        role=Usuario.Role.ADMIN_CLIENTE,
+        is_staff=True,
+    )
+    TipoUsuarioCadastro.objects.create(
+        cliente=cliente,
+        nome="Diretor Escolar",
+        slug="diretor-escolar",
+        role_interno=Usuario.Role.DIRETOR,
+        acesso_ppp=TipoUsuarioCadastro.AcessoPPP.EDITAR,
+        exibir_no_cadastro=True,
+        ativo=True,
+    )
+
+    client = Client()
+    client.force_login(admin_cliente)
+
+    changelist_response = client.get(reverse("admin:core_tipousuariocadastro_changelist"))
+    assert changelist_response.status_code == 200
+    assert "Diretor Escolar" in changelist_response.content.decode()
+
+    add_response = client.get(reverse("admin:core_tipousuariocadastro_add"))
+    assert add_response.status_code == 200

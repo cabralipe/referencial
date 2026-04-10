@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover
     STORAGE_EXCEPTIONS = (OSError,)
 
 from core.activity import online_sessions_for_cliente
-from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, ThrottleBlock, UserSessionLog
+from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, ThrottleBlock, TipoUsuarioCadastro, UserSessionLog
 from core.permissions import (
     CanManageMural,
     HasClientScope,
@@ -239,6 +239,58 @@ def _resolve_ppp_escola_id(request, explicit_escola_id=None) -> int:
     return int(user.escola_id)
 
 
+def _get_user_tipo_cadastro(user):
+    tipo_cadastro_id = getattr(user, "tipo_cadastro_id", None)
+    if not tipo_cadastro_id:
+        return None
+    tipo_cadastro = getattr(user, "_cached_tipo_cadastro", None)
+    if getattr(tipo_cadastro, "pk", None) == tipo_cadastro_id:
+        return tipo_cadastro
+    try:
+        tipo_cadastro = user.tipo_cadastro
+    except TipoUsuarioCadastro.DoesNotExist:
+        tipo_cadastro = None
+    if tipo_cadastro is None:
+        tipo_cadastro = TipoUsuarioCadastro.raw_objects.filter(
+            pk=tipo_cadastro_id,
+            ativo=True,
+            is_deleted=False,
+        ).first()
+    setattr(user, "_cached_tipo_cadastro", tipo_cadastro)
+    return tipo_cadastro
+
+
+def _user_can_manage_ppp_for_escola(user, escola_id: int) -> bool:
+    role = getattr(user, "role", None)
+    if role in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return True
+    if getattr(user, "escola_id", None) != escola_id:
+        return False
+    tipo_cadastro = _get_user_tipo_cadastro(user)
+    if tipo_cadastro is not None:
+        return tipo_cadastro.acesso_ppp == TipoUsuarioCadastro.AcessoPPP.EDITAR
+    return role in {
+        user.Role.DIRETOR,
+        user.Role.COORDENADOR_PEDAGOGICO,
+        user.Role.ARTICULADOR,
+    }
+
+
+def _user_can_view_ppp_for_escola(user, escola_id: int) -> bool:
+    role = getattr(user, "role", None)
+    if role in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
+        return True
+    if getattr(user, "escola_id", None) != escola_id:
+        return False
+    tipo_cadastro = _get_user_tipo_cadastro(user)
+    if tipo_cadastro is not None:
+        return tipo_cadastro.acesso_ppp in {
+            TipoUsuarioCadastro.AcessoPPP.EDITAR,
+            TipoUsuarioCadastro.AcessoPPP.VISUALIZAR,
+        }
+    return role in PPP_ALLOWED_VIEW_ROLES
+
+
 def _get_or_create_ppp_for_request(request, explicit_escola_id=None):
     cliente_id = _get_request_cliente_id(request)
     user = request.user
@@ -246,7 +298,7 @@ def _get_or_create_ppp_for_request(request, explicit_escola_id=None):
     escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
     if not escola:
         raise ValidationError({"escola_id": "Escola não encontrada para este cliente."})
-    if getattr(user, "role", None) == user.Role.PROFESSOR:
+    if not _user_can_manage_ppp_for_escola(user, escola.id):
         ppp = PPP.objects.filter(cliente_id=cliente_id, escola=escola).first()
         if not ppp or ppp.status != PPP.Status.CONCLUIDO:
             raise ValidationError("O PPP da sua escola ainda não foi concluído para visualização.")
@@ -260,15 +312,7 @@ def _get_or_create_ppp_for_request(request, explicit_escola_id=None):
 
 
 def _user_can_edit_ppp(user, ppp: PPP) -> bool:
-    if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
-        return True
-    if getattr(user, "role", None) not in {
-        user.Role.DIRETOR,
-        user.Role.COORDENADOR_PEDAGOGICO,
-        user.Role.ARTICULADOR,
-    }:
-        return False
-    return getattr(user, "escola_id", None) == ppp.escola_id
+    return _user_can_manage_ppp_for_escola(user, ppp.escola_id)
 
 
 def _user_can_comment_ppp(user, ppp: PPP) -> bool:
@@ -276,14 +320,7 @@ def _user_can_comment_ppp(user, ppp: PPP) -> bool:
 
 
 def _user_can_conclude_ppp(user, ppp: PPP) -> bool:
-    if getattr(user, "role", None) in {user.Role.ADMIN_CLIENTE, user.Role.SUPER_ADMIN}:
-        return True
-    if getattr(user, "role", None) not in {
-        user.Role.DIRETOR,
-        user.Role.COORDENADOR_PEDAGOGICO,
-    }:
-        return False
-    return getattr(user, "escola_id", None) == ppp.escola_id
+    return _user_can_manage_ppp_for_escola(user, ppp.escola_id)
 
 
 def _serialize_ppp(serializer_class, ppp: PPP, user):
@@ -599,12 +636,12 @@ class PppViewSet(viewsets.ViewSet):
     permission_classes = [HasClientScope]
 
     def list(self, request):
-        if getattr(request.user, "role", None) == request.user.Role.PROFESSOR:
-            cliente_id = _get_request_cliente_id(request)
-            escola_id = _resolve_ppp_escola_id(request)
-            escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
-            if not escola:
-                raise ValidationError({"escola_id": "Escola não encontrada para este cliente."})
+        cliente_id = _get_request_cliente_id(request)
+        escola_id = _resolve_ppp_escola_id(request)
+        escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
+        if not escola:
+            raise ValidationError({"escola_id": "Escola nÃ£o encontrada para este cliente."})
+        if not _user_can_manage_ppp_for_escola(request.user, escola.id):
             ppp = PPP.objects.filter(cliente_id=cliente_id, escola=escola).first()
             if not ppp or ppp.status != PPP.Status.CONCLUIDO:
                 return Response(

@@ -12,7 +12,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from urllib.parse import urlparse
 
-from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, UserSessionLog
+from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, TipoUsuarioCadastro, UserSessionLog
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
@@ -70,11 +70,7 @@ class CadastroSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=255)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-    role = serializers.ChoiceField(choices=[
-        get_user_model().Role.DIRETOR,
-        get_user_model().Role.COORDENADOR_PEDAGOGICO,
-        get_user_model().Role.PROFESSOR,
-    ])
+    tipo_cadastro_id = serializers.IntegerField()
     cliente_id = serializers.IntegerField()
     escola_id = serializers.IntegerField()
 
@@ -93,21 +89,47 @@ class CadastroSerializer(serializers.Serializer):
             raise serializers.ValidationError("Escola inválida.")
         return value
 
+    def validate_tipo_cadastro_id(self, value):
+        if not TipoUsuarioCadastro.raw_objects.filter(
+            pk=value,
+            is_deleted=False,
+            ativo=True,
+            exibir_no_cadastro=True,
+        ).exists():
+            raise serializers.ValidationError("Tipo de usuÃ¡rio invÃ¡lido para cadastro.")
+        return value
+
     def validate(self, attrs):
         escola = Escola.objects.get(pk=attrs["escola_id"])
         if escola.cliente_id != attrs["cliente_id"]:
             raise serializers.ValidationError({"escola_id": "Escola deve pertencer ao mesmo município (cliente)."})
+        tipo_cadastro = (
+            TipoUsuarioCadastro.raw_objects.filter(
+                pk=attrs["tipo_cadastro_id"],
+                is_deleted=False,
+                ativo=True,
+                exibir_no_cadastro=True,
+            ).first()
+        )
+        if not tipo_cadastro or tipo_cadastro.cliente_id != attrs["cliente_id"]:
+            raise serializers.ValidationError(
+                {"tipo_cadastro_id": "O tipo de usuÃ¡rio deve pertencer ao mesmo municÃ­pio selecionado."}
+            )
+        attrs["tipo_cadastro"] = tipo_cadastro
         return attrs
 
     def create(self, validated_data):
         User = get_user_model()
+        tipo_cadastro = validated_data["tipo_cadastro"]
         user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],
             nome=validated_data["nome"],
-            role=validated_data["role"],
             cliente_id=validated_data["cliente_id"],
             escola_id=validated_data["escola_id"],
+            tipo_cadastro=tipo_cadastro,
+            role=tipo_cadastro.role_interno,
+            seguimento=tipo_cadastro.seguimento or "",
         )
         return user
 
@@ -121,6 +143,12 @@ class PublicClienteSerializer(serializers.ModelSerializer):
 class PublicEscolaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Escola
+        fields = ("id", "nome", "cliente_id")
+
+
+class PublicTipoUsuarioCadastroSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoUsuarioCadastro
         fields = ("id", "nome", "cliente_id")
 
 

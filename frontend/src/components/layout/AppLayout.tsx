@@ -1,6 +1,7 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
@@ -27,8 +28,28 @@ type NavItem =
     to?: never;
   };
 
+interface AreaAtuacaoOption {
+  id: number;
+  nome: string;
+}
+
+interface AreaAtuacaoResponse {
+  required: boolean;
+  title: string;
+  tipos: AreaAtuacaoOption[];
+  current_tipo_cadastro_id: number | null;
+}
+
+const AREA_ATUACAO_ROLES = new Set(['diretor', 'coordenador_pedagogico', 'professor']);
+
 export function AppLayout() {
+<<<<<<< HEAD
   const { cliente, user, logout, activeClienteId, setActiveCliente } = useAuth();
+=======
+  const { cliente, user, logout } = useAuth();
+  const api = useApiClient();
+  const { isSuperAdmin, clientes, selectedClienteId } = useAdminScope();
+>>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
   const navigate = useNavigate();
   const location = useLocation();
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
@@ -49,6 +70,13 @@ export function AppLayout() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('appFocusMode') === 'true';
   });
+  const [areaAtuacaoRequired, setAreaAtuacaoRequired] = useState(false);
+  const [areaAtuacaoLoading, setAreaAtuacaoLoading] = useState(false);
+  const [areaAtuacaoSubmitting, setAreaAtuacaoSubmitting] = useState(false);
+  const [areaAtuacaoOptions, setAreaAtuacaoOptions] = useState<AreaAtuacaoOption[]>([]);
+  const [selectedAreaAtuacaoId, setSelectedAreaAtuacaoId] = useState<number | ''>('');
+  const [areaAtuacaoTitle, setAreaAtuacaoTitle] = useState('Qual sua área de atuação?');
+  const [areaAtuacaoError, setAreaAtuacaoError] = useState<string | null>(null);
   const sidenavInnerRef = useRef<HTMLDivElement | null>(null);
 
   const roleLabel = useMemo(() => {
@@ -212,6 +240,72 @@ export function AppLayout() {
     () => (user?.clientes ?? []).length > 1 || user?.role === 'super_admin',
     [user?.clientes, user?.role],
   );
+
+  const shouldCheckAreaAtuacao = Boolean(
+    user?.id && user?.clienteId && AREA_ATUACAO_ROLES.has(user.role),
+  );
+
+  useEffect(() => {
+    if (!shouldCheckAreaAtuacao) {
+      setAreaAtuacaoRequired(false);
+      setAreaAtuacaoLoading(false);
+      setAreaAtuacaoSubmitting(false);
+      setAreaAtuacaoOptions([]);
+      setSelectedAreaAtuacaoId('');
+      setAreaAtuacaoError(null);
+      setAreaAtuacaoTitle('Qual sua área de atuação?');
+      return;
+    }
+
+    let cancelled = false;
+    setAreaAtuacaoLoading(true);
+    setAreaAtuacaoError(null);
+
+    api
+      .get<AreaAtuacaoResponse>('auth/area-atuacao')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAreaAtuacaoRequired(Boolean(data.required));
+        setAreaAtuacaoTitle(data.title || 'Qual sua área de atuação?');
+        setAreaAtuacaoOptions(data.tipos || []);
+        setSelectedAreaAtuacaoId(data.current_tipo_cadastro_id ?? '');
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setAreaAtuacaoRequired(true);
+        setAreaAtuacaoOptions([]);
+        setAreaAtuacaoError(error instanceof Error ? error.message : 'Não foi possível carregar os tipos de usuário.');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAreaAtuacaoLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, shouldCheckAreaAtuacao, user?.id, user?.clienteId, user?.role]);
+
+  const handleConfirmarAreaAtuacao = async () => {
+    if (!selectedAreaAtuacaoId) {
+      setAreaAtuacaoError('Selecione uma opção para continuar.');
+      return;
+    }
+    setAreaAtuacaoSubmitting(true);
+    setAreaAtuacaoError(null);
+    try {
+      await api.post('auth/area-atuacao', {
+        body: { tipo_cadastro_id: selectedAreaAtuacaoId },
+      });
+      window.location.reload();
+    } catch (error) {
+      setAreaAtuacaoSubmitting(false);
+      setAreaAtuacaoError(error instanceof Error ? error.message : 'Não foi possível salvar sua área de atuação.');
+    }
+  };
+
+  const showAreaAtuacaoModal = shouldCheckAreaAtuacao && (areaAtuacaoLoading || areaAtuacaoRequired);
 
   return (
     <div
@@ -379,6 +473,62 @@ export function AppLayout() {
       )}
 
       <MebAssistant />
+
+      {showAreaAtuacaoModal && (
+        <div className="app-shell__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="area-atuacao-title">
+          <div className="app-shell__modal" onClick={(event) => event.stopPropagation()}>
+            <header className="app-shell__modal-header">
+              <p className="app-shell__modal-eyebrow">Cadastro complementar</p>
+              <h2 id="area-atuacao-title">{areaAtuacaoTitle}</h2>
+              <p>Selecione o tipo de usuário que representa sua atuação atual. Essa confirmação é obrigatória.</p>
+            </header>
+
+            {areaAtuacaoLoading ? (
+              <div className="app-shell__modal-state">Carregando opções...</div>
+            ) : (
+              <>
+                <div className="app-shell__modal-options">
+                  {areaAtuacaoOptions.map((option) => (
+                    <label
+                      key={option.id}
+                      className={`app-shell__modal-option ${selectedAreaAtuacaoId === option.id ? 'is-selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="area_atuacao"
+                        value={option.id}
+                        checked={selectedAreaAtuacaoId === option.id}
+                        onChange={() => setSelectedAreaAtuacaoId(option.id)}
+                        disabled={areaAtuacaoSubmitting}
+                      />
+                      <span>{option.nome}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {!areaAtuacaoOptions.length && (
+                  <div className="app-shell__modal-state">
+                    Nenhum tipo de usuário ativo foi encontrado para este município.
+                  </div>
+                )}
+
+                {areaAtuacaoError && <div className="app-shell__modal-error">{areaAtuacaoError}</div>}
+
+                <div className="app-shell__modal-actions">
+                  <button
+                    type="button"
+                    className="app-shell__modal-button"
+                    onClick={handleConfirmarAreaAtuacao}
+                    disabled={areaAtuacaoSubmitting || areaAtuacaoLoading || !areaAtuacaoOptions.length}
+                  >
+                    {areaAtuacaoSubmitting ? 'Confirmando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

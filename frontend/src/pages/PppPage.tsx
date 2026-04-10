@@ -159,7 +159,8 @@ export function PppPage({ adminMode = false }: PppPageProps) {
 
   const ppp = documentoQuery.data;
   const isPppAvailable = ppp?.is_available !== false;
-  const comentariosEnabled = Boolean(ppp?.id) && !isProfessor && isPppAvailable;
+  const isReadOnlyPpp = Boolean(ppp) && !ppp.can_edit;
+  const comentariosEnabled = Boolean(ppp?.id) && Boolean(ppp?.can_comment) && isPppAvailable;
   const { data: comentarios, refetch: refetchComentarios } = useComentarios({
     alvoTipo: 'ppp',
     alvoId: ppp?.id,
@@ -425,16 +426,16 @@ export function PppPage({ adminMode = false }: PppPageProps) {
       <div className="space-y-3">
         <div>
           <h3 className="text-lg font-extrabold text-[var(--color-text)]">
-            {isProfessor ? 'Acesso do professor' : 'Fila de comentários'}
+            {isReadOnlyPpp ? 'Acesso de visualização' : 'Fila de comentários'}
           </h3>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {isProfessor
-              ? 'Professores visualizam apenas a versão concluída do PPP da escola.'
+            {isReadOnlyPpp
+              ? 'Perfis com permissão apenas de visualização acessam somente a versão concluída do PPP da escola.'
               : 'O redator pode comentar o texto; Diretor e Coordenação acompanham e fecham as pendências.'}
           </p>
         </div>
 
-        {isProfessor ? (
+        {isReadOnlyPpp ? (
           <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
             <p className="text-sm text-[var(--color-text-secondary)]">
               Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
@@ -631,7 +632,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               </select>
             )}
             <span className={`ppp-status-badge w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
-            {!isProfessor && (
+            {!isReadOnlyPpp && (
               <>
                 <Button className="w-full sm:w-auto" variant="outline" onClick={handleDownloadPdf} disabled={ppp.status !== 'concluido'}>
                   Baixar PDF
@@ -697,14 +698,14 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                     <input
                       value={titulo}
                       onChange={(event) => setTitulo(event.target.value)}
-                      disabled={isProfessor || !ppp.can_edit}
+                      disabled={!ppp.can_edit}
                       placeholder="Informe o título institucional do PPP"
                     />
                   </label>
                   <div className="space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-sm font-semibold text-[var(--color-text)]">Texto colaborativo</span>
-                      {(isProfessor || !ppp.can_edit) && (
+                      {!ppp.can_edit && (
                         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
                           Somente leitura
                         </span>
@@ -715,7 +716,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                       value={conteudo}
                       onChange={setConteudo}
                       placeholder="Escreva o PPP da escola com objetivos, princípios, organização pedagógica e compromissos institucionais."
-                      disabled={isProfessor || !ppp.can_edit}
+                      disabled={!ppp.can_edit}
                       config={{
                         toolbar: {
                           items: [
@@ -801,16 +802,16 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               <div className="space-y-3">
                 <div>
                   <h3 className="text-lg font-extrabold text-[var(--color-text)]">
-                    {isProfessor ? 'Acesso do professor' : 'Fila de comentários'}
+                    {isReadOnlyPpp ? 'Acesso de visualização' : 'Fila de comentários'}
                   </h3>
                   <p className="text-sm text-[var(--color-text-secondary)]">
-                    {isProfessor
-                      ? 'Professores visualizam apenas a versão concluída do PPP da escola.'
+                    {isReadOnlyPpp
+                      ? 'Perfis com permissão apenas de visualização acessam somente a versão concluída do PPP da escola.'
                       : 'O redator pode comentar o texto; Diretor e Coordenação acompanham e fecham as pendências.'}
                   </p>
                 </div>
 
-                {isProfessor ? (
+                {isReadOnlyPpp ? (
                   <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
                     <p className="text-sm text-[var(--color-text-secondary)]">
                       Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.

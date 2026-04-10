@@ -9,6 +9,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 
 from .mixins import TenantModel, TimeStampedModel
 
@@ -74,6 +75,16 @@ class UsuarioManager(BaseUserManager):
         if not email:
             raise ValueError("O e-mail é obrigatório")
         email = self.normalize_email(email)
+        tipo_cadastro = extra_fields.get("tipo_cadastro")
+        tipo_cadastro_id = extra_fields.get("tipo_cadastro_id")
+        if tipo_cadastro is None and tipo_cadastro_id:
+            tipo_model = self.model._meta.get_field("tipo_cadastro").remote_field.model
+            tipo_cadastro = tipo_model.raw_objects.filter(pk=tipo_cadastro_id, ativo=True, is_deleted=False).first()
+        if tipo_cadastro is not None:
+            extra_fields.setdefault("cliente_id", getattr(tipo_cadastro, "cliente_id", None))
+            extra_fields.setdefault("seguimento", getattr(tipo_cadastro, "seguimento", "") or "")
+            extra_fields["role"] = getattr(tipo_cadastro, "role_interno", extra_fields.get("role"))
+            extra_fields.setdefault("area_atuacao_confirmada_em", timezone.now())
         user = self.model(email=email, **extra_fields)
         role = extra_fields.get("role") or Usuario.Role.LEITOR
         if role != Usuario.Role.SUPER_ADMIN and not user.cliente_id:
@@ -119,6 +130,13 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AbstractUser):
+    AREA_ATUACAO_GENERIC_SLUGS = {
+        "diretor",
+        "coordenador-pedagogico",
+        "professor",
+        "professor-geral",
+    }
+
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "Super Admin"
         ADMIN_CLIENTE = "admin_cliente", "Admin do Cliente"
@@ -164,6 +182,14 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
     )
+    tipo_cadastro = models.ForeignKey(
+        "core.TipoUsuarioCadastro",
+        on_delete=models.SET_NULL,
+        related_name="usuarios",
+        null=True,
+        blank=True,
+    )
+    area_atuacao_confirmada_em = models.DateTimeField(null=True, blank=True)
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.LEITOR)
     seguimento = models.CharField(max_length=40, choices=Seguimento.choices, blank=True, default="")
 
@@ -180,8 +206,35 @@ class Usuario(AbstractUser):
     def __str__(self) -> str:  # pragma: no cover
         return self.email
 
+    def _sync_from_tipo_cadastro(self) -> None:
+        if not self.tipo_cadastro_id:
+            return
+        tipo_cadastro = self.tipo_cadastro
+        self.role = tipo_cadastro.role_interno
+        self.seguimento = tipo_cadastro.seguimento or ""
+        if not self.cliente_id:
+            self.cliente_id = tipo_cadastro.cliente_id
+
+    def confirmar_area_atuacao(self, tipo_cadastro: "TipoUsuarioCadastro") -> None:
+        self.tipo_cadastro = tipo_cadastro
+        self.area_atuacao_confirmada_em = timezone.now()
+        self.save(update_fields=["tipo_cadastro", "area_atuacao_confirmada_em"])
+
+    @property
+    def area_atuacao_pendente(self) -> bool:
+        if self.role not in self.ESCOLA_REQUIRED_ROLES or not self.cliente_id:
+            return False
+        if self.area_atuacao_confirmada_em:
+            return False
+        if not self.tipo_cadastro_id:
+            return True
+        return (getattr(self.tipo_cadastro, "slug", "") or "") in self.AREA_ATUACAO_GENERIC_SLUGS
+
     def clean(self):  # type: ignore[override]
+        self._sync_from_tipo_cadastro()
         super().clean()
+        if self.tipo_cadastro_id and self.tipo_cadastro.cliente_id != self.cliente_id:
+            raise ValidationError({"tipo_cadastro": "O tipo de usuário deve pertencer ao mesmo cliente do usuário."})
         if self.role != self.Role.SUPER_ADMIN and not self.cliente_id:
             raise ValidationError({"cliente": "Usuários não super_admin devem possuir cliente."})
         if self.role in self.ESCOLA_REQUIRED_ROLES and not self.escola_id:
@@ -200,6 +253,7 @@ class Usuario(AbstractUser):
             raise ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
 
     def save(self, *args, **kwargs):  # type: ignore[override]
+<<<<<<< HEAD
         super().save(*args, **kwargs)
         if not self.pk:
             return
@@ -236,10 +290,60 @@ class Usuario(AbstractUser):
         if not cliente_ids:
             return Cliente.objects.none()
         return Cliente.objects.filter(pk__in=cliente_ids, ativo=True).order_by("nome")
+=======
+        self._sync_from_tipo_cadastro()
+        update_fields = kwargs.get("update_fields")
+        if update_fields and self.tipo_cadastro_id:
+            update_fields = set(update_fields)
+            update_fields.update({"role", "seguimento", "cliente"})
+            kwargs["update_fields"] = list(update_fields)
+        super().save(*args, **kwargs)
+>>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
 
     @property
     def is_super_admin(self) -> bool:
         return self.role == self.Role.SUPER_ADMIN
+
+
+class TipoUsuarioCadastro(TenantModel):
+    class AcessoPPP(models.TextChoices):
+        EDITAR = "editar", "Pode editar"
+        VISUALIZAR = "visualizar", "Apenas visualizar"
+
+    ROLE_CHOICES = (
+        (Usuario.Role.DIRETOR, "Diretor"),
+        (Usuario.Role.COORDENADOR_PEDAGOGICO, "Coordenador Pedagógico"),
+        (Usuario.Role.PROFESSOR, "Professor"),
+    )
+
+    nome = models.CharField(max_length=120)
+    slug = models.SlugField()
+    role_interno = models.CharField(max_length=30, choices=ROLE_CHOICES)
+    seguimento = models.CharField(
+        max_length=40,
+        choices=Usuario.Seguimento.choices,
+        blank=True,
+        default="",
+        help_text="Opcional. Use apenas para mapear tipos de professor aos seguimentos legados do AVA.",
+    )
+    acesso_ppp = models.CharField(max_length=20, choices=AcessoPPP.choices, default=AcessoPPP.VISUALIZAR)
+    exibir_no_cadastro = models.BooleanField(default=True)
+    ativo = models.BooleanField(default=True)
+    ordem_exibicao = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("ordem_exibicao", "nome")
+        unique_together = ("cliente", "slug")
+        verbose_name = "Tipo de Usuário de Cadastro"
+        verbose_name_plural = "Tipos de Usuário de Cadastro"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.nome
+
+    def clean(self):  # type: ignore[override]
+        super().clean()
+        if self.seguimento and self.role_interno != Usuario.Role.PROFESSOR:
+            raise ValidationError({"seguimento": "Apenas tipos com papel interno de professor podem usar seguimento."})
 
 
 class AuditLog(TenantModel):
