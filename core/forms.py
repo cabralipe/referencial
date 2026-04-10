@@ -48,20 +48,15 @@ class UsuarioCreationForm(UserCreationForm):
             "email",
             "nome",
             "cliente",
-<<<<<<< HEAD
             "clientes",
             "escola",
-=======
-            "escola",
             "tipo_cadastro",
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
             "role",
             "seguimento",
             "is_active",
             "is_staff",
             "is_superuser",
         )
-<<<<<<< HEAD
 
     def clean(self):
         cleaned_data = super().clean()
@@ -82,8 +77,6 @@ class UsuarioCreationForm(UserCreationForm):
         if commit:
             user = _sync_user_clientes(user, self.cleaned_data)
         return user
-=======
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
 
 
 class UsuarioChangeForm(UserChangeForm):

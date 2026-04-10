@@ -253,7 +253,12 @@ class Usuario(AbstractUser):
             raise ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
 
     def save(self, *args, **kwargs):  # type: ignore[override]
-<<<<<<< HEAD
+        self._sync_from_tipo_cadastro()
+        update_fields = kwargs.get("update_fields")
+        if update_fields and self.tipo_cadastro_id:
+            update_fields = set(update_fields)
+            update_fields.update({"role", "seguimento", "cliente"})
+            kwargs["update_fields"] = list(update_fields)
         super().save(*args, **kwargs)
         if not self.pk:
             return
@@ -290,15 +295,6 @@ class Usuario(AbstractUser):
         if not cliente_ids:
             return Cliente.objects.none()
         return Cliente.objects.filter(pk__in=cliente_ids, ativo=True).order_by("nome")
-=======
-        self._sync_from_tipo_cadastro()
-        update_fields = kwargs.get("update_fields")
-        if update_fields and self.tipo_cadastro_id:
-            update_fields = set(update_fields)
-            update_fields.update({"role", "seguimento", "cliente"})
-            kwargs["update_fields"] = list(update_fields)
-        super().save(*args, **kwargs)
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
 
     @property
     def is_super_admin(self) -> bool:

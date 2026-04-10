@@ -43,13 +43,8 @@ interface AreaAtuacaoResponse {
 const AREA_ATUACAO_ROLES = new Set(['diretor', 'coordenador_pedagogico', 'professor']);
 
 export function AppLayout() {
-<<<<<<< HEAD
   const { cliente, user, logout, activeClienteId, setActiveCliente } = useAuth();
-=======
-  const { cliente, user, logout } = useAuth();
   const api = useApiClient();
-  const { isSuperAdmin, clientes, selectedClienteId } = useAdminScope();
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
   const navigate = useNavigate();
   const location = useLocation();
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>

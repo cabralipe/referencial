@@ -116,23 +116,25 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
-<<<<<<< HEAD
-    list_display = ("email", "nome", "cliente", "clientes_resumo", "escola", "role", "seguimento", "is_active", "last_login")
-    list_filter = ("role", "seguimento", "is_active", "cliente", "escola")
-=======
-    list_display = ("email", "nome", "cliente", "escola", "tipo_cadastro", "role", "seguimento", "is_active", "last_login")
+    list_display = (
+        "email",
+        "nome",
+        "cliente",
+        "clientes_resumo",
+        "escola",
+        "tipo_cadastro",
+        "role",
+        "seguimento",
+        "is_active",
+        "last_login",
+    )
     list_filter = ("role", "tipo_cadastro", "seguimento", "is_active", "cliente", "escola")
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-<<<<<<< HEAD
-        ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "role", "seguimento")}),
-=======
-        ("Informacoes pessoais", {"fields": ("nome", "cliente", "escola", "tipo_cadastro", "role", "seguimento")}),
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
+        ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "tipo_cadastro", "role", "seguimento")}),
         (
             "Permissoes",
             {

@@ -49,30 +49,22 @@ def _serialize_clientes_permitidos(user):
     ]
 
 
-def _build_auth_user_payload(user, active_cliente_id):
-    return {
-        "id": user.id,
-        "email": user.email,
-        "nome": getattr(user, "nome", ""),
-        "role": user.role,
-        "cliente_id": active_cliente_id,
-        "escola_id": getattr(user, "escola_id", None),
-        "clientes": _serialize_clientes_permitidos(user),
-    }
-
-
 class RoleTokenObtainPairView(TokenObtainPairView):
     serializer_class = RoleTokenObtainPairSerializer
 
 
-def _serialize_auth_user(user) -> dict:
+def _serialize_auth_user(user, active_cliente_id: int | None = None) -> dict:
+    resolved_cliente_id = active_cliente_id
+    if resolved_cliente_id is None:
+        resolved_cliente_id = getattr(user, "cliente_id", None) or user.get_default_cliente_id()
     return {
         "id": user.id,
         "email": user.email,
         "nome": getattr(user, "nome", ""),
         "role": user.role,
-        "cliente_id": user.cliente_id,
+        "cliente_id": resolved_cliente_id,
         "escola_id": getattr(user, "escola_id", None),
+        "clientes": _serialize_clientes_permitidos(user),
         "tipo_cadastro_id": getattr(user, "tipo_cadastro_id", None),
         "tipo_cadastro_nome": getattr(getattr(user, "tipo_cadastro", None), "nome", None),
         "area_atuacao_pendente": bool(getattr(user, "area_atuacao_pendente", False)),
@@ -91,16 +83,10 @@ class SessionLoginView(APIView):
         active_cliente_id = resolve_cliente_scope(request) or user.get_default_cliente_id()
         request.cliente_id = active_cliente_id
         touch_user_session(request)
-<<<<<<< HEAD
-        data = {"user": _build_auth_user_payload(user, active_cliente_id)}
+        data = {"user": _serialize_auth_user(user, active_cliente_id)}
         active_cliente = Cliente.objects.filter(pk=active_cliente_id).first()
         if active_cliente:
             data["cliente"] = ClienteMeSerializer.from_cliente(active_cliente).data
-=======
-        data = {"user": _serialize_auth_user(user)}
-        if user.cliente:
-            data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
         return Response(data)
 
 
@@ -109,17 +95,11 @@ class AuthMeView(APIView):
 
     def get(self, request):
         user = request.user
-<<<<<<< HEAD
         active_cliente_id = resolve_cliente_scope(request) or user.get_default_cliente_id()
-        data = {"user": _build_auth_user_payload(user, active_cliente_id)}
+        data = {"user": _serialize_auth_user(user, active_cliente_id)}
         active_cliente = Cliente.objects.filter(pk=active_cliente_id).first()
         if active_cliente:
             data["cliente"] = ClienteMeSerializer.from_cliente(active_cliente).data
-=======
-        data = {"user": _serialize_auth_user(user)}
-        if user.cliente:
-            data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
->>>>>>> a7cc7edf5d136bafc6263344b2393be36797561d
         return Response(data)
 
 
