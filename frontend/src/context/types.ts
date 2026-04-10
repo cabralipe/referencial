@@ -1,5 +1,11 @@
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'error';
 
+export interface AuthCliente {
+  id: number;
+  nome: string;
+  slug: string;
+}
+
 export interface AuthTokens {
   accessToken: string | null;
   refreshToken: string | null;
@@ -11,6 +17,7 @@ export interface AuthUser {
   nome: string;
   role: string;
   clienteId: number | null;
+  clientes: AuthCliente[];
   escolaId?: number | null;
 }
 
@@ -43,10 +50,12 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   user: AuthUser | null;
   cliente: ClienteContextPayload | null;
+  activeClienteId: number | null;
   tokens: AuthTokens;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  setActiveCliente: (clienteId: number | null) => Promise<void>;
   refreshCliente: () => Promise<void>;
   getAccessToken: () => string | null;
   refreshAccessToken: () => Promise<string | null>;

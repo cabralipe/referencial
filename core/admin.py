@@ -62,14 +62,14 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     add_form = UsuarioCreationForm
     form = UsuarioChangeForm
     model = Usuario
-    list_display = ("email", "nome", "cliente", "escola", "role", "seguimento", "is_active", "last_login")
+    list_display = ("email", "nome", "cliente", "clientes_resumo", "escola", "role", "seguimento", "is_active", "last_login")
     list_filter = ("role", "seguimento", "is_active", "cliente", "escola")
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Informacoes pessoais", {"fields": ("nome", "cliente", "escola", "role", "seguimento")}),
+        ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "role", "seguimento")}),
         (
             "Permissoes",
             {
@@ -93,6 +93,7 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                     "email",
                     "nome",
                     "cliente",
+                    "clientes",
                     "escola",
                     "role",
                     "seguimento",
@@ -107,6 +108,18 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     )
     action_form = BroadcastMessageForm
     actions = ["broadcast_chat_message"]
+
+    def clientes_resumo(self, obj):
+        clientes = list(obj.clientes.values_list("nome", flat=True)[:3])
+        if obj.cliente and obj.cliente.nome not in clientes:
+            clientes.insert(0, obj.cliente.nome)
+        if not clientes:
+            return "-"
+        if obj.clientes.count() > 3:
+            return f"{', '.join(clientes)}..."
+        return ", ".join(clientes)
+
+    clientes_resumo.short_description = "Clientes permitidos"
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "escola":
@@ -141,11 +154,17 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
         total_enviados = 0
         skipped = 0
         usuarios_by_cliente: dict[int, list[int]] = {}
+        scope_cliente_id = getattr(request, "cliente_id", None)
         for usuario in queryset:
-            if not usuario.cliente_id:
+            target_cliente_id = None
+            if scope_cliente_id and usuario.can_access_cliente(scope_cliente_id):
+                target_cliente_id = scope_cliente_id
+            if not target_cliente_id:
+                target_cliente_id = usuario.get_default_cliente_id()
+            if not target_cliente_id:
                 skipped += 1
                 continue
-            usuarios_by_cliente.setdefault(usuario.cliente_id, []).append(usuario.id)
+            usuarios_by_cliente.setdefault(target_cliente_id, []).append(usuario.id)
 
         for cliente_id, usuario_ids in usuarios_by_cliente.items():
             enviados = deliver_admin_broadcast(

@@ -10,10 +10,72 @@ from django.core.files.storage import default_storage
 from .models import ClienteTema, Usuario
 
 
+def _sync_user_clientes(user: Usuario, cleaned_data: dict) -> Usuario:
+    role = cleaned_data.get("role", user.role)
+    cliente = cleaned_data.get("cliente", user.cliente)
+    clientes = cleaned_data.get("clientes")
+
+    if role == Usuario.Role.SUPER_ADMIN:
+        user.clientes.clear()
+        return user
+
+    selected_clientes = []
+    if clientes is not None:
+        selected_clientes = list(clientes)
+    elif user.pk:
+        selected_clientes = list(user.clientes.all())
+
+    if cliente and all(item.id != cliente.id for item in selected_clientes):
+        selected_clientes.append(cliente)
+
+    if selected_clientes:
+        user.clientes.set(selected_clientes)
+    elif cliente:
+        user.clientes.set([cliente])
+    else:
+        user.clientes.clear()
+
+    if not user.cliente_id and selected_clientes:
+        user.cliente = selected_clientes[0]
+        user.save(update_fields=["cliente"])
+    return user
+
+
 class UsuarioCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = Usuario
-        fields = ("email", "nome", "cliente", "escola", "role", "seguimento", "is_active", "is_staff", "is_superuser")
+        fields = (
+            "email",
+            "nome",
+            "cliente",
+            "clientes",
+            "escola",
+            "role",
+            "seguimento",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get("role")
+        cliente = cleaned_data.get("cliente")
+        clientes = cleaned_data.get("clientes")
+
+        if role != Usuario.Role.SUPER_ADMIN and not cliente and clientes:
+            cleaned_data["cliente"] = clientes.first()
+        if role == Usuario.Role.SUPER_ADMIN:
+            cleaned_data["cliente"] = None
+            if "clientes" in self.fields:
+                cleaned_data["clientes"] = self.fields["clientes"].queryset.none()
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            user = _sync_user_clientes(user, self.cleaned_data)
+        return user
 
 
 class UsuarioChangeForm(UserChangeForm):
@@ -23,6 +85,7 @@ class UsuarioChangeForm(UserChangeForm):
             "email",
             "nome",
             "cliente",
+            "clientes",
             "escola",
             "role",
             "seguimento",
@@ -32,6 +95,26 @@ class UsuarioChangeForm(UserChangeForm):
             "groups",
             "user_permissions",
         )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get("role")
+        cliente = cleaned_data.get("cliente")
+        clientes = cleaned_data.get("clientes")
+
+        if role != Usuario.Role.SUPER_ADMIN and not cliente and clientes:
+            cleaned_data["cliente"] = clientes.first()
+        if role == Usuario.Role.SUPER_ADMIN:
+            cleaned_data["cliente"] = None
+            if "clientes" in self.fields:
+                cleaned_data["clientes"] = self.fields["clientes"].queryset.none()
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            user = _sync_user_clientes(user, self.cleaned_data)
+        return user
 
 
 class ClienteTemaAdminForm(forms.ModelForm):

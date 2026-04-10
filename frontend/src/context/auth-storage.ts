@@ -2,6 +2,7 @@ import type { AuthTokens, AuthUser } from './types';
 
 const TOKEN_KEY = 'referencial:auth:tokens';
 const USER_KEY = 'referencial:auth:user';
+const ACTIVE_CLIENTE_KEY = 'referencial:auth:active-cliente';
 
 function isBrowser() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -50,7 +51,12 @@ export function loadUser(): AuthUser | null {
     if (!parsed || !parsed.id) {
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      clienteId: parsed.clienteId ?? null,
+      clientes: Array.isArray(parsed.clientes) ? parsed.clientes : [],
+      escolaId: parsed.escolaId ?? null,
+    };
   } catch (error) {
     console.warn('Não foi possível carregar usuário armazenado', error);
     return null;
@@ -74,4 +80,31 @@ export function clearUser() {
 export function clearAuthStorage() {
   clearTokens();
   clearUser();
+  clearActiveClienteId();
+}
+
+export function loadActiveClienteId(): number | null {
+  if (!isBrowser()) {
+    return null;
+  }
+  const raw = window.localStorage.getItem(ACTIVE_CLIENTE_KEY);
+  if (!raw) {
+    return null;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function saveActiveClienteId(clienteId: number | null) {
+  if (!isBrowser()) return;
+  if (!clienteId) {
+    window.localStorage.removeItem(ACTIVE_CLIENTE_KEY);
+    return;
+  }
+  window.localStorage.setItem(ACTIVE_CLIENTE_KEY, String(clienteId));
+}
+
+export function clearActiveClienteId() {
+  if (!isBrowser()) return;
+  window.localStorage.removeItem(ACTIVE_CLIENTE_KEY);
 }

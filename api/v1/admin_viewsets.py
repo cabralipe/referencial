@@ -20,6 +20,7 @@ from core.models import (
     UserSessionLog,
 )
 from core.permissions import HasClientScope, IsAdminConsole
+from core.scope import resolve_cliente_scope
 from curriculum.models import (
     Anexo,
     Area,
@@ -92,23 +93,50 @@ class AdminModelViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = self.queryset
         user = self.request.user
+        scope_id = resolve_cliente_scope(self.request)
         model = qs.model
         if model is Cliente:
             if user.role == user.Role.SUPER_ADMIN:
                 return qs
-            return qs.filter(pk=getattr(self.request, "cliente_id", None))
+            return qs.filter(pk=scope_id)
         if model is UserModel:
             if user.role == user.Role.SUPER_ADMIN:
+                if scope_id:
+                    return qs.filter(models.Q(cliente_id=scope_id) | models.Q(clientes__id=scope_id)).distinct()
                 return qs
-            return qs.filter(cliente_id=getattr(self.request, "cliente_id", None))
+            return qs.filter(models.Q(cliente_id=scope_id) | models.Q(clientes__id=scope_id)).distinct()
         if self._has_cliente_field(model):
             if user.role == user.Role.SUPER_ADMIN:
                 cliente_param = self.request.query_params.get("cliente_id")
                 if cliente_param:
                     return qs.filter(cliente_id=cliente_param)
                 return qs
-            return qs.filter(cliente_id=getattr(self.request, "cliente_id", None))
+            return qs.filter(cliente_id=scope_id)
         return qs
+
+    def _scope_cliente_id(self):
+        return resolve_cliente_scope(self.request)
+
+    def _coerce_cliente_scope_payload(self, data):
+        model = self.queryset.model
+        if self.request.user.role == self.request.user.Role.SUPER_ADMIN or not self._has_cliente_field(model):
+            return data
+
+        scope_id = self._scope_cliente_id()
+        if not scope_id:
+            raise PermissionDenied("Cliente não associado ao usuário.")
+
+        payload = data.copy() if hasattr(data, "copy") else dict(data)
+        incoming_cliente = payload.get("cliente")
+        if incoming_cliente not in {None, "", scope_id, str(scope_id)}:
+            raise PermissionDenied("Não é permitido vincular outro cliente.")
+        payload["cliente"] = scope_id
+        return payload
+
+    def get_serializer(self, *args, **kwargs):
+        if "data" in kwargs and kwargs["data"] is not None:
+            kwargs["data"] = self._coerce_cliente_scope_payload(kwargs["data"])
+        return super().get_serializer(*args, **kwargs)
 
     def _require_cliente_scope(self, serializer):
         model = self.queryset.model
@@ -116,7 +144,7 @@ class AdminModelViewSet(viewsets.ModelViewSet):
             return None
         cliente = serializer.validated_data.get("cliente")
         if self.request.user.role != self.request.user.Role.SUPER_ADMIN:
-            scope_id = getattr(self.request, "cliente_id", None)
+            scope_id = self._scope_cliente_id()
             if cliente and cliente.id != scope_id:
                 raise PermissionDenied("Não é permitido vincular outro cliente.")
             return scope_id
@@ -161,10 +189,28 @@ class UsuarioAdminViewSet(AdminModelViewSet):
     def _validate_escola_scope(self, serializer):
         if self.request.user.role == self.request.user.Role.SUPER_ADMIN:
             return
-        scope_id = getattr(self.request, "cliente_id", None)
+        scope_id = self._scope_cliente_id()
         escola = serializer.validated_data.get("escola")
         if escola and escola.cliente_id != scope_id:
             raise PermissionDenied("Não é permitido vincular escola de outro cliente.")
+
+    def _guard_super_admin_role_change(self):
+        if self.request.user.role == self.request.user.Role.SUPER_ADMIN:
+            return
+        if self.request.data.get("role") == self.request.user.Role.SUPER_ADMIN:
+            raise PermissionDenied("Não é permitido criar super admins.")
+
+    def create(self, request, *args, **kwargs):
+        self._guard_super_admin_role_change()
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._guard_super_admin_role_change()
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._guard_super_admin_role_change()
+        return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         password = serializer.validated_data.pop("password", None)
@@ -172,12 +218,19 @@ class UsuarioAdminViewSet(AdminModelViewSet):
             if serializer.validated_data.get("role") == self.request.user.Role.SUPER_ADMIN:
                 raise PermissionDenied("Não é permitido criar super admins.")
             cliente = serializer.validated_data.get("cliente")
-            scope_id = getattr(self.request, "cliente_id", None)
+            clientes = serializer.validated_data.get("clientes") or []
+            scope_id = self._scope_cliente_id()
             if cliente and cliente.id != scope_id:
                 raise PermissionDenied("Não é permitido vincular outro cliente.")
+            if any(item.id != scope_id for item in clientes):
+                raise PermissionDenied("Não é permitido vincular clientes fora do escopo.")
             self._validate_escola_scope(serializer)
             serializer.validated_data["cliente_id"] = scope_id
         instance = serializer.save()
+        if self.request.user.role != self.request.user.Role.SUPER_ADMIN:
+            scope_id = self._scope_cliente_id()
+            if scope_id:
+                instance.clientes.add(scope_id)
         if password:
             instance.set_password(password)
             instance.save(update_fields=["password"])
@@ -186,13 +239,21 @@ class UsuarioAdminViewSet(AdminModelViewSet):
         password = serializer.validated_data.pop("password", None)
         if self.request.user.role != self.request.user.Role.SUPER_ADMIN:
             if serializer.validated_data.get("role") == self.request.user.Role.SUPER_ADMIN:
-                raise PermissionDenied("Não é permitido definir super admin.")
+                raise PermissionDenied("Não é permitido criar super admins.")
             cliente = serializer.validated_data.get("cliente")
-            scope_id = getattr(self.request, "cliente_id", None)
+            clientes = serializer.validated_data.get("clientes") or []
+            scope_id = self._scope_cliente_id()
             if cliente and cliente.id != scope_id:
                 raise PermissionDenied("Não é permitido vincular outro cliente.")
+            if any(item.id != scope_id for item in clientes):
+                raise PermissionDenied("Não é permitido vincular clientes fora do escopo.")
             self._validate_escola_scope(serializer)
+            serializer.validated_data["cliente_id"] = scope_id
         instance = serializer.save()
+        if self.request.user.role != self.request.user.Role.SUPER_ADMIN:
+            scope_id = self._scope_cliente_id()
+            if scope_id:
+                instance.clientes.add(scope_id)
         if password:
             instance.set_password(password)
             instance.save(update_fields=["password"])

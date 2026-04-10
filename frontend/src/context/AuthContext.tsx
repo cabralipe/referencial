@@ -15,8 +15,10 @@ import { appendCsrfHeader, ensureCsrfToken, CSRF_HEADER } from '@/api/csrf';
 
 import {
   clearAuthStorage,
+  loadActiveClienteId,
   loadTokens,
   loadUser,
+  saveActiveClienteId,
   saveTokens,
   saveUser,
 } from './auth-storage';
@@ -28,6 +30,11 @@ import type {
   ClienteContextPayload,
   LoginCredentials,
 } from './types';
+
+type AuthPayload = {
+  user: any;
+  cliente?: ClienteContextPayload;
+};
 
 function resolveApiUrl(path: string): string {
   if (path.startsWith('http')) {
@@ -59,30 +66,89 @@ async function extractErrorMessage(response: Response): Promise<string> {
         return text;
       }
     } catch (textError) {
-      console.warn('Não foi possível extrair detalhe do erro', textError);
+      console.warn('Nao foi possivel extrair detalhe do erro', textError);
     }
   }
   return response.statusText || 'Erro desconhecido';
 }
 
 function mapUser(payload: any): AuthUser {
+  const clientes = Array.isArray(payload?.clientes)
+    ? payload.clientes
+      .filter((item: any) => Number.isFinite(Number(item?.id)))
+      .map((item: any) => ({
+        id: Number(item.id),
+        nome: String(item?.nome ?? ''),
+        slug: String(item?.slug ?? ''),
+      }))
+    : [];
+
   return {
     id: payload?.id ?? 0,
     email: payload?.email ?? '',
     nome: payload?.nome ?? '',
     role: payload?.role ?? 'leitor',
     clienteId: payload?.cliente_id ?? null,
+    clientes,
     escolaId: payload?.escola_id ?? null,
   };
 }
 
+function canAccessCliente(user: AuthUser, clienteId: number | null): boolean {
+  if (!clienteId) {
+    return false;
+  }
+  if (user.role === 'super_admin') {
+    return true;
+  }
+  if (user.clienteId === clienteId) {
+    return true;
+  }
+  return user.clientes.some((item) => item.id === clienteId);
+}
+
+function getFallbackClienteId(user: AuthUser): number | null {
+  if (user.role === 'super_admin') {
+    return user.clienteId ?? null;
+  }
+  if (user.clienteId) {
+    return user.clienteId;
+  }
+  return user.clientes[0]?.id ?? null;
+}
+
+function resolveActiveClienteId(
+  user: AuthUser | null,
+  preferred: number | null | undefined,
+  stored: number | null | undefined,
+): number | null {
+  if (!user) {
+    return null;
+  }
+  if (preferred !== undefined) {
+    if (preferred === null) {
+      return user.role === 'super_admin' ? null : getFallbackClienteId(user);
+    }
+    if (canAccessCliente(user, preferred)) {
+      return preferred;
+    }
+  }
+  if (stored && canAccessCliente(user, stored)) {
+    return stored;
+  }
+  return getFallbackClienteId(user);
+}
+
 const initialTokens = loadTokens();
 const initialUser = loadUser();
+const storedActiveClienteId = loadActiveClienteId();
+const initialActiveClienteId = resolveActiveClienteId(initialUser, undefined, storedActiveClienteId);
 
 interface InternalState {
   status: AuthStatus;
   user: AuthUser | null;
   cliente: ClienteContextPayload | null;
+  activeClienteId: number | null;
   tokens: AuthTokens;
   error: string | null;
 }
@@ -91,6 +157,7 @@ const initialState: InternalState = {
   status: initialTokens.accessToken ? 'loading' : 'idle',
   user: initialUser,
   cliente: null,
+  activeClienteId: initialActiveClienteId,
   tokens: initialTokens,
   error: null,
 };
@@ -109,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: 'idle',
       user: null,
       cliente: null,
+      activeClienteId: null,
       tokens: {
         accessToken: null,
         refreshToken: null,
@@ -159,10 +227,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout, state.tokens.refreshToken]);
 
   const authenticatedFetch = useCallback(
-    async (path: string, init?: RequestInit, tokenOverride?: string) => {
+    async (
+      path: string,
+      init?: RequestInit,
+      tokenOverride?: string,
+      clienteIdOverride?: number | null,
+    ) => {
       const accessToken = tokenOverride ?? state.tokens.accessToken;
       if (!accessToken) {
-        throw new Error('Token de acesso indisponível');
+        throw new Error('Token de acesso indisponivel');
       }
       const headers = new Headers(init?.headers ?? {});
       if (!headers.has('Authorization')) {
@@ -171,6 +244,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!headers.has('Accept')) {
         headers.set('Accept', 'application/json');
       }
+
+      const clienteId =
+        clienteIdOverride === undefined ? state.activeClienteId : clienteIdOverride;
+      if (clienteId && !headers.has('X-Cliente-ID')) {
+        headers.set('X-Cliente-ID', String(clienteId));
+      }
+
       const response = await fetch(
         resolveApiUrl(path),
         appendCsrfHeader({
@@ -182,29 +262,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.status === 401 && !tokenOverride) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
-          return authenticatedFetch(path, init, refreshed);
+          return authenticatedFetch(path, init, refreshed, clienteIdOverride);
         }
       }
       return response;
     },
-    [refreshAccessToken, state.tokens.accessToken],
+    [refreshAccessToken, state.activeClienteId, state.tokens.accessToken],
   );
 
   const fetchAuthMe = useCallback(
-    async (tokenOverride?: string) => {
-      const response = await authenticatedFetch('/auth/me', undefined, tokenOverride);
+    async (tokenOverride?: string, clienteIdOverride?: number | null) => {
+      const response = await authenticatedFetch(
+        '/auth/me',
+        undefined,
+        tokenOverride,
+        clienteIdOverride,
+      );
       if (!response.ok) {
         const message = await extractErrorMessage(response);
         throw new Error(message);
       }
-      return (await response.json()) as { user: any; cliente?: ClienteContextPayload };
+      return (await response.json()) as AuthPayload;
     },
     [authenticatedFetch],
   );
 
   const fetchCliente = useCallback(
-    async (tokenOverride?: string) => {
-      const response = await authenticatedFetch('/cliente/me', undefined, tokenOverride);
+    async (tokenOverride?: string, clienteIdOverride?: number | null) => {
+      const response = await authenticatedFetch(
+        '/cliente/me',
+        undefined,
+        tokenOverride,
+        clienteIdOverride,
+      );
       if (!response.ok) {
         const message = await extractErrorMessage(response);
         throw new Error(message);
@@ -215,8 +305,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshCliente = useCallback(async () => {
+    if (!state.user) {
+      return;
+    }
+    if (state.user.role === 'super_admin' && !state.activeClienteId) {
+      setState((prev) => ({ ...prev, cliente: null }));
+      return;
+    }
     try {
-      const cliente = await fetchCliente();
+      const cliente = await fetchCliente(undefined, state.activeClienteId);
       setState((prev) => ({
         ...prev,
         cliente,
@@ -224,9 +321,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       }));
     } catch (error) {
-      console.warn('Não foi possível atualizar o contexto do cliente', error);
+      console.warn('Nao foi possivel atualizar o contexto do cliente', error);
+      if (state.user.role === 'super_admin') {
+        setState((prev) => ({ ...prev, cliente: null }));
+      }
     }
-  }, [fetchCliente]);
+  }, [fetchCliente, state.activeClienteId, state.user]);
+
+  const setActiveCliente = useCallback(
+    async (clienteId: number | null) => {
+      const currentUser = state.user;
+      if (!currentUser) {
+        return;
+      }
+
+      const previousActive = state.activeClienteId;
+      const previousCliente = state.cliente;
+      const nextActive = resolveActiveClienteId(currentUser, clienteId, state.activeClienteId);
+
+      if (nextActive === previousActive) {
+        return;
+      }
+
+      saveActiveClienteId(nextActive);
+      queryClient.clear();
+      setState((prev) => ({
+        ...prev,
+        activeClienteId: nextActive,
+        user: prev.user ? { ...prev.user, clienteId: nextActive } : prev.user,
+        cliente: null,
+        error: null,
+      }));
+
+      try {
+        let payload = await fetchAuthMe(undefined, nextActive);
+        let userFromServer = mapUser(payload.user);
+        let resolvedActive = resolveActiveClienteId(userFromServer, nextActive, nextActive);
+
+        if (resolvedActive !== nextActive) {
+          payload = await fetchAuthMe(undefined, resolvedActive);
+          userFromServer = mapUser(payload.user);
+          resolvedActive = resolveActiveClienteId(userFromServer, resolvedActive, resolvedActive);
+        }
+
+        let clienteContext = payload.cliente ?? null;
+        if (!clienteContext && resolvedActive) {
+          try {
+            clienteContext = await fetchCliente(undefined, resolvedActive);
+          } catch (clienteError) {
+            console.warn('Falha ao recarregar contexto do cliente apos troca', clienteError);
+          }
+        }
+
+        const nextUser: AuthUser = { ...userFromServer, clienteId: resolvedActive };
+        saveUser(nextUser);
+        saveActiveClienteId(resolvedActive);
+        setState((prev) => ({
+          ...prev,
+          user: nextUser,
+          activeClienteId: resolvedActive,
+          cliente: clienteContext,
+          status: 'authenticated',
+          error: null,
+        }));
+      } catch (error) {
+        saveActiveClienteId(previousActive);
+        setState((prev) => ({
+          ...prev,
+          user: prev.user ? { ...prev.user, clienteId: previousActive } : prev.user,
+          activeClienteId: previousActive,
+          cliente: previousCliente,
+          error: error instanceof Error ? error.message : 'Nao foi possivel trocar o cliente.',
+        }));
+      }
+    },
+    [
+      fetchAuthMe,
+      fetchCliente,
+      queryClient,
+      state.activeClienteId,
+      state.cliente,
+      state.user,
+    ],
+  );
 
   const login = useCallback(
     async ({ email, password, role }: LoginCredentials) => {
@@ -237,22 +414,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       }));
       try {
-        // Primeiro, fazer uma requisição para obter o token CSRF
         await fetch(resolveApiUrl('/auth/csrf'), {
           method: 'GET',
           credentials: 'include',
         });
-
-        // Função para obter o token CSRF do cookie
-        function getCsrfToken(): string | null {
-          const name = 'csrftoken';
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) {
-            return parts.pop()?.split(';').shift() || null;
-          }
-          return null;
-        }
 
         const csrfToken = await ensureCsrfToken();
         const payload = JSON.stringify({ email, password, role });
@@ -272,48 +437,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const message = await extractErrorMessage(sessionResponse);
           throw new Error(message || 'Falha ao autenticar');
         }
-        const sessionData = (await sessionResponse.json()) as {
-          user: any;
-          cliente?: ClienteContextPayload;
-        };
+        const sessionData = (await sessionResponse.json()) as AuthPayload;
 
         const jwtResponse = await fetch(resolveApiUrl('/auth/jwt'), commonInit);
         if (!jwtResponse.ok) {
           const message = await extractErrorMessage(jwtResponse);
-          throw new Error(message || 'Não foi possível obter tokens de acesso');
+          throw new Error(message || 'Nao foi possivel obter tokens de acesso');
         }
         const jwtData = (await jwtResponse.json()) as { access: string; refresh: string };
 
-        const user = mapUser(sessionData.user);
         const tokens: AuthTokens = {
           accessToken: jwtData.access,
           refreshToken: jwtData.refresh,
         };
         saveTokens(tokens);
-        const authMe = await fetchAuthMe(jwtData.access);
-        const serverUser = mapUser(authMe.user);
-        if (
-          serverUser.id !== user.id ||
-          serverUser.email !== user.email ||
-          serverUser.role !== user.role
-        ) {
-          throw new Error('Falha ao validar o usuário autenticado.');
-        }
-        saveUser(serverUser);
 
-        let cliente = authMe.cliente ?? sessionData.cliente ?? null;
-        if (!cliente) {
+        let authPayload = await fetchAuthMe(jwtData.access, state.activeClienteId);
+        let serverUser = mapUser(authPayload.user);
+        let activeClienteId = resolveActiveClienteId(
+          serverUser,
+          state.activeClienteId,
+          state.activeClienteId,
+        );
+
+        if (activeClienteId !== state.activeClienteId) {
+          authPayload = await fetchAuthMe(jwtData.access, activeClienteId);
+          serverUser = mapUser(authPayload.user);
+          activeClienteId = resolveActiveClienteId(serverUser, activeClienteId, activeClienteId);
+        }
+
+        const user: AuthUser = {
+          ...serverUser,
+          clienteId: activeClienteId,
+        };
+        saveUser(user);
+        saveActiveClienteId(activeClienteId);
+
+        let cliente = authPayload.cliente ?? sessionData.cliente ?? null;
+        if (!cliente && activeClienteId) {
           try {
-            cliente = await fetchCliente(jwtData.access);
+            cliente = await fetchCliente(jwtData.access, activeClienteId);
           } catch (clienteError) {
-            console.warn('Falha ao carregar contexto do cliente após login', clienteError);
+            console.warn('Falha ao carregar contexto do cliente apos login', clienteError);
           }
         }
 
         setState({
           status: 'authenticated',
-          user: serverUser,
+          user,
           cliente,
+          activeClienteId,
           tokens,
           error: null,
         });
@@ -324,6 +497,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           status: 'error',
           user: null,
           cliente: null,
+          activeClienteId: null,
           tokens: {
             accessToken: null,
             refreshToken: null,
@@ -333,7 +507,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [fetchAuthMe, fetchCliente, queryClient],
+    [fetchAuthMe, fetchCliente, queryClient, state.activeClienteId],
   );
 
   useEffect(() => {
@@ -346,46 +520,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       state.tokens.refreshToken
     ) {
       bootstrapInFlight.current = true;
-      fetchAuthMe()
+      fetchAuthMe(undefined, state.activeClienteId)
         .then(async (payload) => {
-          const serverUser = mapUser(payload.user);
-          saveUser(serverUser);
+          let authPayload = payload;
+          let serverUser = mapUser(authPayload.user);
+          let activeClienteId = resolveActiveClienteId(
+            serverUser,
+            state.activeClienteId,
+            state.activeClienteId,
+          );
+
+          if (activeClienteId !== state.activeClienteId) {
+            authPayload = await fetchAuthMe(undefined, activeClienteId);
+            serverUser = mapUser(authPayload.user);
+            activeClienteId = resolveActiveClienteId(serverUser, activeClienteId, activeClienteId);
+          }
+
+          let cliente = authPayload.cliente ?? null;
+          if (!cliente && activeClienteId) {
+            try {
+              cliente = await fetchCliente(undefined, activeClienteId);
+            } catch (err) {
+              console.warn('Nao foi possivel carregar contexto do cliente (ignorando erro)', err);
+            }
+          }
+
+          const user: AuthUser = {
+            ...serverUser,
+            clienteId: activeClienteId,
+          };
+          saveUser(user);
+          saveActiveClienteId(activeClienteId);
           setState((prev) => ({
             ...prev,
-            user: serverUser,
-            cliente: payload.cliente ?? prev.cliente,
+            user,
+            cliente,
+            activeClienteId,
             status: 'authenticated',
             error: null,
           }));
-          if (!payload.cliente) {
-            try {
-              const cliente = await fetchCliente();
-              setState((prev) => ({
-                ...prev,
-                cliente,
-                status: 'authenticated',
-                error: null,
-              }));
-            } catch (err) {
-              // Superusuários podem não ter cliente associado, isso não deve invalidar a sessão
-              console.warn('Não foi possível carregar contexto do cliente (ignorando erro)', err);
-              setState((prev) => ({
-                ...prev,
-                status: 'authenticated',
-                error: null,
-              }));
-            }
-          }
         })
         .catch(async (error) => {
-          console.warn('Sessão inválida, limpando credenciais', error);
+          console.warn('Sessao invalida, limpando credenciais', error);
           await logout();
         })
         .finally(() => {
           bootstrapInFlight.current = false;
         });
     }
-  }, [fetchAuthMe, fetchCliente, logout, state.status, state.tokens.accessToken, state.tokens.refreshToken]);
+  }, [
+    fetchAuthMe,
+    fetchCliente,
+    logout,
+    state.activeClienteId,
+    state.status,
+    state.tokens.accessToken,
+    state.tokens.refreshToken,
+  ]);
 
   const getAccessToken = useCallback(() => state.tokens.accessToken, [state.tokens.accessToken]);
 
@@ -395,10 +586,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: state.status === 'authenticated' && Boolean(state.user),
       user: state.user,
       cliente: state.cliente,
+      activeClienteId: state.activeClienteId,
       tokens: state.tokens,
       error: state.error,
       login,
       logout,
+      setActiveCliente,
       refreshCliente,
       getAccessToken,
       refreshAccessToken,
@@ -409,6 +602,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshAccessToken,
       refreshCliente,
+      setActiveCliente,
+      state.activeClienteId,
       state.cliente,
       state.error,
       state.status,

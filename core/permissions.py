@@ -5,6 +5,7 @@ from __future__ import annotations
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from .models import Usuario
+from .scope import resolve_cliente_scope
 from .utils import usuario_e_membro_do_gt
 
 
@@ -12,9 +13,12 @@ class HasClientScope(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        active_cliente_id = resolve_cliente_scope(request)
         if getattr(request.user, "role", None) == Usuario.Role.SUPER_ADMIN:
             return True
-        return bool(getattr(request.user, "cliente_id", None))
+        if bool(active_cliente_id):
+            return True
+        return request.user.clientes.exists()
 
 
 class IsAdminClienteOrReadOnly(BasePermission):

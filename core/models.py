@@ -99,6 +99,8 @@ class UsuarioManager(BaseUserManager):
             raise ValueError("Escola deve pertencer ao mesmo cliente do usuário")
         user.set_password(password)
         user.save(using=self._db)
+        if role != Usuario.Role.SUPER_ADMIN and user.cliente_id:
+            user.clientes.add(user.cliente_id)
         return user
 
     def create_user(self, email: str, password: Optional[str] = None, **extra_fields):
@@ -150,6 +152,11 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
     )
+    clientes = models.ManyToManyField(
+        Cliente,
+        related_name="usuarios_permitidos",
+        blank=True,
+    )
     escola = models.ForeignKey(
         "curriculum.Escola",
         on_delete=models.PROTECT,
@@ -191,6 +198,44 @@ class Usuario(AbstractUser):
             escola_cliente_id = Escola.raw_objects.filter(pk=self.escola_id).values_list("cliente_id", flat=True).first()
         if self.escola_id and self.cliente_id and escola_cliente_id and escola_cliente_id != self.cliente_id:
             raise ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
+
+    def save(self, *args, **kwargs):  # type: ignore[override]
+        super().save(*args, **kwargs)
+        if not self.pk:
+            return
+        if self.role == self.Role.SUPER_ADMIN:
+            if self.clientes.exists():
+                self.clientes.clear()
+            return
+        if self.cliente_id and not self.clientes.filter(pk=self.cliente_id).exists():
+            self.clientes.add(self.cliente_id)
+
+    def can_access_cliente(self, cliente_id: int | None) -> bool:
+        if not cliente_id:
+            return False
+        if self.role == self.Role.SUPER_ADMIN:
+            return True
+        if self.cliente_id == cliente_id:
+            return True
+        return self.clientes.filter(pk=cliente_id).exists()
+
+    def get_default_cliente_id(self) -> int | None:
+        if self.cliente_id:
+            return self.cliente_id
+        first_allowed = self.clientes.values_list("id", flat=True).order_by("id").first()
+        if first_allowed:
+            return int(first_allowed)
+        return None
+
+    def get_clientes_queryset(self):
+        if self.role == self.Role.SUPER_ADMIN:
+            return Cliente.objects.filter(ativo=True).order_by("nome")
+        cliente_ids = set(self.clientes.values_list("id", flat=True))
+        if self.cliente_id:
+            cliente_ids.add(self.cliente_id)
+        if not cliente_ids:
+            return Cliente.objects.none()
+        return Cliente.objects.filter(pk__in=cliente_ids, ativo=True).order_by("nome")
 
     @property
     def is_super_admin(self) -> bool:

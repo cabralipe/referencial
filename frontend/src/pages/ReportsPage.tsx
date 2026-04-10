@@ -19,6 +19,55 @@ import type { Pergunta, Revisao } from '@/api/types';
 
 import './ReportsPage.css';
 
+type RankedItem = { total: number };
+
+interface EscolaMetric extends RankedItem {
+  escola: string;
+}
+
+interface ComponenteMetric extends RankedItem {
+  componente_curricular: string;
+}
+
+interface StatusMetric extends RankedItem {
+  status: string;
+}
+
+interface AutorMetric extends RankedItem {
+  autor_id: number;
+  nome: string;
+  email: string;
+}
+
+interface CuradoriaMetric extends RankedItem {
+  status_curadoria: string;
+}
+
+interface ProducaoMensalMetric extends RankedItem {
+  mes: string;
+}
+
+interface AnalyticsAdminDashboardData {
+  engajamento_por_escola: EscolaMetric[];
+  producao_por_componente: ComponenteMetric[];
+  producao_por_status?: StatusMetric[];
+  top_autores?: AutorMetric[];
+  curadoria_por_status?: CuradoriaMetric[];
+  producao_mensal?: ProducaoMensalMetric[];
+  media_avaliacao_rubrica: number;
+  media_progresso_cursos?: number;
+  total_avaliacoes?: number;
+  cursos_concluidos?: number;
+  cursos_em_andamento?: number;
+  planos_publicados: number;
+  certificados_emitidos: number;
+  totais?: {
+    total_planos: number;
+    planos_ultimos_30_dias: number;
+    autores_ativos: number;
+  };
+}
+
 export function ReportsPage() {
   const { user } = useAuth();
   const client = useApiClient();
@@ -69,6 +118,13 @@ export function ReportsPage() {
         query: { page_size: 200 },
       }),
   });
+  const analyticsDashboardQuery = useQuery({
+    queryKey: ['analytics-admin-dashboard'],
+    queryFn: async () => {
+      const response = await client.get<AnalyticsAdminDashboardData>('/analytics/admin');
+      return response.data;
+    },
+  });
 
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -102,7 +158,7 @@ export function ReportsPage() {
       .slice(0, 5);
     const details = auditLogs
       .slice(0, detailLines)
-      .map((log) => `${log.acao} · ${log.entidade} #${log.entidade_id}`);
+      .map((log) => `${log.acao} - ${log.entidade} #${log.entidade_id}`);
     return { total: auditLogs.length, topActions, topEntities, details };
   }, [auditLogs, detailLines]);
 
@@ -167,6 +223,67 @@ export function ReportsPage() {
     });
   }, [gtOptions, perguntasQuery.data, respostas, revisoesFiltradas]);
 
+  const analyticsTopEscolas = useMemo(
+    () => (analyticsDashboardQuery.data?.engajamento_por_escola ?? []).slice(0, 5),
+    [analyticsDashboardQuery.data?.engajamento_por_escola],
+  );
+
+  const analyticsTopComponentes = useMemo(
+    () => (analyticsDashboardQuery.data?.producao_por_componente ?? []).slice(0, 5),
+    [analyticsDashboardQuery.data?.producao_por_componente],
+  );
+
+  const analyticsTopAutores = useMemo(
+    () => (analyticsDashboardQuery.data?.top_autores ?? []).slice(0, 5),
+    [analyticsDashboardQuery.data?.top_autores],
+  );
+
+  const analyticsTopEscolasLabel = useMemo(
+    () =>
+      analyticsTopEscolas.length > 0
+        ? analyticsTopEscolas.map((item) => `${item.escola}:${item.total}`).join(', ')
+        : 'sem dados',
+    [analyticsTopEscolas],
+  );
+
+  const analyticsTopComponentesLabel = useMemo(
+    () =>
+      analyticsTopComponentes.length > 0
+        ? analyticsTopComponentes.map((item) => `${item.componente_curricular}:${item.total}`).join(', ')
+        : 'sem dados',
+    [analyticsTopComponentes],
+  );
+
+  const analyticsTopStatusLabel = useMemo(() => {
+    const status = (analyticsDashboardQuery.data?.producao_por_status ?? []).slice(0, 4);
+    if (status.length === 0) return 'sem dados';
+    return status.map((item) => `${item.status}:${item.total}`).join(', ');
+  }, [analyticsDashboardQuery.data?.producao_por_status]);
+
+  const analyticsTopAutoresLabel = useMemo(
+    () =>
+      analyticsTopAutores.length > 0
+        ? analyticsTopAutores.map((item) => `${item.nome}:${item.total}`).join(', ')
+        : 'sem dados',
+    [analyticsTopAutores],
+  );
+
+  const analyticsSummary = useMemo(() => {
+    const data = analyticsDashboardQuery.data;
+    return {
+      totalPlanos: data?.totais?.total_planos ?? 0,
+      planos30Dias: data?.totais?.planos_ultimos_30_dias ?? 0,
+      autoresAtivos: data?.totais?.autores_ativos ?? 0,
+      mediaAvaliacaoRubrica: data?.media_avaliacao_rubrica ?? 0,
+      mediaProgressoCursos: data?.media_progresso_cursos ?? 0,
+      totalAvaliacoes: data?.total_avaliacoes ?? 0,
+      cursosConcluidos: data?.cursos_concluidos ?? 0,
+      cursosEmAndamento: data?.cursos_em_andamento ?? 0,
+      planosPublicados: data?.planos_publicados ?? 0,
+      certificadosEmitidos: data?.certificados_emitidos ?? 0,
+    };
+  }, [analyticsDashboardQuery.data]);
+
   if (!user) {
     return <FullPageLoader message="Carregando relatorios..." />;
   }
@@ -217,12 +334,22 @@ export function ReportsPage() {
       `Logins (${periodoLabel}): ${summary.logins}\n` +
       `Respostas registradas: ${summary.respostas}\n` +
       `Pareceres emitidos: ${summary.pareceres}\n` +
+      `Planos produzidos (total): ${analyticsSummary.totalPlanos}\n` +
+      `Planos produzidos (30 dias): ${analyticsSummary.planos30Dias}\n` +
+      `Autores ativos: ${analyticsSummary.autoresAtivos}\n` +
+      `Planos publicados: ${analyticsSummary.planosPublicados}\n` +
+      `Certificados emitidos: ${analyticsSummary.certificadosEmitidos}\n` +
+      `Media de avaliacao (rubrica): ${analyticsSummary.mediaAvaliacaoRubrica}\n` +
+      `Media de progresso em cursos: ${analyticsSummary.mediaProgressoCursos}%\n` +
       `Perguntas (GT): ${gtSummary.totalPerguntas}\n` +
       `Respostas com conteudo (GT): ${gtSummary.totalRespostas}\n` +
       `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%\n` +
       `Pendentes responder (GT): ${gtSummary.faltamResponder}\n` +
       `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}\n` +
       `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}\n` +
+      `Top escolas: ${analyticsTopEscolasLabel}\n` +
+      `Top componentes: ${analyticsTopComponentesLabel}\n` +
+      `Distribuicao por status: ${analyticsTopStatusLabel}\n` +
       `Auditoria (${periodoLabel}): ${auditSummary.total} acao(oes)\n` +
       (includeAuditDetails
         ? `Top acoes: ${auditSummary.topActions.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}\n` +
@@ -250,12 +377,23 @@ export function ReportsPage() {
       `Logins (${periodoLabel}): ${summary.logins}`,
       `Respostas registradas: ${summary.respostas}`,
       `Pareceres emitidos: ${summary.pareceres}`,
+      `Planos produzidos (total): ${analyticsSummary.totalPlanos}`,
+      `Planos produzidos (30 dias): ${analyticsSummary.planos30Dias}`,
+      `Autores ativos: ${analyticsSummary.autoresAtivos}`,
+      `Planos publicados: ${analyticsSummary.planosPublicados}`,
+      `Certificados emitidos: ${analyticsSummary.certificadosEmitidos}`,
+      `Media de avaliacao (rubrica): ${analyticsSummary.mediaAvaliacaoRubrica}`,
+      `Media de progresso em cursos: ${analyticsSummary.mediaProgressoCursos}%`,
       `Perguntas (GT): ${gtSummary.totalPerguntas}`,
       `Respostas com conteudo (GT): ${gtSummary.totalRespostas}`,
       `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%`,
       `Pendentes responder (GT): ${gtSummary.faltamResponder}`,
       `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}`,
       `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}`,
+      `Top escolas: ${analyticsTopEscolasLabel}`,
+      `Top componentes: ${analyticsTopComponentesLabel}`,
+      `Distribuicao por status: ${analyticsTopStatusLabel}`,
+      `Top autores: ${analyticsTopAutoresLabel}`,
       `Auditoria (${periodoLabel}): ${auditSummary.total}`,
       `Top acoes: ${auditSummary.topActions.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}`,
       `Top entidades: ${auditSummary.topEntities.map(([name, count]) => `${name}:${count}`).join(', ') || 'sem dados'}`,
@@ -333,15 +471,19 @@ export function ReportsPage() {
       { label: `Logins (${periodoLabel})`, value: summary.logins },
       { label: 'Respostas registradas', value: summary.respostas },
       { label: 'Pareceres emitidos', value: summary.pareceres },
+      { label: 'Planos (total)', value: analyticsSummary.totalPlanos },
+      { label: 'Planos (30 dias)', value: analyticsSummary.planos30Dias },
+      { label: 'Autores ativos', value: analyticsSummary.autoresAtivos },
+      { label: 'Planos publicados', value: analyticsSummary.planosPublicados },
     ];
 
     const auditDetails = mode === 'completo'
-      ? auditLogs.map((log) => `${new Date(log.timestamp).toLocaleString('pt-BR')} · ${log.acao} · ${log.entidade} #${log.entidade_id}`)
+      ? auditLogs.map((log) => `${new Date(log.timestamp).toLocaleString('pt-BR')} - ${log.acao} - ${log.entidade} #${log.entidade_id}`)
       : auditSummary.details;
 
     const auditNotice =
       mode === 'completo' && auditLogs.length >= 200
-        ? '<p class=\"report-meta\">Nota: relatório limitado aos 200 registros mais recentes de auditoria.</p>'
+        ? '<p class=\"report-meta\">Nota: relatorio limitado aos 200 registros mais recentes de auditoria.</p>'
         : '';
 
     const gtRows = (mode === 'completo' ? gtDetails : selectedGtId ? gtDetails.filter((gt) => gt.id === selectedGtId) : [])
@@ -361,19 +503,19 @@ export function ReportsPage() {
 
     return `
       <div class="report">
-        <p class="report-meta">Gerado em ${todayLabel} · Modo: ${mode === 'resumo' ? 'Resumo executivo' : 'Relatório completo'}</p>
+        <p class="report-meta">Gerado em ${todayLabel} - Modo: ${mode === 'resumo' ? 'Resumo executivo' : 'Relatorio completo'}</p>
         <section class="report-section">
           <h2>Filtros aplicados</h2>
           <ul class="report-list">
-            <li><strong>Período:</strong> ${escapeHtml(periodoLabel)}</li>
+            <li><strong>Periodo:</strong> ${escapeHtml(periodoLabel)}</li>
             <li><strong>Redator:</strong> ${escapeHtml(redatorLabel)}</li>
             <li><strong>GT:</strong> ${escapeHtml(gtLabel)}</li>
-            <li><strong>Ação:</strong> ${escapeHtml(actionLabel)}</li>
+            <li><strong>Acao:</strong> ${escapeHtml(actionLabel)}</li>
           </ul>
         </section>
 
         <section class="report-section">
-          <h2>Visão geral</h2>
+          <h2>Visao geral</h2>
           <div class="report-grid">
             ${overviewCards
               .map(
@@ -385,8 +527,44 @@ export function ReportsPage() {
         </section>
 
         <section class="report-section">
+          <h2>Painel de producao e formacao</h2>
+          <div class="report-grid">
+            <div class="report-card">
+              <span>Media avaliacao rubrica</span>
+              <strong>${analyticsSummary.mediaAvaliacaoRubrica}</strong>
+            </div>
+            <div class="report-card">
+              <span>Media progresso cursos</span>
+              <strong>${analyticsSummary.mediaProgressoCursos}%</strong>
+            </div>
+            <div class="report-card">
+              <span>Total avaliacoes</span>
+              <strong>${analyticsSummary.totalAvaliacoes}</strong>
+            </div>
+            <div class="report-card">
+              <span>Certificados emitidos</span>
+              <strong>${analyticsSummary.certificadosEmitidos}</strong>
+            </div>
+            <div class="report-card">
+              <span>Cursos concluidos</span>
+              <strong>${analyticsSummary.cursosConcluidos}</strong>
+            </div>
+            <div class="report-card">
+              <span>Cursos em andamento</span>
+              <strong>${analyticsSummary.cursosEmAndamento}</strong>
+            </div>
+          </div>
+          <ul class="report-list">
+            <li><strong>Top escolas:</strong> ${escapeHtml(analyticsTopEscolasLabel)}</li>
+            <li><strong>Top componentes:</strong> ${escapeHtml(analyticsTopComponentesLabel)}</li>
+            <li><strong>Status de producao:</strong> ${escapeHtml(analyticsTopStatusLabel)}</li>
+            <li><strong>Top autores:</strong> ${escapeHtml(analyticsTopAutoresLabel)}</li>
+          </ul>
+        </section>
+
+        <section class="report-section">
           <h2>Indicadores por GT</h2>
-          <div class="report-meta">Resumo geral: ${gtSummary.totalPerguntas} perguntas · ${gtSummary.totalRespostas} respostas · ${gtSummary.taxaConclusao}% conclusão</div>
+          <div class="report-meta">Resumo geral: ${gtSummary.totalPerguntas} perguntas - ${gtSummary.totalRespostas} respostas - ${gtSummary.taxaConclusao}% conclusao</div>
           ${
             gtRows
               ? `<table class="report-table">
@@ -396,7 +574,7 @@ export function ReportsPage() {
                       <th>Perguntas</th>
                       <th>Respostas</th>
                       <th>Pendentes</th>
-                      <th>Conclusão</th>
+                      <th>Conclusao</th>
                       <th>Pareceres</th>
                       <th>Pareceres pendentes</th>
                     </tr>
@@ -409,22 +587,22 @@ export function ReportsPage() {
 
         <section class="report-section">
           <h2>Auditoria</h2>
-          <div class="report-meta">Total: ${auditSummary.total} ações</div>
+          <div class="report-meta">Total: ${auditSummary.total} acoes</div>
           <div class="report-grid">
             <div class="report-card">
-              <span>Top ações</span>
-              <strong>${auditSummary.topActions.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' · ') || 'Sem dados'}</strong>
+              <span>Top acoes</span>
+              <strong>${auditSummary.topActions.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' - ') || 'Sem dados'}</strong>
             </div>
             <div class="report-card">
               <span>Top entidades</span>
-              <strong>${auditSummary.topEntities.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' · ') || 'Sem dados'}</strong>
+              <strong>${auditSummary.topEntities.map(([name, count]) => `${escapeHtml(name)} (${count})`).join(' - ') || 'Sem dados'}</strong>
             </div>
           </div>
           ${auditNotice}
           ${
             auditDetails.length
               ? `<ul class="report-list">${auditDetails.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
-              : '<p>Sem detalhes de auditoria para o período selecionado.</p>'
+              : '<p>Sem detalhes de auditoria para o periodo selecionado.</p>'
           }
         </section>
       </div>
@@ -438,14 +616,15 @@ export function ReportsPage() {
       respostasLoading ||
       perguntasQuery.isLoading ||
       revisoesQuery.isLoading ||
-      auditLoading
+      auditLoading ||
+      analyticsDashboardQuery.isLoading
     ) {
       setExportFeedback('Aguarde o carregamento completo dos dados antes de exportar.');
       return;
     }
     setExportFeedback('');
     const now = new Date();
-    const titulo = `Relatório ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} · ${now.toLocaleDateString('pt-BR')}`;
+    const titulo = `Relatorio ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} - ${now.toLocaleDateString('pt-BR')}`;
     try {
       await criarExportacao.mutateAsync({
         alvoTipo: 'relatorio',
@@ -457,9 +636,9 @@ export function ReportsPage() {
           modo: reportMode,
         },
       });
-      setExportFeedback('Exportação solicitada. Confira o histórico em Exportações.');
+      setExportFeedback('Exportacao solicitada. Confira o historico em Exportacoes.');
     } catch (err) {
-      setExportFeedback('Não foi possível solicitar a exportação.');
+      setExportFeedback('Nao foi possivel solicitar a exportacao.');
     }
   };
 
@@ -516,6 +695,97 @@ export function ReportsPage() {
           icon="rate_review"
           color="orange"
         />
+      </section>
+
+      <section className="reports__section">
+        <div className="reports__section-header">
+          <div>
+            <h2>Painel de producao e formacao</h2>
+            <p>Indicadores consolidados de producao pedagogica, avaliacao e formacao continuada.</p>
+          </div>
+          <span className="reports__pill">
+            {analyticsDashboardQuery.isLoading ? '...' : `${analyticsSummary.totalPlanos} planos`}
+          </span>
+        </div>
+        <div className="reports__cards reports__cards--gt">
+          <StatCard
+            title="Planos produzidos"
+            value={analyticsDashboardQuery.isLoading ? '...' : analyticsSummary.totalPlanos}
+            color="blue"
+          />
+          <StatCard
+            title="Planos (30 dias)"
+            value={analyticsDashboardQuery.isLoading ? '...' : analyticsSummary.planos30Dias}
+            color="green"
+          />
+          <StatCard
+            title="Autores ativos"
+            value={analyticsDashboardQuery.isLoading ? '...' : analyticsSummary.autoresAtivos}
+            color="purple"
+          />
+          <StatCard
+            title="Media rubrica"
+            value={analyticsDashboardQuery.isLoading ? '...' : analyticsSummary.mediaAvaliacaoRubrica}
+            color="orange"
+          />
+          <StatCard
+            title="Progresso medio cursos"
+            value={analyticsDashboardQuery.isLoading ? '...' : `${analyticsSummary.mediaProgressoCursos}%`}
+            color="green"
+          />
+          <StatCard
+            title="Certificados emitidos"
+            value={analyticsDashboardQuery.isLoading ? '...' : analyticsSummary.certificadosEmitidos}
+            color="red"
+          />
+        </div>
+        <div className="reports__audit-grid">
+          <div className="reports__audit-card">
+            <h3>Top escolas</h3>
+            {analyticsTopEscolas.length > 0 ? (
+              <ul>
+                {analyticsTopEscolas.map((item) => (
+                  <li key={item.escola}>
+                    <span>{item.escola}</span>
+                    <strong>{item.total}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Sem dados.</p>
+            )}
+          </div>
+          <div className="reports__audit-card">
+            <h3>Top componentes</h3>
+            {analyticsTopComponentes.length > 0 ? (
+              <ul>
+                {analyticsTopComponentes.map((item) => (
+                  <li key={item.componente_curricular}>
+                    <span>{item.componente_curricular}</span>
+                    <strong>{item.total}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Sem dados.</p>
+            )}
+          </div>
+          <div className="reports__audit-card">
+            <h3>Top autores</h3>
+            {analyticsTopAutores.length > 0 ? (
+              <ul>
+                {analyticsTopAutores.map((item) => (
+                  <li key={`${item.autor_id}-${item.email}`}>
+                    <span>{item.nome}</span>
+                    <strong>{item.total}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Sem dados.</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="reports__section">
@@ -636,7 +906,7 @@ export function ReportsPage() {
                     setRedatorQuery(suggestion.nome);
                   }}
                 >
-                  {suggestion.nome} · {suggestion.email}
+                  {suggestion.nome} - {suggestion.email}
                 </button>
               ))}
             </div>
@@ -757,3 +1027,4 @@ export function ReportsPage() {
     </div>
   );
 }
+

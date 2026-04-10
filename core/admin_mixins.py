@@ -6,7 +6,11 @@ from django.contrib import admin
 
 
 def _model_has_field(model, field_name: str) -> bool:
-    return any(field.name == field_name or field.attname == field_name for field in model._meta.fields)
+    fields = list(model._meta.fields) + list(model._meta.many_to_many)
+    return any(
+        field.name == field_name or getattr(field, "attname", None) == field_name
+        for field in fields
+    )
 
 
 def _model_has_soft_delete(model) -> bool:
@@ -67,10 +71,10 @@ class ClienteScopedAdminMixin:
     def _strip_cliente_from_fields(self, fields):
         cleaned = []
         for field in fields:
-            if field == "cliente":
+            if field in {"cliente", "clientes"}:
                 continue
             if isinstance(field, (list, tuple)):
-                nested = tuple(item for item in field if item != "cliente")
+                nested = tuple(item for item in field if item not in {"cliente", "clientes"})
                 if nested:
                     cleaned.append(nested)
                 continue
@@ -96,8 +100,11 @@ class ClienteScopedAdminMixin:
 
     def get_exclude(self, request, obj=None):
         exclude = list(super().get_exclude(request, obj) or [])
-        if not self._is_super_admin(request) and _model_has_field(self.model, "cliente") and "cliente" not in exclude:
-            exclude.append("cliente")
+        if not self._is_super_admin(request):
+            if _model_has_field(self.model, "cliente") and "cliente" not in exclude:
+                exclude.append("cliente")
+            if _model_has_field(self.model, "clientes") and "clientes" not in exclude:
+                exclude.append("clientes")
         return exclude
 
     def get_fields(self, request, obj=None):

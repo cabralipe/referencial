@@ -80,9 +80,17 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
         role = attrs.get("role", getattr(instance, "role", UserModel.Role.LEITOR))
         cliente = attrs.get("cliente", getattr(instance, "cliente", None))
+        clientes = attrs.get("clientes")
         escola = attrs.get("escola", getattr(instance, "escola", None))
         scope_cliente_id = getattr(request, "cliente_id", None) if request else None
         cliente_id = getattr(cliente, "id", None)
+        clientes_list = list(clientes) if clientes is not None else None
+
+        if not cliente_id and clientes_list:
+            cliente = clientes_list[0]
+            cliente_id = getattr(cliente, "id", None)
+            attrs["cliente"] = cliente
+
         if (
             not cliente_id
             and scope_cliente_id
@@ -92,19 +100,29 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
             cliente_id = scope_cliente_id
 
         if role != UserModel.Role.SUPER_ADMIN and not cliente_id:
-            raise serializers.ValidationError({"cliente": "Usuários não super_admin devem possuir cliente."})
+            raise serializers.ValidationError({"cliente": "Usuarios nao super_admin devem possuir cliente."})
+
+        if role != UserModel.Role.SUPER_ADMIN and clientes_list is not None:
+            if cliente and all(item.id != cliente.id for item in clientes_list):
+                clientes_list.append(cliente)
+            attrs["clientes"] = clientes_list
 
         if role in UserModel.ESCOLA_REQUIRED_ROLES and not escola:
-            raise serializers.ValidationError({"escola": "Diretor, Coordenador Pedagógico e Professor devem possuir escola."})
+            raise serializers.ValidationError(
+                {"escola": "Diretor, Coordenador Pedagogico e Professor devem possuir escola."}
+            )
 
         if role == UserModel.Role.SUPER_ADMIN:
             if cliente_id:
-                raise serializers.ValidationError({"cliente": "Super admin não pode possuir cliente."})
+                raise serializers.ValidationError({"cliente": "Super admin nao pode possuir cliente."})
             if escola:
-                raise serializers.ValidationError({"escola": "Super admin não pode possuir escola."})
+                raise serializers.ValidationError({"escola": "Super admin nao pode possuir escola."})
+            attrs["cliente"] = None
+            if clientes is not None:
+                attrs["clientes"] = []
 
         if escola and cliente_id and escola.cliente_id != cliente_id:
-            raise serializers.ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuário."})
+            raise serializers.ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuario."})
 
         return attrs
 

@@ -1,48 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
-import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 
-type ClienteOption = { id: number; nome: string };
+type ClienteOption = { id: number; nome: string; slug: string };
 
 export function useAdminScope() {
-  const { user } = useAuth();
-  const client = useApiClient();
+  const { user, activeClienteId, setActiveCliente } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
-  const [clientes, setClientes] = useState<ClienteOption[]>([]);
-  const [selectedClienteId, setSelectedClienteId] = useState<number | ''>(() => {
-    if (typeof window === 'undefined') return '';
-    const stored = window.localStorage.getItem('adminScopeClienteId');
-    return stored ? Number(stored) : '';
-  });
+  const clientes = useMemo<ClienteOption[]>(
+    () => (isSuperAdmin ? user?.clientes ?? [] : []),
+    [isSuperAdmin, user?.clientes],
+  );
+  const selectedClienteId = isSuperAdmin ? activeClienteId ?? '' : '';
 
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    let active = true;
-    client
-      .get<{ results: ClienteOption[] }>('/admin/clientes', { query: { page_size: 200 } })
-      .then((response) => {
-        if (!active) return;
-        setClientes(response.data.results ?? []);
-      })
-      .catch(() => {
-        if (!active) return;
-        setClientes([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [client, isSuperAdmin]);
-
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    if (typeof window === 'undefined') return;
-    if (selectedClienteId) {
-      window.localStorage.setItem('adminScopeClienteId', String(selectedClienteId));
-    } else {
-      window.localStorage.removeItem('adminScopeClienteId');
-    }
-  }, [isSuperAdmin, selectedClienteId]);
+  const setSelectedClienteId = useCallback(
+    (value: number | '') => {
+      void setActiveCliente(value === '' ? null : value);
+    },
+    [setActiveCliente],
+  );
 
   const headers = useMemo(() => {
     if (isSuperAdmin && selectedClienteId) {

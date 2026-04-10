@@ -118,7 +118,7 @@ function pickErrorMessage(payload: unknown, fallback: string): string {
 }
 
 export function useApiClient() {
-  const { getAccessToken, refreshAccessToken, logout, user } = useAuth();
+  const { getAccessToken, refreshAccessToken, logout, activeClienteId } = useAuth();
 
   const request = useCallback(
     async <T,>(method: string, path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> => {
@@ -129,6 +129,9 @@ export function useApiClient() {
         const accessToken = getAccessToken();
         if (accessToken) {
           headers.set('Authorization', `Bearer ${accessToken}`);
+        }
+        if (activeClienteId && !headers.has('X-Cliente-ID')) {
+          headers.set('X-Cliente-ID', String(activeClienteId));
         }
       }
 
@@ -204,7 +207,7 @@ export function useApiClient() {
         status: response.status,
       };
     },
-    [getAccessToken, logout, refreshAccessToken, user],
+    [activeClienteId, getAccessToken, logout, refreshAccessToken],
   );
 
   const get = useCallback(

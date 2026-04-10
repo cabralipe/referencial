@@ -36,6 +36,7 @@ from core.permissions import (
     IsArticuladorForGT,
     IsMemberOfGT,
 )
+from core.scope import resolve_cliente_scope
 from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag, usuario_e_membro_do_gt
 from comments.models import Comentario
 from consultas.models import ConsultaPublica, ManifestacaoPublica
@@ -55,6 +56,7 @@ from django.http import HttpResponse
 from core.plugins import get_export_provider
 from diffs.services import build_diff
 from tasks.exports import enqueue_export_job, build_export_context
+from tasks.synthesis import enqueue_texto_unico
 from workshop.models import CelulaQuadro, Quadro
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -114,7 +116,7 @@ def _check_etag(request, instance):
 
 
 def _get_request_cliente_id(request) -> int:
-    cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
+    cliente_id = resolve_cliente_scope(request)
     if cliente_id:
         return int(cliente_id)
 
@@ -541,8 +543,6 @@ class ClienteViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="me")
     def me(self, request):
         cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
-        if request.user.is_super_admin and request.headers.get("X-Cliente-ID"):
-            cliente_id = request.headers.get("X-Cliente-ID")
         cliente = Cliente.objects.filter(pk=cliente_id).first()
         if not cliente:
             raise ValidationError("Cliente não associado ao usuário")

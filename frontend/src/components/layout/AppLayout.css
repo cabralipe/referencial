@@ -298,6 +298,28 @@
   color: var(--color-text-muted);
 }
 
+.app-shell__client-switch {
+  margin-top: 0.18rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.app-shell__client-switch span {
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.app-shell__client-switch select {
+  min-width: 11rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  padding: 0.24rem 0.42rem;
+  font-size: 0.7rem;
+  background: #fff;
+}
+
 .app-shell__avatar {
   width: 2.2rem;
   height: 2.2rem;
@@ -452,6 +474,10 @@
 
   .app-shell__user-meta {
     display: none;
+  }
+
+  .app-shell__client-switch select {
+    min-width: 8rem;
   }
 
   .app-shell__avatar {

@@ -1,7 +1,7 @@
 import pytest
 
 from bank.models import PlanoPublicado
-from core.models import Usuario
+from core.models import Cliente, Usuario
 from courses.models import Curso, CursoModulo, CursoProgresso, CursoProgressoItem, PlanoAula
 from courses.services.certification_service import evaluate_certification
 from documents.models import PlanoMetaPPP
@@ -113,3 +113,85 @@ def test_admin_analytics_endpoint_requires_admin(api_client, cliente, usuario):
     api_client.force_authenticate(usuario)
     ok = api_client.get("/api/v1/analytics/admin")
     assert ok.status_code == 200
+
+
+@pytest.mark.django_db
+def test_admin_analytics_endpoint_traz_campos_enriquecidos(api_client, cliente, usuario):
+    curso = Curso.objects.create(cliente=cliente, nome="Curso Analytics", publicado=True)
+    PlanoAula.objects.create(
+        cliente=cliente,
+        curso=curso,
+        autor=usuario,
+        escola="Escola Centro",
+        componente_curricular="Matematica",
+        etapa_modalidade="Fundamental",
+        status=PlanoAula.Status.PUBLICADO,
+    )
+    PlanoAula.objects.create(
+        cliente=cliente,
+        curso=curso,
+        autor=usuario,
+        escola="",
+        componente_curricular="",
+        etapa_modalidade="",
+        status=PlanoAula.Status.EM_REVISAO,
+    )
+    CursoProgresso.objects.create(cliente=cliente, curso=curso, usuario=usuario, percentual=100)
+    PlanoPublicado.objects.create(
+        cliente=cliente,
+        plano=PlanoAula.objects.filter(cliente=cliente).first(),
+        publicado_por=usuario,
+        status_curadoria=PlanoPublicado.CuradoriaStatus.APROVADO,
+    )
+
+    api_client.force_authenticate(usuario)
+    response = api_client.get("/api/v1/analytics/admin")
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["totais"]["total_planos"] == 2
+    assert body["totais"]["autores_ativos"] == 1
+    assert "producao_por_status" in body
+    assert "top_autores" in body
+    assert body["top_autores"][0]["autor_id"] == usuario.id
+    assert any(item["escola"] == "Nao informado" for item in body["engajamento_por_escola"])
+
+
+@pytest.mark.django_db
+def test_admin_analytics_endpoint_respeita_scope_por_header_para_admin_cliente(api_client, django_user_model):
+    cliente_a = Cliente.objects.create(nome="Cliente Analytics A", slug="analytics-a")
+    cliente_b = Cliente.objects.create(nome="Cliente Analytics B", slug="analytics-b")
+
+    admin = django_user_model.objects.create_user(
+        email="admin.analytics@teste.com",
+        password="senha123",
+        nome="Admin Analytics",
+        cliente=cliente_a,
+        role=Usuario.Role.ADMIN_CLIENTE,
+    )
+    admin.clientes.add(cliente_b)
+
+    curso_a = Curso.objects.create(cliente=cliente_a, nome="Curso A", publicado=True)
+    curso_b = Curso.objects.create(cliente=cliente_b, nome="Curso B", publicado=True)
+    PlanoAula.objects.create(
+        cliente=cliente_a,
+        curso=curso_a,
+        autor=admin,
+        escola="Escola A",
+        status=PlanoAula.Status.EM_REVISAO,
+    )
+    PlanoAula.objects.create(
+        cliente=cliente_b,
+        curso=curso_b,
+        autor=admin,
+        escola="Escola B",
+        status=PlanoAula.Status.PUBLICADO,
+    )
+
+    api_client.force_authenticate(admin)
+    response = api_client.get("/api/v1/analytics/admin", HTTP_X_CLIENTE_ID=str(cliente_b.id))
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["totais"]["total_planos"] == 1
+    assert body["engajamento_por_escola"][0]["escola"] == "Escola B"

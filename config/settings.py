@@ -289,13 +289,18 @@ MEDIA_ROOT = Path(
 ).resolve()
 
 MEDIA_BACKEND = env("MEDIA_BACKEND")
+IS_TEST_ENV = bool(os.getenv("PYTEST_CURRENT_TEST")) or any("pytest" in arg for arg in os.sys.argv)
 
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if IS_TEST_ENV
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 

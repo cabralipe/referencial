@@ -1,11 +1,10 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
 import { Breadcrumbs } from '@/components/common/Breadcrumbs';
-import { useAdminScope } from '@/hooks/useAdminScope';
 import { buildBackendUrl } from '@/config/env';
 
 import './AppLayout.css';
@@ -29,8 +28,7 @@ type NavItem =
   };
 
 export function AppLayout() {
-  const { cliente, user, logout } = useAuth();
-  const { isSuperAdmin, clientes, selectedClienteId } = useAdminScope();
+  const { cliente, user, logout, activeClienteId, setActiveCliente } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
@@ -52,6 +50,7 @@ export function AppLayout() {
     return window.localStorage.getItem('appFocusMode') === 'true';
   });
   const sidenavInnerRef = useRef<HTMLDivElement | null>(null);
+
   const roleLabel = useMemo(() => {
     const role = user?.role ?? '';
     const map: Record<string, string> = {
@@ -66,6 +65,7 @@ export function AppLayout() {
     };
     return map[role] ?? role;
   }, [user?.role]);
+
   const userInitials = useMemo(() => {
     const source = (user?.nome || user?.email || 'RF').trim();
     const parts = source.split(/\s+/).filter(Boolean);
@@ -148,28 +148,6 @@ export function AppLayout() {
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
-    if (false && (isSchoolLeader || isProfessor)) {
-      return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
-        avaNavItem,
-        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
-        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
-      ];
-    }
-    if (false && isSchoolLeader) {
-      return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
-        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
-        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
-      ];
-    }
-    if (false && isProfessor) {
-      return [
-        { to: '/inicio', label: 'Início', icon: 'dashboard' },
-        { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
-        { to: '/ajuda', label: 'Ajuda', icon: 'help' },
-      ];
-    }
     if (isSchoolLeader || isProfessor) {
       return [
         { to: '/inicio', label: 'Inicio', icon: 'dashboard' },
@@ -206,7 +184,7 @@ export function AppLayout() {
         { to: '/redator/exportacoes', label: 'Exportações', icon: 'export' },
       ];
     }
-    const items = [
+    return [
       { to: '/', label: 'Painel', icon: 'dashboard' },
       { to: '/tarefas', label: 'Trilhas pedagógicas', icon: 'tasks' },
       { to: '/texto-unico', label: 'Texto único', icon: 'document' },
@@ -224,17 +202,22 @@ export function AppLayout() {
       { to: '/bloqueios', label: 'Bloqueios', icon: 'audit', only: ['admin_cliente', 'super_admin'] },
       { to: '/gamificacao', label: 'Gamificação', icon: 'tasks', only: ['admin_cliente', 'super_admin'] },
     ];
-    return items;
   }, [avaHref, isAdmin, isGtMember, isProfessor, isRedator, isSchoolLeader, user?.role]);
 
   const selectedCliente = useMemo(() => {
-    if (!isSuperAdmin) return null;
-    if (!selectedClienteId) return null;
-    return clientes.find((item) => item.id === selectedClienteId) ?? null;
-  }, [clientes, isSuperAdmin, selectedClienteId]);
+    if (!activeClienteId) return null;
+    return (user?.clientes ?? []).find((item) => item.id === activeClienteId) ?? null;
+  }, [activeClienteId, user?.clientes]);
+  const canSwitchCliente = useMemo(
+    () => (user?.clientes ?? []).length > 1 || user?.role === 'super_admin',
+    [user?.clientes, user?.role],
+  );
 
   return (
-    <div className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`} style={themeStyles}>
+    <div
+      className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`}
+      style={themeStyles}
+    >
       <aside
         id="app-sidenav"
         className={`app-shell__sidenav ${sidebarOpen ? 'is-open' : 'is-closed'}`}
@@ -242,18 +225,12 @@ export function AppLayout() {
         aria-label="Menu principal"
         aria-hidden={!sidebarOpen}
       >
-        <div
-          className="app-shell__sidenav-inner"
-          ref={sidenavInnerRef}
-          tabIndex={0}
-        >
+        <div className="app-shell__sidenav-inner" ref={sidenavInnerRef} tabIndex={0}>
           <div className="app-shell__brand">
             {cliente?.tema?.logo_url ? (
               <img src={cliente.tema.logo_url} alt={cliente.cliente.nome} />
             ) : (
-              <div className="app-shell__logo-fallback">
-                {cliente?.cliente?.nome?.slice(0, 1) ?? 'R'}
-              </div>
+              <div className="app-shell__logo-fallback">{cliente?.cliente?.nome?.slice(0, 1) ?? 'R'}</div>
             )}
             <div className="app-shell__brand-text">
               <strong>{cliente?.cliente?.nome ?? 'Referencial Curricular'}</strong>
@@ -334,25 +311,17 @@ export function AppLayout() {
           {cliente?.tema?.logo_url ? (
             <img src={cliente.tema.logo_url} alt={cliente.cliente.nome} />
           ) : (
-            <div className="app-shell__logo-fallback">
-              {cliente?.cliente?.nome?.slice(0, 1) ?? 'R'}
-            </div>
+            <div className="app-shell__logo-fallback">{cliente?.cliente?.nome?.slice(0, 1) ?? 'R'}</div>
           )}
           <div className="app-shell__brand-text">
             <strong>{cliente?.cliente?.nome ?? 'Referencial Curricular'}</strong>
           </div>
         </div>
 
-        {isSuperAdmin && (
+        {user?.role === 'super_admin' && selectedCliente && (
           <div className="app-shell__client-context">
             <span>Cliente selecionado:</span>
-            {selectedCliente ? (
-              <strong>{selectedCliente.nome}</strong>
-            ) : (
-              <Link to="/admin/console" className="app-shell__client-cta">
-                Selecionar cliente
-              </Link>
-            )}
+            <strong>{selectedCliente.nome}</strong>
           </div>
         )}
 
@@ -369,8 +338,29 @@ export function AppLayout() {
           <div className="app-shell__user-meta">
             <strong>{user?.nome ?? 'Usuário'}</strong>
             <small>{roleLabel}</small>
+            {canSwitchCliente && (
+              <label className="app-shell__client-switch">
+                <span>Cliente</span>
+                <select
+                  value={activeClienteId ?? ''}
+                  onChange={(event) => {
+                    const value = event.target.value ? Number(event.target.value) : null;
+                    void setActiveCliente(value);
+                  }}
+                >
+                  {user?.role === 'super_admin' && <option value="">Todos</option>}
+                  {(user?.clientes ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
-          <div className="app-shell__avatar" aria-hidden="true">{userInitials}</div>
+          <div className="app-shell__avatar" aria-hidden="true">
+            {userInitials}
+          </div>
           <button type="button" onClick={handleLogout}>
             Sair
           </button>
@@ -385,10 +375,7 @@ export function AppLayout() {
       </main>
 
       {cliente?.tema?.rodape_html && (
-        <footer
-          className="app-shell__footer"
-          dangerouslySetInnerHTML={{ __html: cliente.tema.rodape_html }}
-        />
+        <footer className="app-shell__footer" dangerouslySetInnerHTML={{ __html: cliente.tema.rodape_html }} />
       )}
 
       <MebAssistant />

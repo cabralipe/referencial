@@ -18,6 +18,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from core.activity import touch_user_session
 from core.models import Cliente, ClienteTema
 from core.permissions import HasClientScope
+from core.scope import resolve_cliente_scope
 from services.progress import get_next_block_for_user
 from services.diff import diff_last_approved
 from consultas.models import ConsultaPublica, ManifestacaoPublica
@@ -35,6 +36,29 @@ from .serializers import (
 )
 
 
+def _serialize_clientes_permitidos(user):
+    return [
+        {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "slug": cliente.slug,
+        }
+        for cliente in user.get_clientes_queryset().only("id", "nome", "slug")
+    ]
+
+
+def _build_auth_user_payload(user, active_cliente_id):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "nome": getattr(user, "nome", ""),
+        "role": user.role,
+        "cliente_id": active_cliente_id,
+        "escola_id": getattr(user, "escola_id", None),
+        "clientes": _serialize_clientes_permitidos(user),
+    }
+
+
 class RoleTokenObtainPairView(TokenObtainPairView):
     serializer_class = RoleTokenObtainPairSerializer
 
@@ -48,20 +72,13 @@ class SessionLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         login(request, user)
-        request.cliente_id = getattr(user, "cliente_id", None)
+        active_cliente_id = resolve_cliente_scope(request) or user.get_default_cliente_id()
+        request.cliente_id = active_cliente_id
         touch_user_session(request)
-        data = {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "nome": getattr(user, "nome", ""),
-                "role": user.role,
-                "cliente_id": user.cliente_id,
-                "escola_id": getattr(user, "escola_id", None),
-            }
-        }
-        if user.cliente:
-            data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
+        data = {"user": _build_auth_user_payload(user, active_cliente_id)}
+        active_cliente = Cliente.objects.filter(pk=active_cliente_id).first()
+        if active_cliente:
+            data["cliente"] = ClienteMeSerializer.from_cliente(active_cliente).data
         return Response(data)
 
 
@@ -70,18 +87,11 @@ class AuthMeView(APIView):
 
     def get(self, request):
         user = request.user
-        data = {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "nome": getattr(user, "nome", ""),
-                "role": user.role,
-                "cliente_id": user.cliente_id,
-                "escola_id": getattr(user, "escola_id", None),
-            }
-        }
-        if user.cliente:
-            data["cliente"] = ClienteMeSerializer.from_cliente(user.cliente).data
+        active_cliente_id = resolve_cliente_scope(request) or user.get_default_cliente_id()
+        data = {"user": _build_auth_user_payload(user, active_cliente_id)}
+        active_cliente = Cliente.objects.filter(pk=active_cliente_id).first()
+        if active_cliente:
+            data["cliente"] = ClienteMeSerializer.from_cliente(active_cliente).data
         return Response(data)
 
 
@@ -106,7 +116,7 @@ class MebAvatarUploadView(APIView):
         if not avatar:
             raise ValidationError({"avatar": "Envie um arquivo de imagem."})
 
-        cliente_id = getattr(request, "cliente_id", None) or getattr(user, "cliente_id", None)
+        cliente_id = resolve_cliente_scope(request) or getattr(user, "cliente_id", None)
         if cliente_id is None:
             raise ValidationError("Cliente não identificado para o upload.")
 
