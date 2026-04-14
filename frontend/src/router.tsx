@@ -39,7 +39,6 @@ import { ExportacoesPage } from './pages/ExportacoesPage';
 import { DiffPage } from './pages/DiffPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { RedatorProductionPage } from './pages/RedatorProductionPage';
 import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
@@ -442,11 +441,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin/producao-redatores',
-        element: (
-          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
-            <RedatorProductionPage />
-          </RoleRoute>
-        ),
+        element: <Navigate to="/relatorios" replace />,
       },
       {
         path: 'gamificacao',
