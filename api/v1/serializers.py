@@ -23,7 +23,7 @@ from library.models import BlocoTexto, Midia
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
-from notifications.models import Notificacao
+from notifications.models import MuralArquivoEnvio, Notificacao
 from reviews.models import Revisao, ReviewDecision
 from workshop.models import CelulaQuadro, Quadro, QuadroColuna, QuadroLinha
 from meb.models import MebMessage, MebThread
@@ -1021,9 +1021,11 @@ class MuralPostSerializer(serializers.Serializer):
     conteudo_html = serializers.CharField()
     link_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     anexos = serializers.ListField(child=serializers.DictField(), required=False)
+    modalidade = serializers.CharField(required=False)
     fixado = serializers.BooleanField(default=False)
     gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
     criado_por = serializers.DictField(required=False)
+    envios_arquivo = serializers.ListField(child=serializers.DictField(), required=False)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 
@@ -1033,9 +1035,42 @@ class MuralPostCreateSerializer(serializers.Serializer):
     conteudo_html = serializers.CharField()
     link_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     anexos = serializers.ListField(child=serializers.DictField(), required=False)
+    modalidade = serializers.ChoiceField(choices=("aviso", "recebimento_arquivo"), required=False)
     fixado = serializers.BooleanField(required=False)
     include_all = serializers.BooleanField(required=False)
     gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+
+class MuralArquivoEnvioSerializer(serializers.ModelSerializer):
+    gt_id = serializers.IntegerField(read_only=True)
+    gt_nome = serializers.CharField(source="gt.nome", read_only=True)
+    usuario_id = serializers.IntegerField(read_only=True)
+    usuario_nome = serializers.CharField(source="usuario.nome", read_only=True)
+    arquivo_url = serializers.SerializerMethodField()
+    nome_arquivo = serializers.CharField(source="nome_original", read_only=True)
+
+    class Meta:
+        model = MuralArquivoEnvio
+        fields = (
+            "id",
+            "gt_id",
+            "gt_nome",
+            "usuario_id",
+            "usuario_nome",
+            "arquivo_url",
+            "nome_arquivo",
+            "created_at",
+            "updated_at",
+        )
+
+    def get_arquivo_url(self, obj):
+        request = self.context.get("request")
+        if not obj.arquivo:
+            return ""
+        url = obj.arquivo.url
+        if request and url.startswith("/"):
+            return request.build_absolute_uri(url)
+        return url
 
 
 class MidiaSerializer(serializers.ModelSerializer):

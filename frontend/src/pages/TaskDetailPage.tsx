@@ -94,6 +94,11 @@ const stripHtml = (value: string) => {
   return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
+const toNumberId = (value: number | string | null | undefined) => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : null;
+};
+
 const buildTextStats = (value: string) => {
   const trimmed = stripHtml(value);
   const words = trimmed ? trimmed.split(/\s+/).length : 0;
@@ -396,8 +401,9 @@ export function TaskDetailPage() {
     const isSaving = savingQuestion === pergunta.id || upsertResposta.isPending;
     const cardClassName = alterado ? 'pergunta-card pergunta-card--dirty' : 'pergunta-card';
     const stats = buildTextStats(draft);
-    const revisoesDaResposta = revisoes?.filter((rev) => rev.alvo_id === respostaAtual?.id) ?? [];
     const respostaId = respostaAtual?.id;
+    const revisoesDaResposta =
+      revisoes?.filter((rev) => toNumberId(rev.alvo_id) === respostaId) ?? [];
     const lastParecer =
       revisoesDaResposta
         .filter((rev) => rev.parecer_html)
@@ -647,7 +653,7 @@ export function TaskDetailPage() {
                         const activeRev = currentRevisoes
                           .filter(
                             (r: Revisao) =>
-                              r.alvo_id === respostaId &&
+                              toNumberId(r.alvo_id) === respostaId &&
                               r.alvo_tipo === 'resposta' &&
                               r.status !== 'aprovado' &&
                               r.status !== 'reprovado'

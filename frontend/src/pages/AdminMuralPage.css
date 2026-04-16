@@ -52,6 +52,12 @@
   margin: 0;
 }
 
+.admin-mural__form input[type="file"],
+.admin-mural__form select,
+.admin-mural__form input:not([type="checkbox"]) {
+  width: 100%;
+}
+
 .admin-mural__gts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -123,6 +129,13 @@
   margin-top: var(--space-1);
 }
 
+.admin-mural__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
 .admin-mural__badge {
   background-color: var(--color-warning-soft);
   color: var(--color-warning);
@@ -133,6 +146,11 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+.admin-mural__badge--info {
+  background-color: rgba(14, 116, 144, 0.12);
+  color: #0f766e;
 }
 
 .admin-mural__item-content {
@@ -148,6 +166,62 @@
   margin-top: auto;
   padding-top: var(--space-4);
   border-top: 1px dashed var(--color-border);
+}
+
+.admin-mural__attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-mural__attachment-list a,
+.admin-mural__attachment-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.35rem 0.7rem;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.admin-mural__submissions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-mural__submissions h4 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.admin-mural__submission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+}
+
+.admin-mural__submission-item strong,
+.admin-mural__submission-item span {
+  display: block;
+}
+
+.admin-mural__submission-item span {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.admin-mural__submissions-empty {
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 /* --- References Section --- */

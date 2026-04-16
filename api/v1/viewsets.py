@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
 from uuid import uuid4
 from django.utils.html import escape
 from django.contrib.auth import get_user_model
@@ -19,6 +20,7 @@ from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.views import APIView
 try:  # botocore é usado apenas quando MEDIA_BACKEND=s3 está ativo
     from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
@@ -45,7 +47,7 @@ from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_t
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
-from notifications.models import Notificacao
+from notifications.models import MuralArquivoEnvio, Notificacao
 from notifications.services import criar_notificacao
 from meb.models import MebMessage, MebThread
 from meb.services import auto_reply_for_message, deliver_admin_broadcast, ensure_thread_for_user
@@ -90,6 +92,7 @@ from .serializers import (
     DiffResponseSerializer,
     MebMessageSerializer,
     MebThreadSerializer,
+    MuralArquivoEnvioSerializer,
     MuralPostCreateSerializer,
     MuralPostSerializer,
     TarefaSerializer,
@@ -373,6 +376,8 @@ DEFAULT_PPP_CONFIG = {
 }
 
 MURAL_NOTIFICATION_TYPE = "mural_post"
+MURAL_MODALIDADE_AVISO = "aviso"
+MURAL_MODALIDADE_RECEBIMENTO_ARQUIVO = "recebimento_arquivo"
 
 
 def _normalize_score_config(payload):
@@ -2238,6 +2243,130 @@ class ComentarioViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
         return response
 
 
+def _coerce_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on", "yes", "sim"}:
+            return True
+        if normalized in {"0", "false", "off", "no", "nao", "não"}:
+            return False
+    return bool(value)
+
+
+def _extract_request_list(data, field_name):
+    if hasattr(data, "getlist"):
+        values = data.getlist(field_name)
+        if values:
+            return values
+    value = data.get(field_name)
+    if value in (None, ""):
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _parse_gt_ids(raw_values):
+    if not raw_values:
+        return []
+    if len(raw_values) == 1 and isinstance(raw_values[0], str):
+        raw_value = raw_values[0].strip()
+        if not raw_value:
+            return []
+        if raw_value.startswith("["):
+            try:
+                parsed = json.loads(raw_value)
+            except json.JSONDecodeError as exc:
+                raise ValidationError({"gt_ids": "Lista de GTs inválida."}) from exc
+            raw_values = parsed if isinstance(parsed, list) else [parsed]
+        elif "," in raw_value:
+            raw_values = [item.strip() for item in raw_value.split(",") if item.strip()]
+    gt_ids = []
+    for item in raw_values:
+        try:
+            gt_ids.append(int(item))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"gt_ids": "Lista de GTs inválida."}) from exc
+    return gt_ids
+
+
+def _parse_attachment_list(raw_value):
+    if raw_value in (None, "", []):
+        return []
+    if isinstance(raw_value, list):
+        attachments = raw_value
+    elif isinstance(raw_value, str):
+        try:
+            attachments = json.loads(raw_value)
+        except json.JSONDecodeError as exc:
+            raise ValidationError({"anexos": "Lista de anexos inválida."}) from exc
+    else:
+        raise ValidationError({"anexos": "Lista de anexos inválida."})
+
+    if not isinstance(attachments, list):
+        raise ValidationError({"anexos": "Lista de anexos inválida."})
+
+    normalized = []
+    for item in attachments:
+        if not isinstance(item, dict):
+            raise ValidationError({"anexos": "Cada anexo deve ser um objeto."})
+        normalized.append(
+            {
+                "titulo": item.get("titulo") or "Anexo",
+                "url": item.get("url") or "",
+            }
+        )
+    return normalized
+
+
+def _build_storage_url(request, path_or_url):
+    if not path_or_url:
+        return ""
+    if isinstance(path_or_url, str) and (path_or_url.startswith("http://") or path_or_url.startswith("https://")):
+        return path_or_url
+    if isinstance(path_or_url, str) and path_or_url.startswith("/"):
+        return request.build_absolute_uri(path_or_url)
+    url = default_storage.url(path_or_url)
+    if url.startswith("/"):
+        return request.build_absolute_uri(url)
+    return url
+
+
+def _store_mural_attachment(upload, *, cliente_id, request):
+    original_name = Path(upload.name or "anexo").stem or "anexo"
+    extension = Path(upload.name or "").suffix
+    filename = f"{original_name}-{uuid4().hex}{extension}"
+    path = default_storage.save(f"mural/anexos/cliente_{cliente_id}/{filename}", upload)
+    return {
+        "titulo": upload.name or Path(path).name,
+        "url": _build_storage_url(request, path),
+    }
+
+
+def _normalize_mural_request_payload(request, *, include_existing_attachments=False):
+    data = request.data
+    payload = {
+        "titulo": data.get("titulo"),
+        "conteudo_html": data.get("conteudo_html"),
+        "link_url": data.get("link_url"),
+        "modalidade": data.get("modalidade") or MURAL_MODALIDADE_AVISO,
+        "fixado": _coerce_bool(data.get("fixado"), False),
+        "include_all": _coerce_bool(data.get("include_all"), False),
+        "gt_ids": _parse_gt_ids(_extract_request_list(data, "gt_ids")),
+    }
+    raw_attachments = data.get("existing_anexos") if include_existing_attachments else data.get("anexos")
+    payload["anexos"] = _parse_attachment_list(raw_attachments)
+    return payload
+
+
+def _serialize_mural_envio(envio, request):
+    return MuralArquivoEnvioSerializer(envio, context={"request": request}).data
+
+
 def _build_mural_payload(*, payload, autor, gt_ids):
     titulo = (payload.get("titulo") or "").strip()
     conteudo_html = (payload.get("conteudo_html") or "").strip()
@@ -2250,6 +2379,9 @@ def _build_mural_payload(*, payload, autor, gt_ids):
     anexos = payload.get("anexos") or []
     if not isinstance(anexos, list):
         raise ValidationError({"anexos": "Envie uma lista de anexos."})
+    modalidade = payload.get("modalidade") or MURAL_MODALIDADE_AVISO
+    if modalidade not in {MURAL_MODALIDADE_AVISO, MURAL_MODALIDADE_RECEBIMENTO_ARQUIVO}:
+        raise ValidationError({"modalidade": "Modalidade de mural inválida."})
     fixado = bool(payload.get("fixado", False))
     return {
         "mural_id": payload.get("mural_id") or uuid4().hex,
@@ -2257,6 +2389,7 @@ def _build_mural_payload(*, payload, autor, gt_ids):
         "conteudo_html": conteudo_html,
         "link_url": link_url,
         "anexos": anexos,
+        "modalidade": modalidade,
         "fixado": fixado,
         "gt_ids": gt_ids,
         "criado_por": {
@@ -2275,6 +2408,7 @@ def _pick_mural_data(notificacao):
         "conteudo_html": payload.get("conteudo_html") or "",
         "link_url": payload.get("link_url"),
         "anexos": payload.get("anexos") or [],
+        "modalidade": payload.get("modalidade") or MURAL_MODALIDADE_AVISO,
         "fixado": bool(payload.get("fixado", False)),
         "gt_ids": payload.get("gt_ids") or [],
         "criado_por": payload.get("criado_por") or {},
@@ -2288,12 +2422,13 @@ class MuralPostViewSet(viewsets.ViewSet):
 
     def list(self, request):
         cliente_id = _get_request_cliente_id(request)
+        can_manage = CanManageMural().has_permission(request, self)
         base_queryset = Notificacao.objects.filter(
             cliente_id=cliente_id,
             tipo=MURAL_NOTIFICATION_TYPE,
         )
         user = request.user
-        if not CanManageMural().has_permission(request, self):
+        if not can_manage:
             base_queryset = base_queryset.filter(usuario=user)
         notifications = base_queryset.order_by("-updated_at")
 
@@ -2304,6 +2439,20 @@ class MuralPostViewSet(viewsets.ViewSet):
             if not entry or data["updated_at"] > entry["updated_at"]:
                 entries[data["id"]] = data
 
+        envios_por_mural: dict[str, list[dict]] = {}
+        if entries:
+            envios_queryset = MuralArquivoEnvio.objects.filter(
+                cliente_id=cliente_id,
+                mural_id__in=list(entries.keys()),
+            ).select_related("usuario", "gt")
+            if not can_manage:
+                envios_queryset = envios_queryset.filter(usuario=user)
+            for envio in envios_queryset.order_by("-updated_at"):
+                envios_por_mural.setdefault(envio.mural_id, []).append(_serialize_mural_envio(envio, request))
+
+        for mural_id, entry in entries.items():
+            entry["envios_arquivo"] = envios_por_mural.get(mural_id, [])
+
         ordered = sorted(
             entries.values(),
             key=lambda item: (not item.get("fixado", False), item.get("updated_at")),
@@ -2313,7 +2462,13 @@ class MuralPostViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def create(self, request):
-        serializer = MuralPostCreateSerializer(data=request.data)
+        normalized_payload = _normalize_mural_request_payload(request)
+        uploaded_attachments = [
+            _store_mural_attachment(upload, cliente_id=_get_request_cliente_id(request), request=request)
+            for upload in request.FILES.getlist("anexos_uploads")
+        ]
+        normalized_payload["anexos"] = [*normalized_payload.get("anexos", []), *uploaded_attachments]
+        serializer = MuralPostCreateSerializer(data=normalized_payload)
         serializer.is_valid(raise_exception=True)
         if not CanManageMural().has_permission(request, self):
             raise PermissionDenied("Ação não permitida para o seu perfil")
@@ -2360,7 +2515,13 @@ class MuralPostViewSet(viewsets.ViewSet):
         return Response(response.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk=None):
-        serializer = MuralPostCreateSerializer(data=request.data)
+        normalized_payload = _normalize_mural_request_payload(request, include_existing_attachments=True)
+        uploaded_attachments = [
+            _store_mural_attachment(upload, cliente_id=_get_request_cliente_id(request), request=request)
+            for upload in request.FILES.getlist("anexos_uploads")
+        ]
+        normalized_payload["anexos"] = [*normalized_payload.get("anexos", []), *uploaded_attachments]
+        serializer = MuralPostCreateSerializer(data=normalized_payload)
         serializer.is_valid(raise_exception=True)
         if not CanManageMural().has_permission(request, self):
             raise PermissionDenied("Ação não permitida para o seu perfil")
@@ -2390,6 +2551,82 @@ class MuralPostViewSet(viewsets.ViewSet):
         }
         response = MuralPostSerializer(response_data)
         return Response(response.data)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="envios",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def enviar_arquivo(self, request, pk=None):
+        cliente_id = _get_request_cliente_id(request)
+        arquivo = request.FILES.get("arquivo")
+        if not arquivo:
+            raise ValidationError({"arquivo": "Envie um arquivo."})
+
+        notification = (
+            Notificacao.objects.filter(
+                cliente_id=cliente_id,
+                tipo=MURAL_NOTIFICATION_TYPE,
+                payload_json__mural_id=pk,
+                usuario=request.user,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+        if not notification:
+            raise PermissionDenied("Aviso do mural não disponível para o usuário.")
+
+        payload = _pick_mural_data(notification)
+        if payload.get("modalidade") != MURAL_MODALIDADE_RECEBIMENTO_ARQUIVO:
+            raise ValidationError({"arquivo": "Este post do mural não recebe arquivos."})
+
+        permitted_gts = GT.objects.filter(cliente_id=cliente_id, membros=request.user)
+        post_gt_ids = payload.get("gt_ids") or []
+        if post_gt_ids:
+            permitted_gts = permitted_gts.filter(id__in=post_gt_ids)
+        permitted_gt_ids = list(permitted_gts.values_list("id", flat=True))
+        if not permitted_gt_ids:
+            raise PermissionDenied("Você não pertence a um GT autorizado para este mural.")
+
+        requested_gt_id = request.data.get("gt_id")
+        if requested_gt_id:
+            try:
+                selected_gt_id = int(requested_gt_id)
+            except (TypeError, ValueError) as exc:
+                raise ValidationError({"gt_id": "GT inválido."}) from exc
+        elif len(permitted_gt_ids) == 1:
+            selected_gt_id = permitted_gt_ids[0]
+        else:
+            raise ValidationError({"gt_id": "Selecione o GT para o envio do arquivo."})
+
+        if selected_gt_id not in permitted_gt_ids:
+            raise PermissionDenied("GT não autorizado para este envio.")
+
+        gt = permitted_gts.filter(id=selected_gt_id).first()
+        envio = MuralArquivoEnvio.objects.filter(
+            cliente_id=cliente_id,
+            mural_id=pk,
+            usuario=request.user,
+            gt=gt,
+        ).first()
+        old_file_name = envio.arquivo.name if envio and envio.arquivo else None
+        created = envio is None
+        if envio is None:
+            envio = MuralArquivoEnvio(
+                cliente_id=cliente_id,
+                mural_id=pk,
+                usuario=request.user,
+                gt=gt,
+            )
+        envio.nome_original = arquivo.name or ""
+        envio.arquivo = arquivo
+        envio.save()
+        if old_file_name and old_file_name != envio.arquivo.name:
+            default_storage.delete(old_file_name)
+
+        serializer = MuralArquivoEnvioSerializer(envio, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def destroy(self, request, pk=None):
         if not CanManageMural().has_permission(request, self):

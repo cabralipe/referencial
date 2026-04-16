@@ -318,6 +318,7 @@ export interface MuralPost {
   conteudo_html: string;
   link_url?: string | null;
   anexos?: Array<{ titulo?: string; url?: string }>;
+  modalidade?: 'aviso' | 'recebimento_arquivo' | string;
   fixado?: boolean;
   gt_ids?: number[];
   criado_por?: {
@@ -325,6 +326,17 @@ export interface MuralPost {
     nome?: string | null;
     email?: string | null;
   };
+  envios_arquivo?: Array<{
+    id: number;
+    gt_id?: number | null;
+    gt_nome?: string | null;
+    usuario_id?: number | null;
+    usuario_nome?: string | null;
+    arquivo_url: string;
+    nome_arquivo: string;
+    created_at: string;
+    updated_at: string;
+  }>;
   created_at: string;
   updated_at: string;
 }

@@ -17,6 +17,12 @@
   margin-bottom: 0.75rem;
 }
 
+.mural__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .mural__card header span {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
@@ -29,6 +35,11 @@
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.mural__badge--info {
+  background: rgba(14, 116, 144, 0.12);
+  color: #0f766e;
 }
 
 .mural__link {
@@ -56,6 +67,46 @@
   margin-top: 0.75rem;
   font-size: 0.85rem;
   color: var(--color-text-secondary);
+}
+
+.mural__upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.mural__upload-form h3,
+.mural__envios h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.mural__upload-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mural__feedback {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.mural__envios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.mural__envios a {
+  color: var(--color-primary);
 }
 
 .mural__empty {
