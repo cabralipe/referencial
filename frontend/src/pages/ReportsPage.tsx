@@ -671,7 +671,7 @@ export function ReportsPage() {
         ${revisoesFiltradas.map((rev: any) => `
           <div style="margin-bottom: 30px; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px;">
             <div style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-              <strong>Parecer #${rev.id} - Status: ${rev.status}</strong>
+              <strong>Parecer #${rev.id} - Status: ${rev.status} - Emitido em: ${rev.created_at ? new Date(rev.created_at).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
             </div>
             <div>${rev.parecer_html}</div>
           </div>
@@ -699,11 +699,21 @@ export function ReportsPage() {
   const handleCopyProducao = async () => {
     if (!selectedRedator) return;
     const faltam = gtSummary.faltamResponder;
+    const revisoesDetalhadas = revisoesFiltradas
+      .map(
+        (rev) =>
+          `- Parecer #${rev.id} (${rev.status}) - Emitido em: ${rev.created_at ? new Date(
+            rev.created_at
+          ).toLocaleDateString('pt-BR') : 'Sem data'}`
+      )
+      .join('\n');
     const text =
-      `Produção de ${selectedRedator.nome}\n` +
-      `Respostas preenchidas: ${redatorRespostas.length}\n` +
-      `Faltam responder no GT selecionado: ${faltam}\n` +
-      `Pareceres emitidos: ${revisoesFiltradas.length}\n`;
+      `*Produção de ${selectedRedator.nome}*\n\n` +
+      `Estatísticas gerais:\n` +
+      `- Respostas preenchidas: ${redatorRespostas.length}\n` +
+      `- Faltam responder no GT selecionado: ${faltam}\n` +
+      `- Total de pareceres emitidos: ${revisoesFiltradas.length}\n\n` +
+      `Pareceres:\n${revisoesDetalhadas}\n`;
     try {
       await navigator.clipboard.writeText(text);
       setFeedback('Mensagem de produção copiada para o WhatsApp.');
@@ -1220,6 +1230,17 @@ export function ReportsPage() {
                         <div className="reports__feed-meta">
                           <span className="reports__feed-badge reports__feed-badge--parecer">Parecer #{rev.id}</span>
                           <span className="reports__feed-meta-text">Status: {rev.status}</span>
+                          <span className="reports__feed-meta-text">
+                            Emitido em: {rev.created_at ? new Date(rev.created_at).toLocaleDateString('pt-BR') : 'Sem data'}
+                          </span>
+                          <Link
+                            to={`/redator/revisoes/${rev.alvo_tipo}/${rev.alvo_id}`}
+                            target="_blank"
+                            className="reports__feed-open-link"
+                            style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-primary, #0056b3)', textDecoration: 'underline' }}
+                          >
+                            Abrir Parecer
+                          </Link>
                         </div>
                         <div className="reports__feed-body" dangerouslySetInnerHTML={{ __html: rev.parecer_html || '' }} />
                       </div>
