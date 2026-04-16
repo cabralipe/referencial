@@ -2419,12 +2419,18 @@ def _store_mural_attachment(upload, *, cliente_id, request):
 
 def _normalize_mural_request_payload(request, *, include_existing_attachments=False):
     data = request.data
+    raw_ordem = data.get("ordem")
+    try:
+        ordem = int(raw_ordem) if raw_ordem is not None else 0
+    except (TypeError, ValueError):
+        ordem = 0
     payload = {
         "titulo": data.get("titulo"),
         "conteudo_html": data.get("conteudo_html"),
         "link_url": data.get("link_url"),
         "modalidade": data.get("modalidade") or MURAL_MODALIDADE_AVISO,
         "fixado": _coerce_bool(data.get("fixado"), False),
+        "ordem": ordem,
         "include_all": _coerce_bool(data.get("include_all"), False),
         "gt_ids": _parse_gt_ids(_extract_request_list(data, "gt_ids")),
     }
@@ -2453,6 +2459,10 @@ def _build_mural_payload(*, payload, autor, gt_ids):
     if modalidade not in {MURAL_MODALIDADE_AVISO, MURAL_MODALIDADE_RECEBIMENTO_ARQUIVO}:
         raise ValidationError({"modalidade": "Modalidade de mural inválida."})
     fixado = bool(payload.get("fixado", False))
+    try:
+        ordem = int(payload.get("ordem", 0))
+    except (TypeError, ValueError):
+        ordem = 0
     return {
         "mural_id": payload.get("mural_id") or uuid4().hex,
         "titulo": titulo,
@@ -2461,6 +2471,7 @@ def _build_mural_payload(*, payload, autor, gt_ids):
         "anexos": anexos,
         "modalidade": modalidade,
         "fixado": fixado,
+        "ordem": ordem,
         "gt_ids": gt_ids,
         "criado_por": {
             "id": getattr(autor, "id", None),
@@ -2472,6 +2483,10 @@ def _build_mural_payload(*, payload, autor, gt_ids):
 
 def _pick_mural_data(notificacao):
     payload = notificacao.payload_json or {}
+    try:
+        ordem = int(payload.get("ordem", 0))
+    except (TypeError, ValueError):
+        ordem = 0
     return {
         "id": payload.get("mural_id", str(notificacao.id)),
         "titulo": payload.get("titulo") or "",
@@ -2480,6 +2495,7 @@ def _pick_mural_data(notificacao):
         "anexos": payload.get("anexos") or [],
         "modalidade": payload.get("modalidade") or MURAL_MODALIDADE_AVISO,
         "fixado": bool(payload.get("fixado", False)),
+        "ordem": ordem,
         "gt_ids": payload.get("gt_ids") or [],
         "criado_por": payload.get("criado_por") or {},
         "created_at": notificacao.created_at,
@@ -2525,8 +2541,11 @@ class MuralPostViewSet(viewsets.ViewSet):
 
         ordered = sorted(
             entries.values(),
-            key=lambda item: (not item.get("fixado", False), item.get("updated_at")),
-            reverse=True,
+            key=lambda item: (
+                not item.get("fixado", False),  # fixado first
+                item.get("ordem", 0),             # then by ordem ascending
+                -(item.get("updated_at") or timezone.now()).timestamp(),  # then newest first
+            ),
         )
         serializer = MuralPostSerializer(ordered, many=True)
         return Response(serializer.data)
@@ -2601,18 +2620,59 @@ class MuralPostViewSet(viewsets.ViewSet):
             gt_ids = list(
                 GT.objects.filter(cliente_id=cliente_id, id__in=gt_ids).values_list("id", flat=True)
             )
+        include_all = serializer.validated_data.get("include_all", False) or not gt_ids
         payload = _build_mural_payload(
             payload={**serializer.validated_data, "mural_id": pk},
             autor=request.user,
             gt_ids=gt_ids,
         )
         now = timezone.now()
-        queryset = Notificacao.objects.filter(
+
+        # Update all existing notifications with the new payload
+        existing_queryset = Notificacao.objects.filter(
             cliente_id=cliente_id,
             tipo=MURAL_NOTIFICATION_TYPE,
             payload_json__mural_id=pk,
         )
-        queryset.update(payload_json=payload, updated_at=now)
+        existing_queryset.update(payload_json=payload, updated_at=now)
+
+        # Sync recipients: add notifications for users who should now see the post
+        UserModel = get_user_model()
+        target_recipients = UserModel.objects.filter(cliente_id=cliente_id, is_active=True)
+        if not include_all and gt_ids:
+            target_recipients = target_recipients.filter(grupos_trabalho__id__in=gt_ids)
+        target_recipients = target_recipients.distinct()
+
+        existing_user_ids = set(
+            existing_queryset.values_list("usuario_id", flat=True)
+        )
+        target_user_ids = set(target_recipients.values_list("id", flat=True))
+
+        # Create notifications for new recipients
+        new_user_ids = target_user_ids - existing_user_ids
+        if new_user_ids:
+            new_users = UserModel.objects.filter(id__in=new_user_ids)
+            new_notificacoes = [
+                Notificacao(
+                    cliente_id=cliente_id,
+                    usuario=usuario,
+                    tipo=MURAL_NOTIFICATION_TYPE,
+                    payload_json=payload,
+                    created_at=now,
+                    updated_at=now,
+                )
+                for usuario in new_users
+            ]
+            Notificacao.objects.bulk_create(new_notificacoes, ignore_conflicts=True)
+
+        # Remove notifications for users who should no longer see the post
+        if not include_all:
+            removed_user_ids = existing_user_ids - target_user_ids
+            if removed_user_ids:
+                existing_queryset.filter(usuario_id__in=removed_user_ids).update(
+                    is_deleted=True, updated_at=now
+                )
+
         response_data = {
             **payload,
             "id": pk,
@@ -2697,6 +2757,37 @@ class MuralPostViewSet(viewsets.ViewSet):
 
         serializer = MuralArquivoEnvioSerializer(envio, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        if not CanManageMural().has_permission(request, self):
+            raise PermissionDenied("Ação não permitida para o seu perfil")
+        cliente_id = _get_request_cliente_id(request)
+        items = request.data
+        if not isinstance(items, list):
+            raise ValidationError("Envie uma lista de objetos {id, ordem}.")
+
+        now = timezone.now()
+        for item in items:
+            mural_id = item.get("id")
+            try:
+                ordem = int(item.get("ordem", 0))
+            except (TypeError, ValueError):
+                continue
+            if not mural_id:
+                continue
+            notifications = Notificacao.objects.filter(
+                cliente_id=cliente_id,
+                tipo=MURAL_NOTIFICATION_TYPE,
+                payload_json__mural_id=mural_id,
+            )
+            for notificacao in notifications:
+                payload = notificacao.payload_json or {}
+                payload["ordem"] = ordem
+                notificacao.payload_json = payload
+                notificacao.updated_at = now
+                notificacao.save(update_fields=["payload_json", "updated_at"])
+        return Response({"ok": True})
 
     def destroy(self, request, pk=None):
         if not CanManageMural().has_permission(request, self):

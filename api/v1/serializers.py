@@ -1023,6 +1023,7 @@ class MuralPostSerializer(serializers.Serializer):
     anexos = serializers.ListField(child=serializers.DictField(), required=False)
     modalidade = serializers.CharField(required=False)
     fixado = serializers.BooleanField(default=False)
+    ordem = serializers.IntegerField(default=0)
     gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
     criado_por = serializers.DictField(required=False)
     envios_arquivo = serializers.ListField(child=serializers.DictField(), required=False)
@@ -1037,6 +1038,7 @@ class MuralPostCreateSerializer(serializers.Serializer):
     anexos = serializers.ListField(child=serializers.DictField(), required=False)
     modalidade = serializers.ChoiceField(choices=("aviso", "recebimento_arquivo"), required=False)
     fixado = serializers.BooleanField(required=False)
+    ordem = serializers.IntegerField(required=False, default=0)
     include_all = serializers.BooleanField(required=False)
     gt_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
 

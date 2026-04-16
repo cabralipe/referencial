@@ -8,7 +8,7 @@ import { RichTextEditor } from '@/components/common/RichTextEditor';
 import type { MuralPost } from '@/api/types';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useMidias } from '@/hooks/useBiblioteca';
-import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost } from '@/hooks/useMural';
+import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost, useReorderMuralPosts } from '@/hooks/useMural';
 
 import './AdminMuralPage.css';
 
@@ -19,20 +19,20 @@ type MuralEditorPageProps = {
 
 type ReferenciaItem =
   | {
-      kind: 'bloco';
-      id: string;
-      titulo: string;
-      conteudo_html: string;
-      updated_at: string;
-    }
+    kind: 'bloco';
+    id: string;
+    titulo: string;
+    conteudo_html: string;
+    updated_at: string;
+  }
   | {
-      kind: 'midia';
-      id: string;
-      titulo: string;
-      descricao?: string | null;
-      link_url: string;
-      updated_at: string;
-    };
+    kind: 'midia';
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    link_url: string;
+    updated_at: string;
+  };
 
 type MuralModalidade = 'aviso' | 'recebimento_arquivo';
 
@@ -47,6 +47,7 @@ export function AdminMuralPage({
   const createPost = useCreateMuralPost();
   const updatePost = useUpdateMuralPost();
   const deletePost = useDeleteMuralPost();
+  const reorderPosts = useReorderMuralPosts();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [titulo, setTitulo] = useState('');
@@ -62,8 +63,22 @@ export function AdminMuralPage({
   const [fileInputKey, setFileInputKey] = useState(0);
 
   const ordered = useMemo(() => {
-    return (posts ?? []).slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    return (posts ?? []).slice().sort((a, b) => {
+      const ordemA = a.ordem ?? 0;
+      const ordemB = b.ordem ?? 0;
+      if (ordemA !== ordemB) return ordemA - ordemB;
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
   }, [posts]);
+
+  const handleMove = (index: number, direction: 'up' | 'down') => {
+    const list = [...ordered];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
+    const items = list.map((post, i) => ({ id: post.id, ordem: i }));
+    reorderPosts.mutate(items);
+  };
 
   const referencias = useMemo<ReferenciaItem[]>(() => {
     const blocosItems: ReferenciaItem[] = (blocos ?? []).map((bloco) => ({
@@ -258,7 +273,7 @@ export function AdminMuralPage({
       </Card>
 
       <div className="admin-mural__lista">
-        {ordered.map((post) => (
+        {ordered.map((post, index) => (
           <Card key={post.id}>
             <div className="admin-mural__item">
               <header>
@@ -281,9 +296,9 @@ export function AdminMuralPage({
               )}
               {post.anexos && post.anexos.length > 0 && (
                 <div className="admin-mural__attachment-list">
-                  {post.anexos.map((anexo, index) => (
-                    <a key={`${post.id}-anexo-${index}`} href={anexo.url} target="_blank" rel="noreferrer">
-                      {anexo.titulo || `Anexo ${index + 1}`}
+                  {post.anexos.map((anexo, idx) => (
+                    <a key={`${post.id}-anexo-${idx}`} href={anexo.url} target="_blank" rel="noreferrer">
+                      {anexo.titulo || `Anexo ${idx + 1}`}
                     </a>
                   ))}
                 </div>
@@ -312,6 +327,24 @@ export function AdminMuralPage({
                 </div>
               )}
               <div className="admin-mural__item-actions">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMove(index, 'up')}
+                  disabled={index === 0 || reorderPosts.isPending}
+                  title="Mover para cima"
+                >
+                  ▲
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMove(index, 'down')}
+                  disabled={index === ordered.length - 1 || reorderPosts.isPending}
+                  title="Mover para baixo"
+                >
+                  ▼
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleEdit(post)} title="Editar aviso">
                   Editar
                 </Button>

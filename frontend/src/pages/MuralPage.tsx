@@ -13,41 +13,42 @@ import './MuralPage.css';
 
 type MuralItem =
   | {
-      kind: 'mural';
-      id: string;
-      titulo: string;
-      conteudo_html: string;
-      link_url?: string | null;
-      anexos?: Array<{ titulo?: string; url?: string }>;
-      modalidade?: 'aviso' | 'recebimento_arquivo' | string;
-      fixado?: boolean;
-      gt_ids?: number[];
-      criado_por?: { nome?: string | null };
-      envios_arquivo?: Array<{
-        id: number;
-        gt_id?: number | null;
-        gt_nome?: string | null;
-        arquivo_url: string;
-        nome_arquivo: string;
-        updated_at: string;
-      }>;
+    kind: 'mural';
+    id: string;
+    titulo: string;
+    conteudo_html: string;
+    link_url?: string | null;
+    anexos?: Array<{ titulo?: string; url?: string }>;
+    modalidade?: 'aviso' | 'recebimento_arquivo' | string;
+    fixado?: boolean;
+    ordem?: number;
+    gt_ids?: number[];
+    criado_por?: { nome?: string | null };
+    envios_arquivo?: Array<{
+      id: number;
+      gt_id?: number | null;
+      gt_nome?: string | null;
+      arquivo_url: string;
+      nome_arquivo: string;
       updated_at: string;
-    }
+    }>;
+    updated_at: string;
+  }
   | {
-      kind: 'bloco';
-      id: string;
-      titulo: string;
-      conteudo_html: string;
-      updated_at: string;
-    }
+    kind: 'bloco';
+    id: string;
+    titulo: string;
+    conteudo_html: string;
+    updated_at: string;
+  }
   | {
-      kind: 'midia';
-      id: string;
-      titulo: string;
-      descricao?: string | null;
-      link_url: string;
-      updated_at: string;
-    };
+    kind: 'midia';
+    id: string;
+    titulo: string;
+    descricao?: string | null;
+    link_url: string;
+    updated_at: string;
+  };
 
 export function MuralPage() {
   const { user } = useAuth();
@@ -72,6 +73,7 @@ export function MuralPage() {
       anexos: post.anexos,
       modalidade: post.modalidade,
       fixado: post.fixado,
+      ordem: post.ordem,
       gt_ids: post.gt_ids,
       criado_por: post.criado_por,
       envios_arquivo: post.envios_arquivo,
@@ -96,6 +98,10 @@ export function MuralPage() {
       const fixA = a.kind === 'mural' && a.fixado ? 1 : 0;
       const fixB = b.kind === 'mural' && b.fixado ? 1 : 0;
       if (fixA !== fixB) return fixB - fixA;
+      // For mural items, sort by ordem ascending
+      const ordemA = a.kind === 'mural' ? (a.ordem ?? 0) : Infinity;
+      const ordemB = b.kind === 'mural' ? (b.ordem ?? 0) : Infinity;
+      if (ordemA !== ordemB) return ordemA - ordemB;
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
   }, [posts, blocos, midias]);

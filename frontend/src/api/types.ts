@@ -320,6 +320,7 @@ export interface MuralPost {
   anexos?: Array<{ titulo?: string; url?: string }>;
   modalidade?: 'aviso' | 'recebimento_arquivo' | string;
   fixado?: boolean;
+  ordem?: number;
   gt_ids?: number[];
   criado_por?: {
     id?: number | null;
@@ -401,13 +402,13 @@ export interface CursoModulo {
   titulo: string;
   ordem: number;
   tipo:
-    | 'APRESENTACAO'
-    | 'MODULO'
-    | 'BANCO_PLANOS'
-    | 'FORUM_GERAL'
-    | 'BIBLIOTECA'
-    | 'ENTREGA_FINAL'
-    | string;
+  | 'APRESENTACAO'
+  | 'MODULO'
+  | 'BANCO_PLANOS'
+  | 'FORUM_GERAL'
+  | 'BIBLIOTECA'
+  | 'ENTREGA_FINAL'
+  | string;
   itens: CursoItem[];
 }
 

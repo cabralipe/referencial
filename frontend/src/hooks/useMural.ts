@@ -89,3 +89,18 @@ export function useSubmitMuralFile() {
     },
   });
 }
+
+export function useReorderMuralPosts() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: Array<{ id: string; ordem: number }>) => {
+      const response = await client.post('/mural/reorder', { body: items });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mural', 'posts'] });
+    },
+  });
+}
