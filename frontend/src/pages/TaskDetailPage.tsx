@@ -12,7 +12,7 @@ import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
 import { useAiAssist } from '@/hooks/useAiAssist';
-import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
+import { useCreateRevisao, useRevisoes, useSubmitRevisao, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
 import type { Pergunta, Revisao } from '@/api/types';
@@ -150,6 +150,7 @@ export function TaskDetailPage() {
   }, [revisoes]);
   const createRevisao = useCreateRevisao();
   const updateRevisao = useUpdateRevisao();
+  const submitRevisao = useSubmitRevisao();
   const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
   const client = useApiClient();
@@ -404,12 +405,17 @@ export function TaskDetailPage() {
     const respostaId = respostaAtual?.id;
     const revisoesDaResposta =
       revisoes?.filter((rev) => toNumberId(rev.alvo_id) === respostaId) ?? [];
+    const activeParecerRevision =
+      revisoesDaResposta
+        .filter((rev) => rev.status !== 'aprovado' && rev.status !== 'reprovado')
+        .sort((a: Revisao, b: Revisao) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
     const lastParecer =
       revisoesDaResposta
         .filter((rev) => rev.parecer_html)
         .sort((a: Revisao, b: Revisao) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]?.parecer_html ?? '';
     const parecerDraft = respostaId ? (parecerDrafts[respostaId] ?? lastParecer) : '';
     const parecerFeedbackEntry = respostaId ? parecerFeedback[respostaId] : undefined;
+    const isDraftParecer = activeParecerRevision?.status === 'rascunho';
 
     const handleCopy = async () => {
       if (!draft) {
@@ -671,6 +677,7 @@ export function TaskDetailPage() {
                             alvoTipo: 'resposta',
                             alvoId: respostaId,
                             parecerHtml,
+                            status: 'rascunho',
                           });
                         }
 
@@ -701,6 +708,52 @@ export function TaskDetailPage() {
                 <p className={`pergunta-card__feedback pergunta-card__feedback--${parecerFeedbackEntry.type}`}>
                   {parecerFeedbackEntry.message}
                 </p>
+              )}
+              {activeParecerRevision && (
+                <div className="pergunta-card__review-submit">
+                  <div className="pergunta-card__review-submit-status">
+                    <strong>{isDraftParecer ? 'Rascunho' : 'Parecer submetido'}</strong>
+                    <span>
+                      {isDraftParecer
+                        ? 'O parecer está salvo automaticamente como rascunho.'
+                        : `Status atual: ${activeParecerRevision.status}`}
+                    </span>
+                  </div>
+                  {isDraftParecer && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await submitRevisao.mutateAsync({
+                            revisaoId: activeParecerRevision.id,
+                            etag: activeParecerRevision.etag,
+                          });
+                          setParecerFeedback((prev) => ({
+                            ...prev,
+                            [respostaId as number]: {
+                              type: 'success',
+                              message: 'Parecer submetido. A trilha foi movida para em revisão.',
+                            },
+                          }));
+                          queryClient.invalidateQueries({ queryKey: ['tarefa', tarefaId] });
+                          queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+                        } catch (err) {
+                          const message = buildErrorMessage(err, 'Não foi possível submeter o parecer.');
+                          setParecerFeedback((prev) => ({
+                            ...prev,
+                            [respostaId as number]: {
+                              type: 'error',
+                              message,
+                            },
+                          }));
+                        }
+                      }}
+                      disabled={submitRevisao.isPending}
+                    >
+                      {submitRevisao.isPending ? 'Submetendo...' : 'Submeter parecer'}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

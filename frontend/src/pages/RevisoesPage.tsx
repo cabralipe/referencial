@@ -150,7 +150,7 @@ export function RevisoesPage() {
     if (!alvoTipo || !alvoId) {
       return;
     }
-    await createRevisao.mutateAsync({ alvoTipo, alvoId, parecerHtml: parecer || undefined, revisor });
+    await createRevisao.mutateAsync({ alvoTipo, alvoId, parecerHtml: parecer || undefined, revisor, status: 'em_revisao' });
     refetch();
     event.currentTarget.reset();
   };
@@ -566,6 +566,7 @@ export function RevisoesPage() {
                           alvoTipo: 'resposta',
                           alvoId: respostaAtiva.id,
                           parecerHtml: (draftParecerResposta[respostaAtiva.id] ?? '').trim() || undefined,
+                          status: 'em_revisao',
                         });
                         setFeedbackResposta((prev) => ({ ...prev, [respostaAtiva.id]: 'Revisão criada e visível para o cliente.' }));
                         setDraftParecerResposta((prev) => {

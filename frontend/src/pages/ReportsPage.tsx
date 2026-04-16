@@ -131,7 +131,7 @@ export function ReportsPage() {
   const [feedback, setFeedback] = useState('');
 
   const revisoesFiltradas = useMemo(() => {
-    const revisoes = revisoesQuery.data ?? [];
+    const revisoes = (revisoesQuery.data ?? []).filter((rev) => rev.status !== 'rascunho');
     if (!selectedRedator) return revisoes;
     const respostasIds = new Set(respostas.filter((r) => r.autor === selectedRedator.id).map((r) => r.id));
     return revisoes.filter(

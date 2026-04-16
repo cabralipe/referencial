@@ -386,6 +386,48 @@
   cursor: not-allowed;
 }
 
+.pergunta-card__review-submit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.pergunta-card__review-submit-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pergunta-card__review-submit-status strong {
+  font-size: 0.95rem;
+  color: #1e3a8a;
+}
+
+.pergunta-card__review-submit-status span {
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.pergunta-card__review-submit button {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pergunta-card__review-submit button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .pergunta-card__feedback {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;

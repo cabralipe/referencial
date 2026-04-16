@@ -553,6 +553,18 @@ def _atualizar_status_tarefa(tarefa: Tarefa, novo_status: str) -> None:
     tarefa.save(update_fields=["status", "updated_at"])
 
 
+def _get_tarefa_id_from_revisao(revisao: Revisao) -> int | None:
+    if revisao.alvo_tipo == revisao.AlvoTipo.RESPOSTA:
+        resposta = Resposta.objects.select_related("pergunta__tarefa").filter(pk=revisao.alvo_id).first()
+        if resposta and resposta.pergunta_id:
+            return resposta.pergunta.tarefa_id
+    elif revisao.alvo_tipo == revisao.AlvoTipo.TEXTO_UNICO:
+        texto = TextoUnico.objects.filter(pk=revisao.alvo_id).first()
+        if texto:
+            return texto.tarefa_id
+    return None
+
+
 def _build_gemini_prompt(mode: str, text: str, context: str) -> str:
     base = "Responda em portugues do Brasil, com clareza e objetividade."
     if mode == "draft":
@@ -1760,6 +1772,7 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             gt_ids = _get_user_gt_ids(user)
             if not gt_ids:
                 return queryset.none()
+            queryset = queryset.exclude(status=Revisao.Status.RASCUNHO)
             resposta_ids = Resposta.objects.filter(gt_id__in=gt_ids).annotate(
                 id_text=Cast("id", models.CharField()),
             ).values("id_text")
@@ -1804,27 +1817,20 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
             "revisao_id": revisao.id,
             "status": revisao.status,
         })
-        tarefa_id = None
-        if revisao.alvo_tipo == revisao.AlvoTipo.RESPOSTA:
-            resposta = Resposta.objects.select_related("pergunta__tarefa").filter(pk=revisao.alvo_id).first()
-            if resposta and resposta.pergunta_id:
-                tarefa_id = resposta.pergunta.tarefa_id
-        elif revisao.alvo_tipo == revisao.AlvoTipo.TEXTO_UNICO:
-            texto = TextoUnico.objects.filter(pk=revisao.alvo_id).first()
-            if texto:
-                tarefa_id = texto.tarefa_id
-        _registrar_score(
-            self.request,
-            revisao.cliente_id,
-            tarefa_id=tarefa_id,
-            origem_tipo="parecer",
-            origem_id=revisao.id,
-            descricao="Parecer de revisão",
-        )
-        if tarefa_id:
-            tarefa = Tarefa.objects.filter(pk=tarefa_id).first()
-            if tarefa:
-                _atualizar_status_tarefa(tarefa, Tarefa.Status.EM_REVISAO)
+        tarefa_id = _get_tarefa_id_from_revisao(revisao)
+        if revisao.status != Revisao.Status.RASCUNHO:
+            _registrar_score(
+                self.request,
+                revisao.cliente_id,
+                tarefa_id=tarefa_id,
+                origem_tipo="parecer",
+                origem_id=revisao.id,
+                descricao="Parecer de revisão",
+            )
+            if tarefa_id:
+                tarefa = Tarefa.objects.filter(pk=tarefa_id).first()
+                if tarefa:
+                    _atualizar_status_tarefa(tarefa, Tarefa.Status.EM_REVISAO)
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -1888,6 +1894,56 @@ class RevisaoViewSet(FeatureFlagMixin, viewsets.ModelViewSet):
                 "review:status_changed",
                 {"revisao_id": revisao.id, "status": revisao.status},
             )
+
+        response = Response(self.get_serializer(revisao).data)
+        response["ETag"] = revisao.etag
+        return response
+
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit(self, request, pk=None):
+        revisao = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ARTICULADOR, request.user.Role.ADMIN_CLIENTE})
+        _check_etag(request, revisao)
+
+        if revisao.status in {Revisao.Status.APROVADO, Revisao.Status.REPROVADO}:
+            raise ValidationError({"status": "Esta revisão já foi concluída."})
+        if not (revisao.parecer_html or "").strip():
+            raise ValidationError({"parecer_html": "Escreva o parecer antes de submeter."})
+
+        old_status = revisao.status
+        revisao.status = Revisao.Status.EM_REVISAO
+        revisao.save(update_fields=["status", "updated_at"])
+
+        if revisao.status != old_status:
+            interessados = [uid for uid in [revisao.solicitante_id, revisao.revisor_id] if uid]
+            for usuario_id in interessados:
+                criar_notificacao(
+                    cliente_id=revisao.cliente_id,
+                    usuario_id=usuario_id,
+                    tipo="revisao.status",
+                    payload={"revisao_id": revisao.id, "status": revisao.status},
+                )
+            broadcast_stream_event(
+                revisao.alvo_tipo,
+                revisao.alvo_id,
+                "review:status_changed",
+                {"revisao_id": revisao.id, "status": revisao.status},
+            )
+
+        tarefa_id = _get_tarefa_id_from_revisao(revisao)
+        if old_status == Revisao.Status.RASCUNHO:
+            _registrar_score(
+                request,
+                revisao.cliente_id,
+                tarefa_id=tarefa_id,
+                origem_tipo="parecer",
+                origem_id=revisao.id,
+                descricao="Parecer de revisão",
+            )
+        if tarefa_id:
+            tarefa = Tarefa.objects.filter(pk=tarefa_id).first()
+            if tarefa:
+                _atualizar_status_tarefa(tarefa, Tarefa.Status.EM_REVISAO)
 
         response = Response(self.get_serializer(revisao).data)
         response["ETag"] = revisao.etag
@@ -1998,6 +2054,20 @@ class UsuarioLookupViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                 "review:status_changed",
                 {"revisao_id": revisao.id, "status": revisao.status},
             )
+            tarefa_id = _get_tarefa_id_from_revisao(revisao)
+            if old_status == Revisao.Status.RASCUNHO and revisao.status != Revisao.Status.RASCUNHO:
+                _registrar_score(
+                    request,
+                    revisao.cliente_id,
+                    tarefa_id=tarefa_id,
+                    origem_tipo="parecer",
+                    origem_id=revisao.id,
+                    descricao="Parecer de revisão",
+                )
+            if revisao.status == Revisao.Status.EM_REVISAO and tarefa_id:
+                tarefa = Tarefa.objects.filter(pk=tarefa_id).first()
+                if tarefa:
+                    _atualizar_status_tarefa(tarefa, Tarefa.Status.EM_REVISAO)
         response = Response(serializer.data)
         response["ETag"] = revisao.etag
         return response

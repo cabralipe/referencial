@@ -34,6 +34,7 @@ interface CreateRevisaoInput {
   alvoId: number;
   parecerHtml?: string;
   revisor?: number | null;
+  status?: string;
 }
 
 export function useCreateRevisao() {
@@ -41,13 +42,14 @@ export function useCreateRevisao() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ alvoTipo, alvoId, parecerHtml, revisor }: CreateRevisaoInput) => {
+    mutationFn: async ({ alvoTipo, alvoId, parecerHtml, revisor, status }: CreateRevisaoInput) => {
       const response = await client.post<Revisao>('/revisoes', {
         body: {
           alvo_tipo: alvoTipo,
           alvo_id: alvoId,
           parecer_html: parecerHtml,
           revisor,
+          status,
         },
       });
       return response.data;
@@ -101,6 +103,32 @@ export function useDeleteRevisao() {
     mutationFn: async ({ revisaoId }: DeleteRevisaoInput) => {
       await client.del(`/revisoes/${revisaoId}`);
       return revisaoId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['revisoes'] });
+    },
+  });
+}
+
+interface SubmitRevisaoInput {
+  revisaoId: number;
+  etag?: string;
+}
+
+export function useSubmitRevisao() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ revisaoId, etag }: SubmitRevisaoInput) => {
+      if (!etag) {
+        throw new ApiError('É necessário informar o ETag da revisão para submeter.', 428);
+      }
+      const response = await client.post<Revisao>(`/revisoes/${revisaoId}/submit`, {
+        body: {},
+        ifMatch: etag,
+      });
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['revisoes'] });

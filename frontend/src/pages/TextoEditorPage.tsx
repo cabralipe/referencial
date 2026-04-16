@@ -174,6 +174,7 @@ export function TextoEditorPage() {
         alvoTipo: 'resposta',
         alvoId: resposta.id,
         parecerHtml: '',
+        status: 'em_revisao',
       });
       setSubmitFeedback('Enviado para revisão.');
     } catch (error) {
