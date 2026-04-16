@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -12,10 +12,10 @@ import { usePerguntas } from '@/hooks/usePerguntas';
 import { useAvailableGts, type GtOption } from '@/hooks/useAvailableGts';
 import { useRespostas, useUpsertResposta } from '@/hooks/useRespostas';
 import { useAiAssist } from '@/hooks/useAiAssist';
-import { useCreateRevisao, useRevisoes } from '@/hooks/useRevisoes';
+import { useCreateRevisao, useRevisoes, useUpdateRevisao } from '@/hooks/useRevisoes';
 import { usePresence } from '@/hooks/usePresence';
 import { useAuth } from '@/context/AuthContext';
-import type { Pergunta } from '@/api/types';
+import type { Pergunta, Revisao } from '@/api/types';
 
 import './TaskDetailPage.css';
 
@@ -122,6 +122,7 @@ export function TaskDetailPage() {
   const [feedback, setFeedback] = useState<Record<number, FeedbackEntry>>({});
   const [parecerDrafts, setParecerDrafts] = useState<Record<number, string>>({});
   const [parecerFeedback, setParecerFeedback] = useState<Record<number, FeedbackEntry>>({});
+  const parecerTimeouts = useRef<Record<number, NodeJS.Timeout>>({});
 
   const { data: tarefa, isLoading: tarefaLoading, isError: tarefaError, error: tarefaErrorObj } =
     useTarefa(tarefaId);
@@ -138,7 +139,12 @@ export function TaskDetailPage() {
     isFetched: respostasFetched,
   } = useRespostas({ gtId: selectedGtId ?? undefined });
   const { data: revisoes } = useRevisoes({ alvoTipo: 'resposta', pageSize: 500 });
+  const revisoesRef = useRef(revisoes);
+  useEffect(() => {
+    revisoesRef.current = revisoes;
+  }, [revisoes]);
   const createRevisao = useCreateRevisao();
+  const updateRevisao = useUpdateRevisao();
   const { gtOptions } = useAvailableGts();
   const upsertResposta = useUpsertResposta(selectedGtId);
   const client = useApiClient();
@@ -259,7 +265,7 @@ export function TaskDetailPage() {
     if (!selectedGtId || !sortedPerguntas) {
       return sortedPerguntas;
     }
-    
+
     return sortedPerguntas.filter((pergunta) => pergunta.gts.includes(selectedGtId));
   }, [sortedPerguntas, selectedGtId]);
 
@@ -395,7 +401,7 @@ export function TaskDetailPage() {
     const lastParecer =
       revisoesDaResposta
         .filter((rev) => rev.parecer_html)
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]?.parecer_html ?? '';
+        .sort((a: Revisao, b: Revisao) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]?.parecer_html ?? '';
     const parecerDraft = respostaId ? (parecerDrafts[respostaId] ?? lastParecer) : '';
     const parecerFeedbackEntry = respostaId ? parecerFeedback[respostaId] : undefined;
 
@@ -612,67 +618,79 @@ export function TaskDetailPage() {
                 <RichTextEditor
                   value={parecerDraft}
                   onChange={(value) => {
-                    if (!respostaId) {
-                      return;
-                    }
+                    if (!respostaId) return;
+
                     setParecerDrafts((prev) => ({ ...prev, [respostaId]: value }));
+
+                    if (parecerTimeouts.current[respostaId]) {
+                      clearTimeout(parecerTimeouts.current[respostaId]);
+                    }
+
+                    setParecerFeedback((prev) => ({
+                      ...prev,
+                      [respostaId]: { type: 'info', message: 'Salvando parecer...' },
+                    }));
+
+                    parecerTimeouts.current[respostaId] = setTimeout(async () => {
+                      const parecerHtml = ensureHtml(value);
+                      if (!parecerHtml.trim()) {
+                        setParecerFeedback((prev) => {
+                          const next = { ...prev };
+                          delete next[respostaId];
+                          return next;
+                        });
+                        return;
+                      }
+
+                      try {
+                        const currentRevisoes = revisoesRef.current ?? [];
+                        const activeRev = currentRevisoes
+                          .filter(
+                            (r: Revisao) =>
+                              r.alvo_id === respostaId &&
+                              r.alvo_tipo === 'resposta' &&
+                              r.status !== 'aprovado' &&
+                              r.status !== 'reprovado'
+                          )
+                          .sort((a: Revisao, b: Revisao) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+
+                        if (activeRev) {
+                          await updateRevisao.mutateAsync({
+                            revisaoId: activeRev.id,
+                            payload: { parecer_html: parecerHtml },
+                            etag: activeRev.etag,
+                          });
+                        } else {
+                          await createRevisao.mutateAsync({
+                            alvoTipo: 'resposta',
+                            alvoId: respostaId,
+                            parecerHtml,
+                          });
+                        }
+
+                        setParecerFeedback((prev) => ({
+                          ...prev,
+                          [respostaId]: {
+                            type: 'success',
+                            message: 'Parecer salvo automaticamente.',
+                          },
+                        }));
+                      } catch (err) {
+                        const message = buildErrorMessage(err, 'Não foi possível salvar o parecer.');
+                        setParecerFeedback((prev) => ({
+                          ...prev,
+                          [respostaId]: {
+                            type: 'error',
+                            message,
+                          },
+                        }));
+                      }
+                    }, 1000);
                   }}
                   placeholder="Registre aqui o parecer para o cliente."
                   disabled={!respostaId}
                 />
               </label>
-              <div className="pergunta-card__parecer-actions">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!respostaId) {
-                      return;
-                    }
-                    const parecerHtml = ensureHtml(parecerDraft);
-                    if (!parecerHtml.trim()) {
-                      setParecerFeedback((prev) => ({
-                        ...prev,
-                        [respostaId]: {
-                          type: 'error',
-                          message: 'Informe o parecer antes de enviar.',
-                        },
-                      }));
-                      return;
-                    }
-                    try {
-                      await createRevisao.mutateAsync({
-                        alvoTipo: 'resposta',
-                        alvoId: respostaId,
-                        parecerHtml,
-                      });
-                      setParecerFeedback((prev) => ({
-                        ...prev,
-                        [respostaId]: {
-                          type: 'success',
-                          message: 'Parecer enviado e visível para o cliente.',
-                        },
-                      }));
-                      setParecerDrafts((prev) => {
-                        const next = { ...prev };
-                        delete next[respostaId];
-                        return next;
-                      });
-                    } catch (err) {
-                      const message = buildErrorMessage(err, 'Não foi possível enviar o parecer.');
-                      setParecerFeedback((prev) => ({
-                        ...prev,
-                        [respostaId]: {
-                          type: 'error',
-                          message,
-                        },
-                      }));
-                    }
-                  }}
-                  disabled={!respostaId || createRevisao.isPending}
-                >
-                  {createRevisao.isPending ? 'Enviando parecer...' : 'Enviar parecer'}
-                </button>
-              </div>
               {parecerFeedbackEntry && (
                 <p className={`pergunta-card__feedback pergunta-card__feedback--${parecerFeedbackEntry.type}`}>
                   {parecerFeedbackEntry.message}

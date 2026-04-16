@@ -133,8 +133,13 @@ export function ReportsPage() {
   const revisoesFiltradas = useMemo(() => {
     const revisoes = revisoesQuery.data ?? [];
     if (!selectedRedator) return revisoes;
-    return revisoes.filter((rev) => rev.revisor === selectedRedator.id);
-  }, [revisoesQuery.data, selectedRedator]);
+    const respostasIds = new Set(respostas.filter((r) => r.autor === selectedRedator.id).map((r) => r.id));
+    return revisoes.filter(
+      (rev) =>
+        rev.revisor === selectedRedator.id ||
+        (rev.alvo_tipo === 'resposta' && respostasIds.has(rev.alvo_id))
+    );
+  }, [revisoesQuery.data, selectedRedator, respostas]);
 
   const redatorRespostas = useMemo(() => {
     if (!selectedRedator) return [];
