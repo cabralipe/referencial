@@ -83,6 +83,7 @@ export function AdminMuralPage({
   const [orderedPosts, setOrderedPosts] = useState<MuralPost[]>([]);
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [selectedGtFilter, setSelectedGtFilter] = useState<'all' | string>('all');
   const dragClientYRef = useRef<number | null>(null);
   const dragScrollFrameRef = useRef<number | null>(null);
 
@@ -152,6 +153,20 @@ export function AdminMuralPage({
     );
   }, [blocos, midias]);
 
+  const isFilteringByGt = selectedGtFilter !== 'all';
+
+  const visiblePosts = useMemo(() => {
+    if (!isFilteringByGt) {
+      return orderedPosts;
+    }
+
+    const selectedGtId = Number(selectedGtFilter);
+    return orderedPosts.filter((post) => {
+      const postGtIds = post.gt_ids ?? [];
+      return postGtIds.length === 0 || postGtIds.includes(selectedGtId);
+    });
+  }, [isFilteringByGt, orderedPosts, selectedGtFilter]);
+
   const resetForm = () => {
     setEditingId(null);
     setTitulo('');
@@ -201,6 +216,16 @@ export function AdminMuralPage({
     }
   };
 
+  const matchesSelectedGtFilter = (post: MuralPost) => {
+    if (!isFilteringByGt) {
+      return true;
+    }
+
+    const selectedGtId = Number(selectedGtFilter);
+    const postGtIds = post.gt_ids ?? [];
+    return postGtIds.length === 0 || postGtIds.includes(selectedGtId);
+  };
+
   const handleDragStart = (event: DragEvent<HTMLElement>, post: MuralPost) => {
     if (reorderPosts.isPending) {
       event.preventDefault();
@@ -247,9 +272,37 @@ export function AdminMuralPage({
       return;
     }
 
-    const nextPosts = [...previousPosts];
-    const [movedPost] = nextPosts.splice(sourceIndex, 1);
-    nextPosts.splice(targetIndex, 0, movedPost);
+    let nextPosts: MuralPost[];
+
+    if (isFilteringByGt) {
+      const visiblePreviousPosts = previousPosts.filter(matchesSelectedGtFilter);
+      const sourceVisibleIndex = visiblePreviousPosts.findIndex((post) => post.id === draggedPostId);
+      const targetVisibleIndex = visiblePreviousPosts.findIndex((post) => post.id === targetPost.id);
+
+      if (sourceVisibleIndex < 0 || targetVisibleIndex < 0) {
+        setDraggedPostId(null);
+        setDropTargetId(null);
+        return;
+      }
+
+      const visibleNextPosts = [...visiblePreviousPosts];
+      const [movedVisiblePost] = visibleNextPosts.splice(sourceVisibleIndex, 1);
+      visibleNextPosts.splice(targetVisibleIndex, 0, movedVisiblePost);
+
+      let visibleCursor = 0;
+      nextPosts = previousPosts.map((post) => {
+        if (!matchesSelectedGtFilter(post)) {
+          return post;
+        }
+        const replacement = visibleNextPosts[visibleCursor];
+        visibleCursor += 1;
+        return replacement;
+      });
+    } else {
+      nextPosts = [...previousPosts];
+      const [movedPost] = nextPosts.splice(sourceIndex, 1);
+      nextPosts.splice(targetIndex, 0, movedPost);
+    }
 
     setDraggedPostId(null);
     setDropTargetId(null);
@@ -398,13 +451,30 @@ export function AdminMuralPage({
       <div className="admin-mural__list-header">
         <div>
           <h2>Ordem do mural</h2>
-          <p>Arraste os avisos para reordenar. Fixados permanecem acima dos demais.</p>
+          <p>
+            {isFilteringByGt
+              ? 'Lista filtrada por GT. O drag and drop reordena apenas os avisos visiveis neste filtro.'
+              : 'Arraste os avisos para reordenar. Fixados permanecem acima dos demais.'}
+          </p>
         </div>
-        {reorderPosts.isPending && <span className="admin-mural__saving">Salvando ordem...</span>}
+        <div className="admin-mural__list-tools">
+          <label className="admin-mural__filter">
+            <span>Filtrar por GT</span>
+            <select value={selectedGtFilter} onChange={(event) => setSelectedGtFilter(event.target.value)}>
+              <option value="all">Todos os GTs</option>
+              {gtOptions.map((gt) => (
+                <option key={gt.id} value={String(gt.id)}>
+                  {gt.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          {reorderPosts.isPending && <span className="admin-mural__saving">Salvando ordem...</span>}
+        </div>
       </div>
 
       <div className="admin-mural__lista">
-        {orderedPosts.map((post) => (
+        {visiblePosts.map((post) => (
           <Card key={post.id}>
             <article
               className={[
@@ -426,7 +496,10 @@ export function AdminMuralPage({
                   <span>{new Date(post.updated_at).toLocaleString('pt-BR')}</span>
                 </div>
                 <div className="admin-mural__meta">
-                  <span className="admin-mural__drag-handle" title="Arraste para reordenar">
+                  <span
+                    className="admin-mural__drag-handle"
+                    title={isFilteringByGt ? 'Arraste para reordenar dentro do GT filtrado' : 'Arraste para reordenar'}
+                  >
                     Arrastar
                   </span>
                   {post.modalidade === 'recebimento_arquivo' && (
@@ -490,6 +563,13 @@ export function AdminMuralPage({
             </article>
           </Card>
         ))}
+        {visiblePosts.length === 0 && (
+          <Card>
+            <div className="admin-mural__empty-state">
+              Nenhum aviso encontrado para o GT selecionado.
+            </div>
+          </Card>
+        )}
       </div>
 
       <section className="admin-mural__references">

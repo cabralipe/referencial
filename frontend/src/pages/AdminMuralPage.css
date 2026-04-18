@@ -105,6 +105,32 @@
   gap: var(--space-4);
 }
 
+.admin-mural__list-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-mural__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 240px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.admin-mural__filter span {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.admin-mural__filter select {
+  width: 100%;
+}
+
 .admin-mural__list-header h2 {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -221,6 +247,16 @@
   margin-top: auto;
   padding-top: var(--space-4);
   border-top: 1px dashed var(--color-border);
+}
+
+.admin-mural__empty-state {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .admin-mural__attachment-list {
@@ -353,6 +389,11 @@
   .admin-mural__list-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-mural__list-tools,
+  .admin-mural__filter {
+    width: 100%;
   }
 
   .admin-mural__gts {
