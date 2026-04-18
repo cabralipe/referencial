@@ -21,6 +21,7 @@ type MuralItem =
     anexos?: Array<{ titulo?: string; url?: string }>;
     modalidade?: 'aviso' | 'recebimento_arquivo' | string;
     fixado?: boolean;
+    position?: number;
     ordem?: number;
     gt_ids?: number[];
     criado_por?: { nome?: string | null };
@@ -73,6 +74,7 @@ export function MuralPage() {
       anexos: post.anexos,
       modalidade: post.modalidade,
       fixado: post.fixado,
+      position: post.position,
       ordem: post.ordem,
       gt_ids: post.gt_ids,
       criado_por: post.criado_por,
@@ -98,10 +100,12 @@ export function MuralPage() {
       const fixA = a.kind === 'mural' && a.fixado ? 1 : 0;
       const fixB = b.kind === 'mural' && b.fixado ? 1 : 0;
       if (fixA !== fixB) return fixB - fixA;
-      // For mural items, sort by ordem ascending
-      const ordemA = a.kind === 'mural' ? (a.ordem ?? 0) : Infinity;
-      const ordemB = b.kind === 'mural' ? (b.ordem ?? 0) : Infinity;
-      if (ordemA !== ordemB) return ordemA - ordemB;
+      const positionA = a.kind === 'mural' ? (a.position ?? a.ordem ?? 0) : Infinity;
+      const positionB = b.kind === 'mural' ? (b.position ?? b.ordem ?? 0) : Infinity;
+      if (positionA !== positionB) return positionA - positionB;
+      if (a.kind === 'mural' && b.kind === 'mural') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
   }, [posts, blocos, midias]);

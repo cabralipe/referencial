@@ -95,7 +95,7 @@ export function useReorderMuralPosts() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (items: Array<{ id: string; ordem: number }>) => {
+    mutationFn: async (items: Array<{ id: string; position: number }>) => {
       const response = await client.post('/mural/reorder', { body: items });
       return response.data;
     },
