@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
@@ -35,6 +35,9 @@ type ReferenciaItem =
   };
 
 type MuralModalidade = 'aviso' | 'recebimento_arquivo';
+
+const DRAG_SCROLL_EDGE_PX = 120;
+const DRAG_SCROLL_STEP_PX = 18;
 
 function getPostPosition(post: MuralPost) {
   return post.position ?? post.ordem ?? 0;
@@ -80,10 +83,53 @@ export function AdminMuralPage({
   const [orderedPosts, setOrderedPosts] = useState<MuralPost[]>([]);
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const dragClientYRef = useRef<number | null>(null);
+  const dragScrollFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     setOrderedPosts(sortMuralPosts(posts ?? []));
   }, [posts]);
+
+  useEffect(() => {
+    if (!draggedPostId) {
+      dragClientYRef.current = null;
+      if (dragScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragScrollFrameRef.current);
+        dragScrollFrameRef.current = null;
+      }
+      return;
+    }
+
+    const updatePointerPosition = (event: globalThis.DragEvent) => {
+      dragClientYRef.current = event.clientY;
+    };
+
+    const tick = () => {
+      const clientY = dragClientYRef.current;
+      if (clientY !== null) {
+        const viewportHeight = window.innerHeight;
+        if (clientY < DRAG_SCROLL_EDGE_PX) {
+          const intensity = (DRAG_SCROLL_EDGE_PX - clientY) / DRAG_SCROLL_EDGE_PX;
+          window.scrollBy({ top: -Math.max(8, Math.round(DRAG_SCROLL_STEP_PX * intensity)) });
+        } else if (viewportHeight - clientY < DRAG_SCROLL_EDGE_PX) {
+          const intensity = (DRAG_SCROLL_EDGE_PX - (viewportHeight - clientY)) / DRAG_SCROLL_EDGE_PX;
+          window.scrollBy({ top: Math.max(8, Math.round(DRAG_SCROLL_STEP_PX * intensity)) });
+        }
+      }
+      dragScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    document.addEventListener('dragover', updatePointerPosition);
+    dragScrollFrameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener('dragover', updatePointerPosition);
+      if (dragScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragScrollFrameRef.current);
+        dragScrollFrameRef.current = null;
+      }
+    };
+  }, [draggedPostId]);
 
   const referencias = useMemo<ReferenciaItem[]>(() => {
     const blocosItems: ReferenciaItem[] = (blocos ?? []).map((bloco) => ({
@@ -162,6 +208,7 @@ export function AdminMuralPage({
     }
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', post.id);
+    dragClientYRef.current = event.clientY;
     setDraggedPostId(post.id);
     setDropTargetId(post.id);
   };
@@ -210,6 +257,7 @@ export function AdminMuralPage({
   };
 
   const handleDragEnd = () => {
+    dragClientYRef.current = null;
     setDraggedPostId(null);
     setDropTargetId(null);
   };
