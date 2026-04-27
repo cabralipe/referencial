@@ -68,6 +68,11 @@ interface AnalyticsAdminDashboardData {
   };
 }
 
+const toNumberId = (value: number | string | null | undefined) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 export function ReportsPage() {
   const { user } = useAuth();
   const client = useApiClient();
@@ -135,9 +140,13 @@ export function ReportsPage() {
     if (!selectedRedator) return revisoes;
     const respostasIds = new Set(respostas.filter((r) => r.autor === selectedRedator.id).map((r) => r.id));
     return revisoes.filter(
-      (rev) =>
-        rev.revisor === selectedRedator.id ||
-        (rev.alvo_tipo === 'resposta' && respostasIds.has(rev.alvo_id))
+      (rev) => {
+        const alvoId = toNumberId(rev.alvo_id);
+        return (
+          rev.revisor === selectedRedator.id ||
+          (rev.alvo_tipo === 'resposta' && alvoId !== null && respostasIds.has(alvoId))
+        );
+      }
     );
   }, [revisoesQuery.data, selectedRedator, respostas]);
 
