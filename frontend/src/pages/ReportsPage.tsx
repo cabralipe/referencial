@@ -81,14 +81,22 @@ interface ReviewDecisionRecord {
 }
 
 interface ParecerEmitido {
-  decision: ReviewDecisionRecord;
-  revisao: Revisao | null;
+  id: string;
+  createdAt: string;
+  tipoLabel: string;
+  statusLabel?: string | null;
+  html: string;
+  link?: string;
 }
 
 const toNumberId = (value: number | string | null | undefined) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
+
+const stripHtmlText = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const hasMeaningfulHtml = (value?: string | null) => Boolean(value && stripHtmlText(value));
 
 const escapeHtml = (value: string) =>
   value
@@ -211,15 +219,42 @@ export function ReportsPage() {
 
   const pareceresEmitidos = useMemo<ParecerEmitido[]>(() => {
     if (!selectedRedator) return [];
-    const revisoesByTarget = new Map(
-      revisoesAtivas.map((rev) => [`${rev.alvo_tipo}:${String(rev.alvo_id)}`, rev] as const),
-    );
-    return (reviewDecisionsQuery.data ?? [])
-      .filter((decision) => decision.actor === selectedRedator.id && decision.decision_type !== 'in_progress')
-      .map((decision) => ({
-        decision,
-        revisao: revisoesByTarget.get(`${decision.target_type}:${String(decision.target_id)}`) ?? null,
+    const revisoesByTarget = new Map(revisoesAtivas.map((rev) => [`${rev.alvo_tipo}:${String(rev.alvo_id)}`, rev] as const));
+    const pareceresDeRevisao = revisoesAtivas
+      .filter(
+        (rev) =>
+          (rev.solicitante === selectedRedator.id || rev.revisor === selectedRedator.id) &&
+          hasMeaningfulHtml(rev.parecer_html),
+      )
+      .map((rev) => ({
+        id: `revisao-${rev.id}`,
+        createdAt: rev.created_at,
+        tipoLabel: 'Parecer submetido',
+        statusLabel: rev.status,
+        html: rev.parecer_html || '<p>Sem conteudo registrado.</p>',
+        link: `/redator/revisoes/${rev.alvo_tipo}/${rev.alvo_id}`,
       }));
+    const pareceresDeRevisor = (reviewDecisionsQuery.data ?? [])
+      .filter(
+        (decision) =>
+          decision.actor === selectedRedator.id &&
+          decision.actor_role === 'reviewer' &&
+          decision.decision_type !== 'in_progress',
+      )
+      .map((decision) => {
+        const revisao = revisoesByTarget.get(`${decision.target_type}:${String(decision.target_id)}`) ?? null;
+        return {
+          id: `decision-${decision.id}`,
+          createdAt: decision.created_at,
+          tipoLabel: getDecisionTypeLabel(decision.decision_type),
+          statusLabel: revisao?.status,
+          html: buildDecisionHtml(decision),
+          link: revisao ? `/redator/revisoes/${revisao.alvo_tipo}/${revisao.alvo_id}` : undefined,
+        };
+      });
+    return [...pareceresDeRevisao, ...pareceresDeRevisor].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
   }, [selectedRedator, reviewDecisionsQuery.data, revisoesAtivas]);
 
   const summary = useMemo(() => {
@@ -749,12 +784,12 @@ export function ReportsPage() {
           </div>
         `).join('')}
         <h2>Pareceres</h2>
-        ${pareceresEmitidos.map(({ decision, revisao }: ParecerEmitido) => `
+        ${pareceresEmitidos.map((parecer: ParecerEmitido) => `
           <div style="margin-bottom: 30px; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px;">
             <div style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-              <strong>Parecer #${decision.id} - Tipo: ${getDecisionTypeLabel(decision.decision_type)}${revisao ? ` - Status: ${revisao.status}` : ''} - Emitido em: ${decision.created_at ? new Date(decision.created_at).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
+              <strong>${parecer.tipoLabel}${parecer.statusLabel ? ` - Status: ${parecer.statusLabel}` : ''} - Emitido em: ${parecer.createdAt ? new Date(parecer.createdAt).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
             </div>
-            <div>${buildDecisionHtml(decision)}</div>
+            <div>${parecer.html}</div>
           </div>
         `).join('')}
       </div>
@@ -782,9 +817,9 @@ export function ReportsPage() {
     const faltam = gtSummary.faltamResponder;
     const revisoesDetalhadas = pareceresEmitidos
       .map(
-        ({ decision, revisao }) =>
-          `- Parecer #${decision.id} (${getDecisionTypeLabel(decision.decision_type)}${revisao ? ` | ${revisao.status}` : ''}) - Emitido em: ${decision.created_at ? new Date(
-            decision.created_at
+        (parecer) =>
+          `- ${parecer.tipoLabel}${parecer.statusLabel ? ` (${parecer.statusLabel})` : ''} - Emitido em: ${parecer.createdAt ? new Date(
+            parecer.createdAt
           ).toLocaleDateString('pt-BR') : 'Sem data'}`
       )
       .join('\n');
@@ -1306,18 +1341,17 @@ export function ReportsPage() {
                   {pareceresEmitidos.length === 0 ? (
                     <p className="reports__empty-feed">Nenhum parecer emitido.</p>
                   ) : (
-                    pareceresEmitidos.map(({ decision, revisao }) => (
-                      <div key={`decision-${decision.id}`} className="reports__feed-item">
+                    pareceresEmitidos.map((parecer) => (
+                      <div key={parecer.id} className="reports__feed-item">
                         <div className="reports__feed-meta">
-                          <span className="reports__feed-badge reports__feed-badge--parecer">Parecer #{decision.id}</span>
-                          <span className="reports__feed-meta-text">Tipo: {getDecisionTypeLabel(decision.decision_type)}</span>
-                          {revisao && <span className="reports__feed-meta-text">Status: {revisao.status}</span>}
+                          <span className="reports__feed-badge reports__feed-badge--parecer">{parecer.tipoLabel}</span>
+                          {parecer.statusLabel && <span className="reports__feed-meta-text">Status: {parecer.statusLabel}</span>}
                           <span className="reports__feed-meta-text">
-                            Emitido em: {decision.created_at ? new Date(decision.created_at).toLocaleDateString('pt-BR') : 'Sem data'}
+                            Emitido em: {parecer.createdAt ? new Date(parecer.createdAt).toLocaleDateString('pt-BR') : 'Sem data'}
                           </span>
-                          {revisao && (
+                          {parecer.link && (
                             <Link
-                              to={`/redator/revisoes/${revisao.alvo_tipo}/${revisao.alvo_id}`}
+                              to={parecer.link}
                               target="_blank"
                               className="reports__feed-open-link"
                               style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-primary, #0056b3)', textDecoration: 'underline' }}
@@ -1326,7 +1360,7 @@ export function ReportsPage() {
                             </Link>
                           )}
                         </div>
-                        <div className="reports__feed-body" dangerouslySetInnerHTML={{ __html: buildDecisionHtml(decision) }} />
+                        <div className="reports__feed-body" dangerouslySetInnerHTML={{ __html: parecer.html }} />
                       </div>
                     ))
                   )}
