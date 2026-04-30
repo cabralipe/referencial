@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/common/Card';
@@ -36,6 +36,25 @@ type ReferenciaItem =
 
 type MuralModalidade = 'aviso' | 'recebimento_arquivo';
 
+const DRAG_SCROLL_EDGE_PX = 120;
+const DRAG_SCROLL_STEP_PX = 18;
+
+function getPostPosition(post: MuralPost) {
+  return post.position ?? post.ordem ?? 0;
+}
+
+function sortMuralPosts(posts: MuralPost[]) {
+  return posts.slice().sort((a, b) => {
+    const fixA = a.fixado ? 1 : 0;
+    const fixB = b.fixado ? 1 : 0;
+    if (fixA !== fixB) return fixB - fixA;
+    const positionA = getPostPosition(a);
+    const positionB = getPostPosition(b);
+    if (positionA !== positionB) return positionA - positionB;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 export function AdminMuralPage({
   title = 'Admin · Mural',
   description = 'Publique avisos para os membros do GT e acompanhe os comunicados.',
@@ -61,24 +80,57 @@ export function AdminMuralPage({
   const [novosAnexos, setNovosAnexos] = useState<File[]>([]);
   const [anexosExistentes, setAnexosExistentes] = useState<Array<{ titulo?: string; url?: string }>>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [orderedPosts, setOrderedPosts] = useState<MuralPost[]>([]);
+  const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [selectedGtFilter, setSelectedGtFilter] = useState<'all' | string>('all');
+  const dragClientYRef = useRef<number | null>(null);
+  const dragScrollFrameRef = useRef<number | null>(null);
 
-  const ordered = useMemo(() => {
-    return (posts ?? []).slice().sort((a, b) => {
-      const ordemA = a.ordem ?? 0;
-      const ordemB = b.ordem ?? 0;
-      if (ordemA !== ordemB) return ordemA - ordemB;
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-    });
+  useEffect(() => {
+    setOrderedPosts(sortMuralPosts(posts ?? []));
   }, [posts]);
 
-  const handleMove = (index: number, direction: 'up' | 'down') => {
-    const list = [...ordered];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= list.length) return;
-    [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
-    const items = list.map((post, i) => ({ id: post.id, ordem: i }));
-    reorderPosts.mutate(items);
-  };
+  useEffect(() => {
+    if (!draggedPostId) {
+      dragClientYRef.current = null;
+      if (dragScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragScrollFrameRef.current);
+        dragScrollFrameRef.current = null;
+      }
+      return;
+    }
+
+    const updatePointerPosition = (event: globalThis.DragEvent) => {
+      dragClientYRef.current = event.clientY;
+    };
+
+    const tick = () => {
+      const clientY = dragClientYRef.current;
+      if (clientY !== null) {
+        const viewportHeight = window.innerHeight;
+        if (clientY < DRAG_SCROLL_EDGE_PX) {
+          const intensity = (DRAG_SCROLL_EDGE_PX - clientY) / DRAG_SCROLL_EDGE_PX;
+          window.scrollBy({ top: -Math.max(8, Math.round(DRAG_SCROLL_STEP_PX * intensity)) });
+        } else if (viewportHeight - clientY < DRAG_SCROLL_EDGE_PX) {
+          const intensity = (DRAG_SCROLL_EDGE_PX - (viewportHeight - clientY)) / DRAG_SCROLL_EDGE_PX;
+          window.scrollBy({ top: Math.max(8, Math.round(DRAG_SCROLL_STEP_PX * intensity)) });
+        }
+      }
+      dragScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    document.addEventListener('dragover', updatePointerPosition);
+    dragScrollFrameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener('dragover', updatePointerPosition);
+      if (dragScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragScrollFrameRef.current);
+        dragScrollFrameRef.current = null;
+      }
+    };
+  }, [draggedPostId]);
 
   const referencias = useMemo<ReferenciaItem[]>(() => {
     const blocosItems: ReferenciaItem[] = (blocos ?? []).map((bloco) => ({
@@ -100,6 +152,20 @@ export function AdminMuralPage({
       (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     );
   }, [blocos, midias]);
+
+  const isFilteringByGt = selectedGtFilter !== 'all';
+
+  const visiblePosts = useMemo(() => {
+    if (!isFilteringByGt) {
+      return orderedPosts;
+    }
+
+    const selectedGtId = Number(selectedGtFilter);
+    return orderedPosts.filter((post) => {
+      const postGtIds = post.gt_ids ?? [];
+      return postGtIds.length === 0 || postGtIds.includes(selectedGtId);
+    });
+  }, [isFilteringByGt, orderedPosts, selectedGtFilter]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -139,6 +205,116 @@ export function AdminMuralPage({
     return formData;
   };
 
+  const persistOrder = async (nextPosts: MuralPost[], previousPosts: MuralPost[]) => {
+    setOrderedPosts(nextPosts);
+    setFeedback('');
+    try {
+      await reorderPosts.mutateAsync(nextPosts.map((post, index) => ({ id: post.id, position: index })));
+    } catch (error) {
+      setOrderedPosts(previousPosts);
+      setFeedback(error instanceof Error ? error.message : 'Nao foi possivel salvar a nova ordem do mural.');
+    }
+  };
+
+  const matchesSelectedGtFilter = (post: MuralPost) => {
+    if (!isFilteringByGt) {
+      return true;
+    }
+
+    const selectedGtId = Number(selectedGtFilter);
+    const postGtIds = post.gt_ids ?? [];
+    return postGtIds.length === 0 || postGtIds.includes(selectedGtId);
+  };
+
+  const handleDragStart = (event: DragEvent<HTMLElement>, post: MuralPost) => {
+    if (reorderPosts.isPending) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', post.id);
+    dragClientYRef.current = event.clientY;
+    setDraggedPostId(post.id);
+    setDropTargetId(post.id);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLElement>, post: MuralPost) => {
+    if (!draggedPostId || draggedPostId === post.id) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDropTargetId(post.id);
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLElement>, targetPost: MuralPost) => {
+    event.preventDefault();
+    if (!draggedPostId || draggedPostId === targetPost.id) {
+      setDraggedPostId(null);
+      setDropTargetId(null);
+      return;
+    }
+
+    const previousPosts = [...orderedPosts];
+    const sourceIndex = previousPosts.findIndex((post) => post.id === draggedPostId);
+    const targetIndex = previousPosts.findIndex((post) => post.id === targetPost.id);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      setDraggedPostId(null);
+      setDropTargetId(null);
+      return;
+    }
+
+    const sourcePost = previousPosts[sourceIndex];
+    if (Boolean(sourcePost.fixado) !== Boolean(targetPost.fixado)) {
+      setFeedback('Avisos fixados so podem ser reordenados entre fixados. Os demais ficam abaixo.');
+      setDraggedPostId(null);
+      setDropTargetId(null);
+      return;
+    }
+
+    let nextPosts: MuralPost[];
+
+    if (isFilteringByGt) {
+      const visiblePreviousPosts = previousPosts.filter(matchesSelectedGtFilter);
+      const sourceVisibleIndex = visiblePreviousPosts.findIndex((post) => post.id === draggedPostId);
+      const targetVisibleIndex = visiblePreviousPosts.findIndex((post) => post.id === targetPost.id);
+
+      if (sourceVisibleIndex < 0 || targetVisibleIndex < 0) {
+        setDraggedPostId(null);
+        setDropTargetId(null);
+        return;
+      }
+
+      const visibleNextPosts = [...visiblePreviousPosts];
+      const [movedVisiblePost] = visibleNextPosts.splice(sourceVisibleIndex, 1);
+      visibleNextPosts.splice(targetVisibleIndex, 0, movedVisiblePost);
+
+      let visibleCursor = 0;
+      nextPosts = previousPosts.map((post) => {
+        if (!matchesSelectedGtFilter(post)) {
+          return post;
+        }
+        const replacement = visibleNextPosts[visibleCursor];
+        visibleCursor += 1;
+        return replacement;
+      });
+    } else {
+      nextPosts = [...previousPosts];
+      const [movedPost] = nextPosts.splice(sourceIndex, 1);
+      nextPosts.splice(targetIndex, 0, movedPost);
+    }
+
+    setDraggedPostId(null);
+    setDropTargetId(null);
+    await persistOrder(nextPosts, previousPosts);
+  };
+
+  const handleDragEnd = () => {
+    dragClientYRef.current = null;
+    setDraggedPostId(null);
+    setDropTargetId(null);
+  };
+
   const handleEdit = (post: MuralPost) => {
     setEditingId(post.id);
     setTitulo(post.titulo);
@@ -158,7 +334,7 @@ export function AdminMuralPage({
     event.preventDefault();
     setFeedback('');
     if (!conteudo.trim()) {
-      setFeedback('Informe o conteúdo do aviso.');
+      setFeedback('Informe o conteudo do aviso.');
       return;
     }
     try {
@@ -170,7 +346,7 @@ export function AdminMuralPage({
       }
       resetForm();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar o aviso.');
+      setFeedback(error instanceof Error ? error.message : 'Nao foi possivel salvar o aviso.');
     }
   };
 
@@ -186,7 +362,7 @@ export function AdminMuralPage({
         <form className="admin-mural__form" onSubmit={handleSubmit}>
           <h2>{editingId ? 'Editar aviso' : 'Novo aviso'}</h2>
           <label>
-            <span>Título</span>
+            <span>Titulo</span>
             <input value={titulo} onChange={(event) => setTitulo(event.target.value)} required />
           </label>
           <label>
@@ -197,7 +373,7 @@ export function AdminMuralPage({
             </select>
           </label>
           <label className="full">
-            <span>Conteúdo</span>
+            <span>Conteudo</span>
             <RichTextEditor value={conteudo} onChange={setConteudo} placeholder="Escreva o aviso." />
           </label>
           <label>
@@ -272,16 +448,60 @@ export function AdminMuralPage({
         </form>
       </Card>
 
+      <div className="admin-mural__list-header">
+        <div>
+          <h2>Ordem do mural</h2>
+          <p>
+            {isFilteringByGt
+              ? 'Lista filtrada por GT. O drag and drop reordena apenas os avisos visiveis neste filtro.'
+              : 'Arraste os avisos para reordenar. Fixados permanecem acima dos demais.'}
+          </p>
+        </div>
+        <div className="admin-mural__list-tools">
+          <label className="admin-mural__filter">
+            <span>Filtrar por GT</span>
+            <select value={selectedGtFilter} onChange={(event) => setSelectedGtFilter(event.target.value)}>
+              <option value="all">Todos os GTs</option>
+              {gtOptions.map((gt) => (
+                <option key={gt.id} value={String(gt.id)}>
+                  {gt.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          {reorderPosts.isPending && <span className="admin-mural__saving">Salvando ordem...</span>}
+        </div>
+      </div>
+
       <div className="admin-mural__lista">
-        {ordered.map((post, index) => (
+        {visiblePosts.map((post) => (
           <Card key={post.id}>
-            <div className="admin-mural__item">
+            <article
+              className={[
+                'admin-mural__item',
+                draggedPostId === post.id ? 'admin-mural__item--dragging' : '',
+                dropTargetId === post.id && draggedPostId !== post.id ? 'admin-mural__item--drop-target' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              draggable={!reorderPosts.isPending}
+              onDragStart={(event) => handleDragStart(event, post)}
+              onDragOver={(event) => handleDragOver(event, post)}
+              onDrop={(event) => void handleDrop(event, post)}
+              onDragEnd={handleDragEnd}
+            >
               <header>
                 <div>
                   <h3>{post.titulo}</h3>
                   <span>{new Date(post.updated_at).toLocaleString('pt-BR')}</span>
                 </div>
                 <div className="admin-mural__meta">
+                  <span
+                    className="admin-mural__drag-handle"
+                    title={isFilteringByGt ? 'Arraste para reordenar dentro do GT filtrado' : 'Arraste para reordenar'}
+                  >
+                    Arrastar
+                  </span>
                   {post.modalidade === 'recebimento_arquivo' && (
                     <span className="admin-mural__badge admin-mural__badge--info">Recebe arquivo</span>
                   )}
@@ -313,7 +533,7 @@ export function AdminMuralPage({
                           <strong>{envio.nome_arquivo}</strong>
                           <span>
                             {envio.gt_nome ? `${envio.gt_nome} · ` : ''}
-                            {envio.usuario_nome || 'Usuário'}
+                            {envio.usuario_nome || 'Usuario'}
                           </span>
                         </div>
                         <a href={envio.arquivo_url} target="_blank" rel="noreferrer">
@@ -327,24 +547,6 @@ export function AdminMuralPage({
                 </div>
               )}
               <div className="admin-mural__item-actions">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleMove(index, 'up')}
-                  disabled={index === 0 || reorderPosts.isPending}
-                  title="Mover para cima"
-                >
-                  ▲
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleMove(index, 'down')}
-                  disabled={index === ordered.length - 1 || reorderPosts.isPending}
-                  title="Mover para baixo"
-                >
-                  ▼
-                </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleEdit(post)} title="Editar aviso">
                   Editar
                 </Button>
@@ -358,9 +560,16 @@ export function AdminMuralPage({
                   Remover
                 </Button>
               </div>
-            </div>
+            </article>
           </Card>
         ))}
+        {visiblePosts.length === 0 && (
+          <Card>
+            <div className="admin-mural__empty-state">
+              Nenhum aviso encontrado para o GT selecionado.
+            </div>
+          </Card>
+        )}
       </div>
 
       <section className="admin-mural__references">
@@ -400,7 +609,7 @@ export function AdminMuralPage({
               </Card>
             );
           })}
-          {referencias.length === 0 && <p className="admin-mural__references-empty">Nenhuma referência encontrada.</p>}
+          {referencias.length === 0 && <p className="admin-mural__references-empty">Nenhuma referencia encontrada.</p>}
         </div>
       </section>
     </div>

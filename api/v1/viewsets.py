@@ -2417,20 +2417,51 @@ def _store_mural_attachment(upload, *, cliente_id, request):
     }
 
 
+def _coerce_mural_position(value):
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_mural_position(payload):
+    if not isinstance(payload, dict):
+        return None
+    position = _coerce_mural_position(payload.get("position"))
+    if position is not None:
+        return position
+    return _coerce_mural_position(payload.get("ordem"))
+
+
+def _next_mural_position(cliente_id):
+    queryset = Notificacao.objects.filter(
+        cliente_id=cliente_id,
+        tipo=MURAL_NOTIFICATION_TYPE,
+    ).only("payload_json")
+    highest_position = -1
+    for notificacao in queryset.iterator():
+        position = _extract_mural_position(notificacao.payload_json or {})
+        if position is not None and position > highest_position:
+            highest_position = position
+    return highest_position + 1
+
+
 def _normalize_mural_request_payload(request, *, include_existing_attachments=False):
     data = request.data
-    raw_ordem = data.get("ordem")
-    try:
-        ordem = int(raw_ordem) if raw_ordem is not None else 0
-    except (TypeError, ValueError):
-        ordem = 0
+    position = _extract_mural_position(
+        {
+            "position": data.get("position"),
+            "ordem": data.get("ordem"),
+        }
+    )
     payload = {
         "titulo": data.get("titulo"),
         "conteudo_html": data.get("conteudo_html"),
         "link_url": data.get("link_url"),
         "modalidade": data.get("modalidade") or MURAL_MODALIDADE_AVISO,
         "fixado": _coerce_bool(data.get("fixado"), False),
-        "ordem": ordem,
+        "position": position,
+        "ordem": position,
         "include_all": _coerce_bool(data.get("include_all"), False),
         "gt_ids": _parse_gt_ids(_extract_request_list(data, "gt_ids")),
     }
@@ -2459,10 +2490,9 @@ def _build_mural_payload(*, payload, autor, gt_ids):
     if modalidade not in {MURAL_MODALIDADE_AVISO, MURAL_MODALIDADE_RECEBIMENTO_ARQUIVO}:
         raise ValidationError({"modalidade": "Modalidade de mural inválida."})
     fixado = bool(payload.get("fixado", False))
-    try:
-        ordem = int(payload.get("ordem", 0))
-    except (TypeError, ValueError):
-        ordem = 0
+    position = _extract_mural_position(payload)
+    if position is None:
+        position = 0
     return {
         "mural_id": payload.get("mural_id") or uuid4().hex,
         "titulo": titulo,
@@ -2471,7 +2501,8 @@ def _build_mural_payload(*, payload, autor, gt_ids):
         "anexos": anexos,
         "modalidade": modalidade,
         "fixado": fixado,
-        "ordem": ordem,
+        "position": position,
+        "ordem": position,
         "gt_ids": gt_ids,
         "criado_por": {
             "id": getattr(autor, "id", None),
@@ -2483,10 +2514,9 @@ def _build_mural_payload(*, payload, autor, gt_ids):
 
 def _pick_mural_data(notificacao):
     payload = notificacao.payload_json or {}
-    try:
-        ordem = int(payload.get("ordem", 0))
-    except (TypeError, ValueError):
-        ordem = 0
+    position = _extract_mural_position(payload)
+    if position is None:
+        position = 0
     return {
         "id": payload.get("mural_id", str(notificacao.id)),
         "titulo": payload.get("titulo") or "",
@@ -2495,7 +2525,8 @@ def _pick_mural_data(notificacao):
         "anexos": payload.get("anexos") or [],
         "modalidade": payload.get("modalidade") or MURAL_MODALIDADE_AVISO,
         "fixado": bool(payload.get("fixado", False)),
-        "ordem": ordem,
+        "position": position,
+        "ordem": position,
         "gt_ids": payload.get("gt_ids") or [],
         "criado_por": payload.get("criado_por") or {},
         "created_at": notificacao.created_at,
@@ -2543,8 +2574,8 @@ class MuralPostViewSet(viewsets.ViewSet):
             entries.values(),
             key=lambda item: (
                 not item.get("fixado", False),  # fixado first
-                item.get("ordem", 0),             # then by ordem ascending
-                -(item.get("updated_at") or timezone.now()).timestamp(),  # then newest first
+                item.get("position", 0),  # then by explicit position
+                -(item.get("created_at") or timezone.now()).timestamp(),  # stable fallback independent of edits
             ),
         )
         serializer = MuralPostSerializer(ordered, many=True)
@@ -2569,8 +2600,11 @@ class MuralPostViewSet(viewsets.ViewSet):
                 GT.objects.filter(cliente_id=cliente_id, id__in=gt_ids).values_list("id", flat=True)
             )
         include_all = serializer.validated_data.get("include_all", False) or not gt_ids
+        position = _extract_mural_position(serializer.validated_data)
+        if position is None:
+            position = _next_mural_position(cliente_id)
         payload = _build_mural_payload(
-            payload=serializer.validated_data,
+            payload={**serializer.validated_data, "position": position},
             autor=request.user,
             gt_ids=gt_ids,
         )
@@ -2615,14 +2649,28 @@ class MuralPostViewSet(viewsets.ViewSet):
         if not CanManageMural().has_permission(request, self):
             raise PermissionDenied("Ação não permitida para o seu perfil")
         cliente_id = _get_request_cliente_id(request)
+        existing_notification = (
+            Notificacao.objects.filter(
+                cliente_id=cliente_id,
+                tipo=MURAL_NOTIFICATION_TYPE,
+                payload_json__mural_id=pk,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+        if not existing_notification:
+            raise ValidationError({"id": "Aviso do mural não encontrado."})
         gt_ids = serializer.validated_data.get("gt_ids") or []
         if gt_ids:
             gt_ids = list(
                 GT.objects.filter(cliente_id=cliente_id, id__in=gt_ids).values_list("id", flat=True)
             )
         include_all = serializer.validated_data.get("include_all", False) or not gt_ids
+        position = _extract_mural_position(serializer.validated_data)
+        if position is None:
+            position = _pick_mural_data(existing_notification).get("position", 0)
         payload = _build_mural_payload(
-            payload={**serializer.validated_data, "mural_id": pk},
+            payload={**serializer.validated_data, "mural_id": pk, "position": position},
             autor=request.user,
             gt_ids=gt_ids,
         )
@@ -2765,16 +2813,15 @@ class MuralPostViewSet(viewsets.ViewSet):
         cliente_id = _get_request_cliente_id(request)
         items = request.data
         if not isinstance(items, list):
-            raise ValidationError("Envie uma lista de objetos {id, ordem}.")
+            raise ValidationError("Envie uma lista de objetos {id, position}.")
 
-        now = timezone.now()
+        notifications_to_update = []
         for item in items:
             mural_id = item.get("id")
-            try:
-                ordem = int(item.get("ordem", 0))
-            except (TypeError, ValueError):
-                continue
+            position = _extract_mural_position(item)
             if not mural_id:
+                continue
+            if position is None:
                 continue
             notifications = Notificacao.objects.filter(
                 cliente_id=cliente_id,
@@ -2783,10 +2830,12 @@ class MuralPostViewSet(viewsets.ViewSet):
             )
             for notificacao in notifications:
                 payload = notificacao.payload_json or {}
-                payload["ordem"] = ordem
+                payload["position"] = position
+                payload["ordem"] = position
                 notificacao.payload_json = payload
-                notificacao.updated_at = now
-                notificacao.save(update_fields=["payload_json", "updated_at"])
+                notifications_to_update.append(notificacao)
+        if notifications_to_update:
+            Notificacao.objects.bulk_update(notifications_to_update, ["payload_json"])
         return Response({"ok": True})
 
     def destroy(self, request, pk=None):

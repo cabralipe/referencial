@@ -320,6 +320,7 @@ export interface MuralPost {
   anexos?: Array<{ titulo?: string; url?: string }>;
   modalidade?: 'aviso' | 'recebimento_arquivo' | string;
   fixado?: boolean;
+  position?: number;
   ordem?: number;
   gt_ids?: number[];
   criado_por?: {

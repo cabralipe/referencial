@@ -68,6 +68,67 @@ interface AnalyticsAdminDashboardData {
   };
 }
 
+interface ReviewDecisionRecord {
+  id: number;
+  target_type: string;
+  target_id: string | number;
+  actor: number | null;
+  actor_role: string;
+  decision_type: string;
+  checklist?: string[];
+  note?: string;
+  created_at: string;
+}
+
+interface ParecerEmitido {
+  id: string;
+  createdAt: string;
+  tipoLabel: string;
+  statusLabel?: string | null;
+  html: string;
+  link?: string;
+}
+
+const toNumberId = (value: number | string | null | undefined) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+const stripHtmlText = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const hasMeaningfulHtml = (value?: string | null) => Boolean(value && stripHtmlText(value));
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const getDecisionTypeLabel = (decisionType: string) => {
+  switch (decisionType) {
+    case 'recommend_approve':
+      return 'Recomendar aprovacao';
+    case 'recommend_return':
+      return 'Recomendar devolucao';
+    case 'recommend_minor':
+      return 'Recomendar ajustes menores';
+    case 'in_progress':
+      return 'Em andamento';
+    default:
+      return decisionType;
+  }
+};
+
+const buildDecisionHtml = (decision: ReviewDecisionRecord) => {
+  const checklistHtml = decision.checklist?.length
+    ? `<ul>${decision.checklist.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+    : '';
+  const noteHtml = decision.note?.trim() ? `<p>${escapeHtml(decision.note.trim())}</p>` : '';
+  return checklistHtml || noteHtml || '<p>Sem conteudo registrado.</p>';
+};
+
 export function ReportsPage() {
   const { user } = useAuth();
   const client = useApiClient();
@@ -119,6 +180,13 @@ export function ReportsPage() {
         query: { page_size: 200 },
       }),
   });
+  const reviewDecisionsQuery = useQuery({
+    queryKey: ['review-decisions', 'report'],
+    queryFn: async () =>
+      fetchAllPaginated<ReviewDecisionRecord>(client.get, '/admin/review-decisions', {
+        query: { page_size: 500 },
+      }),
+  });
   const analyticsDashboardQuery = useQuery({
     queryKey: ['analytics-admin-dashboard'],
     queryFn: async () => {
@@ -130,29 +198,72 @@ export function ReportsPage() {
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
 
-  const revisoesFiltradas = useMemo(() => {
-    const revisoes = (revisoesQuery.data ?? []).filter((rev) => rev.status !== 'rascunho');
-    if (!selectedRedator) return revisoes;
-    const respostasIds = new Set(respostas.filter((r) => r.autor === selectedRedator.id).map((r) => r.id));
-    return revisoes.filter(
-      (rev) =>
-        rev.revisor === selectedRedator.id ||
-        (rev.alvo_tipo === 'resposta' && respostasIds.has(rev.alvo_id))
-    );
-  }, [revisoesQuery.data, selectedRedator, respostas]);
-
   const redatorRespostas = useMemo(() => {
     if (!selectedRedator) return [];
     return respostas.filter((r) => r.autor === selectedRedator.id);
   }, [selectedRedator, respostas]);
 
+  const revisoesAtivas = useMemo(
+    () => (revisoesQuery.data ?? []).filter((rev) => rev.status !== 'rascunho'),
+    [revisoesQuery.data],
+  );
+
+  const revisoesFiltradas = useMemo(() => {
+    if (!selectedRedator) return revisoesAtivas;
+    const respostasIds = new Set(redatorRespostas.map((r) => r.id));
+    return revisoesAtivas.filter((rev) => {
+      const alvoId = toNumberId(rev.alvo_id);
+      return rev.alvo_tipo === 'resposta' && alvoId !== null && respostasIds.has(alvoId);
+    });
+  }, [selectedRedator, redatorRespostas, revisoesAtivas]);
+
+  const pareceresEmitidos = useMemo<ParecerEmitido[]>(() => {
+    if (!selectedRedator) return [];
+    const revisoesByTarget = new Map(revisoesAtivas.map((rev) => [`${rev.alvo_tipo}:${String(rev.alvo_id)}`, rev] as const));
+    const pareceresDeRevisao = revisoesAtivas
+      .filter(
+        (rev) =>
+          (rev.solicitante === selectedRedator.id || rev.revisor === selectedRedator.id) &&
+          hasMeaningfulHtml(rev.parecer_html),
+      )
+      .map((rev) => ({
+        id: `revisao-${rev.id}`,
+        createdAt: rev.created_at,
+        tipoLabel: 'Parecer submetido',
+        statusLabel: rev.status,
+        html: rev.parecer_html || '<p>Sem conteudo registrado.</p>',
+        link: `/redator/revisoes/${rev.alvo_tipo}/${rev.alvo_id}`,
+      }));
+    const pareceresDeRevisor = (reviewDecisionsQuery.data ?? [])
+      .filter(
+        (decision) =>
+          decision.actor === selectedRedator.id &&
+          decision.actor_role === 'reviewer' &&
+          decision.decision_type !== 'in_progress',
+      )
+      .map((decision) => {
+        const revisao = revisoesByTarget.get(`${decision.target_type}:${String(decision.target_id)}`) ?? null;
+        return {
+          id: `decision-${decision.id}`,
+          createdAt: decision.created_at,
+          tipoLabel: getDecisionTypeLabel(decision.decision_type),
+          statusLabel: revisao?.status,
+          html: buildDecisionHtml(decision),
+          link: revisao ? `/redator/revisoes/${revisao.alvo_tipo}/${revisao.alvo_id}` : undefined,
+        };
+      });
+    return [...pareceresDeRevisao, ...pareceresDeRevisor].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [selectedRedator, reviewDecisionsQuery.data, revisoesAtivas]);
+
   const summary = useMemo(() => {
     const online = onlineUsers?.length ?? 0;
     const logins = sessionHistory?.length ?? 0;
     const respostasTotal = respostas.length;
-    const pareceresTotal = revisoesFiltradas.length;
+    const pareceresTotal = selectedRedator ? pareceresEmitidos.length : revisoesAtivas.length;
     return { online, logins, respostas: respostasTotal, pareceres: pareceresTotal };
-  }, [onlineUsers, sessionHistory, respostas.length, revisoesFiltradas.length]);
+  }, [onlineUsers, sessionHistory, respostas.length, selectedRedator, pareceresEmitidos.length, revisoesAtivas.length]);
 
   const auditSummary = useMemo(() => {
     const byAction = new Map<string, number>();
@@ -660,7 +771,7 @@ export function ReportsPage() {
         <p><strong>Email:</strong> ${selectedRedator.email}</p>
         <p><strong>Gerado em:</strong> ${now}</p>
         <p><strong>Total de respostas:</strong> ${redatorRespostas.length}</p>
-        <p><strong>Total de pareceres emitidos:</strong> ${revisoesFiltradas.length}</p>
+        <p><strong>Total de pareceres emitidos:</strong> ${pareceresEmitidos.length}</p>
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
         <h2>Respostas</h2>
         ${redatorRespostas.map((r: any) => `
@@ -673,12 +784,12 @@ export function ReportsPage() {
           </div>
         `).join('')}
         <h2>Pareceres</h2>
-        ${revisoesFiltradas.map((rev: any) => `
+        ${pareceresEmitidos.map((parecer: ParecerEmitido) => `
           <div style="margin-bottom: 30px; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px;">
             <div style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-              <strong>Parecer #${rev.id} - Status: ${rev.status} - Emitido em: ${rev.created_at ? new Date(rev.created_at).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
+              <strong>${parecer.tipoLabel}${parecer.statusLabel ? ` - Status: ${parecer.statusLabel}` : ''} - Emitido em: ${parecer.createdAt ? new Date(parecer.createdAt).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
             </div>
-            <div>${rev.parecer_html}</div>
+            <div>${parecer.html}</div>
           </div>
         `).join('')}
       </div>
@@ -704,11 +815,11 @@ export function ReportsPage() {
   const handleCopyProducao = async () => {
     if (!selectedRedator) return;
     const faltam = gtSummary.faltamResponder;
-    const revisoesDetalhadas = revisoesFiltradas
+    const revisoesDetalhadas = pareceresEmitidos
       .map(
-        (rev) =>
-          `- Parecer #${rev.id} (${rev.status}) - Emitido em: ${rev.created_at ? new Date(
-            rev.created_at
+        (parecer) =>
+          `- ${parecer.tipoLabel}${parecer.statusLabel ? ` (${parecer.statusLabel})` : ''} - Emitido em: ${parecer.createdAt ? new Date(
+            parecer.createdAt
           ).toLocaleDateString('pt-BR') : 'Sem data'}`
       )
       .join('\n');
@@ -717,7 +828,7 @@ export function ReportsPage() {
       `Estatísticas gerais:\n` +
       `- Respostas preenchidas: ${redatorRespostas.length}\n` +
       `- Faltam responder no GT selecionado: ${faltam}\n` +
-      `- Total de pareceres emitidos: ${revisoesFiltradas.length}\n\n` +
+      `- Total de pareceres emitidos: ${pareceresEmitidos.length}\n\n` +
       `Pareceres:\n${revisoesDetalhadas}\n`;
     try {
       await navigator.clipboard.writeText(text);
@@ -1192,7 +1303,7 @@ export function ReportsPage() {
                     <h2>{selectedRedator.nome}</h2>
                     <p>
                       <strong>{redatorRespostas.length}</strong> respostas preenchidas | {' '}
-                      <strong>{revisoesFiltradas.length}</strong> pareceres emitidos | {' '}
+                      <strong>{pareceresEmitidos.length}</strong> pareceres emitidos | {' '}
                       <strong>{gtSummary.faltamResponder}</strong> perguntas faltando responder no GT selecionado
                     </p>
                   </div>
@@ -1227,27 +1338,29 @@ export function ReportsPage() {
                   )}
 
                   <h3 className="reports__pareceres-title">Pareceres Emitidos</h3>
-                  {revisoesFiltradas.length === 0 ? (
+                  {pareceresEmitidos.length === 0 ? (
                     <p className="reports__empty-feed">Nenhum parecer emitido.</p>
                   ) : (
-                    revisoesFiltradas.map(rev => (
-                      <div key={`rev - ${rev.id} `} className="reports__feed-item">
+                    pareceresEmitidos.map((parecer) => (
+                      <div key={parecer.id} className="reports__feed-item">
                         <div className="reports__feed-meta">
-                          <span className="reports__feed-badge reports__feed-badge--parecer">Parecer #{rev.id}</span>
-                          <span className="reports__feed-meta-text">Status: {rev.status}</span>
+                          <span className="reports__feed-badge reports__feed-badge--parecer">{parecer.tipoLabel}</span>
+                          {parecer.statusLabel && <span className="reports__feed-meta-text">Status: {parecer.statusLabel}</span>}
                           <span className="reports__feed-meta-text">
-                            Emitido em: {rev.created_at ? new Date(rev.created_at).toLocaleDateString('pt-BR') : 'Sem data'}
+                            Emitido em: {parecer.createdAt ? new Date(parecer.createdAt).toLocaleDateString('pt-BR') : 'Sem data'}
                           </span>
-                          <Link
-                            to={`/redator/revisoes/${rev.alvo_tipo}/${rev.alvo_id}`}
-                            target="_blank"
-                            className="reports__feed-open-link"
-                            style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-primary, #0056b3)', textDecoration: 'underline' }}
-                          >
-                            Abrir Parecer
-                          </Link>
+                          {parecer.link && (
+                            <Link
+                              to={parecer.link}
+                              target="_blank"
+                              className="reports__feed-open-link"
+                              style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-primary, #0056b3)', textDecoration: 'underline' }}
+                            >
+                              Abrir Parecer
+                            </Link>
+                          )}
                         </div>
-                        <div className="reports__feed-body" dangerouslySetInnerHTML={{ __html: rev.parecer_html || '' }} />
+                        <div className="reports__feed-body" dangerouslySetInnerHTML={{ __html: parecer.html }} />
                       </div>
                     ))
                   )}
