@@ -64,6 +64,8 @@ class AtividadeService:
         questoes = QuizQuestao.objects.filter(atividade=atividade)
         peso_total = sum(q.peso for q in questoes) or 1.0
 
+        tentativa.respostas_quiz.all().delete()
+
         for questao in questoes:
             resposta_dada = dados_respostas.get(str(questao.id))
 
@@ -98,7 +100,7 @@ class AtividadeService:
         tentativa.nota_obtida = nota_total
         tentativa.data_envio = timezone.now()
 
-        if atividade.correcao_automatica:
+        if atividade.correcao_automatica or atividade.tipo == Atividade.Tipo.QUIZ:
             tentativa.status = AtividadeTentativa.Status.CORRIGIDA
             tentativa.data_correcao = timezone.now()
         else:

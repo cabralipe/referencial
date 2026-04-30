@@ -142,13 +142,21 @@
                             <p class="text-muted mb-0">Tipo de conteudo ainda nao suportado nesta tela.</p>
                             {% endif %}
 
-                            <form method="post" action="{% url 'ava:aluno_marcar_conteudo' conteudo.id %}" class="mt-4 text-end">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.path }}">
-                                <button type="submit" class="btn {% if conteudo.is_visualizado %}btn-success{% else %}btn-outline-success{% endif %} btn-sm px-3 rounded-pill">
-                                    <i class="bi bi-check-circle me-1"></i>{% if conteudo.is_visualizado %}Marcado como lido{% else %}Marcar como lido{% endif %}
-                                </button>
-                            </form>
+                            <div class="mt-4 text-end">
+                                {% if conteudo.is_visualizado %}
+                                <span class="btn btn-success btn-sm px-3 rounded-pill disabled">
+                                    <i class="bi bi-check-circle me-1"></i>Visualizado automaticamente
+                                </span>
+                                {% else %}
+                                <form method="post" action="{% url 'ava:aluno_marcar_conteudo' conteudo.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.path }}">
+                                    <button type="submit" class="btn btn-outline-success btn-sm px-3 rounded-pill">
+                                        <i class="bi bi-check-circle me-1"></i>Marcar como lido
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </div>
                     </article>
                     {% empty %}

@@ -46,6 +46,41 @@ class ProgressoService:
         return False
 
     @staticmethod
+    def marcar_aula_visualizada(matricula: MatriculaCurso, aula: Aula):
+        """
+        Registra automaticamente a visualizacao dos conteudos da aula.
+
+        O AVA passa a considerar o acesso/avanco pela aula como consumo do
+        conteudo, sem exigir que o aluno clique manualmente em "marcar como
+        lido" para que o progresso avance.
+        """
+        ProgressoService._garantir_progressos(matricula, aula)
+
+        prog_aula = ProgressoAula.objects.get(matricula=matricula, aula=aula)
+        conteudos = list(ConteudoAula.objects.filter(aula=aula).order_by("ordem", "id"))
+        if not conteudos:
+            ProgressoService.recalcular_aula(matricula, aula)
+            return 0
+
+        agora = timezone.now()
+        marcados = 0
+        for conteudo in conteudos:
+            prog_conteudo, _ = ProgressoConteudo.objects.get_or_create(
+                progresso_aula=prog_aula,
+                conteudo=conteudo,
+                defaults={"cliente_id": matricula.cliente_id},
+            )
+            if prog_conteudo.is_visualizado:
+                continue
+            prog_conteudo.is_visualizado = True
+            prog_conteudo.data_visualizacao = agora
+            prog_conteudo.save(update_fields=["is_visualizado", "data_visualizacao"])
+            marcados += 1
+
+        ProgressoService.recalcular_aula(matricula, aula)
+        return marcados
+
+    @staticmethod
     def _garantir_progressos(matricula, aula):
         ProgressoModulo.objects.get_or_create(
             matricula=matricula,
@@ -181,15 +216,17 @@ class ProgressoService:
 
     @staticmethod
     def recalcular_curso(matricula: MatriculaCurso):
-        modulos = matricula.curso.modulos.filter(is_active=True).count()
-        modulos_concluidos = ProgressoModulo.objects.filter(
-            matricula=matricula,
-            modulo__is_active=True,
-            is_concluido=True,
-        ).count()
+        modulos_ids = list(matricula.curso.modulos.filter(is_active=True).values_list("id", flat=True))
 
-        if modulos > 0:
-            percent = int((modulos_concluidos / modulos) * 100)
+        if modulos_ids:
+            percentuais = {
+                modulo_id: percentual
+                for modulo_id, percentual in ProgressoModulo.objects.filter(
+                    matricula=matricula,
+                    modulo_id__in=modulos_ids,
+                ).values_list("modulo_id", "percentual")
+            }
+            percent = int(sum(percentuais.get(modulo_id, 0) for modulo_id in modulos_ids) / len(modulos_ids))
         elif matricula.status == MatriculaCurso.Status.CONCLUIDA:
             percent = max(matricula.progresso_percentual, 100)
         else:

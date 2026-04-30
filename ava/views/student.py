@@ -1,8 +1,14 @@
+from io import BytesIO
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 from ava.forms import AtividadeForumMensagemForm
 from ava.models import (
@@ -15,6 +21,16 @@ from ava.models import (
     ProgressoConteudo,
 )
 from ava.services import AtividadeService, ProgressoService
+
+
+FINALIZED_ATTEMPT_STATUSES = [
+    AtividadeTentativa.Status.ENVIADA,
+    AtividadeTentativa.Status.CORRIGIDA,
+]
+
+
+def _nome_usuario(usuario):
+    return usuario.get_full_name() or getattr(usuario, "nome", "") or usuario.email
 
 
 def _aplicar_status_progresso_aulas(matricula, aulas):
@@ -39,6 +55,50 @@ def _forum_messages_queryset(atividade: Atividade):
         .prefetch_related("anexos")
         .order_by("created_at", "id")
     )
+
+
+def _montar_resultado_quiz(tentativa, questoes):
+    if not tentativa or not questoes:
+        return []
+
+    respostas = {
+        resposta.questao_id: resposta
+        for resposta in tentativa.respostas_quiz.select_related(
+            "questao",
+            "alternativa_selecionada",
+        )
+    }
+    resultados = []
+
+    for questao in questoes:
+        alternativas = list(questao.alternativas.all())
+        resposta = respostas.get(questao.id)
+        alternativa_correta = next((alternativa for alternativa in alternativas if alternativa.is_correta), None)
+        alternativa_selecionada = resposta.alternativa_selecionada if resposta else None
+        is_correta = bool(resposta and resposta.is_correta)
+
+        feedback = ""
+        if resposta:
+            if alternativa_selecionada and alternativa_selecionada.feedback_especifico:
+                feedback = alternativa_selecionada.feedback_especifico
+            elif is_correta:
+                feedback = questao.feedback_acerto or "Resposta correta."
+            else:
+                feedback = questao.feedback_erro or "Resposta incorreta. Revise o conteudo da aula e tente relacionar a questao ao material estudado."
+
+        resultados.append(
+            {
+                "questao": questao,
+                "resposta": resposta,
+                "alternativa_selecionada": alternativa_selecionada,
+                "alternativa_correta": alternativa_correta,
+                "is_correta": is_correta,
+                "nota_item": resposta.nota_item if resposta else 0,
+                "feedback": feedback,
+            }
+        )
+
+    return resultados
 
 
 @login_required
@@ -110,6 +170,7 @@ def acessar_aula(request, curso_slug, aula_id):
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
+    ProgressoService.marcar_aula_visualizada(matricula, aula)
     conteudos = aula.conteudos.all().order_by("ordem", "id")
     atividades = list(aula.atividades.all().order_by("titulo", "id"))
 
@@ -125,7 +186,6 @@ def acessar_aula(request, curso_slug, aula_id):
     )
     aulas_ordenadas = [a for modulo in modulos for a in modulo.aulas.all()]
 
-    ProgressoService._garantir_progressos(matricula, aula)
     _aplicar_status_progresso_aulas(matricula, aulas_ordenadas)
 
     visualizados = set(
@@ -236,7 +296,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     tentativas_finalizadas_count = AtividadeTentativa.objects.filter(
         aluno=request.user,
         atividade=atividade,
-        status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA],
+        status__in=FINALIZED_ATTEMPT_STATUSES,
     ).count()
     limite_atingido = (
         atividade.tentativas_permitidas > 0
@@ -267,7 +327,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                         arquivos=arquivos,
                         resposta_para=resposta_para,
                     )
-                    messages.success(request, "Mensagem publicada no forum.")
+                    messages.success(request, "Tarefa concluida com sucesso. Mensagem publicada no forum.")
                     return redirect(f"{request.path}#forum-thread")
                 except ValueError as exc:
                     messages.error(request, str(exc))
@@ -298,12 +358,12 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 if usa_formulario_quiz:
                     dados_respostas = {k: v for k, v in request.POST.items() if k.isdigit()}
                     AtividadeService.submeter_quiz(tentativa_processada, dados_respostas)
-                    messages.success(request, "Questionario enviado com sucesso!")
+                    messages.success(request, "Tarefa concluida com sucesso.")
                 else:
                     texto = request.POST.get("texto_resposta", "")
                     arquivo = request.FILES.get("arquivo_enviado")
                     AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivo)
-                    messages.success(request, "Atividade enviada com sucesso!")
+                    messages.success(request, "Tarefa concluida com sucesso.")
 
                 return redirect(
                     "ava:aluno_responder_atividade",
@@ -311,6 +371,10 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                     aula_id=aula_id,
                     atividade_id=atividade_id,
                 )
+
+    quiz_resultados = []
+    if tentativa and tentativa.status in FINALIZED_ATTEMPT_STATUSES and usa_formulario_quiz:
+        quiz_resultados = _montar_resultado_quiz(tentativa, questoes)
 
     return render(
         request,
@@ -327,5 +391,87 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             "forum_messages": forum_messages,
             "forum_total_mensagens": len(forum_messages),
             "forum_total_participantes": forum_participantes,
+            "quiz_resultados": quiz_resultados,
         },
     )
+
+
+@login_required
+def baixar_comprovante_atividade(request, tentativa_id):
+    tentativa = get_object_or_404(
+        AtividadeTentativa.objects.select_related(
+            "aluno",
+            "atividade__aula__modulo__curso",
+        ),
+        id=tentativa_id,
+        aluno=request.user,
+        status__in=FINALIZED_ATTEMPT_STATUSES,
+    )
+
+    atividade = tentativa.atividade
+    aula = atividade.aula
+    modulo = aula.modulo
+    curso = modulo.curso
+    data_envio = tentativa.data_envio or tentativa.data_correcao or tentativa.data_inicio
+    data_envio_local = timezone.localtime(data_envio)
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    _, altura = A4
+    margem_x = 24 * mm
+    y = altura - 28 * mm
+
+    pdf.setTitle(f"Comprovante de atividade {tentativa.id}")
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(margem_x, y, "Comprovante de tarefa concluida")
+
+    y -= 12 * mm
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(margem_x, y, "Este documento comprova o envio/conclusao da tarefa no modulo AVA.")
+
+    y -= 14 * mm
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(margem_x, y, "Dados do aluno")
+    y -= 8 * mm
+    pdf.setFont("Helvetica", 10)
+
+    linhas = [
+        ("Aluno", _nome_usuario(tentativa.aluno)),
+        ("E-mail", tentativa.aluno.email),
+        ("Curso", curso.titulo),
+        ("Modulo", modulo.titulo),
+        ("Aula", aula.titulo),
+        ("Tarefa", atividade.titulo),
+        ("Tipo", atividade.get_tipo_display()),
+        ("Status", tentativa.get_status_display()),
+        ("Data de envio", data_envio_local.strftime("%d/%m/%Y %H:%M")),
+        ("Protocolo", f"AVA-{tentativa.id:08d}"),
+    ]
+
+    if tentativa.nota_obtida is not None:
+        linhas.append(("Nota", f"{tentativa.nota_obtida} / {atividade.nota_maxima}"))
+
+    for rotulo, valor in linhas:
+        if y < 32 * mm:
+            pdf.showPage()
+            y = altura - 28 * mm
+            pdf.setFont("Helvetica", 10)
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(margem_x, y, f"{rotulo}:")
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(margem_x + 34 * mm, y, str(valor)[:110])
+        y -= 7 * mm
+
+    y -= 6 * mm
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(
+        margem_x,
+        y,
+        f"Emitido em {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')} pelo AVA PROLUC.",
+    )
+    pdf.showPage()
+    pdf.save()
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="comprovante-atividade-{tentativa.id}.pdf"'
+    return response

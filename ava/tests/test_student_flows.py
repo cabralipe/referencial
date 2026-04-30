@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from ava.models import (
     Atividade,
@@ -15,8 +16,10 @@ from ava.models import (
     MatriculaCurso,
     ProgressoAula,
     ProgressoConteudo,
+    ProgressoModulo,
     QuizAlternativa,
     QuizQuestao,
+    QuizRespostaItem,
 )
 from ava.services import ProgressoService
 from core.models import Cliente, TipoUsuarioCadastro
@@ -168,6 +171,49 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.context["aula_anterior"].id, self.aula_1.id)
         self.assertEqual(response.context["proxima_aula"].id, self.aula_3.id)
 
+    def test_acessar_aula_marca_conteudo_automaticamente_e_aumenta_progresso(self):
+        conteudo_1 = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Texto aula 1",
+            conteudo_texto="Conteudo 1",
+            ordem=1,
+        )
+        ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_2,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Texto aula 2",
+            conteudo_texto="Conteudo 2",
+            ordem=1,
+        )
+        ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_3,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Texto aula 3",
+            conteudo_texto="Conteudo 3",
+            ordem=1,
+        )
+
+        url = reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Visualizado automaticamente")
+        progresso_conteudo = ProgressoConteudo.objects.get(
+            progresso_aula__matricula=self.matricula,
+            progresso_aula__aula=self.aula_1,
+            conteudo=conteudo_1,
+        )
+        self.assertTrue(progresso_conteudo.is_visualizado)
+
+        progresso_modulo = ProgressoModulo.objects.get(matricula=self.matricula, modulo=self.modulo)
+        self.assertEqual(progresso_modulo.percentual, 33)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.progresso_percentual, 33)
+
     def test_recalculo_aula_nao_conclui_com_duas_tentativas_da_mesma_atividade(self):
         atividade_1 = Atividade.objects.create(
             cliente=self.cliente,
@@ -261,10 +307,138 @@ class AVAStudentFlowTests(TestCase):
         response = self.client.post(url, {"arquivo_enviado": arquivo}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.redirect_chain[-1][0], url)
-        self.assertContains(response, "Atividade concluida")
+        self.assertContains(response, "Tarefa concluida com sucesso")
         self.assertContains(response, "Anexo enviado:")
         self.assertContains(response, "resposta")
         self.assertContains(response, ".pdf")
+        self.assertContains(response, "Baixar comprovante")
+
+    def test_post_quiz_exibe_resultado_imediato_feedback_e_comprovante(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.QUIZ,
+            titulo="Quiz imediato",
+            is_obrigatoria=True,
+            correcao_automatica=False,
+        )
+        questao = QuizQuestao.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            enunciado="Qual alternativa esta correta?",
+            feedback_acerto="Bom trabalho nesta questao.",
+            feedback_erro="Revise o topico principal.",
+            ordem=1,
+        )
+        alternativa = QuizAlternativa.objects.create(
+            cliente=self.cliente,
+            questao=questao,
+            texto="Alternativa correta",
+            ordem=1,
+            is_correta=True,
+            feedback_especifico="Feedback especifico da alternativa.",
+        )
+
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        response = self.client.post(url, {str(questao.id): str(alternativa.id)}, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tarefa concluida com sucesso")
+        self.assertContains(response, "Resultado do quiz")
+        self.assertContains(response, "Sua nota")
+        self.assertContains(response, "Correta")
+        self.assertContains(response, "Feedback especifico da alternativa.")
+        self.assertContains(response, "Baixar comprovante")
+
+        tentativa = AtividadeTentativa.objects.get(aluno=self.user, atividade=atividade)
+        self.assertEqual(tentativa.status, AtividadeTentativa.Status.CORRIGIDA)
+        self.assertEqual(str(tentativa.nota_obtida), "100.00")
+
+    def test_quiz_antigo_enviado_exibe_resultado_e_nota(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.QUIZ,
+            titulo="Quiz antigo",
+            is_obrigatoria=True,
+        )
+        questao = QuizQuestao.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            enunciado="Questao antiga?",
+            feedback_erro="Feedback de erro antigo.",
+            ordem=1,
+        )
+        correta = QuizAlternativa.objects.create(
+            cliente=self.cliente,
+            questao=questao,
+            texto="Resposta correta antiga",
+            ordem=1,
+            is_correta=True,
+        )
+        errada = QuizAlternativa.objects.create(
+            cliente=self.cliente,
+            questao=questao,
+            texto="Resposta errada antiga",
+            ordem=2,
+            is_correta=False,
+        )
+        tentativa = AtividadeTentativa.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            aluno=self.user,
+            status=AtividadeTentativa.Status.ENVIADA,
+            nota_obtida=0,
+            data_envio=timezone.now(),
+        )
+        QuizRespostaItem.objects.create(
+            cliente=self.cliente,
+            tentativa=tentativa,
+            questao=questao,
+            alternativa_selecionada=errada,
+            is_correta=False,
+            nota_item=0,
+        )
+
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resultado do quiz")
+        self.assertContains(response, "0.00")
+        self.assertContains(response, "Incorreta")
+        self.assertContains(response, correta.texto)
+        self.assertContains(response, "Feedback de erro antigo.")
+
+    def test_baixar_comprovante_atividade_pdf(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.TAREFA,
+            titulo="Tarefa com comprovante",
+            is_obrigatoria=True,
+        )
+        tentativa = AtividadeTentativa.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            aluno=self.user,
+            status=AtividadeTentativa.Status.ENVIADA,
+            texto_resposta="Resposta enviada",
+            data_envio=timezone.now(),
+        )
+
+        response = self.client.get(reverse("ava:aluno_baixar_comprovante_atividade", args=[tentativa.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("comprovante-atividade-", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"%PDF"))
 
     def test_forum_cria_mensagem_com_anexo_e_conclui_aula(self):
         atividade = Atividade.objects.create(
@@ -393,7 +567,7 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.matricula.refresh_from_db()
         self.assertEqual(self.matricula.status, MatriculaCurso.Status.ATIVA)
-        self.assertEqual(self.matricula.progresso_percentual, 0)
+        self.assertEqual(self.matricula.progresso_percentual, 66)
 
     def test_dashboard_recalcula_curso_concluido_quando_novo_modulo_e_adicionado(self):
         conteudo = ConteudoAula.objects.create(
