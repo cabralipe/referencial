@@ -76,7 +76,7 @@ def ava_management_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         if getattr(request.user, "role", None) not in ALLOWED_AVA_MANAGEMENT_ROLES:
-            raise PermissionDenied("Você não possui permissão para acessar a gestáo do AVA.")
+            raise PermissionDenied("Você não possui permissão para acessar a gestão do AVA.")
         return view_func(request, *args, **kwargs)
 
     return _wrapped

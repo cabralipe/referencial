@@ -1,15 +1,16 @@
 {% extends "ava/base.html" %}
 
-{% block title %}Gestáo AVA | PROLUC{% endblock %}
+{% block title %}Gestão AVA | PROLUC{% endblock %}
 
 {% block content %}
 <section class="section-hero py-5">
     <div class="container py-2">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
             <div>
-                <span class="badge text-bg-light mb-2">Gestáo AVA</span>
+                <span class="badge text-bg-light mb-2">Gestão AVA</span>
                 <h1 class="display-6 fw-bold text-white mb-1">Dashboard de respostas e utilização</h1>
-                <p class="text-white-50 mb-0">Acompanhe envios, resolução de questáes e desempenho por usuário, curso e módulo.</p>
+                <p class="text-white-50 mb-0">Acompanhe envios, resolução de questáes e desempenho por usuário, curso e
+                    módulo.</p>
             </div>
             <a href="{% url 'ava:aluno_dashboard' %}" class="btn btn-light rounded-pill px-4">
                 Ir para AVA do aluno
@@ -55,14 +56,15 @@
         <form method="get" class="row g-3 align-items-end">
             <div class="col-md-4">
                 <label for="q" class="form-label">Busca</label>
-                <input id="q" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Aluno, atividade, aula, módulo, curso">
+                <input id="q" name="q" class="form-control" value="{{ filtros.q }}"
+                    placeholder="Aluno, atividade, aula, módulo, curso">
             </div>
             <div class="col-md-4">
                 <label for="usuario" class="form-label">Usuário</label>
                 <select id="usuario" name="usuario" class="form-select">
                     <option value="">Todos</option>
                     {% for usuario in usuarios %}
-                    <option value="{{ usuario.id }}" {% if filtros.usuario_id == usuario.id %}selected{% endif %}>
+                    <option value="{{ usuario.id }}" {% if filtros.usuario_id==usuario.id %}selected{% endif %}>
                         {{ usuario.nome|default:usuario.email }} ({{ usuario.email }})
                     </option>
                     {% endfor %}
@@ -73,7 +75,8 @@
                 <select id="curso" name="curso" class="form-select">
                     <option value="">Todos</option>
                     {% for curso in cursos %}
-                    <option value="{{ curso.id }}" {% if filtros.curso_id == curso.id %}selected{% endif %}>{{ curso.titulo }}</option>
+                    <option value="{{ curso.id }}" {% if filtros.curso_id==curso.id %}selected{% endif %}>{{
+                        curso.titulo }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -83,7 +86,7 @@
                 <select id="modulo" name="modulo" class="form-select">
                     <option value="">Todos</option>
                     {% for modulo in modulos %}
-                    <option value="{{ modulo.id }}" {% if filtros.modulo_id == modulo.id %}selected{% endif %}>
+                    <option value="{{ modulo.id }}" {% if filtros.modulo_id==modulo.id %}selected{% endif %}>
                         {{ modulo.titulo }}
                     </option>
                     {% endfor %}
@@ -94,7 +97,8 @@
                 <select id="aula" name="aula" class="form-select">
                     <option value="">Todas</option>
                     {% for aula in aulas %}
-                    <option value="{{ aula.id }}" {% if filtros.aula_id == aula.id %}selected{% endif %}>{{ aula.titulo }}</option>
+                    <option value="{{ aula.id }}" {% if filtros.aula_id==aula.id %}selected{% endif %}>{{ aula.titulo }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -103,7 +107,7 @@
                 <select id="status" name="status" class="form-select">
                     <option value="">Todos</option>
                     {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if filtros.status==value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -113,13 +117,14 @@
                 <select id="tipo" name="tipo" class="form-select">
                     <option value="">Todos</option>
                     {% for value, label in tipo_choices %}
-                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if filtros.tipo==value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-3">
                 <label for="data_inicio" class="form-label">Data inicial</label>
-                <input id="data_inicio" type="date" name="data_inicio" class="form-control" value="{{ data_inicio_raw }}">
+                <input id="data_inicio" type="date" name="data_inicio" class="form-control"
+                    value="{{ data_inicio_raw }}">
             </div>
             <div class="col-md-3">
                 <label for="data_fim" class="form-label">Data final</label>
@@ -141,21 +146,19 @@
                     <div>
                         <h2 class="h5 fw-bold mb-2">Relatório nominal dos alunos</h2>
                         <p class="text-muted mb-0">
-                            Exporte em XLSX ou PDF a fotografia atual das matrículas com módulos concluídos, módulos pendentes,
-                            envios de atividades, top de interações, alunos que ainda não finalizaram e demais indicadores da gestão.
+                            Exporte em XLSX ou PDF a fotografia atual das matrículas com módulos concluídos, módulos
+                            pendentes,
+                            envios de atividades, top de interações, alunos que ainda não finalizaram e demais
+                            indicadores da gestão.
                         </p>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <a
-                            href="{% url 'ava:gestao_dashboard_relatorio' 'xlsx' %}{% if querystring %}?{{ querystring }}{% endif %}"
-                            class="btn btn-primary"
-                        >
+                        <a href="{% url 'ava:gestao_dashboard_relatorio' 'xlsx' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-primary">
                             Baixar XLSX
                         </a>
-                        <a
-                            href="{% url 'ava:gestao_dashboard_relatorio' 'pdf' %}{% if querystring %}?{{ querystring }}{% endif %}"
-                            class="btn btn-outline-primary"
-                        >
+                        <a href="{% url 'ava:gestao_dashboard_relatorio' 'pdf' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-outline-primary">
                             Baixar PDF
                         </a>
                     </div>
@@ -200,7 +203,8 @@
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Resolução de questáes</p>
                 <h3 class="h4 fw-bold mb-0">{{ metricas.quiz.taxa_resolucao }}%</h3>
-                <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas }}</small>
+                <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas
+                    }}</small>
             </article>
         </div>
         <div class="col-md-6 col-xl-3">
@@ -214,7 +218,8 @@
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Média de nota</p>
                 <h3 class="h4 fw-bold mb-0">
-                    {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif %}
+                    {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif
+                    %}
                 </h3>
                 <small class="text-muted">Tentativas com nota</small>
             </article>
@@ -223,7 +228,8 @@
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Último envio</p>
                 <h3 class="h6 fw-bold mb-0">
-                    {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{% endif %}
+                    {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{%
+                    endif %}
                 </h3>
                 <small class="text-muted">Atualização mais recente</small>
             </article>
@@ -309,15 +315,18 @@
                         </td>
                         <td>
                             <strong>{{ tentativa.atividade.aula.modulo.curso.titulo }}</strong><br>
-                            <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</small>
+                            <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{
+                                tentativa.atividade.aula.titulo }}</small>
                         </td>
                         <td>
                             <strong>{{ tentativa.atividade.titulo }}</strong><br>
                             <small class="text-muted">{{ tentativa.atividade.get_tipo_display }}</small>
                         </td>
                         <td>{{ tentativa.get_status_display }}</td>
-                        <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
-                        <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}</td>
+                        <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif
+                            %}</td>
+                        <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}
+                        </td>
                         <td>
                             {% if tentativa.arquivo_enviado %}
                             <span class="badge text-bg-success">Sim</span>
@@ -326,12 +335,14 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}" class="btn btn-sm btn-outline-primary">Ver / corrigir</a>
+                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}"
+                                class="btn btn-sm btn-outline-primary">Ver / corrigir</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros selecionados.</td>
+                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros
+                            selecionados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -339,11 +350,12 @@
         </div>
 
         {% if page_obj.paginator.num_pages > 1 %}
-        <nav aria-label="Paginação da gestáo AVA">
+        <nav aria-label="Paginação da gestão AVA">
             <ul class="pagination mb-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a class="page-link"
+                        href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">Anterior</span></li>
@@ -355,7 +367,8 @@
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+                    <a class="page-link"
+                        href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">Próxima</span></li>
