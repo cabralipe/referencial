@@ -3,7 +3,7 @@ import errno
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from curriculum.models import GT
-from notifications.models import MuralArquivoEnvio
+from notifications.models import MuralArquivoEnvio, MuralDownloadRegistro
 
 
 @pytest.mark.django_db
@@ -105,6 +105,59 @@ def test_membro_gt_envia_arquivo_em_post_de_recebimento(api_client, usuario, mem
     admin_mural = admin_list_response.json()[0]
     assert len(admin_mural["envios_arquivo"]) == 1
     assert admin_mural["envios_arquivo"][0]["usuario_nome"] == membro_gt.nome
+
+
+@pytest.mark.django_db
+def test_mural_relatorio_lista_envios_e_downloads(api_client, usuario, membro_gt, cliente, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    gt = GT.objects.create(cliente=cliente, nome="GT Relatorio", etapa="I")
+    gt.membros.add(membro_gt)
+
+    api_client.force_authenticate(usuario)
+    anexo = SimpleUploadedFile("orientacao.pdf", b"%PDF-1.4", content_type="application/pdf")
+    create_response = api_client.post(
+        "/api/v1/mural",
+        {
+            "titulo": "Mural de acompanhamento",
+            "conteudo_html": "<p>Baixe e envie.</p>",
+            "modalidade": "recebimento_arquivo",
+            "gt_ids": [gt.id],
+            "include_all": False,
+            "anexos_uploads": anexo,
+        },
+        format="multipart",
+    )
+    assert create_response.status_code == 201
+    mural_id = create_response.json()["id"]
+
+    api_client.force_authenticate(membro_gt)
+    download_response = api_client.post(
+        f"/api/v1/mural/{mural_id}/downloads",
+        {"anexo_index": 0},
+        format="json",
+    )
+    assert download_response.status_code == 200
+    assert MuralDownloadRegistro.objects.filter(mural_id=mural_id, usuario=membro_gt).exists()
+
+    arquivo = SimpleUploadedFile("evidencia.pdf", b"%PDF-1.4", content_type="application/pdf")
+    envio_response = api_client.post(
+        f"/api/v1/mural/{mural_id}/envios",
+        {"gt_id": str(gt.id), "arquivo": arquivo},
+        format="multipart",
+    )
+    assert envio_response.status_code == 201
+
+    api_client.force_authenticate(usuario)
+    report_response = api_client.get("/api/v1/mural/relatorio")
+
+    assert report_response.status_code == 200
+    report_item = report_response.json()[0]
+    assert report_item["titulo"] == "Mural de acompanhamento"
+    assert report_item["total_envios"] == 1
+    assert report_item["envios_arquivo"][0]["usuario_nome"] == membro_gt.nome
+    assert report_item["total_downloads"] == 1
+    assert report_item["downloads"][0]["usuario_nome"] == membro_gt.nome
+    assert report_item["downloads"][0]["anexo_titulo"] == "orientacao.pdf"
 
 
 @pytest.mark.django_db

@@ -100,6 +100,15 @@
             {% if post.link_url %}
               <a href="{{ post.link_url }}" target="_blank" rel="noreferrer">Abrir link</a>
             {% endif %}
+            {% if post.anexos %}
+              <div class="mural">
+                {% for anexo in post.anexos %}
+                  <a href="{% url 'reviewer_mural_download' post.id forloop.counter0 %}" target="_blank" rel="noreferrer">
+                    {{ anexo.titulo|default:"Anexo" }}
+                  </a>
+                {% endfor %}
+              </div>
+            {% endif %}
           </article>
         {% endfor %}
       </div>

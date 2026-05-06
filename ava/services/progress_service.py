@@ -5,6 +5,7 @@ from ava.models import (
     Atividade,
     Aula,
     ConteudoAula,
+    CursoModulo,
     MatriculaCurso,
     ProgressoAula,
     ProgressoConteudo,
@@ -16,6 +17,35 @@ class ProgressoService:
     """
     Servico central de calculo e registro de progressos no AVA.
     """
+
+    @staticmethod
+    def modulo_disponivel(matricula: MatriculaCurso, modulo: CursoModulo, agora=None) -> bool:
+        """
+        Define se um modulo pode aparecer/acessar para a matricula informada.
+
+        A liberacao pode depender de uma data/hora programada e/ou da conclusao
+        de um modulo pre-requisito. Quando os dois campos existem, ambos devem
+        estar satisfeitos.
+        """
+        if not modulo.is_active:
+            return False
+
+        agora = agora or timezone.now()
+        if modulo.data_liberacao_programada and modulo.data_liberacao_programada > agora:
+            return False
+
+        if modulo.pre_requisito_modulo_id:
+            return ProgressoModulo.objects.filter(
+                matricula=matricula,
+                modulo_id=modulo.pre_requisito_modulo_id,
+                is_concluido=True,
+            ).exists()
+
+        return True
+
+    @staticmethod
+    def filtrar_modulos_disponiveis(matricula: MatriculaCurso, modulos, agora=None):
+        return [modulo for modulo in modulos if ProgressoService.modulo_disponivel(matricula, modulo, agora)]
 
     @staticmethod
     def marcar_conteudo_visualizado(aluno, conteudo_id: int):
@@ -108,6 +138,8 @@ class ProgressoService:
         )
 
         for modulo in modulos:
+            if not ProgressoService.modulo_disponivel(matricula, modulo):
+                continue
             ProgressoModulo.objects.get_or_create(
                 matricula=matricula,
                 modulo=modulo,
@@ -216,7 +248,10 @@ class ProgressoService:
 
     @staticmethod
     def recalcular_curso(matricula: MatriculaCurso):
-        modulos_ids = list(matricula.curso.modulos.filter(is_active=True).values_list("id", flat=True))
+        modulos = list(matricula.curso.modulos.filter(is_active=True).order_by("ordem", "id"))
+        modulos_ids = [
+            modulo.id for modulo in modulos if ProgressoService.modulo_disponivel(matricula, modulo)
+        ]
 
         if modulos_ids:
             percentuais = {

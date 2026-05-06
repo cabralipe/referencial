@@ -343,6 +343,31 @@ export interface MuralPost {
   updated_at: string;
 }
 
+export interface MuralDownloadRegistro {
+  id: number;
+  usuario_id?: number | null;
+  usuario_nome?: string | null;
+  usuario_email?: string | null;
+  anexo_index: number;
+  anexo_titulo: string;
+  anexo_url: string;
+  created_at: string;
+}
+
+export interface MuralRelatorioItem {
+  id: string;
+  titulo: string;
+  modalidade?: 'aviso' | 'recebimento_arquivo' | string;
+  gt_ids?: number[];
+  anexos?: Array<{ titulo?: string; url?: string }>;
+  total_envios: number;
+  envios_arquivo: NonNullable<MuralPost['envios_arquivo']>;
+  total_downloads: number;
+  downloads: MuralDownloadRegistro[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PppDocumento {
   id: number | null;
   escola: number;

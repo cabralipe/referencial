@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -170,6 +172,97 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["aula_anterior"].id, self.aula_1.id)
         self.assertEqual(response.context["proxima_aula"].id, self.aula_3.id)
+
+    def test_modulo_com_liberacao_futura_nao_aparece_e_bloqueia_acesso_direto(self):
+        conteudo = ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo modulo atual",
+            conteudo_texto="Base",
+            ordem=1,
+        )
+        modulo_futuro = CursoModulo.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            titulo="Modulo futuro",
+            ordem=2,
+            is_active=True,
+            data_liberacao_programada=timezone.now() + timedelta(days=1),
+        )
+        aula_futura = Aula.objects.create(
+            cliente=self.cliente,
+            modulo=modulo_futuro,
+            titulo="Aula futura",
+            ordem=1,
+            is_active=True,
+        )
+        ConteudoAula.objects.create(
+            cliente=self.cliente,
+            aula=aula_futura,
+            tipo=ConteudoAula.Tipo.TEXTO,
+            titulo="Conteudo futuro",
+            conteudo_texto="Futuro",
+            ordem=1,
+        )
+
+        ProgressoService.marcar_conteudo_visualizado(self.user, conteudo.id)
+
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.modulo.titulo)
+        self.assertNotContains(response, modulo_futuro.titulo)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+
+        response = self.client.get(reverse("ava:aluno_acessar_aula", args=[self.curso.slug, aula_futura.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+    def test_modulo_com_pre_requisito_aparece_apos_conclusao_do_modulo_anterior(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.TAREFA,
+            titulo="Atividade obrigatoria",
+            is_obrigatoria=True,
+        )
+        modulo_dependente = CursoModulo.objects.create(
+            cliente=self.cliente,
+            curso=self.curso,
+            titulo="Modulo dependente",
+            ordem=2,
+            is_active=True,
+            pre_requisito_modulo=self.modulo,
+        )
+        Aula.objects.create(
+            cliente=self.cliente,
+            modulo=modulo_dependente,
+            titulo="Aula dependente",
+            ordem=1,
+            is_active=True,
+        )
+
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, modulo_dependente.titulo)
+
+        AtividadeTentativa.objects.create(
+            cliente=self.cliente,
+            atividade=atividade,
+            aluno=self.user,
+            status=AtividadeTentativa.Status.ENVIADA,
+        )
+        ProgressoService.recalcular_aula(self.matricula, self.aula_1)
+        ProgressoService.sincronizar_matricula(self.matricula)
+
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, modulo_dependente.titulo)
 
     def test_acessar_aula_marca_conteudo_automaticamente_e_aumenta_progresso(self):
         conteudo_1 = ConteudoAula.objects.create(

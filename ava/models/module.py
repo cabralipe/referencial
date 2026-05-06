@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from core.mixins import TenantModel
 from .course import Curso
@@ -26,3 +27,14 @@ class CursoModulo(TenantModel):
 
     def __str__(self):
         return f"{self.curso.titulo} - {self.titulo}"
+
+    def clean(self):
+        super().clean()
+        if not self.pre_requisito_modulo_id:
+            return
+        if self.pk and self.pre_requisito_modulo_id == self.pk:
+            raise ValidationError({"pre_requisito_modulo": "O modulo nao pode depender dele mesmo."})
+        if self.pre_requisito_modulo.curso_id != self.curso_id:
+            raise ValidationError(
+                {"pre_requisito_modulo": "O modulo pre-requisito precisa pertencer ao mesmo curso."}
+            )
