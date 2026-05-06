@@ -74,3 +74,27 @@ class MuralArquivoEnvio(TenantModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"Envio mural {self.mural_id} -> {self.usuario_id}"
+
+
+class MuralDownloadRegistro(TenantModel):
+    mural_id = models.CharField(max_length=64)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mural_downloads",
+    )
+    anexo_index = models.PositiveIntegerField(default=0)
+    anexo_titulo = models.CharField(max_length=255, blank=True)
+    anexo_url = models.URLField(max_length=1000, blank=True)
+
+    class Meta:
+        verbose_name = "Registro de download do mural"
+        verbose_name_plural = "Registros de downloads do mural"
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["cliente", "mural_id", "created_at"]),
+            models.Index(fields=["cliente", "usuario", "created_at"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Download mural {self.mural_id} -> {self.usuario_id}"

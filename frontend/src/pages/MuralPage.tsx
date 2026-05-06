@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, MouseEvent, useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/common/Button';
@@ -7,7 +7,7 @@ import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAuth } from '@/context/AuthContext';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useMidias } from '@/hooks/useBiblioteca';
-import { useMural, useSubmitMuralFile } from '@/hooks/useMural';
+import { useMural, useRegisterMuralDownload, useSubmitMuralFile } from '@/hooks/useMural';
 
 import './MuralPage.css';
 
@@ -58,6 +58,7 @@ export function MuralPage() {
   const { data: blocos, isLoading: blocosLoading } = useBlocos();
   const { gtOptions } = useAvailableGts();
   const submitMuralFile = useSubmitMuralFile();
+  const registerMuralDownload = useRegisterMuralDownload();
 
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
   const [selectedGtIds, setSelectedGtIds] = useState<Record<string, string>>({});
@@ -154,6 +155,26 @@ export function MuralPage() {
     }
   };
 
+  const handleOpenAttachment = async (
+    event: MouseEvent<HTMLAnchorElement>,
+    item: Extract<MuralItem, { kind: 'mural' }>,
+    anexoIndex: number,
+    fallbackUrl?: string,
+  ) => {
+    event.preventDefault();
+    try {
+      const result = await registerMuralDownload.mutateAsync({ id: item.id, anexoIndex });
+      const url = result.url || fallbackUrl;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      if (fallbackUrl) {
+        window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
   if (isLoading || midiasLoading || blocosLoading) {
     return <FullPageLoader message="Carregando mural..." />;
   }
@@ -225,7 +246,13 @@ export function MuralPage() {
                 {item.anexos && item.anexos.length > 0 && (
                   <div className="mural__anexos">
                     {item.anexos.map((anexo, index) => (
-                      <a key={`${item.id}-${index}`} href={anexo.url} target="_blank" rel="noreferrer">
+                      <a
+                        key={`${item.id}-${index}`}
+                        href={anexo.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => void handleOpenAttachment(event, item, index, anexo.url)}
+                      >
                         {anexo.titulo || 'Anexo'}
                       </a>
                     ))}

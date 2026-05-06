@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
-import type { MuralPost } from '@/api/types';
+import type { MuralPost, MuralRelatorioItem } from '@/api/types';
 
 interface UseMuralParams {
   enabled?: boolean;
@@ -86,6 +86,40 @@ export function useSubmitMuralFile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mural', 'posts'] });
+    },
+  });
+}
+
+export function useMuralReport() {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ['mural', 'relatorio'],
+    queryFn: async () => {
+      const response = await client.get<MuralRelatorioItem[]>('/mural/relatorio');
+      return response.data ?? [];
+    },
+  });
+}
+
+interface RegisterMuralDownloadInput {
+  id: string;
+  anexoIndex: number;
+}
+
+export function useRegisterMuralDownload() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, anexoIndex }: RegisterMuralDownloadInput) => {
+      const response = await client.post<{ url: string }>(`/mural/${id}/downloads`, {
+        body: { anexo_index: anexoIndex },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mural', 'relatorio'] });
     },
   });
 }

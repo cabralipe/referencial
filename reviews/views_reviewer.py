@@ -17,7 +17,7 @@ from core.models import Cliente, Usuario
 from core.utils import flag_ativa
 from curriculum.models import Pergunta, Resposta, TextoUnico
 from diffs.services import build_diff
-from notifications.models import Notificacao
+from notifications.models import MuralDownloadRegistro, Notificacao
 from notifications.services import criar_notificacao
 from reviews.models import ReviewDecision, Revisao
 from services.reviewer_scope import get_reviewer_queryset
@@ -64,6 +64,43 @@ def _get_mural_posts(user: Usuario, gt_id: int | None) -> list[dict[str, Any]]:
             continue
         posts.append(payload)
     return posts
+
+
+@login_required
+def reviewer_mural_download(request: HttpRequest, mural_id: str, anexo_index: int) -> HttpResponse:
+    _ensure_reviewer(request.user)
+    notificacao = (
+        Notificacao.objects.filter(
+            cliente_id=request.user.cliente_id,
+            tipo="mural_post",
+            payload_json__mural_id=mural_id,
+            usuario=request.user,
+        )
+        .order_by("-updated_at")
+        .first()
+    )
+    if not notificacao:
+        raise Http404("Material do mural nÃ£o encontrado.")
+
+    payload = _pick_mural_payload(notificacao)
+    anexos = payload.get("anexos") or []
+    if anexo_index < 0 or anexo_index >= len(anexos):
+        raise Http404("Anexo do mural nÃ£o encontrado.")
+
+    anexo = anexos[anexo_index]
+    anexo_url = anexo.get("url") or ""
+    if not anexo_url:
+        raise Http404("Anexo do mural sem URL disponÃ­vel.")
+
+    MuralDownloadRegistro.objects.create(
+        cliente_id=request.user.cliente_id,
+        mural_id=mural_id,
+        usuario=request.user,
+        anexo_index=anexo_index,
+        anexo_titulo=anexo.get("titulo") or f"Anexo {anexo_index + 1}",
+        anexo_url=anexo_url,
+    )
+    return redirect(anexo_url)
 
 
 def _get_target_context(revisao: Revisao) -> dict[str, Any]:

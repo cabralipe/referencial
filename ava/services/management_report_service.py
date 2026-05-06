@@ -497,8 +497,8 @@ class AVAManagementReportService:
         document = SimpleDocTemplate(
             buffer,
             pagesize=landscape(A4),
-            leftMargin=1.1 * cm,
-            rightMargin=1.1 * cm,
+            leftMargin=0.7 * cm,
+            rightMargin=0.7 * cm,
             topMargin=1.1 * cm,
             bottomMargin=1.1 * cm,
             title="Relatório nominal de progresso e interações do AVA",
@@ -544,6 +544,14 @@ class AVAManagementReportService:
                 fontSize=7,
                 leading=9,
                 textColor=colors.HexColor("#334155"),
+            ),
+            "tiny": ParagraphStyle(
+                "AVATiny",
+                parent=sample_styles["BodyText"],
+                fontSize=6.2,
+                leading=7.4,
+                textColor=colors.HexColor("#334155"),
+                wordWrap="CJK",
             ),
             "metric": ParagraphStyle(
                 "AVAMetric",
@@ -749,34 +757,34 @@ class AVAManagementReportService:
         for linha in report_data["linhas"]:
             detalhe_table_data.append(
                 [
-                    cls._paragraph(f"{linha['aluno_nome']}<br/>{linha['aluno_email']}", styles["small"]),
-                    cls._paragraph(linha["curso_titulo"], styles["small"]),
-                    cls._paragraph(linha["status_label"], styles["small"]),
-                    cls._paragraph(f"{linha['progresso_percentual']}%", styles["small"]),
+                    cls._paragraph(f"{linha['aluno_nome']}\n{linha['aluno_email']}", styles["tiny"]),
+                    cls._paragraph(linha["curso_titulo"], styles["tiny"]),
+                    cls._paragraph(linha["status_label"], styles["tiny"]),
+                    cls._paragraph(f"{linha['progresso_percentual']}%", styles["tiny"]),
                     Paragraph(
                         "<b>Concluídos:</b> "
                         + escape(", ".join(linha["lista_modulos_concluidos"]) or "-")
                         + "<br/><b>Pendentes:</b> "
                         + escape(", ".join(linha["lista_modulos_pendentes"]) or "-"),
-                        styles["small"],
+                        styles["tiny"],
                     ),
                     cls._paragraph(
-                        f"{linha['envios_atividade']} envios<br/>{linha['atividades_corrigidas']} corrigidas<br/>{linha['envios_com_anexo']} com anexo",
-                        styles["small"],
+                        f"{linha['envios_atividade']} envios\n{linha['atividades_corrigidas']} corrigidas\n{linha['envios_com_anexo']} com anexo",
+                        styles["tiny"],
                     ),
                     cls._paragraph(
-                        f"{linha['mensagens_forum']} mensagens<br/>{linha['respostas_forum']} respostas",
-                        styles["small"],
+                        f"{linha['mensagens_forum']} mensagens\n{linha['respostas_forum']} respostas",
+                        styles["tiny"],
                     ),
-                    cls._paragraph(str(linha["conteudos_visualizados"]), styles["small"]),
-                    cls._paragraph(str(linha["total_interacoes"]), styles["small"]),
-                    cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["small"]),
+                    cls._paragraph(str(linha["conteudos_visualizados"]), styles["tiny"]),
+                    cls._paragraph(str(linha["total_interacoes"]), styles["tiny"]),
+                    cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["tiny"]),
                 ]
             )
 
         detalhe_table = Table(
             detalhe_table_data,
-            colWidths=[4.5 * cm, 4.5 * cm, 2.3 * cm, 1.8 * cm, 7.3 * cm, 2.3 * cm, 2.3 * cm, 1.8 * cm, 1.6 * cm, 3.2 * cm],
+            colWidths=[3.8 * cm, 4.0 * cm, 1.8 * cm, 1.5 * cm, 7.0 * cm, 2.1 * cm, 2.0 * cm, 1.6 * cm, 1.3 * cm, 3.0 * cm],
             repeatRows=1,
         )
         detalhe_table.setStyle(
@@ -786,10 +794,10 @@ class AVAManagementReportService:
                     ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                     ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 2.5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 2.5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                 ]
             )
         )

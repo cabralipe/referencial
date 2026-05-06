@@ -148,6 +148,7 @@ def curso_detalhe(request, slug):
             )
         )
     )
+    modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
     aulas = [aula for modulo in modulos for aula in modulo.aulas.all()]
     _aplicar_status_progresso_aulas(matricula, aulas)
 
@@ -170,6 +171,10 @@ def acessar_aula(request, curso_slug, aula_id):
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
+    if not ProgressoService.modulo_disponivel(matricula, aula.modulo):
+        messages.warning(request, "Este modulo ainda nao esta disponivel.")
+        return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
+
     ProgressoService.marcar_aula_visualizada(matricula, aula)
     conteudos = aula.conteudos.all().order_by("ordem", "id")
     atividades = list(aula.atividades.all().order_by("titulo", "id"))
@@ -184,6 +189,7 @@ def acessar_aula(request, curso_slug, aula_id):
             )
         )
     )
+    modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
     aulas_ordenadas = [a for modulo in modulos for a in modulo.aulas.all()]
 
     _aplicar_status_progresso_aulas(matricula, aulas_ordenadas)
@@ -263,6 +269,10 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
+    if not ProgressoService.modulo_disponivel(matricula, aula.modulo):
+        messages.warning(request, "Este modulo ainda nao esta disponivel.")
+        return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
+
     atividade = get_object_or_404(Atividade, id=atividade_id, aula=aula)
 
     questoes = list(atividade.questoes.all().prefetch_related("alternativas"))

@@ -315,6 +315,66 @@
   margin: 0;
 }
 
+/* --- Report Section --- */
+.admin-mural__report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-mural__report-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-mural__report-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-mural__report-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.admin-mural__report-card h3,
+.admin-mural__report-card h4 {
+  margin: 0;
+}
+
+.admin-mural__report-card header span,
+.admin-mural__report-card small {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.admin-mural__report-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-mural__report-columns > div {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.admin-mural__report-columns p {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
 /* --- References Section --- */
 .admin-mural__references {
   display: flex;
@@ -401,6 +461,10 @@
   }
 
   .admin-mural__references-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-mural__report-columns {
     grid-template-columns: 1fr;
   }
 

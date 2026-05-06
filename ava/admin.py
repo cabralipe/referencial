@@ -269,8 +269,8 @@ class CursoAdmin(AVAModelAdmin):
 
 @admin.register(CursoModulo)
 class CursoModuloAdmin(AVAModelAdmin):
-    list_display = ("titulo", "curso", "ordem", "is_active")
-    list_filter = ("curso", "is_active")
+    list_display = ("titulo", "curso", "ordem", "is_active", "data_liberacao_programada", "pre_requisito_modulo")
+    list_filter = ("curso", "is_active", "data_liberacao_programada")
     search_fields = ("titulo", "curso__titulo")
     inlines = [AulaInline]
 

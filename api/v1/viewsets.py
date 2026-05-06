@@ -54,7 +54,7 @@ from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_t
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
 from library.models import BlocoTexto, Midia
-from notifications.models import MuralArquivoEnvio, Notificacao
+from notifications.models import MuralArquivoEnvio, MuralDownloadRegistro, Notificacao
 from notifications.services import criar_notificacao
 from meb.models import MebMessage, MebThread
 from meb.services import auto_reply_for_message, deliver_admin_broadcast, ensure_thread_for_user
@@ -2504,6 +2504,20 @@ def _serialize_mural_envio(envio, request):
     return MuralArquivoEnvioSerializer(envio, context={"request": request}).data
 
 
+def _serialize_mural_download(download):
+    usuario = download.usuario
+    return {
+        "id": download.id,
+        "usuario_id": usuario.id,
+        "usuario_nome": getattr(usuario, "nome", "") or usuario.get_full_name() or usuario.email,
+        "usuario_email": usuario.email,
+        "anexo_index": download.anexo_index,
+        "anexo_titulo": download.anexo_titulo,
+        "anexo_url": download.anexo_url,
+        "created_at": download.created_at,
+    }
+
+
 def _build_mural_payload(*, payload, autor, gt_ids):
     titulo = (payload.get("titulo") or "").strip()
     conteudo_html = (payload.get("conteudo_html") or "").strip()
@@ -2842,6 +2856,119 @@ class MuralPostViewSet(viewsets.ViewSet):
 
         serializer = MuralArquivoEnvioSerializer(envio, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="downloads")
+    def registrar_download(self, request, pk=None):
+        cliente_id = _get_request_cliente_id(request)
+        raw_index = request.data.get("anexo_index", 0)
+        try:
+            anexo_index = int(raw_index)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"anexo_index": "Anexo invalido."}) from exc
+
+        notification = (
+            Notificacao.objects.filter(
+                cliente_id=cliente_id,
+                tipo=MURAL_NOTIFICATION_TYPE,
+                payload_json__mural_id=pk,
+                usuario=request.user,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+        if not notification and CanManageMural().has_permission(request, self):
+            notification = (
+                Notificacao.objects.filter(
+                    cliente_id=cliente_id,
+                    tipo=MURAL_NOTIFICATION_TYPE,
+                    payload_json__mural_id=pk,
+                )
+                .order_by("-updated_at")
+                .first()
+            )
+        if not notification:
+            raise PermissionDenied("Aviso do mural nÃ£o disponÃ­vel para o usuÃ¡rio.")
+
+        payload = _pick_mural_data(notification)
+        anexos = payload.get("anexos") or []
+        if anexo_index < 0 or anexo_index >= len(anexos):
+            raise ValidationError({"anexo_index": "Anexo nÃ£o encontrado."})
+
+        anexo = anexos[anexo_index]
+        anexo_url = anexo.get("url") or ""
+        if not anexo_url:
+            raise ValidationError({"anexo_index": "Anexo sem URL disponÃ­vel."})
+
+        registro = MuralDownloadRegistro.objects.create(
+            cliente_id=cliente_id,
+            mural_id=pk,
+            usuario=request.user,
+            anexo_index=anexo_index,
+            anexo_titulo=anexo.get("titulo") or f"Anexo {anexo_index + 1}",
+            anexo_url=anexo_url,
+        )
+        return Response({"url": anexo_url, "download": _serialize_mural_download(registro)})
+
+    @action(detail=False, methods=["get"], url_path="relatorio")
+    def relatorio(self, request):
+        if not CanManageMural().has_permission(request, self):
+            raise PermissionDenied("AÃ§Ã£o nÃ£o permitida para o seu perfil")
+
+        cliente_id = _get_request_cliente_id(request)
+        notifications = Notificacao.objects.filter(
+            cliente_id=cliente_id,
+            tipo=MURAL_NOTIFICATION_TYPE,
+        ).order_by("-updated_at")
+
+        entries: dict[str, dict] = {}
+        for notificacao in notifications:
+            data = _pick_mural_data(notificacao)
+            entry = entries.get(data["id"])
+            if not entry or data["updated_at"] > entry["updated_at"]:
+                entries[data["id"]] = data
+
+        mural_ids = list(entries.keys())
+        envios_por_mural: dict[str, list[dict]] = {}
+        downloads_por_mural: dict[str, list[dict]] = {}
+
+        if mural_ids:
+            envios = (
+                MuralArquivoEnvio.objects.filter(cliente_id=cliente_id, mural_id__in=mural_ids)
+                .select_related("usuario", "gt")
+                .order_by("-updated_at")
+            )
+            for envio in envios:
+                envios_por_mural.setdefault(envio.mural_id, []).append(_serialize_mural_envio(envio, request))
+
+            downloads = (
+                MuralDownloadRegistro.objects.filter(cliente_id=cliente_id, mural_id__in=mural_ids)
+                .select_related("usuario")
+                .order_by("-created_at")
+            )
+            for download in downloads:
+                downloads_por_mural.setdefault(download.mural_id, []).append(_serialize_mural_download(download))
+
+        relatorio = []
+        for mural_id, entry in sorted(entries.items(), key=lambda item: item[1]["updated_at"], reverse=True):
+            envios = envios_por_mural.get(mural_id, [])
+            downloads = downloads_por_mural.get(mural_id, [])
+            relatorio.append(
+                {
+                    "id": mural_id,
+                    "titulo": entry["titulo"],
+                    "modalidade": entry.get("modalidade"),
+                    "gt_ids": entry.get("gt_ids") or [],
+                    "anexos": entry.get("anexos") or [],
+                    "total_envios": len(envios),
+                    "envios_arquivo": envios,
+                    "total_downloads": len(downloads),
+                    "downloads": downloads,
+                    "created_at": entry["created_at"],
+                    "updated_at": entry["updated_at"],
+                }
+            )
+
+        return Response(relatorio)
 
     @action(detail=False, methods=["post"], url_path="reorder")
     def reorder(self, request):

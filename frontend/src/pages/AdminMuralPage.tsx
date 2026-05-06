@@ -8,7 +8,7 @@ import { RichTextEditor } from '@/components/common/RichTextEditor';
 import type { MuralPost } from '@/api/types';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
 import { useBlocos, useMidias } from '@/hooks/useBiblioteca';
-import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost, useReorderMuralPosts } from '@/hooks/useMural';
+import { useCreateMuralPost, useDeleteMuralPost, useMural, useUpdateMuralPost, useReorderMuralPosts, useMuralReport } from '@/hooks/useMural';
 
 import './AdminMuralPage.css';
 
@@ -62,6 +62,7 @@ export function AdminMuralPage({
   const { data: posts, isLoading } = useMural();
   const { data: midias, isLoading: midiasLoading } = useMidias();
   const { data: blocos, isLoading: blocosLoading } = useBlocos();
+  const { data: muralReport } = useMuralReport();
   const { gtOptions } = useAvailableGts({ scope: 'all' });
   const createPost = useCreateMuralPost();
   const updatePost = useUpdateMuralPost();
@@ -350,6 +351,45 @@ export function AdminMuralPage({
     }
   };
 
+  const exportReportCsv = () => {
+    const rows = [
+      ['Mural', 'Tipo', 'Pessoa', 'E-mail', 'GT', 'Evento', 'Arquivo', 'Data'],
+      ...(muralReport ?? []).flatMap((post) => {
+        const envioRows = (post.envios_arquivo ?? []).map((envio) => [
+          post.titulo,
+          post.modalidade || '',
+          envio.usuario_nome || '',
+          '',
+          envio.gt_nome || '',
+          'Envio de arquivo',
+          envio.nome_arquivo || '',
+          new Date(envio.updated_at).toLocaleString('pt-BR'),
+        ]);
+        const downloadRows = (post.downloads ?? []).map((download) => [
+          post.titulo,
+          post.modalidade || '',
+          download.usuario_nome || '',
+          download.usuario_email || '',
+          '',
+          'Download de anexo',
+          download.anexo_titulo || '',
+          new Date(download.created_at).toLocaleString('pt-BR'),
+        ]);
+        return [...envioRows, ...downloadRows];
+      }),
+    ];
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-mural-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading || midiasLoading || blocosLoading) {
     return <FullPageLoader message="Carregando mural..." />;
   }
@@ -571,6 +611,67 @@ export function AdminMuralPage({
           </Card>
         )}
       </div>
+
+      <section className="admin-mural__report">
+        <div className="admin-mural__list-header">
+          <div>
+            <h2>Relatorio do mural</h2>
+            <p>Confira quem enviou arquivos nos murais de recebimento e quem baixou anexos publicados no mural.</p>
+          </div>
+          <Button type="button" variant="ghost" onClick={exportReportCsv}>
+            Exportar CSV
+          </Button>
+        </div>
+        <div className="admin-mural__report-list">
+          {(muralReport ?? []).map((post) => (
+            <Card key={`relatorio-${post.id}`}>
+              <div className="admin-mural__report-card">
+                <header>
+                  <div>
+                    <h3>{post.titulo}</h3>
+                    <span>{post.total_envios} envios · {post.total_downloads} downloads</span>
+                  </div>
+                  {post.modalidade === 'recebimento_arquivo' && (
+                    <span className="admin-mural__badge admin-mural__badge--info">Recebe arquivo</span>
+                  )}
+                </header>
+
+                <div className="admin-mural__report-columns">
+                  <div>
+                    <h4>Arquivos recebidos</h4>
+                    {post.envios_arquivo.length > 0 ? (
+                      post.envios_arquivo.map((envio) => (
+                        <p key={`envio-${envio.id}`}>
+                          <strong>{envio.usuario_nome || 'Usuario'}</strong>
+                          <span>{envio.gt_nome ? `${envio.gt_nome} · ` : ''}{envio.nome_arquivo}</span>
+                          <small>{new Date(envio.updated_at).toLocaleString('pt-BR')}</small>
+                        </p>
+                      ))
+                    ) : (
+                      <p className="admin-mural__submissions-empty">Nenhum envio registrado.</p>
+                    )}
+                  </div>
+                  <div>
+                    <h4>Downloads de anexos</h4>
+                    {post.downloads.length > 0 ? (
+                      post.downloads.map((download) => (
+                        <p key={`download-${download.id}`}>
+                          <strong>{download.usuario_nome || download.usuario_email || 'Usuario'}</strong>
+                          <span>{download.anexo_titulo}</span>
+                          <small>{new Date(download.created_at).toLocaleString('pt-BR')}</small>
+                        </p>
+                      ))
+                    ) : (
+                      <p className="admin-mural__submissions-empty">Nenhum download registrado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {(muralReport ?? []).length === 0 && <p className="admin-mural__submissions-empty">Nenhum dado de mural encontrado.</p>}
+        </div>
+      </section>
 
       <section className="admin-mural__references">
         <h2>Materiais da biblioteca</h2>
