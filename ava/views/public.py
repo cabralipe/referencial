@@ -22,7 +22,7 @@ def _next_or_catalogo(request):
 
 def catalogo_cursos(request):
     """
-    Pagina publica exibindo os cursos disponiveis.
+    Página pública exibindo os cursos disponíveis.
     """
     cursos_qs = Curso.objects.filter(status=Curso.Status.PUBLICADO)
     if (
@@ -63,7 +63,7 @@ def detalhes_curso_publico(request, slug):
     """
     curso = get_object_or_404(Curso, slug=slug, status="publicado")
 
-    # Se o usuario esta logado e matriculado, manda para o curso.
+    # Se o usuário está logado e matriculado, manda para o curso.
     if request.user.is_authenticated:
         if curso.matriculas.filter(aluno=request.user, status__in=VISIBLE_ENROLLMENT_STATUSES).exists():
             return redirect("ava:aluno_curso_detalhe", slug=slug)
@@ -75,7 +75,7 @@ def detalhes_curso_publico(request, slug):
 @require_POST
 def registrar_seguimento_professor(request):
     if getattr(request.user, "role", None) != Usuario.Role.PROFESSOR:
-        messages.error(request, "Apenas usuarios com perfil de professor podem registrar seguimento.")
+        messages.error(request, "Apenas usuários com perfil de professor podem registrar seguimento.")
         return HttpResponseRedirect(_next_or_catalogo(request))
 
     if getattr(request.user, "seguimento", ""):
@@ -83,7 +83,7 @@ def registrar_seguimento_professor(request):
 
     seguimento = (request.POST.get("seguimento") or "").strip()
     if seguimento not in Usuario.Seguimento.values:
-        messages.error(request, "Selecione um seguimento valido para continuar.")
+        messages.error(request, "Selecione um seguimento válido para continuar.")
         return HttpResponseRedirect(_next_or_catalogo(request))
 
     request.user.seguimento = seguimento
@@ -95,7 +95,7 @@ def registrar_seguimento_professor(request):
 @login_required
 def matricular_curso_agora(request, slug):
     """
-    Endpoint (POST) para auto-inscricao em cursos abertos.
+    Endpoint (POST) para autoinscrição em cursos abertos.
     """
     if request.method == "POST":
         curso = get_object_or_404(Curso, slug=slug, is_aberto=True, status="publicado")
@@ -104,11 +104,11 @@ def matricular_curso_agora(request, slug):
         )
         matricula, created = InscricaoService.matricular_aluno_curso(request.user, curso, autor_matricula=request.user)
         if created:
-            messages.success(request, f"Matricula realizada com sucesso no curso {curso.titulo}!")
+            messages.success(request, f"Matrícula realizada com sucesso no curso {curso.titulo}!")
         elif status_anterior in {MatriculaCurso.Status.CONCLUIDA, MatriculaCurso.Status.SUSPENSA, MatriculaCurso.Status.CANCELADA}:
-            messages.success(request, f"Matricula reativada com sucesso no curso {curso.titulo}!")
+            messages.success(request, f"Matrícula reativada com sucesso no curso {curso.titulo}!")
         else:
-            messages.info(request, f"Voce ja possui acesso ao curso {curso.titulo}.")
+            messages.info(request, f"Você já possui acesso ao curso {curso.titulo}.")
         return redirect("ava:aluno_curso_detalhe", slug=slug)
 
     return redirect("ava:catalogo")

@@ -76,7 +76,7 @@ def ava_management_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         if getattr(request.user, "role", None) not in ALLOWED_AVA_MANAGEMENT_ROLES:
-            raise PermissionDenied("Voce nao possui permissao para acessar a gestao do AVA.")
+            raise PermissionDenied("Você não possui permissão para acessar a gestáo do AVA.")
         return view_func(request, *args, **kwargs)
 
     return _wrapped
@@ -336,7 +336,7 @@ def tentativa_detalhe(request, tentativa_id):
                 nota_obtida=correcao_form.cleaned_data["nota_obtida"],
                 feedback_tutor=correcao_form.cleaned_data["feedback_tutor"],
             )
-            messages.success(request, "Correcao salva com sucesso.")
+            messages.success(request, "Correção salva com sucesso.")
             return redirect("ava:gestao_tentativa_detalhe", tentativa_id=tentativa.id)
         messages.error(request, "Não foi possível salvar a correção. Revise os campos do formulário.")
 

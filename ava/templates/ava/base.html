@@ -180,13 +180,13 @@
                 <span class="ava-brand-badge"><i class="bi bi-mortarboard-fill"></i></span>
                 <span>AVA PROLUC</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent" aria-expanded="false" aria-label="Alternar navegacao">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent" aria-expanded="false" aria-label="Alternar navegação">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link ava-nav-link" href="{% url 'ava:catalogo' %}">Catalogo</a>
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:catalogo' %}">Catálogo</a>
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
@@ -194,7 +194,7 @@
                     </li>
                     {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'revisor' or user.role == 'super_admin' %}
                     <li class="nav-item">
-                        <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestao AVA</a>
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestáo AVA</a>
                     </li>
                     {% endif %}
                     {% endif %}

@@ -84,7 +84,7 @@ def _montar_resultado_quiz(tentativa, questoes):
             elif is_correta:
                 feedback = questao.feedback_acerto or "Resposta correta."
             else:
-                feedback = questao.feedback_erro or "Resposta incorreta. Revise o conteudo da aula e tente relacionar a questao ao material estudado."
+                feedback = questao.feedback_erro or "Resposta incorreta. Revise o conteúdo da aula e tente relacionar a questão ao material estudado."
 
         resultados.append(
             {
@@ -104,7 +104,7 @@ def _montar_resultado_quiz(tentativa, questoes):
 @login_required
 def dashboard(request):
     """
-    Dashboard do aluno mostrando cursos em andamento e concluidos.
+    Dashboard do aluno mostrando cursos em andamento e concluídos.
     """
     matriculas = list(
         MatriculaCurso.objects.filter(
@@ -129,7 +129,7 @@ def dashboard(request):
 @login_required
 def curso_detalhe(request, slug):
     """
-    Pagina do curso matriculado. Exibe os modulos e o progresso.
+    Página do curso matriculado. Exibe os módulos e o progresso.
     """
     matricula = get_object_or_404(
         MatriculaCurso.objects.select_related("curso"),
@@ -165,7 +165,7 @@ def curso_detalhe(request, slug):
 @login_required
 def acessar_aula(request, curso_slug, aula_id):
     """
-    Pagina de consumo da aula (video, textos).
+    Página de consumo da aula (video, textos).
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
@@ -238,7 +238,7 @@ def acessar_aula(request, curso_slug, aula_id):
 @login_required
 def marcar_conteudo(request, conteudo_id):
     """
-    Endpoint para marcar conteudo como visualizado.
+    Endpoint para marcar conteúdo como visualizado.
     """
     if request.method != "POST":
         return redirect(request.META.get("HTTP_REFERER", "/"))
@@ -248,9 +248,9 @@ def marcar_conteudo(request, conteudo_id):
         return HttpResponse(status=204)
 
     if marcado:
-        messages.success(request, "Conteudo marcado como lido.")
+        messages.success(request, "Conteúdo marcado como lido.")
     else:
-        messages.info(request, "Esse conteudo ja estava marcado como lido.")
+        messages.info(request, "Esse conteúdo já estava marcado como lido.")
 
     return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER", "/"))
 
@@ -258,7 +258,7 @@ def marcar_conteudo(request, conteudo_id):
 @login_required
 def responder_atividade(request, curso_slug, aula_id, atividade_id):
     """
-    Pagina de resposta da atividade/questionario.
+    Página de resposta da atividade/questionario.
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
@@ -335,7 +335,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 messages.error(request, "Não foi possível publicar a mensagem. Revise os campos do formulário.")
         else:
             if limite_atingido and tentativa_em_andamento is None:
-                messages.info(request, "Limite de tentativas alcancado para esta atividade.")
+                messages.info(request, "Limite de tentativas alcançado para esta atividade.")
                 return redirect(
                     "ava:aluno_responder_atividade",
                     curso_slug=curso_slug,
@@ -358,12 +358,12 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 if usa_formulario_quiz:
                     dados_respostas = {k: v for k, v in request.POST.items() if k.isdigit()}
                     AtividadeService.submeter_quiz(tentativa_processada, dados_respostas)
-                    messages.success(request, "Tarefa concluida com sucesso.")
+                    messages.success(request, "Tarefa concluída com sucesso.")
                 else:
                     texto = request.POST.get("texto_resposta", "")
                     arquivo = request.FILES.get("arquivo_enviado")
                     AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivo)
-                    messages.success(request, "Tarefa concluida com sucesso.")
+                    messages.success(request, "Tarefa concluída com sucesso.")
 
                 return redirect(
                     "ava:aluno_responder_atividade",
@@ -423,7 +423,7 @@ def baixar_comprovante_atividade(request, tentativa_id):
 
     pdf.setTitle(f"Comprovante de atividade {tentativa.id}")
     pdf.setFont("Helvetica-Bold", 16)
-    pdf.drawString(margem_x, y, "Comprovante de tarefa concluida")
+    pdf.drawString(margem_x, y, "Comprovante de tarefa concluída")
 
     y -= 12 * mm
     pdf.setFont("Helvetica", 10)
@@ -439,7 +439,7 @@ def baixar_comprovante_atividade(request, tentativa_id):
         ("Aluno", _nome_usuario(tentativa.aluno)),
         ("E-mail", tentativa.aluno.email),
         ("Curso", curso.titulo),
-        ("Modulo", modulo.titulo),
+        ("Módulo", modulo.titulo),
         ("Aula", aula.titulo),
         ("Tarefa", atividade.titulo),
         ("Tipo", atividade.get_tipo_display()),

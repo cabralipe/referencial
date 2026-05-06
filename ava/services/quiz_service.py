@@ -114,7 +114,7 @@ class AtividadeService:
     @transaction.atomic
     def submeter_tarefa_discursiva(tentativa: AtividadeTentativa, texto_resposta: str, arquivo=None):
         """
-        Envia uma resposta tipo texto/arquivo que depende de correcao manual.
+        Envia uma resposta tipo texto/arquivo que depende de correção manual.
         """
         tentativa.texto_resposta = texto_resposta
         if arquivo:
@@ -209,7 +209,7 @@ class AtividadeService:
         feedback_tutor: str,
     ):
         """
-        Aplica a correcao manual de uma tentativa enviada pelo aluno.
+        Aplica a correção manual de uma tentativa enviada pelo aluno.
         """
         tentativa.status = status
         tentativa.nota_obtida = nota_obtida

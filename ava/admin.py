@@ -177,7 +177,7 @@ class QuizQuestaoAdminForm(forms.ModelForm):
         atividade = self.cleaned_data.get("atividade")
         if atividade and atividade.tipo not in [Atividade.Tipo.QUIZ, Atividade.Tipo.QUESTIONARIO]:
             raise forms.ValidationError(
-                "A questao de quiz so pode ser vinculada a atividades do tipo Quiz ou Questionario."
+                "A questão de quiz só pode ser vinculada a atividades do tipo Quiz ou Questionário."
             )
         return atividade
 
@@ -197,7 +197,7 @@ class CursoAdminForm(forms.ModelForm):
             existing = existing.exclude(pk=self.instance.pk)
 
         if existing.exists():
-            raise forms.ValidationError("Ja existe um curso com este slug. Informe um slug diferente.")
+            raise forms.ValidationError("Já existe um curso com este slug. Informe um slug diferente.")
         return slug
 
 
@@ -259,7 +259,7 @@ class CursoAdmin(AVAModelAdmin):
 
         context = {
             **self.admin_site.each_context(request),
-            "title": "Copiar estrutura de curso entre municipios",
+            "title": "Copiar estrutura de curso entre municípios",
             "opts": self.model._meta,
             "form": form,
             "media": self.media + form.media,

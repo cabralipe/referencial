@@ -3,7 +3,7 @@
 {% block object-tools-items %}
     {% if request.user.role == "super_admin" or request.user.is_superuser %}
     <li>
-        <a href="{% url 'admin:ava_curso_copy_structure' %}" class="addlink">Copiar estrutura entre municipios</a>
+        <a href="{% url 'admin:ava_curso_copy_structure' %}" class="addlink">Copiar estrutura entre municípios</a>
     </li>
     {% endif %}
     {{ block.super }}

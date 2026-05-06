@@ -7,62 +7,62 @@ from ava.models import Atividade, Aula, ConteudoAula, Curso, CursoModulo
 from core.models import Cliente, Usuario
 
 
-CURSO_TITULO_PADRAO = "Formacao Continuada para Profissionais de Apoio Escolar na Educacao Especial"
+CURSO_TITULO_PADRAO = "Formação Continuada para Profissionais de Apoio Escolar na Educação Especial"
 CURSO_SLUG_PADRAO = "formacao-continuada-apoio-escolar-educacao-especial"
 
 MODULOS_TEMATICOS = [
-    "Gestao Emocional e Construcao de Vinculos e Afetividade",
-    "Fundamentos da Educacao Inclusiva",
+    "Gestão Emocional e Construção de Vínculos e Afetividade",
+    "Fundamentos da Educação Inclusiva",
     "Desenvolvimento Humano e Processos de Aprendizagem",
-    "Mediacao Pedagogica e Estrategias de Aprendizagem",
-    "Alimentacao Escolar: Nutricao e Seletividade Alimentar",
+    "Mediação Pedagógica e Estratégias de Aprendizagem",
+    "Alimentação Escolar: Nutrição e Seletividade Alimentar",
     "Acessibilidade e Tecnologia Assistiva",
     "Primeiros Socorros no Ambiente Escolar",
-    "Avaliacao Continua da Aprendizagem e Praticas Inclusivas",
+    "Avaliação Contínua da Aprendizagem e Práticas Inclusivas",
 ]
 
 CONTEUDOS_POR_MODULO = {
     1: [
-        "Tema: Eu cuido de mim para cuidar de voce.",
-        "Gestao emocional na rotina escolar inclusiva.",
-        "Construcao de vinculos e afetividade no acompanhamento aos estudantes.",
+        "Tema: Eu cuido de mim para cuidar de você.",
+        "Gestão emocional na rotina escolar inclusiva.",
+        "Construção de vínculos e afetividade no acompanhamento aos estudantes.",
     ],
     2: [
-        "Conceitos centrais e marcos da educacao inclusiva.",
+        "Conceitos centrais e marcos da educação inclusiva.",
         "Papel do profissional de apoio escolar no processo inclusivo.",
     ],
     3: [
-        "Desenvolvimento humano no contexto da educacao especial.",
-        "Processos de aprendizagem e necessidades especificas dos estudantes.",
+        "Desenvolvimento humano no contexto da educação especial.",
+        "Processos de aprendizagem e necessidades específicas dos estudantes.",
     ],
     4: [
-        "Mediacao pedagogica no apoio escolar.",
-        "Estrategias para favorecer participacao e aprendizagem.",
+        "Mediação pedagógica no apoio escolar.",
+        "Estratégias para favorecer participação e aprendizagem.",
     ],
     5: [
-        "Alimentacao escolar e nutricao no contexto inclusivo.",
+        "Alimentação escolar e nutrição no contexto inclusivo.",
         "Seletividade alimentar e manejo no ambiente escolar.",
     ],
     6: [
-        "Principios de acessibilidade no espaco escolar.",
-        "Recursos de tecnologia assistiva para autonomia e participacao.",
+        "Princípios de acessibilidade no espaço escolar.",
+        "Recursos de tecnologia assistiva para autonomia e participação.",
     ],
     7: [
         "Primeiros socorros no ambiente escolar.",
         "Procedimentos iniciais e encaminhamentos seguros.",
     ],
     8: [
-        "Avaliacao continua da aprendizagem.",
-        "Praticas inclusivas para desenvolvimento integral dos estudantes.",
+        "Avaliação contínua da aprendizagem.",
+        "Práticas inclusivas para desenvolvimento integral dos estudantes.",
     ],
 }
 
 AULAS_PADRAO_MODULO = [
-    "Boas-vindas ao Modulo",
-    "Apresentacao do Modulo",
+    "Boas-vindas ao Módulo",
+    "Apresentação do Módulo",
     "Materiais para apoio aos estudos",
-    "Video facultativo",
-    "Orientacoes para atividade",
+    "Vídeo facultativo",
+    "Orientações para atividade",
     "Atividade",
     "Atividade corrigida - Prof. Redator",
 ]
@@ -70,31 +70,31 @@ AULAS_PADRAO_MODULO = [
 
 def _descricao_longa_curso() -> str:
     return (
-        "1. Apresentacao do Curso\n"
-        "Formacao voltada para o fortalecimento da atuacao do profissional de apoio escolar na educacao inclusiva "
+        "1. Apresentação do Curso\n"
+        "Formação voltada para o fortalecimento da atuação do profissional de apoio escolar na educação inclusiva "
         "e no desenvolvimento integral dos estudantes.\n\n"
         "2. Boas-vindas ao Curso\n"
-        "Mensagem de acolhimento e valorizacao do papel dos profissionais de apoio escolar, "
-        "com incentivo a participacao ativa em todo o percurso.\n\n"
-        "4. Tutoriais para Navegacao no Curso\n"
-        "- Tutorial de acesso a plataforma\n"
+        "Mensagem de acolhimento e valorização do papel dos profissionais de apoio escolar, "
+        "com incentivo à participação ativa em todo o percurso.\n\n"
+        "4. Tutoriais para Navegação no Curso\n"
+        "- Tutorial de acesso à plataforma\n"
         "- Tutorial de navegação entre módulos\n"
         "- Tutorial de envio de atividades\n"
-        "- Tutorial de participacao nas atividades\n"
+        "- Tutorial de participação nas atividades\n"
         "- Tutorial de acompanhamento de desempenho\n\n"
-        "Observacoes para organizacao na plataforma\n"
+        "Observações para organização na plataforma\n"
         "- Fórum geral do curso\n"
-        "- Espaco de duvidas por modulo\n"
-        "- Avaliacao final\n"
-        "- Certificacao"
+        "- Espaço de dúvidas por módulo\n"
+        "- Avaliação final\n"
+        "- Certificação"
     )
 
 
 def _ementa_curso() -> str:
     return (
         "3. Ementa do Curso\n"
-        "Formacao voltada ao desenvolvimento de competencias socioemocionais, pedagogicas e praticas para "
-        "atuacao na educacao inclusiva, abordando diferentes dimensoes do trabalho no ambiente escolar."
+        "Formação voltada ao desenvolvimento de competências socioemocionais, pedagógicas e práticas para "
+        "atuação na educação inclusiva, abordando diferentes dimensoes do trabalho no ambiente escolar."
     )
 
 
@@ -102,29 +102,29 @@ def _objetivos_curso() -> str:
     return (
         "5. Objetivos do Curso\n"
         "Objetivo Geral:\n"
-        "Fortalecer a atuacao dos profissionais de apoio escolar no contexto da educacao inclusiva.\n\n"
-        "Objetivos Especificos:\n"
-        "- Desenvolver competencias para atuacao no ambiente escolar\n"
-        "- Compreender praticas inclusivas\n"
-        "- Fortalecer a mediacao pedagogica\n"
+        "Fortalecer a atuação dos profissionais de apoio escolar no contexto da educacao inclusiva.\n\n"
+        "Objetivos Específicos:\n"
+        "- Desenvolver competências para atuação no ambiente escolar\n"
+        "- Compreender práticas inclusivas\n"
+        "- Fortalecer a mediação pedagógica\n"
         "- Promover o desenvolvimento integral dos estudantes"
     )
 
 
 class Command(BaseCommand):
-    help = "Injeta o curso de Formacao Continuada para Profissionais de Apoio Escolar (SATUBA) no AVA."
+    help = "Injeta o curso de Formação Continuada para Profissionais de Apoio Escolar (SATUBA) no AVA."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--cliente-id",
             type=int,
             default=None,
-            help="ID do cliente para execucao nao interativa (opcional).",
+            help="ID do cliente para execução não interativa (opcional).",
         )
         parser.add_argument(
             "--cliente-slug",
             default="",
-            help="Slug do cliente para execucao nao interativa (opcional).",
+            help="Slug do cliente para execução não interativa (opcional).",
         )
         parser.add_argument(
             "--autor-email",
@@ -139,22 +139,22 @@ class Command(BaseCommand):
         parser.add_argument(
             "--titulo",
             default=CURSO_TITULO_PADRAO,
-            help="Titulo do curso.",
+            help="Título do curso.",
         )
         parser.add_argument(
             "--rascunho",
             action="store_true",
-            help="Cria/atualiza o curso como rascunho (padrao e publicado).",
+            help="Cria/atualiza o curso como rascunho (padrão é publicado).",
         )
         parser.add_argument(
             "--fechado",
             action="store_true",
-            help="Desabilita inscricao livre (padrao e curso aberto).",
+            help="Desabilita inscricao livre (padrão é curso aberto).",
         )
         parser.add_argument(
             "--nao-interativo",
             action="store_true",
-            help="Executa uma unica vez sem perguntas no terminal.",
+            help="Executa uma única vez sem perguntas no terminal.",
         )
 
     def handle(self, *args, **options):
@@ -168,9 +168,9 @@ class Command(BaseCommand):
         nao_interativo = options["nao_interativo"]
 
         if not slug_base:
-            raise CommandError("Informe um slug valido para o curso.")
+            raise CommandError("Informe um slug válido para o curso.")
         if not titulo:
-            raise CommandError("Informe um titulo valido para o curso.")
+            raise CommandError("Informe um título válido para o curso.")
 
         cliente = self._resolver_cliente_opcional(cliente_id=cliente_id, cliente_slug=cliente_slug)
         if nao_interativo and cliente is None:
@@ -199,7 +199,7 @@ class Command(BaseCommand):
                 break
 
             slug_execucao = self._proximo_slug_incremental(slug_base)
-            self.stdout.write(f"Proxima injecao usara slug: {slug_execucao}")
+            self.stdout.write(f"Próxima injeção usará slug: {slug_execucao}")
             cliente = None
             multiplas_execucoes = True
 
@@ -212,12 +212,12 @@ class Command(BaseCommand):
         if cliente_id is not None:
             cliente = Cliente.objects.filter(id=cliente_id).first()
             if not cliente:
-                raise CommandError(f"Cliente nao encontrado para id={cliente_id}.")
+                raise CommandError(f"Cliente não encontrado para id={cliente_id}.")
             return cliente
         if cliente_slug:
             cliente = Cliente.objects.filter(slug=cliente_slug).first()
             if not cliente:
-                raise CommandError(f"Cliente nao encontrado para slug='{cliente_slug}'.")
+                raise CommandError(f"Cliente não encontrado para slug='{cliente_slug}'.")
             return cliente
         return None
 
@@ -225,13 +225,13 @@ class Command(BaseCommand):
         while True:
             valor = input("Informe o ID do cliente: ").strip()
             if not valor.isdigit():
-                self.stdout.write(self.style.WARNING("ID invalido. Digite um numero inteiro."))
+                self.stdout.write(self.style.WARNING("ID inválido. Digite um número inteiro."))
                 continue
             cliente = Cliente.objects.filter(id=int(valor)).first()
             if cliente:
                 self.stdout.write(f"Cliente selecionado: id={cliente.id} slug={cliente.slug} nome={cliente.nome}")
                 return cliente
-            self.stdout.write(self.style.WARNING(f"Cliente id={valor} nao encontrado."))
+            self.stdout.write(self.style.WARNING(f"Cliente id={valor} não encontrado."))
 
     def _perguntar_sim_nao(self, mensagem: str) -> bool:
         resposta = input(mensagem).strip().lower()
@@ -250,7 +250,7 @@ class Command(BaseCommand):
             autor = Usuario.objects.filter(email=autor_email, cliente=cliente).first()
             if not autor:
                 raise CommandError(
-                    f"Autor nao encontrado com email='{autor_email}' para cliente='{cliente.slug}'."
+                    f"Autor não encontrado com email='{autor_email}' para cliente='{cliente.slug}'."
                 )
             return autor
         return (
@@ -273,7 +273,7 @@ class Command(BaseCommand):
         curso_conflitante = Curso.raw_objects.filter(slug=slug).exclude(cliente=cliente).first()
         if curso_conflitante:
             raise CommandError(
-                "Ja existe um curso com esse slug em outro cliente. "
+                "Já existe um curso com esse slug em outro cliente. "
                 f"Slug='{slug}', cliente_id_existente={curso_conflitante.cliente_id}."
             )
 
@@ -285,12 +285,12 @@ class Command(BaseCommand):
                     "cliente": cliente,
                     "slug": slug,
                     "titulo": titulo,
-                    "descricao_curta": "Formacao continuada para profissionais de apoio escolar na educacao especial.",
+                    "descricao_curta": "Formação continuada para profissionais de apoio escolar na educação especial.",
                     "descricao_longa": _descricao_longa_curso(),
                     "ementa": _ementa_curso(),
                     "objetivos": _objetivos_curso(),
-                    "publico_alvo": "Profissionais de apoio escolar da Educacao Basica.",
-                    "nivel": "Formacao continuada",
+                    "publico_alvo": "Profissionais de apoio escolar da Educação Básica.",
+                    "nivel": "Formação continuada",
                     "carga_horaria": 160,
                     "status": status,
                     "is_aberto": is_aberto,
@@ -302,7 +302,7 @@ class Command(BaseCommand):
                 },
             )
 
-            # Recria estrutura para garantir padrao exato sem duplicidade.
+            # Recria estrutura para garantir padrão exato sem duplicidade.
             CursoModulo.raw_objects.filter(curso=curso).delete()
 
             total_aulas = 0
@@ -311,7 +311,7 @@ class Command(BaseCommand):
                 modulo = CursoModulo.objects.create(
                     cliente=cliente,
                     curso=curso,
-                    titulo=f"Modulo {ordem_modulo} - {nome_modulo}",
+                    titulo=f"Módulo {ordem_modulo} - {nome_modulo}",
                     descricao=self._descricao_modulo(ordem_modulo=ordem_modulo, nome_modulo=nome_modulo),
                     ordem=ordem_modulo,
                     is_active=True,
@@ -329,18 +329,18 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Curso {acao} com sucesso. "
-                f"cliente={cliente.slug} curso_id={curso.id} modulos={len(MODULOS_TEMATICOS)} "
+                f"cliente={cliente.slug} curso_id={curso.id} módulos={len(MODULOS_TEMATICOS)} "
                 f"aulas={total_aulas} atividades={total_atividades} slug={slug}"
             )
         )
-        self.stdout.write("Modulos tematicos: " + "; ".join(MODULOS_TEMATICOS))
+        self.stdout.write("Módulos temáticos: " + "; ".join(MODULOS_TEMATICOS))
 
     def _descricao_modulo(self, *, ordem_modulo: int, nome_modulo: str) -> str:
         itens = CONTEUDOS_POR_MODULO.get(ordem_modulo, [])
         if not itens:
-            return f"Modulo {ordem_modulo}: {nome_modulo}."
+            return f"Módulo {ordem_modulo}: {nome_modulo}."
         lista = " ".join(f"- {item}" for item in itens)
-        return f"Modulo {ordem_modulo}: {nome_modulo}. Conteudo: {lista}"
+        return f"Módulo {ordem_modulo}: {nome_modulo}. Conteúdo: {lista}"
 
     def _criar_aulas_padrao_modulo(
         self,
@@ -372,7 +372,7 @@ class Command(BaseCommand):
                 aula=aula,
                 tipo=ConteudoAula.Tipo.TEXTO,
                 titulo=titulo_aula,
-                descricao="Conteudo base da etapa.",
+                descricao="Conteúdo base da etapa.",
                 ordem=1,
                 is_obrigatorio=True,
                 conteudo_texto=self._texto_base_aula(
@@ -387,9 +387,9 @@ class Command(BaseCommand):
                     cliente=cliente,
                     aula=aula,
                     tipo=Atividade.Tipo.TAREFA,
-                    titulo="Avaliacao final" if ordem_modulo == 8 else "Atividade",
+                    titulo="Avaliação final" if ordem_modulo == 8 else "Atividade",
                     descricao=self._descricao_atividade(nome_modulo=nome_modulo, ordem_modulo=ordem_modulo),
-                    instrucoes="Elabore a resposta com base no modulo e envie no campo de resposta.",
+                    instrucoes="Elabore a resposta com base no módulo e envie no campo de resposta.",
                     nota_maxima=100,
                     peso=1,
                     is_obrigatoria=True,
@@ -405,12 +405,12 @@ class Command(BaseCommand):
                     cliente=cliente,
                     aula=aula,
                     tipo=ConteudoAula.Tipo.TEXTO,
-                    titulo="Espaco de duvidas do modulo",
-                    descricao="Canal de duvidas por modulo.",
+                    titulo="Espaço de dúvidas do módulo",
+                    descricao="Canal de dúvidas por módulo.",
                     ordem=2,
                     is_obrigatorio=False,
                     conteudo_texto=(
-                        f"Registre aqui duvidas do modulo {ordem_modulo} - {nome_modulo} para acompanhamento."
+                        f"Registre aqui dúvidas do módulo {ordem_modulo} - {nome_modulo} para acompanhamento."
                     ),
                 )
 
@@ -420,60 +420,60 @@ class Command(BaseCommand):
         return len(AULAS_PADRAO_MODULO), total_atividades
 
     def _resumo_aula(self, *, nome_modulo: str, titulo_aula: str) -> str:
-        return f"{titulo_aula} do modulo {nome_modulo}."
+        return f"{titulo_aula} do módulo {nome_modulo}."
 
     def _texto_base_aula(self, *, ordem_modulo: int, nome_modulo: str, titulo_aula: str) -> str:
-        if titulo_aula == "Boas-vindas ao Modulo":
+        if titulo_aula == "Boas-vindas ao Módulo":
             return (
-                f"Bem-vindo(a) ao modulo {nome_modulo}. "
+                f"Bem-vindo(a) ao módulo {nome_modulo}. "
                 "Organize seu percurso de estudos e participe ativamente das atividades."
             )
-        if titulo_aula == "Apresentacao do Modulo":
+        if titulo_aula == "Apresentação do Módulo":
             return (
-                f"Neste modulo, voce estudara '{nome_modulo}' com foco na pratica de apoio escolar inclusivo."
+                f"Neste módulo, você estudará '{nome_modulo}' com foco na prática de apoio escolar inclusivo."
             )
         if titulo_aula == "Materiais para apoio aos estudos":
             itens = CONTEUDOS_POR_MODULO.get(ordem_modulo, [])
-            base = "Consulte textos orientadores, referencias praticas e materiais complementares do modulo."
+            base = "Consulte textos orientadores, referências práticas e materiais complementares do módulo."
             if not itens:
                 return base
             lista = "\n".join(f"- {item}" for item in itens)
-            return f"{base}\n\nConteudo do modulo:\n{lista}"
-        if titulo_aula == "Video facultativo":
+            return f"{base}\n\nConteúdo do módulo:\n{lista}"
+        if titulo_aula == "Vídeo facultativo":
             return (
-                "Video complementar opcional para reforco dos conceitos do modulo. "
+                "Vídeo complementar opcional para reforço dos conceitos do módulo. "
                 "Insira o link ou embed quando houver material audiovisual."
             )
-        if titulo_aula == "Orientacoes para atividade":
+        if titulo_aula == "Orientações para atividade":
             return (
-                "Leia criterios e objetivos da atividade. Considere a realidade da escola e dos estudantes."
+                "Leia critérios e objetivos da atividade. Considere a realidade da escola e dos estudantes."
             )
         if titulo_aula == "Atividade":
             return (
-                "Realize a atividade articulando conhecimentos socioemocionais, pedagogicos e praticas inclusivas."
+                "Realize a atividade articulando conhecimentos socioemocionais, pedagógicos e práticas inclusivas."
             )
         if titulo_aula == "Atividade corrigida - Prof. Redator":
-            return "Consulte a devolutiva comentada com orientacoes de melhoria."
-        return "Etapa do modulo."
+            return "Consulte a devolutiva comentada com orientações de melhoria."
+        return "Etapa do módulo."
 
     def _descricao_atividade(self, *, nome_modulo: str, ordem_modulo: int) -> str:
         if ordem_modulo == 8:
-            return "Avaliacao final do curso com foco em praticas inclusivas e desenvolvimento integral."
-        return f"Atividade pratica do modulo {nome_modulo}."
+            return "Avaliação final do curso com foco em práticas inclusivas e desenvolvimento integral."
+        return f"Atividade pratica do módulo {nome_modulo}."
 
     def _inserir_itens_finais(self, *, cliente: Cliente, aula: Aula):
         itens = [
             (
                 "Fórum geral do curso",
-                "Espaco coletivo para troca de experiencias e boas praticas entre os participantes.",
+                "Espaço coletivo para troca de experiências e boas práticas entre os participantes.",
             ),
             (
-                "Avaliacao final",
-                "Etapa de fechamento para consolidacao dos conhecimentos desenvolvidos no curso.",
+                "Avaliação final",
+                "Etapa de fechamento para consolidação dos conhecimentos desenvolvidos no curso.",
             ),
             (
                 "Certificacao",
-                "Informacoes sobre criterios para emissao do certificado ao final do percurso.",
+                "Informações sobre critérios para emissão do certificado ao final do percurso.",
             ),
         ]
         ordem = 3

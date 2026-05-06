@@ -50,7 +50,7 @@
                             data-bs-target="#collapse{{ modulo.id }}"
                             aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
                             aria-controls="collapse{{ modulo.id }}">
-                            Modulo {{ modulo.ordem }}: {{ modulo.titulo }}
+                            Módulo {{ modulo.ordem }}: {{ modulo.titulo }}
                         </button>
                     </h2>
                     <div id="collapse{{ modulo.id }}"
@@ -79,21 +79,21 @@
                                     <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}" class="btn btn-outline-primary btn-sm px-3">Acessar</a>
                                 </li>
                                 {% empty %}
-                                <li class="list-group-item px-4 py-3 text-muted">Nenhuma aula publicada neste modulo.</li>
+                                <li class="list-group-item px-4 py-3 text-muted">Nenhuma aula publicada neste módulo.</li>
                                 {% endfor %}
                             </ul>
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="ava-surface p-4 text-center text-muted">Nenhum modulo foi publicado ainda.</div>
+                <div class="ava-surface p-4 text-center text-muted">Nenhum módulo foi publicado ainda.</div>
                 {% endfor %}
             </div>
         </div>
 
         <div class="col-lg-4">
             <aside class="ava-surface p-4 h-100">
-                <h3 class="h5 fw-bold mb-3">Informacoes do curso</h3>
+                <h3 class="h5 fw-bold mb-3">Informações do curso</h3>
                 <ul class="list-unstyled mb-0">
                     <li class="mb-3 d-flex align-items-start gap-2">
                         <i class="bi bi-person-video3 text-primary"></i>
@@ -101,11 +101,11 @@
                     </li>
                     <li class="mb-3 d-flex align-items-start gap-2">
                         <i class="bi bi-clock-history text-primary"></i>
-                        <span><strong>Carga horaria:</strong> {{ curso.carga_horaria }}h</span>
+                        <span><strong>Carga horária:</strong> {{ curso.carga_horaria }}h</span>
                     </li>
                     <li class="mb-3 d-flex align-items-start gap-2">
                         <i class="bi bi-bar-chart-steps text-primary"></i>
-                        <span><strong>Minimo para aprovacao:</strong> {{ curso.progresso_minimo }}%</span>
+                        <span><strong>Mínimo para aprovação:</strong> {{ curso.progresso_minimo }}%</span>
                     </li>
                     {% if curso.permite_certificado %}
                     <li class="d-flex align-items-start gap-2 text-success">

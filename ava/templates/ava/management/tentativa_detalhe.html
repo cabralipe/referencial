@@ -1,11 +1,11 @@
 {% extends "ava/base.html" %}
 
-{% block title %}Resposta da Atividade | Gestao AVA{% endblock %}
+{% block title %}Resposta da Atividade | Gestáo AVA{% endblock %}
 
 {% block content %}
 <div class="container py-4 py-lg-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 fw-bold mb-0">Resposta do usuario</h1>
+        <h1 class="h3 fw-bold mb-0">Resposta do usuário</h1>
         <a href="{% url 'ava:gestao_dashboard' %}" class="btn btn-outline-primary">Voltar ao dashboard</a>
     </div>
 
@@ -13,7 +13,7 @@
         <h2 class="h5 fw-bold mb-3">Dados da tentativa</h2>
         <div class="row g-3">
             <div class="col-md-6">
-                <strong>Usuario:</strong>
+                <strong>Usuário:</strong>
                 <div>{{ tentativa.aluno.nome|default:tentativa.aluno.email }} ({{ tentativa.aluno.email }})</div>
             </div>
             <div class="col-md-6">
@@ -25,7 +25,7 @@
                 <div>{{ tentativa.atividade.aula.modulo.curso.titulo }}</div>
             </div>
             <div class="col-md-6">
-                <strong>Modulo / Aula:</strong>
+                <strong>Módulo / Aula:</strong>
                 <div>{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</div>
             </div>
             <div class="col-md-6">
@@ -37,7 +37,7 @@
                 <div>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}</div>
             </div>
             <div class="col-md-6">
-                <strong>Inicio:</strong>
+                <strong>Início:</strong>
                 <div>{{ tentativa.data_inicio|date:"d/m/Y H:i" }}</div>
             </div>
             <div class="col-md-6">
@@ -46,7 +46,7 @@
             </div>
             {% if tentativa.data_correcao %}
             <div class="col-md-6">
-                <strong>Correcao:</strong>
+                <strong>Correção:</strong>
                 <div>{{ tentativa.data_correcao|date:"d/m/Y H:i" }}</div>
             </div>
             {% endif %}
@@ -85,8 +85,8 @@
     <section class="ava-surface p-4 mb-4">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
             <div>
-                <h2 class="h5 fw-bold mb-1">Correcao da atividade</h2>
-                <p class="text-muted mb-0">Use as mesmas opcoes de status, nota e feedback disponiveis no admin Django.</p>
+                <h2 class="h5 fw-bold mb-1">Correção da atividade</h2>
+                <p class="text-muted mb-0">Use as mesmas opções de status, nota e feedback disponíveis no admin Django.</p>
             </div>
             <span class="badge text-bg-light border">{{ tentativa.get_status_display }}</span>
         </div>
@@ -120,8 +120,8 @@
             </div>
             <div class="col-md-4">
                 <div class="ava-surface p-3 h-100" style="background: var(--surface-elevated);">
-                    <div class="small text-muted text-uppercase fw-semibold mb-1">Referencia</div>
-                    <div><strong>Nota maxima:</strong> {{ tentativa.atividade.nota_maxima }}</div>
+                    <div class="small text-muted text-uppercase fw-semibold mb-1">Referência</div>
+                    <div><strong>Nota máxima:</strong> {{ tentativa.atividade.nota_maxima }}</div>
                     <div><strong>Tipo:</strong> {{ tentativa.atividade.get_tipo_display }}</div>
                     <div><strong>Prazo:</strong> {% if tentativa.atividade.prazo_envio %}{{ tentativa.atividade.prazo_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
                 </div>
@@ -134,7 +134,7 @@
                 {% endfor %}
             </div>
             <div class="col-12 d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary">Salvar correcao</button>
+                <button type="submit" class="btn btn-primary">Salvar correção</button>
             </div>
         </form>
     </section>
@@ -183,14 +183,14 @@
 
     {% if respostas_quiz or tentativa.atividade.tipo == 'quiz' or tentativa.atividade.tipo == 'questionario' %}
     <section class="ava-surface p-4">
-        <h2 class="h5 fw-bold mb-3">Respostas de quiz/questionario</h2>
+        <h2 class="h5 fw-bold mb-3">Respostas de quiz/questionário</h2>
         <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Questao</th>
-                        <th>Resposta do usuario</th>
+                        <th>Questão</th>
+                        <th>Resposta do usuário</th>
                         <th>Correta?</th>
                         <th>Nota</th>
                     </tr>
