@@ -105,16 +105,14 @@
         <form method="post" class="row g-3">
             {% csrf_token %}
             <div class="col-md-4">
-                <label for="{{ correcao_form.status.id_for_label }}" class="form-label">{{ correcao_form.status.label
-                    }}</label>
+                <label for="{{ correcao_form.status.id_for_label }}" class="form-label">{{ correcao_form.status.label }}</label>
                 {{ correcao_form.status }}
                 {% for error in correcao_form.status.errors %}
                 <div class="text-danger small mt-1">{{ error }}</div>
                 {% endfor %}
             </div>
             <div class="col-md-4">
-                <label for="{{ correcao_form.nota_obtida.id_for_label }}" class="form-label">{{
-                    correcao_form.nota_obtida.label }}</label>
+                <label for="{{ correcao_form.nota_obtida.id_for_label }}" class="form-label">{{ correcao_form.nota_obtida.label }}</label>
                 {{ correcao_form.nota_obtida }}
                 {% if correcao_form.nota_obtida.help_text %}
                 <div class="form-text">{{ correcao_form.nota_obtida.help_text }}</div>
@@ -128,13 +126,11 @@
                     <div class="small text-muted text-uppercase fw-semibold mb-1">Referência</div>
                     <div><strong>Nota máxima:</strong> {{ tentativa.atividade.nota_maxima }}</div>
                     <div><strong>Tipo:</strong> {{ tentativa.atividade.get_tipo_display }}</div>
-                    <div><strong>Prazo:</strong> {% if tentativa.atividade.prazo_envio %}{{
-                        tentativa.atividade.prazo_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
+                    <div><strong>Prazo:</strong> {% if tentativa.atividade.prazo_envio %}{{ tentativa.atividade.prazo_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
                 </div>
             </div>
             <div class="col-12">
-                <label for="{{ correcao_form.feedback_tutor.id_for_label }}" class="form-label">{{
-                    correcao_form.feedback_tutor.label }}</label>
+                <label for="{{ correcao_form.feedback_tutor.id_for_label }}" class="form-label">{{ correcao_form.feedback_tutor.label }}</label>
                 {{ correcao_form.feedback_tutor }}
                 {% for error in correcao_form.feedback_tutor.errors %}
                 <div class="text-danger small mt-1">{{ error }}</div>

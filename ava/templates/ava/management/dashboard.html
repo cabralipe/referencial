@@ -64,7 +64,7 @@
                 <select id="usuario" name="usuario" class="form-select">
                     <option value="">Todos</option>
                     {% for usuario in usuarios %}
-                    <option value="{{ usuario.id }}" {% if filtros.usuario_id==usuario.id %}selected{% endif %}>
+                    <option value="{{ usuario.id }}" {% if filtros.usuario_id == usuario.id %}selected{% endif %}>
                         {{ usuario.nome|default:usuario.email }} ({{ usuario.email }})
                     </option>
                     {% endfor %}
@@ -75,8 +75,7 @@
                 <select id="curso" name="curso" class="form-select">
                     <option value="">Todos</option>
                     {% for curso in cursos %}
-                    <option value="{{ curso.id }}" {% if filtros.curso_id==curso.id %}selected{% endif %}>{{
-                        curso.titulo }}</option>
+                    <option value="{{ curso.id }}" {% if filtros.curso_id == curso.id %}selected{% endif %}>{{ curso.titulo }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -86,7 +85,7 @@
                 <select id="modulo" name="modulo" class="form-select">
                     <option value="">Todos</option>
                     {% for modulo in modulos %}
-                    <option value="{{ modulo.id }}" {% if filtros.modulo_id==modulo.id %}selected{% endif %}>
+                    <option value="{{ modulo.id }}" {% if filtros.modulo_id == modulo.id %}selected{% endif %}>
                         {{ modulo.titulo }}
                     </option>
                     {% endfor %}
@@ -97,7 +96,7 @@
                 <select id="aula" name="aula" class="form-select">
                     <option value="">Todas</option>
                     {% for aula in aulas %}
-                    <option value="{{ aula.id }}" {% if filtros.aula_id==aula.id %}selected{% endif %}>{{ aula.titulo }}
+                    <option value="{{ aula.id }}" {% if filtros.aula_id == aula.id %}selected{% endif %}>{{ aula.titulo }}
                     </option>
                     {% endfor %}
                 </select>
@@ -107,7 +106,7 @@
                 <select id="status" name="status" class="form-select">
                     <option value="">Todos</option>
                     {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if filtros.status==value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -117,7 +116,7 @@
                 <select id="tipo" name="tipo" class="form-select">
                     <option value="">Todos</option>
                     {% for value, label in tipo_choices %}
-                    <option value="{{ value }}" {% if filtros.tipo==value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -201,10 +200,9 @@
     <section class="row g-3 mb-4">
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Resolução de questáes</p>
+                <p class="text-muted small mb-1">Resolução de questões</p>
                 <h3 class="h4 fw-bold mb-0">{{ metricas.quiz.taxa_resolucao }}%</h3>
-                <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas
-                    }}</small>
+                <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas }}</small>
             </article>
         </div>
         <div class="col-md-6 col-xl-3">
@@ -218,8 +216,7 @@
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Média de nota</p>
                 <h3 class="h4 fw-bold mb-0">
-                    {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif
-                    %}
+                    {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif %}
                 </h3>
                 <small class="text-muted">Tentativas com nota</small>
             </article>
@@ -228,8 +225,7 @@
             <article class="ava-surface h-100 p-3">
                 <p class="text-muted small mb-1">Último envio</p>
                 <h3 class="h6 fw-bold mb-0">
-                    {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{%
-                    endif %}
+                    {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{% endif %}
                 </h3>
                 <small class="text-muted">Atualização mais recente</small>
             </article>
@@ -315,16 +311,14 @@
                         </td>
                         <td>
                             <strong>{{ tentativa.atividade.aula.modulo.curso.titulo }}</strong><br>
-                            <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{
-                                tentativa.atividade.aula.titulo }}</small>
+                            <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</small>
                         </td>
                         <td>
                             <strong>{{ tentativa.atividade.titulo }}</strong><br>
                             <small class="text-muted">{{ tentativa.atividade.get_tipo_display }}</small>
                         </td>
                         <td>{{ tentativa.get_status_display }}</td>
-                        <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif
-                            %}</td>
+                        <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
                         <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}
                         </td>
                         <td>

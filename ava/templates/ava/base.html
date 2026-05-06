@@ -196,8 +196,7 @@
                     <li class="nav-item">
                         <a class="nav-link ava-nav-link" href="{% url 'ava:aluno_dashboard' %}">Meu painel</a>
                     </li>
-                    {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'revisor' or
-                    user.role == 'super_admin' %}
+                    {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'revisor' or user.role == 'super_admin' %}
                     <li class="nav-item">
                         <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestão AVA</a>
                     </li>
@@ -206,8 +205,7 @@
                 </ul>
                 <div class="d-flex align-items-center gap-2">
                     {% if user.is_authenticated %}
-                    <span class="text-light small d-none d-md-inline"><i class="bi bi-person-circle me-1"></i>{{
-                        user.get_short_name|default:user.nome|default:user.email }}</span>
+                    <span class="text-light small d-none d-md-inline"><i class="bi bi-person-circle me-1"></i>{{ user.get_short_name|default:user.nome|default:user.email }}</span>
                     <a href="/admin/logout/" class="btn btn-sm btn-outline-light rounded-pill px-3">Sair</a>
                     {% else %}
                     <a href="/admin/login/?next={{ request.path }}" class="btn btn-sm btn-primary px-3">Entrar</a>
