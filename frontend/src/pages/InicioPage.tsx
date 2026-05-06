@@ -58,7 +58,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
   }
 
   const ppp = pppQuery.data;
-  const statusLabel = PPP_STATUS_LABELS[ppp?.status ?? ''] ?? (ppp?.status || 'Nao iniciado');
+  const statusLabel = PPP_STATUS_LABELS[ppp?.status ?? ''] ?? (ppp?.status || 'Não iniciado');
   const comentariosAbertos = ppp?.comentarios_abertos ?? 0;
   const isAvailable = ppp?.is_available !== false;
   const title = isProfessor ? 'Acompanhamento da escola' : 'Painel da escola';
@@ -87,7 +87,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
         <Card>
           <div className="inicio__stat">
             <span>Escola vinculada</span>
-            <strong>{ppp?.escola_nome || 'Nao informada'}</strong>
+            <strong>{ppp?.escola_nome || 'Não informada'}</strong>
             <p>
               {user?.escolaId
                 ? 'Os dados desta pagina consideram a escola associada ao seu usuario.'
@@ -112,7 +112,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
             <strong>{isProfessor ? (isAvailable ? 'Liberado' : 'Aguardando') : comentariosAbertos}</strong>
             <p>
               {isProfessor
-                ? (ppp?.availability_message ?? 'O documento sera exibido assim que a versao concluida estiver disponivel.')
+                ? (ppp?.availability_message ?? 'O documento será exibido assim que a versão concluída estiver disponível.')
                 : 'Pendencias e observacoes registradas no fluxo do PPP da escola.'}
             </p>
           </div>
@@ -132,15 +132,15 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
               <div className="inicio__meta-list">
                 <div className="inicio__meta-item">
                   <span>Titulo</span>
-                  <strong>{ppp.titulo || 'Titulo ainda nao definido'}</strong>
+                  <strong>{ppp.titulo || 'Título ainda não definido'}</strong>
                 </div>
                 <div className="inicio__meta-item">
-                  <span>Ultima edicao</span>
+                  <span>Última edição</span>
                   <strong>{formatDateTime(ppp.updated_at)}</strong>
                 </div>
                 <div className="inicio__meta-item">
                   <span>Responsavel pela ultima edicao</span>
-                  <strong>{ppp.ultima_edicao_por_nome ?? 'Nao identificado'}</strong>
+                  <strong>{ppp.ultima_edicao_por_nome ?? 'Não identificado'}</strong>
                 </div>
                 <div className="inicio__meta-item">
                   <span>Versao</span>
@@ -148,7 +148,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
                 </div>
                 <div className="inicio__meta-item">
                   <span>Conclusao</span>
-                  <strong>{ppp.concluido_em ? formatDateTime(ppp.concluido_em) : 'Ainda nao concluido'}</strong>
+                  <strong>{ppp.concluido_em ? formatDateTime(ppp.concluido_em) : 'Ainda não concluído'}</strong>
                 </div>
               </div>
             ) : (
@@ -170,13 +170,13 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
                 <strong>{isProfessor ? 'Consultar PPP' : 'Gerenciar PPP'}</strong>
                 <span>
                   {isProfessor
-                    ? 'Abra a versao disponivel do documento da escola.'
+                    ? 'Abra a versão disponível do documento da escola.'
                     : 'Edite, acompanhe comentarios e finalize o documento.'}
                 </span>
               </Link>
               <a className="inicio__quick-link" href={avaHref} target="_blank" rel="noopener noreferrer">
                 <strong>Acessar AVA</strong>
-                <span>Entre no ambiente virtual para acompanhar conteudos e percursos formativos.</span>
+                <span>Entre no ambiente virtual para acompanhar conteúdos e percursos formativos.</span>
               </a>
               <Link className="inicio__quick-link" to="/mural">
                 <strong>Acompanhar mural</strong>
@@ -295,7 +295,7 @@ function MemberInicioContent() {
             })}
           </div>
         ) : (
-          <div className="inicio__empty">Nenhum parecer disponivel ainda.</div>
+          <div className="inicio__empty">Nenhum parecer disponível ainda.</div>
         )}
       </Card>
     </div>

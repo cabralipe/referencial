@@ -31,6 +31,20 @@ services:
           type: redis
           name: referencial-redis
           property: connectionString
+      - key: MEDIA_BACKEND
+        value: s3
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_S3_REGION_NAME
+        sync: false
+      - key: AWS_S3_CUSTOM_DOMAIN
+        sync: false
     dockerfilePath: ./Dockerfile
 
   # Worker Celery (Processamento de Assíncrono)
@@ -54,6 +68,20 @@ services:
         sync: false # Deve ser copiado manualmente ou usar sync: false e definir no dashboard se quiser a mesma key
       - key: DJANGO_DEBUG
         value: "False"
+      - key: MEDIA_BACKEND
+        value: s3
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_S3_REGION_NAME
+        sync: false
+      - key: AWS_S3_CUSTOM_DOMAIN
+        sync: false
 
   # Redis (Broker para Celery e Channels)
   - type: redis

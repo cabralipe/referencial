@@ -25,7 +25,7 @@ class ProgressoService:
         except (ConteudoAula.DoesNotExist, MatriculaCurso.DoesNotExist):
             return False
 
-        # Cria a arvore de progresso se nao existir.
+        # Cria a árvore de progresso se não existir.
         ProgressoService._garantir_progressos(matricula, conteudo.aula)
 
         prog_aula = ProgressoAula.objects.get(matricula=matricula, aula=conteudo.aula)
@@ -48,7 +48,7 @@ class ProgressoService:
     @staticmethod
     def marcar_aula_visualizada(matricula: MatriculaCurso, aula: Aula):
         """
-        Registra automaticamente a visualizacao dos conteudos da aula.
+        Registra automaticamente a visualização dos conteúdos da aula.
 
         O AVA passa a considerar o acesso/avanco pela aula como consumo do
         conteudo, sem exigir que o aluno clique manualmente em "marcar como
@@ -126,7 +126,7 @@ class ProgressoService:
     @staticmethod
     def recalcular_aula(matricula: MatriculaCurso, aula: Aula):
         """
-        Verifica se a aula foi concluida baseado nos conteudos obrigatorios
+        Verifica se a aula foi concluída com base nos conteúdos obrigatórios.
         e atividades obrigatorias validas.
         """
         prog_aula = ProgressoAula.objects.get(matricula=matricula, aula=aula)

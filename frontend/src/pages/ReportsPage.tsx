@@ -407,14 +407,14 @@ export function ReportsPage() {
   }, [analyticsDashboardQuery.data]);
 
   if (!user) {
-    return <FullPageLoader message="Carregando relatorios..." />;
+    return <FullPageLoader message="Carregando relatórios..." />;
   }
 
   if (user.role !== 'admin_cliente' && user.role !== 'super_admin') {
     return (
       <div className="reports__empty">
         <h2>Acesso restrito</h2>
-        <p>Somente admins podem gerar relatorios rapidos.</p>
+        <p>Somente admins podem gerar relatórios rápidos.</p>
       </div>
     );
   }
@@ -465,7 +465,7 @@ export function ReportsPage() {
       `Media de progresso em cursos: ${analyticsSummary.mediaProgressoCursos}%\n` +
       `Perguntas (GT): ${gtSummary.totalPerguntas}\n` +
       `Respostas com conteudo (GT): ${gtSummary.totalRespostas}\n` +
-      `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%\n` +
+      `Taxa de conclusão (GT): ${gtSummary.taxaConclusao}%\n` +
       `Pendentes responder (GT): ${gtSummary.faltamResponder}\n` +
       `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}\n` +
       `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}\n` +
@@ -508,7 +508,7 @@ export function ReportsPage() {
       `Media de progresso em cursos: ${analyticsSummary.mediaProgressoCursos}%`,
       `Perguntas (GT): ${gtSummary.totalPerguntas}`,
       `Respostas com conteudo (GT): ${gtSummary.totalRespostas}`,
-      `Taxa de conclusao (GT): ${gtSummary.taxaConclusao}%`,
+      `Taxa de conclusão (GT): ${gtSummary.taxaConclusao}%`,
       `Pendentes responder (GT): ${gtSummary.faltamResponder}`,
       `Pareceres emitidos (GT): ${gtSummary.pareceresEmitidos}`,
       `Pareceres pendentes (GT): ${gtSummary.pareceresPendentes}`,
@@ -525,14 +525,14 @@ export function ReportsPage() {
     try {
       const response = await aiAssist.mutateAsync({
         mode: 'draft',
-        text: `Crie um resumo ${aiTemplate} para WhatsApp sobre a utilizacao da plataforma. Limite de 600 caracteres.`,
+        text: `Crie um resumo ${aiTemplate} para WhatsApp sobre a utilização da plataforma. Limite de 600 caracteres.`,
         context,
       });
       const output = (response.output || '').slice(0, 600);
       setMessage(ensureHtml(output));
       setFeedback('Mensagem gerada com IA.');
     } catch (err) {
-      setFeedback('Nao foi possivel gerar o relatorio com IA.');
+      setFeedback('Não foi possível gerar o relatório com IA.');
     }
   };
 
@@ -547,7 +547,7 @@ export function ReportsPage() {
       setMessage(ensureHtml((response.output || stripHtml(message)).slice(0, 600)));
       setFeedback('Mensagem revisada pela IA.');
     } catch (err) {
-      setFeedback('Nao foi possivel revisar a mensagem.');
+      setFeedback('Não foi possível revisar a mensagem.');
     }
   };
 
@@ -558,7 +558,7 @@ export function ReportsPage() {
       await navigator.clipboard.writeText(plainText);
       setFeedback('Mensagem copiada para o WhatsApp.');
     } catch (err) {
-      setFeedback('Nao foi possivel copiar automaticamente.');
+      setFeedback('Não foi possível copiar automaticamente.');
     }
   };
 
@@ -605,7 +605,7 @@ export function ReportsPage() {
 
     const auditNotice =
       mode === 'completo' && auditLogs.length >= 200
-        ? '<p class=\"report-meta\">Nota: relatorio limitado aos 200 registros mais recentes de auditoria.</p>'
+        ? '<p class=\"report-meta\">Nota: relatório limitado aos 200 registros mais recentes de auditoria.</p>'
         : '';
 
     const gtRows = (mode === 'completo' ? gtDetails : selectedGtId ? gtDetails.filter((gt) => gt.id === selectedGtId) : [])
@@ -625,7 +625,7 @@ export function ReportsPage() {
 
     return `
       <div class="report">
-        <p class="report-meta">Gerado em ${todayLabel} - Modo: ${mode === 'resumo' ? 'Resumo executivo' : 'Relatorio completo'}</p>
+        <p class="report-meta">Gerado em ${todayLabel} - Modo: ${mode === 'resumo' ? 'Resumo executivo' : 'Relatório completo'}</p>
         <section class="report-section">
           <h2>Filtros aplicados</h2>
           <ul class="report-list">
@@ -637,7 +637,7 @@ export function ReportsPage() {
         </section>
 
         <section class="report-section">
-          <h2>Visao geral</h2>
+          <h2>Visão geral</h2>
           <div class="report-grid">
             ${overviewCards
         .map(
@@ -668,7 +668,7 @@ export function ReportsPage() {
               <strong>${analyticsSummary.certificados_emitidos}</strong>
             </div>
             <div class="report-card">
-              <span>Cursos concluidos</span>
+              <span>Cursos concluídos</span>
               <strong>${analyticsSummary.cursosConcluidos}</strong>
             </div>
             <div class="report-card">
@@ -686,7 +686,7 @@ export function ReportsPage() {
 
         <section class="report-section">
           <h2>Indicadores por GT</h2>
-          <div class="report-meta">Resumo geral: ${gtSummary.totalPerguntas} perguntas - ${gtSummary.totalRespostas} respostas - ${gtSummary.taxaConclusao}% conclusao</div>
+          <div class="report-meta">Resumo geral: ${gtSummary.totalPerguntas} perguntas - ${gtSummary.totalRespostas} respostas - ${gtSummary.taxaConclusao}% conclusão</div>
           ${gtRows
         ? `<table class="report-table">
                   <thead>
@@ -744,7 +744,7 @@ export function ReportsPage() {
     }
     setExportFeedback('');
     const now = new Date();
-    const titulo = `Relatorio ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} - ${now.toLocaleDateString('pt-BR')}`;
+    const titulo = `Relatório ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} - ${now.toLocaleDateString('pt-BR')}`;
     try {
       await criarExportacao.mutateAsync({
         alvoTipo: 'relatorio',
@@ -758,7 +758,7 @@ export function ReportsPage() {
       });
       setExportFeedback('Exportacao solicitada. Confira o historico em Exportacoes.');
     } catch (err) {
-      setExportFeedback('Nao foi possivel solicitar a exportacao.');
+      setExportFeedback('Não foi possível solicitar a exportação.');
     }
   };
   const handleExportPdfProducao = async () => {
@@ -808,7 +808,7 @@ export function ReportsPage() {
       });
       setExportFeedback('PDF de produção solicitado. Confira na aba de exportações.');
     } catch (err) {
-      setExportFeedback('Nao foi possivel solicitar a exportacao.');
+      setExportFeedback('Não foi possível solicitar a exportação.');
     }
   };
 
@@ -834,7 +834,7 @@ export function ReportsPage() {
       await navigator.clipboard.writeText(text);
       setFeedback('Mensagem de produção copiada para o WhatsApp.');
     } catch (err) {
-      setFeedback('Nao foi possivel copiar automaticamente.');
+      setFeedback('Não foi possível copiar automaticamente.');
     }
   };
 
@@ -842,8 +842,8 @@ export function ReportsPage() {
     <div className="reports">
       <header className="reports__header">
         <div>
-          <h1>Relatorios rapidos</h1>
-          <p>Gere mensagens curtas para WhatsApp com dados de utilizacao da plataforma.</p>
+          <h1>Relatórios rápidos</h1>
+          <p>Gere mensagens curtas para WhatsApp com dados de utilização da plataforma.</p>
         </div>
       </header>
 
@@ -942,7 +942,7 @@ export function ReportsPage() {
                 color="orange"
               />
               <StatCard
-                title="Progresso medio cursos"
+                title="Progresso médio dos cursos"
                 value={analyticsDashboardQuery.isLoading ? '...' : `${analyticsSummary.mediaProgressoCursos}% `}
                 color="green"
               />
@@ -1005,7 +1005,7 @@ export function ReportsPage() {
             <div className="reports__section-header">
               <div>
                 <h2>Indicadores por GT</h2>
-                <p>Filtre um grupo para acompanhar respostas, pendencias e pareceres.</p>
+                <p>Filtre um grupo para acompanhar respostas, pendências e pareceres.</p>
               </div>
               <span className="reports__pill">
                 {selectedGtId
@@ -1025,7 +1025,7 @@ export function ReportsPage() {
                 color="green"
               />
               <StatCard
-                title="Taxa de conclusao"
+                title="Taxa de conclusão"
                 value={respostasLoading || perguntasQuery.isLoading ? '...' : `${gtSummary.taxaConclusao}% `}
                 color="purple"
               />

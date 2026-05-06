@@ -100,7 +100,7 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
             cliente_id = scope_cliente_id
 
         if role != UserModel.Role.SUPER_ADMIN and not cliente_id:
-            raise serializers.ValidationError({"cliente": "Usuarios nao super_admin devem possuir cliente."})
+            raise serializers.ValidationError({"cliente": "Usuários que não são super_admin devem possuir cliente."})
 
         if role != UserModel.Role.SUPER_ADMIN and clientes_list is not None:
             if cliente and all(item.id != cliente.id for item in clientes_list):
@@ -114,9 +114,9 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
         if role == UserModel.Role.SUPER_ADMIN:
             if cliente_id:
-                raise serializers.ValidationError({"cliente": "Super admin nao pode possuir cliente."})
+                raise serializers.ValidationError({"cliente": "Super admin não pode possuir cliente."})
             if escola:
-                raise serializers.ValidationError({"escola": "Super admin nao pode possuir escola."})
+                raise serializers.ValidationError({"escola": "Super admin não pode possuir escola."})
             attrs["cliente"] = None
             if clientes is not None:
                 attrs["clientes"] = []

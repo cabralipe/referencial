@@ -237,7 +237,7 @@ export function CadastroPage() {
                     <label className="block text-sm font-semibold text-slate-700 ml-1">Eu sou um(a)</label>
                     {!selectedClienteId ? (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                        Selecione primeiro o municÃ­pio para carregar os tipos de usuÃ¡rio disponÃ­veis.
+                        Selecione primeiro o município para carregar os tipos de usuário disponíveis.
                       </div>
                     ) : null}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -275,7 +275,7 @@ export function CadastroPage() {
                     </div>
                     {selectedClienteId && tiposCadastroDoCliente.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                        Nenhum tipo de usuÃ¡rio estÃ¡ disponÃ­vel para este municÃ­pio no momento.
+                        Nenhum tipo de usuário está disponível para este município no momento.
                       </div>
                     ) : null}
                   </div>

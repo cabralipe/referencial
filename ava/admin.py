@@ -236,7 +236,7 @@ class CursoAdmin(AVAModelAdmin):
 
     def copy_structure_view(self, request):
         if not self._is_super_admin(request):
-            raise PermissionDenied("A copia entre municipios esta disponivel apenas para super admins.")
+            raise PermissionDenied("A cópia entre municípios está disponível apenas para super admins.")
 
         form = CursoEstruturaCopyForm(request.POST or None)
         if request.method == "POST" and form.is_valid():

@@ -21,6 +21,9 @@ env = environ.Env(
     REFERENCIAL_DATABASE_SSLMODE=(str, "require"),
     MEDIA_BACKEND=(str, "local"),
     MEDIA_ROOT_PATH=(str, ""),
+    AWS_S3_ENDPOINT_URL=(str, ""),
+    AWS_S3_REGION_NAME=(str, ""),
+    AWS_S3_CUSTOM_DOMAIN=(str, ""),
     ALLOWED_HOSTS=(str, "localhost,127.0.0.1"),
     TIME_ZONE=(str, "America/Maceio"),
     LANGUAGE_CODE=(str, "pt-br"),
@@ -313,8 +316,12 @@ if MEDIA_BACKEND == "s3":
     }
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
+    AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="")
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="")
+    AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default="")
     AWS_QUERYSTRING_AUTH = False
     AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
 
 # REST Framework
 REST_FRAMEWORK = {

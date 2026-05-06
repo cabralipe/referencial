@@ -113,7 +113,7 @@ export function TasksPage() {
       refetch();
     },
     onError: () => {
-      setFeedback('Nao foi possivel criar a trilha.');
+      setFeedback('Não foi possível criar a trilha.');
     },
   });
 

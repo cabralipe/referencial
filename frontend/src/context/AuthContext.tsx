@@ -66,7 +66,7 @@ async function extractErrorMessage(response: Response): Promise<string> {
         return text;
       }
     } catch (textError) {
-      console.warn('Nao foi possivel extrair detalhe do erro', textError);
+      console.warn('Não foi possível extrair detalhe do erro', textError);
     }
   }
   return response.statusText || 'Erro desconhecido';
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       const accessToken = tokenOverride ?? state.tokens.accessToken;
       if (!accessToken) {
-        throw new Error('Token de acesso indisponivel');
+        throw new Error('Token de acesso indisponível');
       }
       const headers = new Headers(init?.headers ?? {});
       if (!headers.has('Authorization')) {
@@ -321,7 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       }));
     } catch (error) {
-      console.warn('Nao foi possivel atualizar o contexto do cliente', error);
+      console.warn('Não foi possível atualizar o contexto do cliente', error);
       if (state.user.role === 'super_admin') {
         setState((prev) => ({ ...prev, cliente: null }));
       }
@@ -391,7 +391,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user: prev.user ? { ...prev.user, clienteId: previousActive } : prev.user,
           activeClienteId: previousActive,
           cliente: previousCliente,
-          error: error instanceof Error ? error.message : 'Nao foi possivel trocar o cliente.',
+          error: error instanceof Error ? error.message : 'Não foi possível trocar o cliente.',
         }));
       }
     },
@@ -442,7 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const jwtResponse = await fetch(resolveApiUrl('/auth/jwt'), commonInit);
         if (!jwtResponse.ok) {
           const message = await extractErrorMessage(jwtResponse);
-          throw new Error(message || 'Nao foi possivel obter tokens de acesso');
+          throw new Error(message || 'Não foi possível obter tokens de acesso');
         }
         const jwtData = (await jwtResponse.json()) as { access: string; refresh: string };
 
@@ -541,7 +541,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               cliente = await fetchCliente(undefined, activeClienteId);
             } catch (err) {
-              console.warn('Nao foi possivel carregar contexto do cliente (ignorando erro)', err);
+              console.warn('Não foi possível carregar contexto do cliente (ignorando erro)', err);
             }
           }
 

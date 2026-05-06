@@ -1,4 +1,4 @@
-"""Agregacoes para dashboards municipal e do usuario."""
+"""Agregações para dashboards municipal e do usuário."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from bank.models import PlanoPublicado
 from courses.models import AvaliacaoPlano, CursoCertificadoEmitido, CursoProgresso, PlanoAula
 
 
-def _clean_label(value: str | None, fallback: str = "Nao informado") -> str:
+def _clean_label(value: str | None, fallback: str = "Não informado") -> str:
     cleaned = (value or "").strip()
     return cleaned or fallback
 

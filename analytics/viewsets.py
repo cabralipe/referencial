@@ -15,7 +15,7 @@ class UserDashboardView(APIView):
     def _get_cliente_id(self, request) -> int:
         cliente_id = resolve_cliente_scope(request)
         if not cliente_id:
-            raise ValidationError("Cliente nao associado ao usuario.")
+            raise ValidationError("Cliente não associado ao usuário.")
         return int(cliente_id)
 
     def get(self, request):
@@ -30,7 +30,7 @@ class AdminDashboardView(APIView):
     def _get_cliente_id(self, request) -> int:
         cliente_id = resolve_cliente_scope(request)
         if not cliente_id:
-            raise ValidationError("Cliente nao associado ao usuario.")
+            raise ValidationError("Cliente não associado ao usuário.")
         return int(cliente_id)
 
     def get(self, request):

@@ -70,7 +70,7 @@ class CursoEstruturaCopyForm(forms.Form):
         label="Copiar tambem atividades avaliativas",
         required=False,
         initial=False,
-        help_text="Desmarcado por padrao: copia curso, modulos, aulas e conteudos, sem quizzes/tarefas/forum.",
+        help_text="Desmarcado por padrão: copia curso, módulos, aulas e conteúdos, sem quizzes/tarefas/fórum.",
     )
     manter_status_publicacao = forms.BooleanField(
         label="Manter status do curso original",

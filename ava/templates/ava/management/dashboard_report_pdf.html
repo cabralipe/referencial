@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="utf-8">
     <style>
@@ -138,9 +138,9 @@
 </head>
 <body>
     <section class="header">
-        <h1>Relatorio nominal de progresso e interacoes do AVA</h1>
+        <h1>Relatório nominal de progresso e interações do AVA</h1>
         <p class="subtitle">
-            Snapshot atual das matriculas com contagem de envios e interacoes conforme os filtros aplicados na gestao.
+            Snapshot atual das matrículas com contagem de envios e interações conforme os filtros aplicados na gestão.
         </p>
 
         <table class="meta-grid">
@@ -151,7 +151,7 @@
             <tr>
                 <td><strong>Gerado em:</strong> {{ generated_at|date:"d/m/Y H:i" }}</td>
                 <td>
-                    <strong>Ultima interacao geral:</strong>
+                    <strong>Última interação geral:</strong>
                     {% if metricas.ultima_interacao_geral %}
                     {{ metricas.ultima_interacao_geral|date:"d/m/Y H:i" }}
                     {% else %}
@@ -172,19 +172,19 @@
     </section>
 
     <section class="section">
-        <h2>Visao consolidada</h2>
+        <h2>Visão consolidada</h2>
         <table class="cards">
             <tr>
                 <td class="card">
-                    <span class="card-label">Alunos unicos</span>
+                    <span class="card-label">Alunos únicos</span>
                     <span class="card-value">{{ metricas.total_alunos_unicos }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Matriculas</span>
+                    <span class="card-label">Matrículas</span>
                     <span class="card-value">{{ metricas.total_matriculas }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Concluidas</span>
+                    <span class="card-label">Concluídas</span>
                     <span class="card-value">{{ metricas.concluidos }}</span>
                 </td>
                 <td class="card">
@@ -192,13 +192,13 @@
                     <span class="card-value">{{ metricas.pendentes }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Taxa de conclusao</span>
+                    <span class="card-label">Taxa de conclusão</span>
                     <span class="card-value">{{ metricas.taxa_conclusao }}%</span>
                 </td>
             </tr>
             <tr>
                 <td class="card">
-                    <span class="card-label">Progresso medio</span>
+                    <span class="card-label">Progresso médio</span>
                     <span class="card-value">{{ metricas.progresso_medio }}%</span>
                 </td>
                 <td class="card">
@@ -206,15 +206,15 @@
                     <span class="card-value">{{ metricas.envios_atividade }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Mensagens no forum</span>
+                    <span class="card-label">Mensagens no fórum</span>
                     <span class="card-value">{{ metricas.mensagens_forum }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Conteudos visualizados</span>
+                    <span class="card-label">Conteúdos visualizados</span>
                     <span class="card-value">{{ metricas.conteudos_visualizados }}</span>
                 </td>
                 <td class="card">
-                    <span class="card-label">Sem interacao</span>
+                    <span class="card-label">Sem interação</span>
                     <span class="card-value">{{ metricas.sem_interacao }}</span>
                 </td>
             </tr>
@@ -230,9 +230,9 @@
                     <th>Curso</th>
                     <th>Total</th>
                     <th>Envios</th>
-                    <th>Forum</th>
-                    <th>Conteudos</th>
-                    <th>Ultima interacao</th>
+                    <th>Fórum</th>
+                    <th>Conteúdos</th>
+                    <th>Última interação</th>
                 </tr>
             </thead>
             <tbody>
@@ -248,7 +248,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="muted">Nenhuma interacao encontrada para o escopo selecionado.</td>
+                    <td colspan="7" class="muted">Nenhuma interação encontrada para o escopo selecionado.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -256,7 +256,7 @@
     </section>
 
     <section class="section">
-        <h2>Matriculas pendentes</h2>
+        <h2>Matrículas pendentes</h2>
         <table class="table">
             <thead>
                 <tr>
@@ -264,8 +264,8 @@
                     <th>Curso</th>
                     <th>Status</th>
                     <th>Progresso</th>
-                    <th>Modulos pendentes</th>
-                    <th>Ultima interacao</th>
+                    <th>Módulos pendentes</th>
+                    <th>Última interação</th>
                 </tr>
             </thead>
             <tbody>
@@ -290,7 +290,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="muted">Nao ha matriculas pendentes neste recorte.</td>
+                    <td colspan="6" class="muted">Não há matrículas pendentes neste recorte.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -306,13 +306,13 @@
                     <th>Curso</th>
                     <th>Status</th>
                     <th>Progresso</th>
-                    <th>Modulos concluidos</th>
-                    <th>Modulos pendentes</th>
+                    <th>Módulos concluídos</th>
+                    <th>Módulos pendentes</th>
                     <th>Envios / Corrigidas</th>
-                    <th>Forum</th>
-                    <th>Conteudos</th>
+                    <th>Fórum</th>
+                    <th>Conteúdos</th>
                     <th>Total</th>
-                    <th>Ultima interacao</th>
+                    <th>Última interação</th>
                 </tr>
             </thead>
             <tbody>
@@ -334,7 +334,7 @@
                             {% endfor %}
                         </ul>
                         {% else %}
-                        <div class="muted small">Nenhum modulo concluido.</div>
+                        <div class="muted small">Nenhum módulo concluído.</div>
                         {% endif %}
                     </td>
                     <td>
@@ -345,7 +345,7 @@
                             {% endfor %}
                         </ul>
                         {% else %}
-                        <div class="muted small">Sem pendencias.</div>
+                        <div class="muted small">Sem pendências.</div>
                         {% endif %}
                     </td>
                     <td>
@@ -368,7 +368,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="11" class="muted">Nenhuma matricula encontrada para os filtros atuais.</td>
+                    <td colspan="11" class="muted">Nenhuma matrícula encontrada para os filtros atuais.</td>
                 </tr>
                 {% endfor %}
             </tbody>

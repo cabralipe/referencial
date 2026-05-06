@@ -73,8 +73,8 @@
     <p><strong>Escola:</strong> {{ escola.nome }}</p>
     <p><strong>Cliente:</strong> {{ cliente.nome }}</p>
     <p><strong>Status:</strong> {{ ppp.get_status_display }}</p>
-    <p><strong>Concluído em:</strong> {% if ppp.concluido_em %}{{ ppp.concluido_em|date:"d/m/Y H:i" }}{% else %}—{% endif %}</p>
-    <p><strong>Concluído por:</strong> {% if ppp.concluido_por %}{{ ppp.concluido_por.nome|default:ppp.concluido_por.email }}{% else %}—{% endif %}</p>
+    <p><strong>Concluído em:</strong> {% if ppp.concluido_em %}{{ ppp.concluido_em|date:"d/m/Y H:i" }}{% else %}-{% endif %}</p>
+    <p><strong>Concluído por:</strong> {% if ppp.concluido_por %}{{ ppp.concluido_por.nome|default:ppp.concluido_por.email }}{% else %}-{% endif %}</p>
   </div>
 
   <div class="content">

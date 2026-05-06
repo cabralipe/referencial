@@ -93,7 +93,7 @@
                                     {% elif conteudo.url %}
                                     <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Abrir link do documento</a>
                                     {% else %}
-                                    <p class="text-muted mb-0 small">Documento ainda nao disponivel.</p>
+                                    <p class="text-muted mb-0 small">Documento ainda não disponível.</p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -104,7 +104,7 @@
                                 Abrir link externo <i class="bi bi-box-arrow-up-right ms-1"></i>
                             </a>
                             {% else %}
-                            <p class="text-muted mb-0">Link externo nao informado.</p>
+                            <p class="text-muted mb-0">Link externo não informado.</p>
                             {% endif %}
 
                             {% elif conteudo.tipo == 'imagem' %}
@@ -113,7 +113,7 @@
                             {% elif conteudo.url %}
                             <img src="{{ conteudo.url }}" alt="{{ conteudo.titulo }}" class="img-fluid rounded">
                             {% else %}
-                            <p class="text-muted mb-0">Imagem nao disponivel.</p>
+                            <p class="text-muted mb-0">Imagem não disponível.</p>
                             {% endif %}
 
                             {% elif conteudo.tipo == 'audio' %}
@@ -126,7 +126,7 @@
                                 <source src="{{ conteudo.url }}">
                             </audio>
                             {% else %}
-                            <p class="text-muted mb-0">Audio nao disponivel.</p>
+                            <p class="text-muted mb-0">Áudio não disponível.</p>
                             {% endif %}
 
                             {% elif conteudo.tipo == 'embed' %}
@@ -135,11 +135,11 @@
                             {% elif conteudo.url %}
                             <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">Abrir conteudo incorporado</a>
                             {% else %}
-                            <p class="text-muted mb-0">Conteudo embed nao disponivel.</p>
+                            <p class="text-muted mb-0">Conteúdo embed não disponível.</p>
                             {% endif %}
 
                             {% else %}
-                            <p class="text-muted mb-0">Tipo de conteudo ainda nao suportado nesta tela.</p>
+                            <p class="text-muted mb-0">Tipo de conteúdo ainda não suportado nesta tela.</p>
                             {% endif %}
 
                             <div class="mt-4 text-end">
@@ -194,7 +194,7 @@
 
                                 <div class="text-end mt-3">
                                     <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}" class="btn btn-primary px-4">
-                                        {% if atividade.tipo == 'forum' %}Entrar no forum{% else %}Acessar atividade{% endif %}
+                                        {% if atividade.tipo == 'forum' %}Entrar no fórum{% else %}Acessar atividade{% endif %}
                                         <i class="bi bi-arrow-right ms-1"></i>
                                     </a>
                                 </div>

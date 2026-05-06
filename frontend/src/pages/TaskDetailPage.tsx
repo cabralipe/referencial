@@ -197,7 +197,7 @@ export function TaskDetailPage() {
       refetchPerguntas();
     },
     onError: () => {
-      setNovaFeedback('Nao foi possivel criar a missao.');
+      setNovaFeedback('Não foi possível criar a missão.');
     },
   });
 
@@ -460,7 +460,7 @@ export function TaskDetailPage() {
           ...prev,
           [pergunta.id]: {
             type: 'error',
-            message: 'Nao foi possivel gerar rascunho com IA.',
+            message: 'Não foi possível gerar rascunho com IA.',
           },
         }));
       } finally {
@@ -483,7 +483,7 @@ export function TaskDetailPage() {
           ...prev,
           [pergunta.id]: {
             type: 'error',
-            message: 'Nao foi possivel revisar a gramatica.',
+            message: 'Não foi possível revisar a gramática.',
           },
         }));
       } finally {
@@ -840,7 +840,7 @@ export function TaskDetailPage() {
                   onChange={(event) => setNovaObrigatoria(event.target.value === 'sim')}
                 >
                   <option value="sim">Sim</option>
-                  <option value="nao">Nao</option>
+                  <option value="nao">Não</option>
                 </select>
               </label>
               <label>
@@ -849,7 +849,7 @@ export function TaskDetailPage() {
                   value={novaUpload ? 'sim' : 'nao'}
                   onChange={(event) => setNovaUpload(event.target.value === 'sim')}
                 >
-                  <option value="nao">Nao</option>
+                  <option value="nao">Não</option>
                   <option value="sim">Sim</option>
                 </select>
               </label>

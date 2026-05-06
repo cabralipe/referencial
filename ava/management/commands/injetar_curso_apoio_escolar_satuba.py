@@ -78,12 +78,12 @@ def _descricao_longa_curso() -> str:
         "com incentivo a participacao ativa em todo o percurso.\n\n"
         "4. Tutoriais para Navegacao no Curso\n"
         "- Tutorial de acesso a plataforma\n"
-        "- Tutorial de navegacao entre modulos\n"
+        "- Tutorial de navegação entre módulos\n"
         "- Tutorial de envio de atividades\n"
         "- Tutorial de participacao nas atividades\n"
         "- Tutorial de acompanhamento de desempenho\n\n"
         "Observacoes para organizacao na plataforma\n"
-        "- Forum geral do curso\n"
+        "- Fórum geral do curso\n"
         "- Espaco de duvidas por modulo\n"
         "- Avaliacao final\n"
         "- Certificacao"
@@ -464,7 +464,7 @@ class Command(BaseCommand):
     def _inserir_itens_finais(self, *, cliente: Cliente, aula: Aula):
         itens = [
             (
-                "Forum geral do curso",
+                "Fórum geral do curso",
                 "Espaco coletivo para troca de experiencias e boas praticas entre os participantes.",
             ),
             (
@@ -489,4 +489,3 @@ class Command(BaseCommand):
                 conteudo_texto=texto,
             )
             ordem += 1
-

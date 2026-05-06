@@ -96,7 +96,7 @@ class CadastroSerializer(serializers.Serializer):
             ativo=True,
             exibir_no_cadastro=True,
         ).exists():
-            raise serializers.ValidationError("Tipo de usuÃ¡rio invÃ¡lido para cadastro.")
+            raise serializers.ValidationError("Tipo de usuário inválido para cadastro.")
         return value
 
     def validate(self, attrs):
@@ -113,7 +113,7 @@ class CadastroSerializer(serializers.Serializer):
         )
         if not tipo_cadastro or tipo_cadastro.cliente_id != attrs["cliente_id"]:
             raise serializers.ValidationError(
-                {"tipo_cadastro_id": "O tipo de usuÃ¡rio deve pertencer ao mesmo municÃ­pio selecionado."}
+                {"tipo_cadastro_id": "O tipo de usuário deve pertencer ao mesmo município selecionado."}
             )
         attrs["tipo_cadastro"] = tipo_cadastro
         return attrs

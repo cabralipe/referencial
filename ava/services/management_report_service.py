@@ -296,7 +296,7 @@ class AVAManagementReportService:
         if filtros.get("data_fim"):
             labels.append(f"Interacoes ate: {filtros['data_fim'].strftime('%d/%m/%Y')}")
         if not labels:
-            labels.append("Sem filtros adicionais. Relatorio considera o escopo completo da gestao.")
+            labels.append("Sem filtros adicionais. Relatório considera o escopo completo da gestão.")
         return labels
 
     @classmethod
@@ -439,7 +439,7 @@ class AVAManagementReportService:
 
         return {
             "generated_at": timezone.localtime(),
-            "cliente_label": getattr(getattr(user, "cliente", None), "nome", "") or "Visao global",
+            "cliente_label": getattr(getattr(user, "cliente", None), "nome", "") or "Visão global",
             "escopo_label": escopo,
             "applied_filters": cls._filter_labels(user, filtros, selected),
             "linhas": linhas,
@@ -468,7 +468,7 @@ class AVAManagementReportService:
             return cls._render_pdf_reportlab(report_data)
 
         context = {
-            "titulo": "Relatorio nominal de progresso e interacoes do AVA",
+            "titulo": "Relatório nominal de progresso e interações do AVA",
             **report_data,
             "top_interacao": report_data["top_interacao"][:10],
         }
@@ -501,7 +501,7 @@ class AVAManagementReportService:
             rightMargin=1.1 * cm,
             topMargin=1.1 * cm,
             bottomMargin=1.1 * cm,
-            title="Relatorio nominal de progresso e interacoes do AVA",
+            title="Relatório nominal de progresso e interações do AVA",
         )
 
         sample_styles = getSampleStyleSheet()
@@ -556,9 +556,9 @@ class AVAManagementReportService:
         }
 
         story = [
-            cls._paragraph("Relatorio nominal de progresso e interacoes do AVA", styles["title"]),
+            cls._paragraph("Relatório nominal de progresso e interações do AVA", styles["title"]),
             cls._paragraph(
-                "Snapshot atual das matriculas com contagem de envios e interacoes conforme os filtros aplicados na gestao.",
+                "Snapshot atual das matrículas com contagem de envios e interações conforme os filtros aplicados na gestão.",
                 styles["subtitle"],
             ),
         ]
@@ -575,7 +575,7 @@ class AVAManagementReportService:
                         styles["body"],
                     ),
                     cls._paragraph(
-                        f"Ultima interacao geral: {cls._datetime_text(report_data['metricas']['ultima_interacao_geral'])}",
+                        f"Última interação geral: {cls._datetime_text(report_data['metricas']['ultima_interacao_geral'])}",
                         styles["body"],
                     ),
                 ],
@@ -605,16 +605,16 @@ class AVAManagementReportService:
 
         metricas = report_data["metricas"]
         metric_cells = [
-            ("Alunos unicos", metricas["total_alunos_unicos"]),
-            ("Matriculas", metricas["total_matriculas"]),
-            ("Concluidas", metricas["concluidos"]),
+            ("Alunos únicos", metricas["total_alunos_unicos"]),
+            ("Matrículas", metricas["total_matriculas"]),
+            ("Concluídas", metricas["concluidos"]),
             ("Pendentes", metricas["pendentes"]),
-            ("Taxa de conclusao", f"{metricas['taxa_conclusao']}%"),
-            ("Progresso medio", f"{metricas['progresso_medio']}%"),
+            ("Taxa de conclusão", f"{metricas['taxa_conclusao']}%"),
+            ("Progresso médio", f"{metricas['progresso_medio']}%"),
             ("Envios", metricas["envios_atividade"]),
-            ("Forum", metricas["mensagens_forum"]),
-            ("Conteudos", metricas["conteudos_visualizados"]),
-            ("Sem interacao", metricas["sem_interacao"]),
+            ("Fórum", metricas["mensagens_forum"]),
+            ("Conteúdos", metricas["conteudos_visualizados"]),
+            ("Sem interação", metricas["sem_interacao"]),
         ]
         metric_rows = []
         for inicio in range(0, len(metric_cells), 5):
@@ -643,7 +643,7 @@ class AVAManagementReportService:
                 ]
             )
         )
-        story.extend([cls._paragraph("Visao consolidada", styles["section"]), metrics_table, Spacer(1, 0.25 * cm)])
+        story.extend([cls._paragraph("Visão consolidada", styles["section"]), metrics_table, Spacer(1, 0.25 * cm)])
 
         story.append(cls._paragraph("Top alunos que mais interagiram", styles["section"]))
         top_table_data = [[
@@ -651,9 +651,9 @@ class AVAManagementReportService:
             cls._paragraph("Curso", styles["small"]),
             cls._paragraph("Total", styles["small"]),
             cls._paragraph("Envios", styles["small"]),
-            cls._paragraph("Forum", styles["small"]),
-            cls._paragraph("Conteudos", styles["small"]),
-            cls._paragraph("Ultima interacao", styles["small"]),
+            cls._paragraph("Fórum", styles["small"]),
+            cls._paragraph("Conteúdos", styles["small"]),
+            cls._paragraph("Última interação", styles["small"]),
         ]]
         top_rows = report_data["top_interacao"][:10] or []
         if top_rows:
@@ -670,7 +670,7 @@ class AVAManagementReportService:
                     ]
                 )
         else:
-            top_table_data.append([cls._paragraph("Nenhuma interacao encontrada para o escopo selecionado.", styles["body"])] + [""] * 6)
+            top_table_data.append([cls._paragraph("Nenhuma interação encontrada para o escopo selecionado.", styles["body"])] + [""] * 6)
 
         top_table = Table(top_table_data, colWidths=[4.2 * cm, 5.8 * cm, 2 * cm, 2 * cm, 2 * cm, 2.3 * cm, 3.5 * cm], repeatRows=1)
         top_table.setStyle(
@@ -689,14 +689,14 @@ class AVAManagementReportService:
         )
         story.extend([top_table, Spacer(1, 0.25 * cm)])
 
-        story.append(cls._paragraph("Matriculas pendentes", styles["section"]))
+        story.append(cls._paragraph("Matrículas pendentes", styles["section"]))
         pendentes_table_data = [[
             cls._paragraph("Aluno", styles["small"]),
             cls._paragraph("Curso", styles["small"]),
             cls._paragraph("Status", styles["small"]),
             cls._paragraph("Progresso", styles["small"]),
-            cls._paragraph("Modulos pendentes", styles["small"]),
-            cls._paragraph("Ultima interacao", styles["small"]),
+            cls._paragraph("Módulos pendentes", styles["small"]),
+            cls._paragraph("Última interação", styles["small"]),
         ]]
         if report_data["pendentes"]:
             for linha in report_data["pendentes"]:
@@ -711,7 +711,7 @@ class AVAManagementReportService:
                     ]
                 )
         else:
-            pendentes_table_data.append([cls._paragraph("Nao ha matriculas pendentes neste recorte.", styles["body"])] + [""] * 5)
+            pendentes_table_data.append([cls._paragraph("Não há matrículas pendentes neste recorte.", styles["body"])] + [""] * 5)
 
         pendentes_table = Table(
             pendentes_table_data,
@@ -739,12 +739,12 @@ class AVAManagementReportService:
             cls._paragraph("Curso", styles["small"]),
             cls._paragraph("Status", styles["small"]),
             cls._paragraph("Progresso", styles["small"]),
-            cls._paragraph("Modulos", styles["small"]),
+            cls._paragraph("Módulos", styles["small"]),
             cls._paragraph("Envios", styles["small"]),
-            cls._paragraph("Forum", styles["small"]),
-            cls._paragraph("Conteudos", styles["small"]),
+            cls._paragraph("Fórum", styles["small"]),
+            cls._paragraph("Conteúdos", styles["small"]),
             cls._paragraph("Total", styles["small"]),
-            cls._paragraph("Ultima interacao", styles["small"]),
+            cls._paragraph("Última interação", styles["small"]),
         ]]
         for linha in report_data["linhas"]:
             detalhe_table_data.append(
@@ -754,7 +754,7 @@ class AVAManagementReportService:
                     cls._paragraph(linha["status_label"], styles["small"]),
                     cls._paragraph(f"{linha['progresso_percentual']}%", styles["small"]),
                     Paragraph(
-                        "<b>Concluidos:</b> "
+                        "<b>Concluídos:</b> "
                         + escape(", ".join(linha["lista_modulos_concluidos"]) or "-")
                         + "<br/><b>Pendentes:</b> "
                         + escape(", ".join(linha["lista_modulos_pendentes"]) or "-"),
@@ -802,7 +802,7 @@ class AVAManagementReportService:
     @classmethod
     def render_xlsx_bytes(cls, report_data: dict[str, Any]) -> bytes:
         if Workbook is None:
-            raise RuntimeError("openpyxl nao esta disponivel no ambiente.")
+            raise RuntimeError("openpyxl não está disponível no ambiente.")
 
         workbook = Workbook()
         resumo = workbook.active
@@ -814,7 +814,7 @@ class AVAManagementReportService:
         destaque_font = Font(size=12, bold=True)
         wrap_alignment = Alignment(wrap_text=True, vertical="top")
 
-        resumo["A1"] = "Relatorio nominal de progresso e interacoes do AVA"
+        resumo["A1"] = "Relatório nominal de progresso e interações do AVA"
         resumo["A1"].font = titulo_font
         resumo["A3"] = "Gerado em"
         resumo["B3"] = cls._excel_datetime(report_data["generated_at"])
@@ -838,15 +838,15 @@ class AVAManagementReportService:
 
         metricas_labels = [
             ("Alunos unicos", report_data["metricas"]["total_alunos_unicos"]),
-            ("Matriculas no relatorio", report_data["metricas"]["total_matriculas"]),
-            ("Matriculas concluidas", report_data["metricas"]["concluidos"]),
+            ("Matrículas no relatório", report_data["metricas"]["total_matriculas"]),
+            ("Matrículas concluídas", report_data["metricas"]["concluidos"]),
             ("Matriculas pendentes", report_data["metricas"]["pendentes"]),
-            ("Taxa de conclusao (%)", report_data["metricas"]["taxa_conclusao"]),
-            ("Progresso medio (%)", report_data["metricas"]["progresso_medio"]),
+            ("Taxa de conclusão (%)", report_data["metricas"]["taxa_conclusao"]),
+            ("Progresso médio (%)", report_data["metricas"]["progresso_medio"]),
             ("Envios de atividade", report_data["metricas"]["envios_atividade"]),
-            ("Mensagens no forum", report_data["metricas"]["mensagens_forum"]),
-            ("Conteudos visualizados", report_data["metricas"]["conteudos_visualizados"]),
-            ("Alunos sem interacao", report_data["metricas"]["sem_interacao"]),
+            ("Mensagens no fórum", report_data["metricas"]["mensagens_forum"]),
+            ("Conteúdos visualizados", report_data["metricas"]["conteudos_visualizados"]),
+            ("Alunos sem interação", report_data["metricas"]["sem_interacao"]),
         ]
         for linha_indice, (label, valor) in enumerate(metricas_labels, start=metricas_inicio + 1):
             resumo[f"A{linha_indice}"] = label
@@ -860,22 +860,22 @@ class AVAManagementReportService:
             "Aluno",
             "E-mail",
             "Curso",
-            "Status da matricula",
+            "Status da matrícula",
             "Progresso (%)",
-            "Modulos concluidos",
-            "Modulos pendentes",
-            "Lista de modulos concluidos",
-            "Lista de modulos pendentes",
+            "Módulos concluídos",
+            "Módulos pendentes",
+            "Lista de módulos concluídos",
+            "Lista de módulos pendentes",
             "Envios de atividade",
             "Atividades corrigidas",
             "Envios com anexo",
-            "Mensagens no forum",
-            "Respostas no forum",
-            "Conteudos visualizados",
-            "Total de interacoes",
-            "Ultima interacao",
-            "Data da matricula",
-            "Data de conclusao",
+            "Mensagens no fórum",
+            "Respostas no fórum",
+            "Conteúdos visualizados",
+            "Total de interações",
+            "Última interação",
+            "Data da matrícula",
+            "Data de conclusão",
         ]
         alunos_sheet.append(headers)
         for cell in alunos_sheet[1]:
@@ -940,15 +940,15 @@ class AVAManagementReportService:
         for coluna, largura in larguras.items():
             alunos_sheet.column_dimensions[coluna].width = largura
 
-        top_sheet = workbook.create_sheet("Top interacao")
+        top_sheet = workbook.create_sheet("Top interação")
         top_headers = [
             "Aluno",
             "Curso",
-            "Total de interacoes",
+            "Total de interações",
             "Envios de atividade",
-            "Mensagens no forum",
-            "Conteudos visualizados",
-            "Ultima interacao",
+            "Mensagens no fórum",
+            "Conteúdos visualizados",
+            "Última interação",
         ]
         top_sheet.append(top_headers)
         for cell in top_sheet[1]:
@@ -976,13 +976,13 @@ class AVAManagementReportService:
         pendentes_headers = [
             "Aluno",
             "Curso",
-            "Status da matricula",
+            "Status da matrícula",
             "Progresso (%)",
-            "Modulos pendentes",
-            "Lista de modulos pendentes",
+            "Módulos pendentes",
+            "Lista de módulos pendentes",
             "Envios de atividade",
-            "Mensagens no forum",
-            "Ultima interacao",
+            "Mensagens no fórum",
+            "Última interação",
         ]
         pendentes_sheet.append(pendentes_headers)
         for cell in pendentes_sheet[1]:

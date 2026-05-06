@@ -141,7 +141,7 @@
 
     {% if forum_messages %}
     <section class="ava-surface p-4 mb-4">
-        <h2 class="h5 fw-bold mb-3">Mensagens do forum</h2>
+        <h2 class="h5 fw-bold mb-3">Mensagens do fórum</h2>
         <div class="d-grid gap-3">
             {% for mensagem in forum_messages %}
             <article class="border rounded-4 p-3">
@@ -213,14 +213,14 @@
                             {% if item.is_correta %}
                             <span class="badge text-bg-success">Sim</span>
                             {% else %}
-                            <span class="badge text-bg-secondary">Nao</span>
+                            <span class="badge text-bg-secondary">Não</span>
                             {% endif %}
                         </td>
                         <td>{{ item.nota_item }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-3">Esta tentativa nao possui itens de quiz.</td>
+                        <td colspan="5" class="text-center text-muted py-3">Esta tentativa não possui itens de quiz.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

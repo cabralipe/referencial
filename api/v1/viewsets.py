@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import errno
 from pathlib import Path
 from uuid import uuid4
 from django.utils.html import escape
@@ -28,6 +29,12 @@ try:  # botocore é usado apenas quando MEDIA_BACKEND=s3 está ativo
     STORAGE_EXCEPTIONS = (BotoCoreError, ClientError, ParamValidationError, OSError)
 except ImportError:  # pragma: no cover
     STORAGE_EXCEPTIONS = (OSError,)
+
+
+class InsufficientStorage(APIException):
+    status_code = 507
+    default_detail = "Armazenamento de mídia sem espaço disponível."
+    default_code = "insufficient_storage"
 
 from core.activity import online_sessions_for_cliente
 from core.models import AuditLog, Cliente, ClienteConfig, ScoreEntry, ThrottleBlock, TipoUsuarioCadastro, UserSessionLog
@@ -657,7 +664,7 @@ class PppViewSet(viewsets.ViewSet):
         escola_id = _resolve_ppp_escola_id(request)
         escola = Escola.objects.filter(cliente_id=cliente_id, pk=escola_id).first()
         if not escola:
-            raise ValidationError({"escola_id": "Escola nÃ£o encontrada para este cliente."})
+            raise ValidationError({"escola_id": "Escola não encontrada para este cliente."})
         if not _user_can_manage_ppp_for_escola(request.user, escola.id):
             ppp = PPP.objects.filter(cliente_id=cliente_id, escola=escola).first()
             if not ppp or ppp.status != PPP.Status.CONCLUIDO:
@@ -807,12 +814,12 @@ class AiAssistViewSet(viewsets.ViewSet):
         context = serializer.validated_data.get("context") or ""
 
         if not os.environ.get("GEMINI_API_KEY"):
-            raise ValidationError("GEMINI_API_KEY nao configurada no ambiente.")
+            raise ValidationError("GEMINI_API_KEY não configurada no ambiente.")
 
         try:
             from google import genai
         except ImportError as exc:
-            raise ValidationError("Biblioteca google-genai nao instalada.") from exc
+            raise ValidationError("Biblioteca google-genai não instalada.") from exc
 
         prompt = _build_gemini_prompt(mode, text, context)
         client = genai.Client()
@@ -2406,11 +2413,34 @@ def _build_storage_url(request, path_or_url):
     return url
 
 
+def _raise_storage_error(exc, *, field="arquivo"):
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) == errno.ENOSPC:
+        raise InsufficientStorage(
+            {
+                field: (
+                    "Não há espaço disponível para salvar o arquivo no armazenamento atual. "
+                    "Configure MEDIA_BACKEND=s3 em produção ou libere espaço no storage de mídia."
+                )
+            }
+        ) from exc
+    raise ValidationError(
+        {
+            field: (
+                "Falha ao salvar o arquivo. Verifique a configuração do armazenamento de mídia."
+            )
+        }
+    ) from exc
+
+
 def _store_mural_attachment(upload, *, cliente_id, request):
     original_name = Path(upload.name or "anexo").stem or "anexo"
     extension = Path(upload.name or "").suffix
     filename = f"{original_name}-{uuid4().hex}{extension}"
-    path = default_storage.save(f"mural/anexos/cliente_{cliente_id}/{filename}", upload)
+    try:
+        path = default_storage.save(f"mural/anexos/cliente_{cliente_id}/{filename}", upload)
+    except STORAGE_EXCEPTIONS as exc:
+        logger.exception("Erro ao salvar anexo do mural")
+        _raise_storage_error(exc, field="anexos_uploads")
     return {
         "titulo": upload.name or Path(path).name,
         "url": _build_storage_url(request, path),
@@ -2799,9 +2829,16 @@ class MuralPostViewSet(viewsets.ViewSet):
             )
         envio.nome_original = arquivo.name or ""
         envio.arquivo = arquivo
-        envio.save()
+        try:
+            envio.save()
+        except STORAGE_EXCEPTIONS as exc:
+            logger.exception("Erro ao salvar envio de arquivo do mural")
+            _raise_storage_error(exc, field="arquivo")
         if old_file_name and old_file_name != envio.arquivo.name:
-            default_storage.delete(old_file_name)
+            try:
+                default_storage.delete(old_file_name)
+            except STORAGE_EXCEPTIONS:
+                logger.warning("Não foi possível remover arquivo antigo do envio do mural: %s", old_file_name, exc_info=True)
 
         serializer = MuralArquivoEnvioSerializer(envio, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

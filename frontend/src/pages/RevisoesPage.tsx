@@ -517,7 +517,7 @@ export function RevisoesPage() {
                         }));
                         setIaFeedback('Sugestao gerada. Revise antes de enviar.');
                       } catch (err: any) {
-                        setIaFeedback('Nao foi possivel gerar o parecer com IA.');
+                        setIaFeedback('Não foi possível gerar o parecer com IA.');
                       }
                     }}
                     disabled={aiAssist.isPending}

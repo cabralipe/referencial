@@ -13,7 +13,7 @@ class Atividade(TenantModel):
         ENVIO_ARQUIVO = "envio_arquivo", "Envio de Arquivo"
         QUESTIONARIO = "questionario", "Question\u00e1rio Simples (Pesquisa)"
         REFLEXAO = "reflexao", "Reflex\u00e3o Guiada"
-        FORUM = "forum", "Forum Interativo"
+        FORUM = "forum", "Fórum Interativo"
 
     aula = models.ForeignKey(Aula, on_delete=models.CASCADE, related_name="atividades")
     tipo = models.CharField("Tipo da Atividade", max_length=30, choices=Tipo.choices)
@@ -141,8 +141,8 @@ class AtividadeForumMensagem(TenantModel):
     editado_em = models.DateTimeField("Editado em", null=True, blank=True)
 
     class Meta:
-        verbose_name = "Mensagem de Forum"
-        verbose_name_plural = "Mensagens de Forum"
+        verbose_name = "Mensagem de Fórum"
+        verbose_name_plural = "Mensagens de Fórum"
         ordering = ["created_at", "id"]
         indexes = [
             models.Index(fields=["cliente", "atividade", "created_at"]),
@@ -159,8 +159,8 @@ class AtividadeForumAnexo(TenantModel):
     nome_original = models.CharField("Nome original", max_length=255, blank=True)
 
     class Meta:
-        verbose_name = "Anexo de Mensagem do Forum"
-        verbose_name_plural = "Anexos de Mensagens do Forum"
+        verbose_name = "Anexo de Mensagem do Fórum"
+        verbose_name_plural = "Anexos de Mensagens do Fórum"
         ordering = ["created_at", "id"]
         indexes = [
             models.Index(fields=["cliente", "created_at"]),

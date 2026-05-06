@@ -176,7 +176,7 @@ export function QuadrosPage() {
             </label>
 
             <div className="quadros__view-toggle">
-              <span>Visao</span>
+              <span>Visão</span>
               <button
                 type="button"
                 className={viewMode === 'compact' ? 'is-active' : ''}

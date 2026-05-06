@@ -281,7 +281,7 @@ def dashboard(request):
 @ava_management_required
 def dashboard_relatorio(request, formato):
     if formato not in {"pdf", "xlsx"}:
-        raise Http404("Formato de relatorio nao suportado.")
+        raise Http404("Formato de relatório não suportado.")
 
     filtros, _, _ = _extract_dashboard_filters(request)
     report_data = AVAManagementReportService.build_report(request.user, filtros)
@@ -338,7 +338,7 @@ def tentativa_detalhe(request, tentativa_id):
             )
             messages.success(request, "Correcao salva com sucesso.")
             return redirect("ava:gestao_tentativa_detalhe", tentativa_id=tentativa.id)
-        messages.error(request, "Nao foi possivel salvar a correcao. Revise os campos do formulario.")
+        messages.error(request, "Não foi possível salvar a correção. Revise os campos do formulário.")
 
     return render(
         request,

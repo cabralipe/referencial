@@ -143,7 +143,7 @@ class AtividadeService:
             raise ValueError("Escreva uma mensagem ou envie pelo menos um arquivo.")
 
         if resposta_para and resposta_para.atividade_id != atividade.id:
-            raise ValueError("A resposta selecionada nao pertence a este forum.")
+            raise ValueError("A resposta selecionada não pertence a este fórum.")
 
         tentativa = (
             AtividadeTentativa.objects.filter(aluno=aluno, atividade=atividade)

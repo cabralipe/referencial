@@ -25,7 +25,7 @@ def html_to_pdf_bytes(template_name: str, context: Dict[str, Any]) -> bytes:
     if WEASYPRINT_AVAILABLE:
         return HTML(string=html, base_url=base_url).write_pdf()
 
-    # Fallback: Gera um PDF "falso" válido para não travar o fluxo
+    # Fallback: gera um PDF "falso" válido para não travar o fluxo.
     logger.warning("WeasyPrint indisponível (GTK3 ausente). Gerando PDF simulado.")
     
     # PDF mínimo válido (v1.4)

@@ -312,7 +312,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 if resposta_para_id:
                     resposta_para = atividade.mensagens_forum.select_related("autor").filter(pk=resposta_para_id).first()
                     if resposta_para is None:
-                        messages.error(request, "Nao foi possivel localizar a mensagem que voce tentou responder.")
+                        messages.error(request, "Não foi possível localizar a mensagem que você tentou responder.")
                         return redirect(
                             "ava:aluno_responder_atividade",
                             curso_slug=curso_slug,
@@ -327,12 +327,12 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                         arquivos=arquivos,
                         resposta_para=resposta_para,
                     )
-                    messages.success(request, "Tarefa concluida com sucesso. Mensagem publicada no forum.")
+                    messages.success(request, "Tarefa concluída com sucesso. Mensagem publicada no fórum.")
                     return redirect(f"{request.path}#forum-thread")
                 except ValueError as exc:
                     messages.error(request, str(exc))
             else:
-                messages.error(request, "Nao foi possivel publicar a mensagem. Revise os campos do formulario.")
+                messages.error(request, "Não foi possível publicar a mensagem. Revise os campos do formulário.")
         else:
             if limite_atingido and tentativa_em_andamento is None:
                 messages.info(request, "Limite de tentativas alcancado para esta atividade.")
@@ -346,7 +346,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not request.FILES.get("arquivo_enviado"):
                 messages.error(request, "Essa atividade exige envio de arquivo.")
             elif usa_formulario_quiz and not questoes:
-                messages.error(request, "Este quiz ainda nao possui questoes cadastradas.")
+                messages.error(request, "Este quiz ainda não possui questões cadastradas.")
             else:
                 tentativa_processada = tentativa_em_andamento
                 if tentativa_processada is None:
@@ -427,7 +427,7 @@ def baixar_comprovante_atividade(request, tentativa_id):
 
     y -= 12 * mm
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(margem_x, y, "Este documento comprova o envio/conclusao da tarefa no modulo AVA.")
+    pdf.drawString(margem_x, y, "Este documento comprova o envio/conclusão da tarefa no módulo AVA.")
 
     y -= 14 * mm
     pdf.setFont("Helvetica-Bold", 11)

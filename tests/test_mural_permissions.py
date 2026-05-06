@@ -1,7 +1,9 @@
 import pytest
+import errno
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from curriculum.models import GT
+from notifications.models import MuralArquivoEnvio
 
 
 @pytest.mark.django_db
@@ -133,3 +135,48 @@ def test_membro_gt_nao_envia_arquivo_quando_post_nao_permite(api_client, usuario
     )
 
     assert send_response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_membro_gt_recebe_507_quando_storage_sem_espaco(
+    api_client,
+    usuario,
+    membro_gt,
+    cliente,
+    settings,
+    tmp_path,
+    monkeypatch,
+):
+    settings.MEDIA_ROOT = tmp_path
+    gt = GT.objects.create(cliente=cliente, nome="GT Matemática", etapa="II")
+    gt.membros.add(membro_gt)
+
+    api_client.force_authenticate(usuario)
+    create_response = api_client.post(
+        "/api/v1/mural",
+        {
+            "titulo": "Entrega de evidências",
+            "conteudo_html": "<p>Envie o arquivo.</p>",
+            "modalidade": "recebimento_arquivo",
+            "gt_ids": [gt.id],
+            "include_all": False,
+        },
+        format="json",
+    )
+    mural_id = create_response.json()["id"]
+
+    def fail_save(self, *args, **kwargs):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr(MuralArquivoEnvio, "save", fail_save)
+
+    api_client.force_authenticate(membro_gt)
+    arquivo = SimpleUploadedFile("evidencia.pdf", b"%PDF-1.4", content_type="application/pdf")
+    send_response = api_client.post(
+        f"/api/v1/mural/{mural_id}/envios",
+        {"gt_id": str(gt.id), "arquivo": arquivo},
+        format="multipart",
+    )
+
+    assert send_response.status_code == 507
+    assert "espaço" in str(send_response.data["arquivo"])

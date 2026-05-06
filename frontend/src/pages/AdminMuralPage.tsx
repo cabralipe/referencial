@@ -212,7 +212,7 @@ export function AdminMuralPage({
       await reorderPosts.mutateAsync(nextPosts.map((post, index) => ({ id: post.id, position: index })));
     } catch (error) {
       setOrderedPosts(previousPosts);
-      setFeedback(error instanceof Error ? error.message : 'Nao foi possivel salvar a nova ordem do mural.');
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar a nova ordem do mural.');
     }
   };
 
@@ -346,7 +346,7 @@ export function AdminMuralPage({
       }
       resetForm();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Nao foi possivel salvar o aviso.');
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar o aviso.');
     }
   };
 
