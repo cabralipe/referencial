@@ -21,6 +21,8 @@ from ava.models import (
     ProgressoConteudo,
     ProgressoModulo,
 )
+from core.models import UserSessionLog
+from curriculum.models import GT
 from exports.services.pdf import html_to_pdf_bytes
 
 try:  # pragma: no cover - dependencia validada pelo ambiente
@@ -122,7 +124,7 @@ class AVAManagementReportService:
 
     @classmethod
     def _matriculas_queryset(cls, user, filtros):
-        qs = MatriculaCurso.objects.select_related("aluno", "curso")
+        qs = MatriculaCurso.objects.select_related("aluno", "aluno__escola", "curso")
         if not cls._is_super_admin(user):
             qs = qs.filter(cliente_id=user.cliente_id)
 
@@ -305,7 +307,27 @@ class AVAManagementReportService:
         matriculas = list(cls._matriculas_queryset(user, filtros))
         matricula_ids = [matricula.id for matricula in matriculas]
         curso_ids = sorted({matricula.curso_id for matricula in matriculas})
+        aluno_ids = sorted({matricula.aluno_id for matricula in matriculas})
         matricula_by_key = {(matricula.aluno_id, matricula.curso_id): matricula for matricula in matriculas}
+
+        gts_por_usuario: dict[int, list[str]] = defaultdict(list)
+        if aluno_ids:
+            gts_qs = GT.objects.filter(membros__id__in=aluno_ids)
+            if not cls._is_super_admin(user):
+                gts_qs = gts_qs.filter(cliente_id=user.cliente_id)
+            for item in gts_qs.values("membros__id", "nome").order_by("nome"):
+                gts_por_usuario[item["membros__id"]].append(item["nome"])
+
+        acessos_por_usuario = {}
+        if aluno_ids:
+            session_qs = UserSessionLog.objects.filter(usuario_id__in=aluno_ids)
+            if not cls._is_super_admin(user):
+                session_qs = session_qs.filter(cliente_id=user.cliente_id)
+            for item in session_qs.values("usuario_id").annotate(
+                total_acessos=Count("id"),
+                ultimo_acesso=Max("last_seen_at"),
+            ):
+                acessos_por_usuario[item["usuario_id"]] = item
 
         modulos_por_curso = defaultdict(list)
         if curso_ids:
@@ -378,6 +400,8 @@ class AVAManagementReportService:
             linha = {
                 "aluno_nome": cls._display_user(matricula.aluno),
                 "aluno_email": matricula.aluno.email,
+                "escola_nome": getattr(getattr(matricula.aluno, "escola", None), "nome", "") or "Sem escola vinculada",
+                "gts": gts_por_usuario.get(matricula.aluno_id, []),
                 "curso_titulo": matricula.curso.titulo,
                 "status": matricula.status,
                 "status_label": matricula.get_status_display(),
@@ -393,6 +417,8 @@ class AVAManagementReportService:
                 "mensagens_forum": forum.get("mensagens_forum", 0) or 0,
                 "respostas_forum": forum.get("respostas_forum", 0) or 0,
                 "conteudos_visualizados": conteudos.get("conteudos_visualizados", 0) or 0,
+                "total_acessos": acessos_por_usuario.get(matricula.aluno_id, {}).get("total_acessos", 0) or 0,
+                "ultimo_acesso": cls._to_local_datetime(acessos_por_usuario.get(matricula.aluno_id, {}).get("ultimo_acesso")),
                 "ultima_interacao": ultima_interacao,
                 "data_matricula": cls._to_local_datetime(matricula.data_matricula),
                 "data_conclusao": cls._to_local_datetime(matricula.data_conclusao),
@@ -428,6 +454,8 @@ class AVAManagementReportService:
             sum(linha["progresso_percentual"] for linha in linhas) / len(linhas),
             1,
         ) if linhas else 0.0
+        resumo_por_escola = cls._resumir_linhas(linhas, "escola_nome")
+        resumo_por_gt = cls._resumir_por_gt(linhas)
 
         escopo = "Todos os cursos do AVA"
         if selected["aula"]:
@@ -445,6 +473,8 @@ class AVAManagementReportService:
             "linhas": linhas,
             "top_interacao": top_interacao,
             "pendentes": pendentes,
+            "resumo_por_escola": resumo_por_escola,
+            "resumo_por_gt": resumo_por_gt,
             "metricas": {
                 "total_alunos_unicos": total_alunos_unicos,
                 "total_matriculas": len(linhas),
@@ -455,11 +485,44 @@ class AVAManagementReportService:
                 "envios_atividade": sum(linha["envios_atividade"] for linha in linhas),
                 "mensagens_forum": sum(linha["mensagens_forum"] for linha in linhas),
                 "conteudos_visualizados": sum(linha["conteudos_visualizados"] for linha in linhas),
+                "acessos_plataforma": sum(linha["total_acessos"] for linha in linhas),
                 "sem_interacao": sum(1 for linha in linhas if linha["total_interacoes"] == 0),
                 "ultima_interacao_geral": cls._merge_datetimes(
                     *(linha["ultima_interacao"] for linha in linhas if linha["ultima_interacao"])
                 ),
             },
+        }
+
+    @classmethod
+    def _resumir_linhas(cls, linhas: list[dict[str, Any]], campo: str) -> list[dict[str, Any]]:
+        grupos: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for linha in linhas:
+            grupos[linha.get(campo) or "-"].append(linha)
+        return [cls._metricas_grupo(nome, itens) for nome, itens in sorted(grupos.items())]
+
+    @classmethod
+    def _resumir_por_gt(cls, linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        grupos: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for linha in linhas:
+            for nome in linha["gts"] or ["Sem GT vinculado"]:
+                grupos[nome].append(linha)
+        return [cls._metricas_grupo(nome, itens) for nome, itens in sorted(grupos.items())]
+
+    @classmethod
+    def _metricas_grupo(cls, nome: str, linhas: list[dict[str, Any]]) -> dict[str, Any]:
+        concluidos = sum(1 for linha in linhas if linha["status"] == MatriculaCurso.Status.CONCLUIDA)
+        progresso_medio = round(sum(linha["progresso_percentual"] for linha in linhas) / len(linhas), 1) if linhas else 0.0
+        return {
+            "nome": nome,
+            "inscritos": len(linhas),
+            "concluidos": concluidos,
+            "pendentes": len(linhas) - concluidos,
+            "taxa_conclusao": round((concluidos / len(linhas)) * 100, 1) if linhas else 0.0,
+            "progresso_medio": progresso_medio,
+            "envios_atividade": sum(linha["envios_atividade"] for linha in linhas),
+            "atividades_corrigidas": sum(linha["atividades_corrigidas"] for linha in linhas),
+            "acessos_plataforma": sum(linha["total_acessos"] for linha in linhas),
+            "ultima_interacao": cls._merge_datetimes(*(linha["ultima_interacao"] for linha in linhas if linha["ultima_interacao"])),
         }
 
     @classmethod
@@ -622,6 +685,7 @@ class AVAManagementReportService:
             ("Envios", metricas["envios_atividade"]),
             ("Fórum", metricas["mensagens_forum"]),
             ("Conteúdos", metricas["conteudos_visualizados"]),
+            ("Acessos", metricas["acessos_plataforma"]),
             ("Sem interação", metricas["sem_interacao"]),
         ]
         metric_rows = []
@@ -653,6 +717,55 @@ class AVAManagementReportService:
         )
         story.extend([cls._paragraph("Visão consolidada", styles["section"]), metrics_table, Spacer(1, 0.25 * cm)])
 
+        for titulo, rows in (
+            ("Consolidado por escola", report_data["resumo_por_escola"]),
+            ("Consolidado por GT", report_data["resumo_por_gt"]),
+        ):
+            story.append(cls._paragraph(titulo, styles["section"]))
+            resumo_table_data = [[
+                cls._paragraph("Nome", styles["small"]),
+                cls._paragraph("Inscritos", styles["small"]),
+                cls._paragraph("Concl.", styles["small"]),
+                cls._paragraph("Pend.", styles["small"]),
+                cls._paragraph("Taxa", styles["small"]),
+                cls._paragraph("Progresso", styles["small"]),
+                cls._paragraph("Envios", styles["small"]),
+                cls._paragraph("Corrig.", styles["small"]),
+                cls._paragraph("Acessos", styles["small"]),
+                cls._paragraph("Ultima interacao", styles["small"]),
+            ]]
+            for item in rows:
+                resumo_table_data.append([
+                    cls._paragraph(item["nome"], styles["body"]),
+                    cls._paragraph(str(item["inscritos"]), styles["body"]),
+                    cls._paragraph(str(item["concluidos"]), styles["body"]),
+                    cls._paragraph(str(item["pendentes"]), styles["body"]),
+                    cls._paragraph(f"{item['taxa_conclusao']}%", styles["body"]),
+                    cls._paragraph(f"{item['progresso_medio']}%", styles["body"]),
+                    cls._paragraph(str(item["envios_atividade"]), styles["body"]),
+                    cls._paragraph(str(item["atividades_corrigidas"]), styles["body"]),
+                    cls._paragraph(str(item["acessos_plataforma"]), styles["body"]),
+                    cls._paragraph(cls._datetime_text(item["ultima_interacao"]), styles["body"]),
+                ])
+            resumo_table = Table(
+                resumo_table_data,
+                colWidths=[5.0 * cm, 1.8 * cm, 1.6 * cm, 1.6 * cm, 1.8 * cm, 2.1 * cm, 1.7 * cm, 1.7 * cm, 1.8 * cm, 4.0 * cm],
+                repeatRows=1,
+            )
+            resumo_table.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E2E8F0")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ])
+            )
+            story.extend([resumo_table, Spacer(1, 0.18 * cm)])
+
         story.append(cls._paragraph("Top alunos que mais interagiram", styles["section"]))
         top_table_data = [[
             cls._paragraph("Aluno", styles["small"]),
@@ -668,9 +781,9 @@ class AVAManagementReportService:
             for linha in top_rows:
                 top_table_data.append(
                     [
-                        cls._paragraph(linha["aluno_nome"], styles["body"]),
+                        cls._paragraph(f"{linha['aluno_nome']}\n{linha['escola_nome']}\nGT: {', '.join(linha['gts']) or '-'}", styles["body"]),
                         cls._paragraph(linha["curso_titulo"], styles["body"]),
-                        cls._paragraph(str(linha["total_interacoes"]), styles["body"]),
+                        cls._paragraph(f"{linha['total_interacoes']}\n{linha['total_acessos']} acessos", styles["body"]),
                         cls._paragraph(str(linha["envios_atividade"]), styles["body"]),
                         cls._paragraph(str(linha["mensagens_forum"]), styles["body"]),
                         cls._paragraph(str(linha["conteudos_visualizados"]), styles["body"]),
@@ -710,7 +823,7 @@ class AVAManagementReportService:
             for linha in report_data["pendentes"]:
                 pendentes_table_data.append(
                     [
-                        cls._paragraph(linha["aluno_nome"], styles["body"]),
+                        cls._paragraph(f"{linha['aluno_nome']}\n{linha['escola_nome']}\nGT: {', '.join(linha['gts']) or '-'}", styles["body"]),
                         cls._paragraph(linha["curso_titulo"], styles["body"]),
                         cls._paragraph(linha["status_label"], styles["body"]),
                         cls._paragraph(f"{linha['progresso_percentual']}%", styles["body"]),
@@ -757,7 +870,7 @@ class AVAManagementReportService:
         for linha in report_data["linhas"]:
             detalhe_table_data.append(
                 [
-                    cls._paragraph(f"{linha['aluno_nome']}\n{linha['aluno_email']}", styles["tiny"]),
+                    cls._paragraph(f"{linha['aluno_nome']}\n{linha['aluno_email']}\n{linha['escola_nome']}\nGT: {', '.join(linha['gts']) or '-'}", styles["tiny"]),
                     cls._paragraph(linha["curso_titulo"], styles["tiny"]),
                     cls._paragraph(linha["status_label"], styles["tiny"]),
                     cls._paragraph(f"{linha['progresso_percentual']}%", styles["tiny"]),
@@ -776,7 +889,7 @@ class AVAManagementReportService:
                         f"{linha['mensagens_forum']} mensagens\n{linha['respostas_forum']} respostas",
                         styles["tiny"],
                     ),
-                    cls._paragraph(str(linha["conteudos_visualizados"]), styles["tiny"]),
+                    cls._paragraph(f"{linha['conteudos_visualizados']} conteudos\n{linha['total_acessos']} acessos\nUlt. acesso: {cls._datetime_text(linha['ultimo_acesso'])}", styles["tiny"]),
                     cls._paragraph(str(linha["total_interacoes"]), styles["tiny"]),
                     cls._paragraph(cls._datetime_text(linha["ultima_interacao"]), styles["tiny"]),
                 ]
@@ -867,23 +980,27 @@ class AVAManagementReportService:
         headers = [
             "Aluno",
             "E-mail",
+            "Escola",
+            "GTs",
             "Curso",
-            "Status da matrícula",
+            "Status da matricula",
             "Progresso (%)",
-            "Módulos concluídos",
-            "Módulos pendentes",
-            "Lista de módulos concluídos",
-            "Lista de módulos pendentes",
+            "Modulos concluidos",
+            "Modulos pendentes",
+            "Lista de modulos concluidos",
+            "Lista de modulos pendentes",
             "Envios de atividade",
             "Atividades corrigidas",
             "Envios com anexo",
-            "Mensagens no fórum",
-            "Respostas no fórum",
-            "Conteúdos visualizados",
-            "Total de interações",
-            "Última interação",
-            "Data da matrícula",
-            "Data de conclusão",
+            "Mensagens no forum",
+            "Respostas no forum",
+            "Conteudos visualizados",
+            "Acessos a plataforma",
+            "Ultimo acesso",
+            "Total de interacoes",
+            "Ultima interacao",
+            "Data da matricula",
+            "Data de conclusao",
         ]
         alunos_sheet.append(headers)
         for cell in alunos_sheet[1]:
@@ -895,6 +1012,8 @@ class AVAManagementReportService:
                 [
                     linha["aluno_nome"],
                     linha["aluno_email"],
+                    linha["escola_nome"],
+                    ", ".join(linha["gts"]) or "-",
                     linha["curso_titulo"],
                     linha["status_label"],
                     linha["progresso_percentual"],
@@ -908,6 +1027,8 @@ class AVAManagementReportService:
                     linha["mensagens_forum"],
                     linha["respostas_forum"],
                     linha["conteudos_visualizados"],
+                    linha["total_acessos"],
+                    cls._excel_datetime(linha["ultimo_acesso"]),
                     linha["total_interacoes"],
                     cls._excel_datetime(linha["ultima_interacao"]),
                     cls._excel_datetime(linha["data_matricula"]),
@@ -916,9 +1037,10 @@ class AVAManagementReportService:
             )
 
         for row in alunos_sheet.iter_rows(min_row=2):
-            row[7].alignment = wrap_alignment
-            row[8].alignment = wrap_alignment
-            for idx in (16, 17, 18):
+            row[3].alignment = wrap_alignment
+            row[9].alignment = wrap_alignment
+            row[10].alignment = wrap_alignment
+            for idx in (18, 20, 21, 22):
                 if row[idx].value:
                     row[idx].number_format = "dd/mm/yyyy hh:mm"
 
@@ -1016,6 +1138,48 @@ class AVAManagementReportService:
                 row[8].number_format = "dd/mm/yyyy hh:mm"
         for coluna, largura in {"A": 24, "B": 28, "C": 20, "D": 14, "E": 18, "F": 40, "G": 18, "H": 18, "I": 18}.items():
             pendentes_sheet.column_dimensions[coluna].width = largura
+
+        for sheet_name, rows in (
+            ("Por escola", report_data["resumo_por_escola"]),
+            ("Por GT", report_data["resumo_por_gt"]),
+        ):
+            sheet = workbook.create_sheet(sheet_name)
+            summary_headers = [
+                "Nome",
+                "Inscritos",
+                "Concluidos",
+                "Pendentes",
+                "Taxa de conclusao (%)",
+                "Progresso medio (%)",
+                "Envios de atividade",
+                "Atividades corrigidas",
+                "Acessos a plataforma",
+                "Ultima interacao",
+            ]
+            sheet.append(summary_headers)
+            for cell in sheet[1]:
+                cell.fill = cabecalho_fill
+                cell.font = cabecalho_font
+            for item in rows:
+                sheet.append(
+                    [
+                        item["nome"],
+                        item["inscritos"],
+                        item["concluidos"],
+                        item["pendentes"],
+                        item["taxa_conclusao"],
+                        item["progresso_medio"],
+                        item["envios_atividade"],
+                        item["atividades_corrigidas"],
+                        item["acessos_plataforma"],
+                        cls._excel_datetime(item["ultima_interacao"]),
+                    ]
+                )
+            for row in sheet.iter_rows(min_row=2):
+                if row[9].value:
+                    row[9].number_format = "dd/mm/yyyy hh:mm"
+            for coluna, largura in {"A": 30, "B": 14, "C": 14, "D": 14, "E": 20, "F": 20, "G": 18, "H": 20, "I": 20, "J": 18}.items():
+                sheet.column_dimensions[coluna].width = largura
 
         buffer = BytesIO()
         workbook.save(buffer)

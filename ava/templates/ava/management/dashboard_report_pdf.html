@@ -214,10 +214,86 @@
                     <span class="card-value">{{ metricas.conteudos_visualizados }}</span>
                 </td>
                 <td class="card">
+                    <span class="card-label">Acessos a plataforma</span>
+                    <span class="card-value">{{ metricas.acessos_plataforma }}</span>
+                </td>
+                <td class="card">
                     <span class="card-label">Sem interação</span>
                     <span class="card-value">{{ metricas.sem_interacao }}</span>
                 </td>
             </tr>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2>Consolidado por escola</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Inscritos</th>
+                    <th>Concluidos</th>
+                    <th>Pendentes</th>
+                    <th>Conclusao</th>
+                    <th>Progresso</th>
+                    <th>Envios</th>
+                    <th>Acessos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in resumo_por_escola %}
+                <tr>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.inscritos }}</td>
+                    <td>{{ item.concluidos }}</td>
+                    <td>{{ item.pendentes }}</td>
+                    <td>{{ item.taxa_conclusao }}%</td>
+                    <td>{{ item.progresso_medio }}%</td>
+                    <td>{{ item.envios_atividade }}</td>
+                    <td>{{ item.acessos_plataforma }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="muted">Sem dados por escola.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="section">
+        <h2>Consolidado por GT</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>GT</th>
+                    <th>Inscritos</th>
+                    <th>Concluidos</th>
+                    <th>Pendentes</th>
+                    <th>Conclusao</th>
+                    <th>Progresso</th>
+                    <th>Envios</th>
+                    <th>Acessos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in resumo_por_gt %}
+                <tr>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.inscritos }}</td>
+                    <td>{{ item.concluidos }}</td>
+                    <td>{{ item.pendentes }}</td>
+                    <td>{{ item.taxa_conclusao }}%</td>
+                    <td>{{ item.progresso_medio }}%</td>
+                    <td>{{ item.envios_atividade }}</td>
+                    <td>{{ item.acessos_plataforma }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="muted">Sem dados por GT.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </section>
 
@@ -243,7 +319,7 @@
                     <td>{{ linha.total_interacoes }}</td>
                     <td>{{ linha.envios_atividade }}</td>
                     <td>{{ linha.mensagens_forum }}</td>
-                    <td>{{ linha.conteudos_visualizados }}</td>
+                    <td>{{ linha.conteudos_visualizados }}<br><span class="muted small">{{ linha.total_acessos }} acessos</span><br><span class="muted small">Ultimo acesso: {% if linha.ultimo_acesso %}{{ linha.ultimo_acesso|date:"d/m/Y H:i" }}{% else %}-{% endif %}</span></td>
                     <td>{% if linha.ultima_interacao %}{{ linha.ultima_interacao|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
                 </tr>
                 {% empty %}
@@ -320,7 +396,9 @@
                 <tr>
                     <td>
                         <strong>{{ linha.aluno_nome }}</strong><br>
-                        <span class="muted small">{{ linha.aluno_email }}</span>
+                        <span class="muted small">{{ linha.aluno_email }}</span><br>
+                        <span class="muted small">{{ linha.escola_nome }}</span><br>
+                        <span class="muted small">GT: {% if linha.gts %}{{ linha.gts|join:", " }}{% else %}-{% endif %}</span>
                     </td>
                     <td>{{ linha.curso_titulo }}</td>
                     <td>{{ linha.status_label }}</td>
@@ -356,7 +434,7 @@
                         <strong>{{ linha.mensagens_forum }}</strong> mensagens<br>
                         <span class="muted small">{{ linha.respostas_forum }} respostas</span>
                     </td>
-                    <td>{{ linha.conteudos_visualizados }}</td>
+                    <td>{{ linha.conteudos_visualizados }}<br><span class="muted small">{{ linha.total_acessos }} acessos</span><br><span class="muted small">Ultimo acesso: {% if linha.ultimo_acesso %}{{ linha.ultimo_acesso|date:"d/m/Y H:i" }}{% else %}-{% endif %}</span></td>
                     <td>{{ linha.total_interacoes }}</td>
                     <td>
                         {% if linha.ultima_interacao %}
