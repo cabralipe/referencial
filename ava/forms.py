@@ -30,7 +30,7 @@ class AtividadeTentativaCorrecaoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         atividade = getattr(self.instance, "atividade", None)
         if atividade is not None:
-            self.fields["nota_obtida"].help_text = f"Nota maxima da atividade: {atividade.nota_maxima}."
+            self.fields["nota_obtida"].help_text = f"Nota máxima da atividade: {atividade.nota_maxima}."
 
 
 class CursoEstruturaCopyForm(forms.Form):
@@ -40,20 +40,20 @@ class CursoEstruturaCopyForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     cliente_destino = forms.ModelChoiceField(
-        label="Municipio destino",
+        label="Município destino",
         queryset=Cliente.objects.none(),
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     novo_titulo = forms.CharField(
-        label="Novo titulo",
+        label="Novo título",
         required=False,
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Se vazio, usa o titulo original.",
+                "placeholder": "Se vazio, usa o título original.",
             }
         ),
-        help_text="Opcional. Use para diferenciar o curso no municipio destino.",
+        help_text="Opcional. Use para diferenciar o curso no município destino.",
     )
     novo_slug = forms.SlugField(
         label="Novo slug",
@@ -64,10 +64,10 @@ class CursoEstruturaCopyForm(forms.Form):
                 "placeholder": "Gerado automaticamente se ficar vazio.",
             }
         ),
-        help_text="Opcional. Se vazio, o sistema gera um slug unico automaticamente.",
+        help_text="Opcional. Se vazio, o sistema gera um slug único automaticamente.",
     )
     copiar_atividades = forms.BooleanField(
-        label="Copiar tambem atividades avaliativas",
+        label="Copiar também atividades avaliativas",
         required=False,
         initial=False,
         help_text="Desmarcado por padrão: copia curso, módulos, aulas e conteúdos, sem quizzes/tarefas/fórum.",
@@ -98,7 +98,7 @@ class AtividadeForumMensagemForm(forms.Form):
             attrs={
                 "class": "form-control",
                 "rows": 4,
-                "placeholder": "Compartilhe sua contribuicao com a turma.",
+                "placeholder": "Compartilhe sua contribuição com a turma.",
             }
         ),
     )

@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="pt-br">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,7 +8,8 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -173,6 +175,7 @@
     </style>
     {% block head %}{% endblock %}
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark ava-navbar">
         <div class="container-fluid px-3 px-lg-4">
@@ -180,13 +183,14 @@
                 <span class="ava-brand-badge"><i class="bi bi-mortarboard-fill"></i></span>
                 <span>AVA PROLUC</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent" aria-expanded="false" aria-label="Alternar navegacao">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent"
+                aria-controls="navContent" aria-expanded="false" aria-label="Alternar navegação">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link ava-nav-link" href="{% url 'ava:catalogo' %}">Catalogo</a>
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:catalogo' %}">Catálogo</a>
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
@@ -194,7 +198,7 @@
                     </li>
                     {% if user.role == 'admin_cliente' or user.role == 'articulador' or user.role == 'revisor' or user.role == 'super_admin' %}
                     <li class="nav-item">
-                        <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestao AVA</a>
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_dashboard' %}">Gestão AVA</a>
                     </li>
                     {% endif %}
                     {% endif %}
@@ -235,4 +239,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

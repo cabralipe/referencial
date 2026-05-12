@@ -17,7 +17,7 @@
                 <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header">
                         <button class="accordion-button {% if mod != aula.modulo %}collapsed{% endif %} fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapse{{ mod.id }}" aria-expanded="{% if mod == aula.modulo %}true{% else %}false{% endif %}">
-                            Modulo {{ mod.ordem }}
+                            Módulo {{ mod.ordem }}
                         </button>
                     </h2>
                     <div id="flush-collapse{{ mod.id }}" class="accordion-collapse collapse {% if mod == aula.modulo %}show{% endif %}" data-bs-parent="#courseSidebar">
@@ -77,10 +77,10 @@
                             <div class="ratio ratio-16x9 rounded overflow-hidden">{{ conteudo.embed_code|safe }}</div>
                             {% elif conteudo.url %}
                             <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
-                                Abrir video <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                Abrir vídeo <i class="bi bi-box-arrow-up-right ms-1"></i>
                             </a>
                             {% else %}
-                            <p class="text-muted mb-0">Nenhum video cadastrado.</p>
+                            <p class="text-muted mb-0">Nenhum vídeo cadastrado.</p>
                             {% endif %}
 
                             {% elif conteudo.tipo == 'pdf' or conteudo.tipo == 'arquivo' %}
@@ -133,7 +133,7 @@
                             {% if conteudo.embed_code %}
                             <div class="ratio ratio-16x9 rounded overflow-hidden">{{ conteudo.embed_code|safe }}</div>
                             {% elif conteudo.url %}
-                            <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">Abrir conteudo incorporado</a>
+                            <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">Abrir conteúdo incorporado</a>
                             {% else %}
                             <p class="text-muted mb-0">Conteúdo embed não disponível.</p>
                             {% endif %}
@@ -160,7 +160,7 @@
                         </div>
                     </article>
                     {% empty %}
-                    <div class="ava-surface p-4 text-muted">Nenhum conteudo cadastrado nesta aula.</div>
+                    <div class="ava-surface p-4 text-muted">Nenhum conteúdo cadastrado nesta aula.</div>
                     {% endfor %}
                 </div>
 
@@ -218,11 +218,11 @@
 
                     {% if proxima_aula %}
                     <a href="{% url 'ava:aluno_acessar_aula' aula.modulo.curso.slug proxima_aula.id %}" class="btn btn-primary px-4">
-                        Proxima aula <i class="bi bi-arrow-right ms-2"></i>
+                        Próxima aula <i class="bi bi-arrow-right ms-2"></i>
                     </a>
                     {% else %}
                     <button class="btn btn-outline-secondary px-4" disabled>
-                        Proxima aula <i class="bi bi-arrow-right ms-2"></i>
+                        Próxima aula <i class="bi bi-arrow-right ms-2"></i>
                     </button>
                     {% endif %}
                 </nav>

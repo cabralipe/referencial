@@ -29,11 +29,11 @@
                         <button type="submit" class="btn btn-primary w-100 py-2">Matricular agora</button>
                     </form>
                     {% else %}
-                    <p class="text-muted mb-3">Faca login para iniciar sua trilha.</p>
+                    <p class="text-muted mb-3">Faça login para iniciar sua trilha.</p>
                     <a href="/admin/login/?next={{ request.path }}" class="btn btn-outline-primary w-100">Fazer login</a>
                     {% endif %}
                     {% else %}
-                    <div class="alert alert-warning mb-0"><i class="bi bi-lock-fill me-1"></i>Matriculas restritas a coordenacao.</div>
+                    <div class="alert alert-warning mb-0"><i class="bi bi-lock-fill me-1"></i>Matrículas restritas à coordenação.</div>
                     {% endif %}
                 </div>
             </div>
@@ -51,20 +51,20 @@
 
             {% if curso.objetivos %}
             <section class="ava-surface p-4 mb-4">
-                <h3 class="h5 fw-bold mb-3">O que voce vai aprender</h3>
+                <h3 class="h5 fw-bold mb-3">O que você vai aprender</h3>
                 <div class="text-muted lh-lg">{{ curso.objetivos|linebreaks }}</div>
             </section>
             {% endif %}
 
             <section class="ava-surface p-4">
-                <h3 class="h5 fw-bold mb-3">Conteudo programatico</h3>
+                <h3 class="h5 fw-bold mb-3">Conteúdo programático</h3>
                 <div class="accordion" id="accordionProgram">
                     {% for modulo in curso.modulos.all %}
                     {% if modulo.is_active %}
                     <div class="accordion-item border-0 border-bottom">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ modulo.id }}">
-                                Modulo {{ modulo.ordem }}: {{ modulo.titulo }}
+                                Módulo {{ modulo.ordem }}: {{ modulo.titulo }}
                             </button>
                         </h2>
                         <div id="collapse{{ modulo.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionProgram">
@@ -92,12 +92,12 @@
 
         <div class="col-lg-4">
             <aside class="ava-surface p-4">
-                <h3 class="h5 fw-bold mb-3">Informacoes importantes</h3>
+                <h3 class="h5 fw-bold mb-3">Informações importantes</h3>
                 <ul class="list-unstyled mb-0">
-                    <li class="mb-3"><strong>Publico alvo:</strong> {{ curso.publico_alvo|default:"Qualquer pessoa interessada." }}</li>
-                    <li class="mb-3"><strong>Aprovacao:</strong> nota minima {{ curso.nota_minima }} e frequencia {{ curso.progresso_minimo }}%</li>
+                    <li class="mb-3"><strong>Público-alvo:</strong> {{ curso.publico_alvo|default:"Qualquer pessoa interessada." }}</li>
+                    <li class="mb-3"><strong>Aprovação:</strong> nota mínima {{ curso.nota_minima }} e frequência {{ curso.progresso_minimo }}%</li>
                     {% if curso.autor_principal %}
-                    <li><strong>Autor responsavel:</strong> {{ curso.autor_principal.get_full_name|default:curso.autor_principal.nome|default:curso.autor_principal.email }}</li>
+                    <li><strong>Autor responsável:</strong> {{ curso.autor_principal.get_full_name|default:curso.autor_principal.nome|default:curso.autor_principal.email }}</li>
                     {% endif %}
                 </ul>
             </aside>

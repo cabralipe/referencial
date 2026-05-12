@@ -1,15 +1,16 @@
 {% extends "ava/base.html" %}
 
-{% block title %}Gestao AVA | PROLUC{% endblock %}
+{% block title %}Gestão AVA | PROLUC{% endblock %}
 
 {% block content %}
 <section class="section-hero py-5">
     <div class="container py-2">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
             <div>
-                <span class="badge text-bg-light mb-2">Gestao AVA</span>
+                <span class="badge text-bg-light mb-2">Gestão AVA</span>
                 <h1 class="display-6 fw-bold text-white mb-1">Dashboard de respostas e utilização</h1>
-                <p class="text-white-50 mb-0">Acompanhe envios, resolucao de questoes e desempenho por usuario, curso e modulo.</p>
+                <p class="text-white-50 mb-0">Acompanhe envios, resolução de questáes e desempenho por usuário, curso e
+                    módulo.</p>
             </div>
             <a href="{% url 'ava:aluno_dashboard' %}" class="btn btn-light rounded-pill px-4">
                 Ir para AVA do aluno
@@ -22,16 +23,16 @@
     <section class="row g-3 mb-4">
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Alunos com matricula</p>
+                <p class="text-muted small mb-1">Alunos com matrícula</p>
                 <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_alunos }}</h3>
                 <small class="text-muted">Base real do ambiente</small>
             </article>
         </div>
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Matriculas</p>
+                <p class="text-muted small mb-1">Matrículas</p>
                 <h3 class="h4 fw-bold mb-0">{{ visao_geral.total_matriculas }}</h3>
-                <small class="text-muted">Cursos vinculados a usuarios</small>
+                <small class="text-muted">Cursos vinculados a usuários</small>
             </article>
         </div>
         <div class="col-md-6 col-xl-3">
@@ -55,10 +56,11 @@
         <form method="get" class="row g-3 align-items-end">
             <div class="col-md-4">
                 <label for="q" class="form-label">Busca</label>
-                <input id="q" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Aluno, atividade, aula, modulo, curso">
+                <input id="q" name="q" class="form-control" value="{{ filtros.q }}"
+                    placeholder="Aluno, atividade, aula, módulo, curso">
             </div>
             <div class="col-md-4">
-                <label for="usuario" class="form-label">Usuario</label>
+                <label for="usuario" class="form-label">Usuário</label>
                 <select id="usuario" name="usuario" class="form-select">
                     <option value="">Todos</option>
                     {% for usuario in usuarios %}
@@ -79,7 +81,7 @@
             </div>
 
             <div class="col-md-4">
-                <label for="modulo" class="form-label">Modulo</label>
+                <label for="modulo" class="form-label">Módulo</label>
                 <select id="modulo" name="modulo" class="form-select">
                     <option value="">Todos</option>
                     {% for modulo in modulos %}
@@ -94,7 +96,8 @@
                 <select id="aula" name="aula" class="form-select">
                     <option value="">Todas</option>
                     {% for aula in aulas %}
-                    <option value="{{ aula.id }}" {% if filtros.aula_id == aula.id %}selected{% endif %}>{{ aula.titulo }}</option>
+                    <option value="{{ aula.id }}" {% if filtros.aula_id == aula.id %}selected{% endif %}>{{ aula.titulo }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -119,7 +122,8 @@
             </div>
             <div class="col-md-3">
                 <label for="data_inicio" class="form-label">Data inicial</label>
-                <input id="data_inicio" type="date" name="data_inicio" class="form-control" value="{{ data_inicio_raw }}">
+                <input id="data_inicio" type="date" name="data_inicio" class="form-control"
+                    value="{{ data_inicio_raw }}">
             </div>
             <div class="col-md-3">
                 <label for="data_fim" class="form-label">Data final</label>
@@ -147,16 +151,12 @@
                         </p>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <a
-                            href="{% url 'ava:gestao_dashboard_relatorio' 'xlsx' %}{% if querystring %}?{{ querystring }}{% endif %}"
-                            class="btn btn-primary"
-                        >
+                        <a href="{% url 'ava:gestao_dashboard_relatorio' 'xlsx' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-primary">
                             Baixar XLSX
                         </a>
-                        <a
-                            href="{% url 'ava:gestao_dashboard_relatorio' 'pdf' %}{% if querystring %}?{{ querystring }}{% endif %}"
-                            class="btn btn-outline-primary"
-                        >
+                        <a href="{% url 'ava:gestao_dashboard_relatorio' 'pdf' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                            class="btn btn-outline-primary">
                             Baixar PDF
                         </a>
                     </div>
@@ -182,7 +182,7 @@
         </div>
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Taxa de correcao</p>
+                <p class="text-muted small mb-1">Taxa de correção</p>
                 <h3 class="h4 fw-bold mb-0">{{ metricas.taxa_correcao }}%</h3>
                 <small class="text-muted">{{ metricas.total_corrigidas }} corrigidas</small>
             </article>
@@ -199,7 +199,7 @@
     <section class="row g-3 mb-4">
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Resolucao de questoes</p>
+                <p class="text-muted small mb-1">Resolução de questões</p>
                 <h3 class="h4 fw-bold mb-0">{{ metricas.quiz.taxa_resolucao }}%</h3>
                 <small class="text-muted">{{ metricas.quiz.total_respondidas }} de {{ metricas.quiz.total_previstas }}</small>
             </article>
@@ -213,7 +213,7 @@
         </div>
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Media de nota</p>
+                <p class="text-muted small mb-1">Média de nota</p>
                 <h3 class="h4 fw-bold mb-0">
                     {% if metricas.media_nota is not None %}{{ metricas.media_nota|floatformat:2 }}{% else %}-{% endif %}
                 </h3>
@@ -222,11 +222,11 @@
         </div>
         <div class="col-md-6 col-xl-3">
             <article class="ava-surface h-100 p-3">
-                <p class="text-muted small mb-1">Ultimo envio</p>
+                <p class="text-muted small mb-1">Último envio</p>
                 <h3 class="h6 fw-bold mb-0">
                     {% if metricas.ultima_atividade %}{{ metricas.ultima_atividade|date:"d/m/Y H:i" }}{% else %}-{% endif %}
                 </h3>
-                <small class="text-muted">Atualizacao mais recente</small>
+                <small class="text-muted">Atualização mais recente</small>
             </article>
         </div>
     </section>
@@ -234,7 +234,7 @@
     <section class="row g-3 mb-4">
         <div class="col-lg-4">
             <article class="ava-surface p-3 h-100">
-                <h2 class="h6 fw-bold mb-3">Top usuarios</h2>
+                <h2 class="h6 fw-bold mb-3">Top usuários</h2>
                 <ul class="list-group list-group-flush">
                     {% for item in resumo_por_usuario %}
                     <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
@@ -284,15 +284,15 @@
 
     <section class="ava-surface p-3">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h5 fw-bold mb-0">Tentativas e respostas dos usuarios</h2>
+            <h2 class="h5 fw-bold mb-0">Tentativas e respostas dos usuários</h2>
             <span class="text-muted small">{{ page_obj.paginator.count }} registros</span>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>Usuario</th>
-                        <th>Curso / Modulo / Aula</th>
+                        <th>Usuário</th>
+                        <th>Curso / Módulo / Aula</th>
                         <th>Atividade</th>
                         <th>Status</th>
                         <th>Envio</th>
@@ -318,7 +318,8 @@
                         </td>
                         <td>{{ tentativa.get_status_display }}</td>
                         <td>{% if tentativa.data_envio %}{{ tentativa.data_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
-                        <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}</td>
+                        <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}
+                        </td>
                         <td>
                             {% if tentativa.arquivo_enviado %}
                             <span class="badge text-bg-success">Sim</span>
@@ -327,12 +328,14 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}" class="btn btn-sm btn-outline-primary">Ver / corrigir</a>
+                            <a href="{% url 'ava:gestao_tentativa_detalhe' tentativa.id %}"
+                                class="btn btn-sm btn-outline-primary">Ver / corrigir</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros selecionados.</td>
+                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros
+                            selecionados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -340,26 +343,28 @@
         </div>
 
         {% if page_obj.paginator.num_pages > 1 %}
-        <nav aria-label="Paginacao da gestao AVA">
+        <nav aria-label="Paginação da gestão AVA">
             <ul class="pagination mb-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a class="page-link"
+                        href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">Anterior</span></li>
                 {% endif %}
 
                 <li class="page-item disabled">
-                    <span class="page-link">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
                 </li>
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Proxima</a>
+                    <a class="page-link"
+                        href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
                 </li>
                 {% else %}
-                <li class="page-item disabled"><span class="page-link">Proxima</span></li>
+                <li class="page-item disabled"><span class="page-link">Próxima</span></li>
                 {% endif %}
             </ul>
         </nav>

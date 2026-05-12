@@ -282,11 +282,11 @@ class AVAManagementReportService:
         if filtros.get("q"):
             labels.append(f'Busca: "{filtros["q"]}"')
         if selected["usuario"]:
-            labels.append(f"Usuario: {cls._display_user(selected['usuario'])}")
+            labels.append(f"Usuário: {cls._display_user(selected['usuario'])}")
         if selected["curso"]:
             labels.append(f"Curso: {selected['curso'].titulo}")
         if selected["modulo"]:
-            labels.append(f"Modulo: {selected['modulo'].titulo}")
+            labels.append(f"Módulo: {selected['modulo'].titulo}")
         if selected["aula"]:
             labels.append(f"Aula: {selected['aula'].titulo}")
         if filtros.get("status"):
@@ -461,7 +461,7 @@ class AVAManagementReportService:
         if selected["aula"]:
             escopo = f"Aula {selected['aula'].titulo}"
         elif selected["modulo"]:
-            escopo = f"Modulo {selected['modulo'].titulo}"
+            escopo = f"Módulo {selected['modulo'].titulo}"
         elif selected["curso"]:
             escopo = f"Curso {selected['curso'].titulo}"
 
@@ -958,10 +958,10 @@ class AVAManagementReportService:
             resumo[f"{coluna}{metricas_inicio}"].font = cabecalho_font
 
         metricas_labels = [
-            ("Alunos unicos", report_data["metricas"]["total_alunos_unicos"]),
+            ("Alunos únicos", report_data["metricas"]["total_alunos_unicos"]),
             ("Matrículas no relatório", report_data["metricas"]["total_matriculas"]),
             ("Matrículas concluídas", report_data["metricas"]["concluidos"]),
-            ("Matriculas pendentes", report_data["metricas"]["pendentes"]),
+            ("Matrículas pendentes", report_data["metricas"]["pendentes"]),
             ("Taxa de conclusão (%)", report_data["metricas"]["taxa_conclusao"]),
             ("Progresso médio (%)", report_data["metricas"]["progresso_medio"]),
             ("Envios de atividade", report_data["metricas"]["envios_atividade"]),
