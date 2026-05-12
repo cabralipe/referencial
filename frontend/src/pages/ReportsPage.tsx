@@ -14,7 +14,7 @@ import { useRespostas } from '@/hooks/useRespostas';
 import { useUsuariosLookup } from '@/hooks/useUsuariosLookup';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAllPaginated } from '@/utils/pagination';
-import { useCreateExportJob } from '@/hooks/useExportJobs';
+import { useDownloadExport } from '@/hooks/useExportJobs';
 import type { Pergunta, Revisao } from '@/api/types';
 
 import './ReportsPage.css';
@@ -106,6 +106,25 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const slugifyFilename = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode?.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
 const getDecisionTypeLabel = (decisionType: string) => {
   switch (decisionType) {
     case 'recommend_approve':
@@ -135,7 +154,7 @@ export function ReportsPage() {
   const { data: onlineUsers, isLoading: onlineLoading } = useOnlineUsers();
   const { data: sessionHistory, isLoading: sessionsLoading } = useSessionHistory();
   const aiAssist = useAiAssist();
-  const criarExportacao = useCreateExportJob();
+  const baixarExportacao = useDownloadExport();
 
   const [redatorQuery, setRedatorQuery] = useState('');
   const [selectedRedator, setSelectedRedator] = useState<{ id: number; nome: string; email: string } | null>(null);
@@ -746,7 +765,7 @@ export function ReportsPage() {
     const now = new Date();
     const titulo = `Relatório ${reportMode === 'resumo' ? 'Resumo' : 'Completo'} - ${now.toLocaleDateString('pt-BR')}`;
     try {
-      await criarExportacao.mutateAsync({
+      const blob = await baixarExportacao.mutateAsync({
         alvoTipo: 'relatorio',
         alvoId: 'relatorio',
         formato: 'pdf',
@@ -756,9 +775,10 @@ export function ReportsPage() {
           modo: reportMode,
         },
       });
-      setExportFeedback('Exportacao solicitada. Confira o historico em Exportacoes.');
+      downloadBlob(blob, `relatorio-${reportMode}-${now.toISOString().slice(0, 10)}.pdf`);
+      setExportFeedback('Download do PDF iniciado.');
     } catch (err) {
-      setExportFeedback('Não foi possível solicitar a exportação.');
+      setExportFeedback('Nao foi possivel gerar o PDF para download.');
     }
   };
   const handleExportPdfProducao = async () => {
@@ -796,7 +816,7 @@ export function ReportsPage() {
     `;
 
     try {
-      await criarExportacao.mutateAsync({
+      const blob = await baixarExportacao.mutateAsync({
         alvoTipo: 'relatorio',
         alvoId: String(selectedRedator.id),
         formato: 'pdf',
@@ -806,9 +826,10 @@ export function ReportsPage() {
           modo: 'completo',
         },
       });
-      setExportFeedback('PDF de produção solicitado. Confira na aba de exportações.');
+      downloadBlob(blob, `producao-${slugifyFilename(selectedRedator.nome) || selectedRedator.id}.pdf`);
+      setExportFeedback('Download do PDF de producao iniciado.');
     } catch (err) {
-      setExportFeedback('Não foi possível solicitar a exportação.');
+      setExportFeedback('Nao foi possivel gerar o PDF para download.');
     }
   };
 
@@ -1221,8 +1242,8 @@ export function ReportsPage() {
                   <option value="resumo">PDF resumido</option>
                   <option value="completo">PDF completo</option>
                 </select>
-                <button type="button" className="secondary" onClick={handleExportPdf} disabled={criarExportacao.isPending}>
-                  {criarExportacao.isPending ? 'Exportando...' : 'Exportar PDF'}
+                <button type="button" className="secondary" onClick={handleExportPdf} disabled={baixarExportacao.isPending}>
+                  {baixarExportacao.isPending ? 'Exportando...' : 'Exportar PDF'}
                 </button>
               </div>
               {feedback && <span className="reports__feedback">{feedback}</span>}
@@ -1309,8 +1330,8 @@ export function ReportsPage() {
                   </div>
                   <div className="reports__producao-actions">
                     <button className="secondary" onClick={handleCopyProducao}>Resumo WhatsApp</button>
-                    <button className="secondary" onClick={handleExportPdfProducao} disabled={criarExportacao.isPending}>
-                      {criarExportacao.isPending ? 'Exportando...' : 'Exportar PDF'}
+                    <button className="secondary" onClick={handleExportPdfProducao} disabled={baixarExportacao.isPending}>
+                      {baixarExportacao.isPending ? 'Exportando...' : 'Exportar PDF'}
                     </button>
                   </div>
                 </header>

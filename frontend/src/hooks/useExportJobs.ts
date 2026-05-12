@@ -59,6 +59,7 @@ export function useCreateExportJob() {
 
 export function useDownloadExport() {
   const client = useApiClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ alvoTipo, alvoId, formato, payloadJson }: CreateExportJobInput) => {
@@ -72,6 +73,9 @@ export function useDownloadExport() {
         responseType: 'blob',
       });
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['export-jobs'] });
     },
   });
 }
