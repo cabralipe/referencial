@@ -1,0 +1,399 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Entenda o relatório nominal | PROLUC{% endblock %}
+
+{% block content %}
+<section class="section-hero py-5">
+    <div class="container py-2">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <span class="badge text-bg-light mb-2">Gestão AVA</span>
+                <h1 class="display-6 fw-bold text-white mb-1">Entenda o relatório nominal dos alunos</h1>
+                <p class="text-white-50 mb-0">
+                    Guia didático para interpretar cada informação exibida no PDF exportado pelo dashboard.
+                </p>
+            </div>
+            <a href="{% url 'ava:gestao_dashboard' %}" class="btn btn-light rounded-pill px-4">
+                Voltar ao dashboard
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="container pb-5">
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">O que este relatório mostra</h2>
+        <p class="text-muted mb-3">
+            O PDF é uma fotografia do AVA no momento da geração. Ele lista alunos matriculados, cursos,
+            progresso, módulos concluídos ou pendentes, envios de atividades, participação em fórum,
+            conteúdos visualizados, acessos à plataforma e datas de interação.
+        </p>
+        <div class="alert alert-info mb-0">
+            <strong>Unidade principal de leitura:</strong> cada linha nominal representa uma matrícula de um
+            aluno em um curso. Se o mesmo aluno estiver matriculado em dois cursos, ele pode aparecer em duas linhas.
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Cabeçalho do PDF</h2>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Informação</th>
+                        <th>Como interpretar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Cliente</strong></td>
+                        <td>Rede, município, instituição ou cliente ao qual os dados pertencem. Para superadministradores, pode indicar uma visão global.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Escopo</strong></td>
+                        <td>Indica se o relatório considera todos os cursos ou um curso, módulo ou aula selecionado nos filtros.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gerado em</strong></td>
+                        <td>Data e hora em que o arquivo PDF foi criado. Serve para saber de qual momento aquela fotografia foi retirada.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Última interação geral</strong></td>
+                        <td>Interação mais recente encontrada entre envios de atividades, mensagens de fórum e visualizações de conteúdo dentro do relatório.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Filtros aplicados</h2>
+        <p class="text-muted">
+            Esta seção registra os filtros usados no dashboard antes de baixar o PDF. Ela ajuda a entender
+            por que alguns alunos, cursos ou interações aparecem ou deixam de aparecer.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Filtro</th>
+                        <th>Efeito no relatório</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Busca</strong></td>
+                        <td>Localiza aluno, e-mail, curso, módulo, aula, atividade ou texto de fórum relacionado ao termo digitado.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Usuário</strong></td>
+                        <td>Mostra a matrícula e as interações de um aluno específico.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Curso, módulo e aula</strong></td>
+                        <td>Limitam o escopo educacional analisado. Quando o filtro é módulo ou aula, as matrículas do curso correspondente continuam sendo a base nominal.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status da tentativa</strong></td>
+                        <td>Filtra as tentativas de atividade usadas nos contadores de envios, correções e anexos.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tipo de atividade</strong></td>
+                        <td>Filtra interações relacionadas ao tipo escolhido, como fórum, quiz, questionário ou tarefa.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data inicial e final</strong></td>
+                        <td>Restringem as interações por período, como envios, mensagens de fórum e visualizações de conteúdo.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="small text-muted mb-0">
+            Observação: a lista nominal parte das matrículas existentes. Filtros de data, status e tipo podem reduzir
+            os contadores de interação, mesmo quando a matrícula continua aparecendo.
+        </p>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Visão consolidada</h2>
+        <p class="text-muted">
+            Resume o conjunto de matrículas exibido no relatório. Use esta seção para ter uma leitura rápida
+            da situação geral antes de olhar aluno por aluno.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Indicador</th>
+                        <th>Significado</th>
+                        <th>Cálculo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Alunos únicos</strong></td>
+                        <td>Quantidade de alunos diferentes no relatório.</td>
+                        <td>Conta cada e-mail de aluno apenas uma vez.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Matrículas</strong></td>
+                        <td>Total de vínculos aluno-curso listados.</td>
+                        <td>Quantidade de linhas nominais consideradas.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Concluídas</strong></td>
+                        <td>Matrículas cujo status está marcado como concluído.</td>
+                        <td>Conta as matrículas com status de conclusão.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pendentes</strong></td>
+                        <td>Matrículas ainda não concluídas.</td>
+                        <td>Matrículas totais menos matrículas concluídas.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Taxa de conclusão</strong></td>
+                        <td>Percentual de matrículas concluídas no recorte.</td>
+                        <td>Concluídas ÷ matrículas totais × 100.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Progresso médio</strong></td>
+                        <td>Média do percentual de progresso das matrículas.</td>
+                        <td>Soma dos percentuais de progresso ÷ total de matrículas.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Envios de atividade</strong></td>
+                        <td>Atividades enviadas pelos alunos.</td>
+                        <td>Conta tentativas com status enviada ou corrigida.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mensagens no fórum</strong></td>
+                        <td>Participações registradas em fóruns.</td>
+                        <td>Conta mensagens feitas pelos alunos.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Conteúdos visualizados</strong></td>
+                        <td>Materiais marcados como visualizados.</td>
+                        <td>Conta registros de conteúdo com visualização confirmada.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Acessos à plataforma</strong></td>
+                        <td>Entradas ou sessões registradas para os alunos.</td>
+                        <td>Conta registros de acesso do usuário no ambiente.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sem interação</strong></td>
+                        <td>Matrículas sem envio, fórum ou conteúdo visualizado no recorte.</td>
+                        <td>Conta linhas em que o total de interações é zero.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Consolidado por escola e por GT</h2>
+        <p class="text-muted">
+            Essas tabelas agrupam as mesmas matrículas por escola e por Grupo de Trabalho (GT). Elas ajudam
+            a comparar acompanhamento, participação e conclusão entre unidades ou grupos.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Coluna</th>
+                        <th>Como ler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Nome, escola ou GT</strong></td>
+                        <td>Grupo ao qual as matrículas foram reunidas. Alunos sem vínculo aparecem como sem escola ou sem GT.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Inscritos</strong></td>
+                        <td>Quantidade de matrículas daquele grupo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Concluídos e pendentes</strong></td>
+                        <td>Mostram quantas matrículas do grupo já finalizaram o curso e quantas ainda estão em andamento.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Conclusão ou taxa</strong></td>
+                        <td>Percentual de matrículas concluídas dentro do grupo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Progresso</strong></td>
+                        <td>Média de progresso das matrículas do grupo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Envios e corrigidas</strong></td>
+                        <td>Total de atividades enviadas e, quando exibido, quantas já foram corrigidas.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Acessos</strong></td>
+                        <td>Total de registros de acesso à plataforma dos alunos do grupo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Última interação</strong></td>
+                        <td>Data mais recente de envio, fórum ou visualização de conteúdo dentro do grupo.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Top alunos que mais interagiram</h2>
+        <p class="text-muted">
+            Lista os alunos com maior volume de interação no recorte do relatório. O ranking considera o total
+            de envios, mensagens de fórum e conteúdos visualizados.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Coluna</th>
+                        <th>Significado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Aluno</strong></td>
+                        <td>Nome do aluno, escola e GTs vinculados.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Curso</strong></td>
+                        <td>Curso da matrícula analisada.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td>Soma de envios de atividade, mensagens no fórum e conteúdos visualizados. Acessos à plataforma aparecem como informação complementar.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Envios, fórum e conteúdos</strong></td>
+                        <td>Detalham de onde vem o total de interações daquele aluno.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Última interação</strong></td>
+                        <td>Mostra quando ocorreu a interação mais recente do aluno no recorte.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Matrículas pendentes</h2>
+        <p class="text-muted">
+            Mostra apenas matrículas que ainda não estão concluídas. É a seção mais útil para identificar
+            quem precisa de acompanhamento, busca ativa ou apoio pedagógico.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Coluna</th>
+                        <th>Como usar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Aluno e curso</strong></td>
+                        <td>Identifica quem está pendente e em qual formação.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status</strong></td>
+                        <td>Situação atual da matrícula, conforme registro do AVA.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Progresso</strong></td>
+                        <td>Percentual já avançado pelo aluno no curso.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Módulos pendentes</strong></td>
+                        <td>Lista os módulos ainda não concluídos. Quando aparece um percentual ao lado do módulo, indica progresso parcial nele.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Última interação</strong></td>
+                        <td>Ajuda a diferenciar alunos ativos, mas ainda não concluintes, de alunos sem movimentação recente.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4 mb-4">
+        <h2 class="h5 fw-bold mb-3">Detalhamento nominal dos alunos</h2>
+        <p class="text-muted">
+            É a parte mais completa do relatório. Ela permite analisar a situação de cada aluno individualmente.
+        </p>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Explicação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Aluno</strong></td>
+                        <td>Nome, e-mail, escola e GTs vinculados ao aluno.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Curso</strong></td>
+                        <td>Curso ao qual aquela matrícula pertence.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status</strong></td>
+                        <td>Situação da matrícula, como em andamento ou concluída.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Progresso</strong></td>
+                        <td>Percentual de avanço do aluno no curso.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Módulos concluídos</strong></td>
+                        <td>Quantidade e lista de módulos finalizados pelo aluno.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Módulos pendentes</strong></td>
+                        <td>Lista de módulos que ainda faltam ser concluídos. Percentuais ao lado indicam progresso parcial.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Envios</strong></td>
+                        <td>Total de atividades enviadas. A linha também informa quantas foram corrigidas e quantas tinham anexo.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fórum</strong></td>
+                        <td>Quantidade de mensagens publicadas e quantas delas foram respostas a outra mensagem.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Conteúdos</strong></td>
+                        <td>Quantidade de conteúdos visualizados, total de acessos à plataforma e data do último acesso.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td>Soma de envios de atividade, mensagens no fórum e conteúdos visualizados. Não inclui acessos à plataforma.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Última interação</strong></td>
+                        <td>Data mais recente entre envio de atividade, mensagem em fórum e visualização de conteúdo.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ava-surface p-4">
+        <h2 class="h5 fw-bold mb-3">Como interpretar rapidamente</h2>
+        <ol class="text-muted mb-0">
+            <li>Comece pela visão consolidada para entender tamanho da base, conclusão e participação geral.</li>
+            <li>Use o consolidado por escola e GT para localizar grupos que precisam de atenção.</li>
+            <li>Confira matrículas pendentes para encontrar alunos que ainda não concluíram.</li>
+            <li>No detalhamento nominal, observe progresso, módulos pendentes, última interação e total de interações antes de tomar providências.</li>
+            <li>Compare último acesso com última interação: o aluno pode acessar a plataforma sem necessariamente enviar atividade, postar fórum ou visualizar novo conteúdo no recorte.</li>
+        </ol>
+    </section>
+</div>
+{% endblock %}

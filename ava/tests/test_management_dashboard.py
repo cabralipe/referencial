@@ -352,6 +352,27 @@ class AVAManagementDashboardTests(TestCase):
         self.assertEqual(response_revisor.status_code, 200)
         self.assertContains(response_revisor, "Tentativas e respostas dos usuarios")
 
+    def test_dashboard_exibe_acesso_a_pagina_explicativa_do_relatorio(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("ava:gestao_dashboard_relatorio_entenda"))
+
+    def test_dashboard_relatorio_entenda_exige_permissao_de_gestao(self):
+        self.client.force_login(self.leitor)
+        response = self.client.get(reverse("ava:gestao_dashboard_relatorio_entenda"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_dashboard_relatorio_entenda_renderiza_guia(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard_relatorio_entenda"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "PDF")
+        self.assertContains(response, reverse("ava:gestao_dashboard"))
+
     def test_dashboard_can_filter_by_usuario(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("ava:gestao_dashboard"), {"usuario": str(self.aluno_1.id)})

@@ -307,6 +307,11 @@ def dashboard_relatorio(request, formato):
 
 
 @ava_management_required
+def dashboard_relatorio_entenda(request):
+    return render(request, "ava/management/dashboard_report_explained.html")
+
+
+@ava_management_required
 def tentativa_detalhe(request, tentativa_id):
     tentativa_qs = AtividadeTentativa.objects.select_related(
         "aluno",
