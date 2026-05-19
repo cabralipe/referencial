@@ -25,7 +25,6 @@ export function ConsultaPublicaPublicPage() {
   const [comentario, setComentario] = useState('');
   const [votos, setVotos] = useState<string[]>([]);
   const [nome, setNome] = useState('');
-  const [cpf, setCpf] = useState('');
   const [cidade, setCidade] = useState('');
   const [estado, setEstado] = useState('');
   const [email, setEmail] = useState('');
@@ -58,7 +57,6 @@ export function ConsultaPublicaPublicPage() {
       comentario: comentario.trim(),
       votos: votos,
       nome_completo: nome.trim(),
-      cpf: cpf.trim(),
       cidade: cidade.trim(),
       estado: estado.trim().toUpperCase(),
       contato_email: email.trim(),
@@ -77,7 +75,6 @@ export function ConsultaPublicaPublicPage() {
       setVotos([]);
       setPagina('');
       setNome('');
-      setCpf('');
       setCidade('');
       setEstado('');
       setEmail('');
@@ -206,10 +203,6 @@ export function ConsultaPublicaPublicPage() {
                 <label>
                   <span>Nome completo</span>
                   <input type="text" required value={nome} onChange={(event) => setNome(event.target.value)} />
-                </label>
-                <label>
-                  <span>CPF</span>
-                  <input type="text" required value={cpf} onChange={(event) => setCpf(event.target.value)} />
                 </label>
                 <label>
                   <span>Cidade</span>

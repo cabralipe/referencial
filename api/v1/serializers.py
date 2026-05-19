@@ -1442,7 +1442,6 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
             "comentario",
             "votos",
             "nome_completo",
-            "cpf",
             "cidade",
             "estado",
             "contato_email",
@@ -1454,12 +1453,6 @@ class ManifestacaoPublicaCreateSerializer(serializers.ModelSerializer):
         if len(sigla) != 2:
             raise serializers.ValidationError("Informe a sigla do estado (ex.: AL).")
         return sigla
-
-    def validate_cpf(self, value):
-        digits = "".join(ch for ch in str(value) if ch.isdigit())
-        if len(digits) != 11:
-            raise serializers.ValidationError("CPF deve ter 11 dígitos.")
-        return digits
 
     def validate_nome_completo(self, value):
         nome = (value or "").strip()
