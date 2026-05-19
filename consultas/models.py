@@ -81,7 +81,7 @@ class ManifestacaoPublica(TenantModel):
     votos = models.JSONField(default=list, blank=True)
     # Format: ["answer_for_q0", "answer_for_q1", ...]
     nome_completo = models.CharField(max_length=255)
-    cpf = models.CharField(max_length=14)
+    cpf = models.CharField(max_length=14, blank=True, default="")
     cidade = models.CharField(max_length=120)
     estado = models.CharField(max_length=2)
     contato_email = models.EmailField(blank=True)

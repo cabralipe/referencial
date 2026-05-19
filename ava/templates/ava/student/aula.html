@@ -17,7 +17,8 @@
                 <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header">
                         <button class="accordion-button {% if mod != aula.modulo %}collapsed{% endif %} fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapse{{ mod.id }}" aria-expanded="{% if mod == aula.modulo %}true{% else %}false{% endif %}">
-                            Módulo {{ mod.ordem }}
+                            <span class="me-1">Módulo {{ mod.ordem }}</span>
+                            {% if is_manager and not mod.is_active %}<span class="badge bg-warning text-dark fw-normal" style="font-size:0.65rem;">Não publicado</span>{% endif %}
                         </button>
                     </h2>
                     <div id="flush-collapse{{ mod.id }}" class="accordion-collapse collapse {% if mod == aula.modulo %}show{% endif %}" data-bs-parent="#courseSidebar">
@@ -31,7 +32,7 @@
                                         {% else %}
                                         <i class="bi bi-circle text-muted"></i>
                                         {% endif %}
-                                        <span class="small">{{ a.titulo }}</span>
+                                        <span class="small">{{ a.titulo }}{% if is_manager and not a.is_active %} <span class="text-secondary">(inativa)</span>{% endif %}</span>
                                     </a>
                                 </li>
                                 {% endfor %}
@@ -59,7 +60,7 @@
                 </header>
 
                 <div class="mb-5">
-                    {% for conteudo in conteudos %}
+                    {% for conteudo in conteudos_outros %}
                     <article class="ava-surface mb-4">
                         <div class="p-4 border-bottom">
                             <h2 class="h5 fw-bold mb-0 d-flex align-items-center gap-2">
@@ -82,21 +83,6 @@
                             {% else %}
                             <p class="text-muted mb-0">Nenhum vídeo cadastrado.</p>
                             {% endif %}
-
-                            {% elif conteudo.tipo == 'pdf' or conteudo.tipo == 'arquivo' %}
-                            <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: var(--surface-elevated);">
-                                <i class="bi bi-file-earmark-pdf text-danger fs-2"></i>
-                                <div>
-                                    <h3 class="h6 fw-bold mb-1">{{ conteudo.titulo }}</h3>
-                                    {% if conteudo.arquivo %}
-                                    <a href="{{ conteudo.arquivo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Abrir arquivo</a>
-                                    {% elif conteudo.url %}
-                                    <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Abrir link do documento</a>
-                                    {% else %}
-                                    <p class="text-muted mb-0 small">Documento ainda não disponível.</p>
-                                    {% endif %}
-                                </div>
-                            </div>
 
                             {% elif conteudo.tipo == 'link' %}
                             {% if conteudo.url %}
@@ -160,9 +146,66 @@
                         </div>
                     </article>
                     {% empty %}
+                    {% if not conteudos_materiais %}
                     <div class="ava-surface p-4 text-muted">Nenhum conteúdo cadastrado nesta aula.</div>
+                    {% endif %}
                     {% endfor %}
                 </div>
+
+                {% if conteudos_materiais %}
+                <section class="mb-5">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-folder2-open fs-5 text-primary"></i>
+                        <h2 class="h4 fw-bold mb-0">Materiais e Documentos</h2>
+                        <span class="ava-chip px-3 py-1">{{ conteudos_materiais|length }}</span>
+                    </div>
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                        {% for conteudo in conteudos_materiais %}
+                        <div class="col">
+                            <div class="ava-surface h-100 d-flex flex-column">
+                                <div class="p-3 border-bottom d-flex align-items-center gap-3">
+                                    {% if conteudo.tipo == 'pdf' %}
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px;background:#fee2e2;">
+                                        <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+                                    </div>
+                                    {% elif conteudo.tipo == 'apresentacao' %}
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px;background:#ede9fe;">
+                                        <i class="bi bi-file-earmark-slides text-purple fs-4" style="color:#7c3aed;"></i>
+                                    </div>
+                                    {% else %}
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px;background:#dbeafe;">
+                                        <i class="bi bi-file-earmark-arrow-down text-primary fs-4"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div class="overflow-hidden">
+                                        <h3 class="h6 fw-bold mb-0 text-truncate">{{ conteudo.titulo }}</h3>
+                                        <span class="small text-muted text-capitalize">{{ conteudo.get_tipo_display }}</span>
+                                    </div>
+                                </div>
+                                {% if conteudo.descricao %}
+                                <div class="px-3 pt-2 pb-1">
+                                    <p class="small text-muted mb-0">{{ conteudo.descricao }}</p>
+                                </div>
+                                {% endif %}
+                                <div class="p-3 mt-auto">
+                                    {% if conteudo.arquivo %}
+                                    <a href="{{ conteudo.arquivo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm w-100">
+                                        <i class="bi bi-download me-1"></i>Abrir / Baixar
+                                    </a>
+                                    {% elif conteudo.url %}
+                                    <a href="{{ conteudo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm w-100">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Abrir documento
+                                    </a>
+                                    {% else %}
+                                    <button class="btn btn-secondary btn-sm w-100" disabled>Arquivo indisponível</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
 
                 {% if atividades %}
                 <section class="pt-2">

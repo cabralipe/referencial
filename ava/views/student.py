@@ -28,6 +28,13 @@ FINALIZED_ATTEMPT_STATUSES = [
     AtividadeTentativa.Status.CORRIGIDA,
 ]
 
+_AVA_MANAGER_ROLES = {"admin_cliente", "articulador", "revisor", "super_admin"}
+_MATERIAL_TIPOS = {"pdf", "arquivo", "apresentacao"}
+
+
+def _is_ava_manager(user) -> bool:
+    return getattr(user, "role", None) in _AVA_MANAGER_ROLES
+
 
 def _nome_usuario(usuario):
     return usuario.get_full_name() or getattr(usuario, "nome", "") or usuario.email
@@ -138,17 +145,29 @@ def curso_detalhe(request, slug):
     )
     ProgressoService.sincronizar_matricula(matricula)
 
-    modulos = list(
-        matricula.curso.modulos.filter(is_active=True)
-        .order_by("ordem", "id")
-        .prefetch_related(
-            Prefetch(
-                "aulas",
-                queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id"),
+    is_manager = _is_ava_manager(request.user)
+    if is_manager:
+        modulos = list(
+            matricula.curso.modulos.order_by("ordem", "id")
+            .prefetch_related(
+                Prefetch(
+                    "aulas",
+                    queryset=Aula.objects.order_by("ordem", "id"),
+                )
             )
         )
-    )
-    modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
+    else:
+        modulos = list(
+            matricula.curso.modulos.filter(is_active=True)
+            .order_by("ordem", "id")
+            .prefetch_related(
+                Prefetch(
+                    "aulas",
+                    queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id"),
+                )
+            )
+        )
+        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
     aulas = [aula for modulo in modulos for aula in modulo.aulas.all()]
     _aplicar_status_progresso_aulas(matricula, aulas)
 
@@ -159,6 +178,7 @@ def curso_detalhe(request, slug):
             "matricula": matricula,
             "curso": matricula.curso,
             "modulos": modulos,
+            "is_manager": is_manager,
         },
     )
 
@@ -171,25 +191,37 @@ def acessar_aula(request, curso_slug, aula_id):
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
-    if not ProgressoService.modulo_disponivel(matricula, aula.modulo):
+    is_manager = _is_ava_manager(request.user)
+    if not is_manager and not ProgressoService.modulo_disponivel(matricula, aula.modulo):
         messages.warning(request, "Este modulo ainda nao esta disponivel.")
         return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
 
     ProgressoService.marcar_aula_visualizada(matricula, aula)
-    conteudos = aula.conteudos.all().order_by("ordem", "id")
+    conteudos = list(aula.conteudos.all().order_by("ordem", "id"))
     atividades = list(aula.atividades.all().order_by("titulo", "id"))
 
-    modulos = list(
-        matricula.curso.modulos.filter(is_active=True)
-        .order_by("ordem", "id")
-        .prefetch_related(
-            Prefetch(
-                "aulas",
-                queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id"),
+    if is_manager:
+        modulos = list(
+            matricula.curso.modulos.order_by("ordem", "id")
+            .prefetch_related(
+                Prefetch(
+                    "aulas",
+                    queryset=Aula.objects.order_by("ordem", "id"),
+                )
             )
         )
-    )
-    modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
+    else:
+        modulos = list(
+            matricula.curso.modulos.filter(is_active=True)
+            .order_by("ordem", "id")
+            .prefetch_related(
+                Prefetch(
+                    "aulas",
+                    queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id"),
+                )
+            )
+        )
+        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
     aulas_ordenadas = [a for modulo in modulos for a in modulo.aulas.all()]
 
     _aplicar_status_progresso_aulas(matricula, aulas_ordenadas)
@@ -203,6 +235,9 @@ def acessar_aula(request, curso_slug, aula_id):
     )
     for conteudo in conteudos:
         conteudo.is_visualizado = conteudo.id in visualizados
+
+    conteudos_materiais = [c for c in conteudos if c.tipo in _MATERIAL_TIPOS]
+    conteudos_outros = [c for c in conteudos if c.tipo not in _MATERIAL_TIPOS]
 
     atividade_ids = [atividade.id for atividade in atividades]
     atividades_enviadas = set(
@@ -232,11 +267,13 @@ def acessar_aula(request, curso_slug, aula_id):
         {
             "matricula": matricula,
             "aula": aula,
-            "conteudos": conteudos,
+            "conteudos_outros": conteudos_outros,
+            "conteudos_materiais": conteudos_materiais,
             "atividades": atividades,
             "modulos": modulos,
             "aula_anterior": aula_anterior,
             "proxima_aula": proxima_aula,
+            "is_manager": is_manager,
         },
     )
 

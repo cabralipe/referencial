@@ -39,9 +39,16 @@
                 <span class="ava-chip px-3 py-2">{{ modulos|length }} módulos</span>
             </div>
 
+            {% if is_manager %}
+            <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-eye-fill"></i>
+                <span><strong>Modo visualização de gestor:</strong> todos os módulos são exibidos, incluindo não publicados e com liberação futura.</span>
+            </div>
+            {% endif %}
+
             <div class="accordion" id="modulosAccordion">
                 {% for modulo in modulos %}
-                <div class="accordion-item ava-surface mb-3 overflow-hidden">
+                <div class="accordion-item ava-surface mb-3 overflow-hidden{% if is_manager and not modulo.is_active %} border-warning{% endif %}">
                     <h2 class="accordion-header" id="heading{{ modulo.id }}">
                         <button
                             class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-bold"
@@ -51,6 +58,10 @@
                             aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
                             aria-controls="collapse{{ modulo.id }}">
                             Módulo {{ modulo.ordem }}: {{ modulo.titulo }}
+                            {% if is_manager %}
+                                {% if not modulo.is_active %}<span class="badge bg-warning text-dark ms-2 fw-normal">Não publicado</span>{% endif %}
+                                {% if modulo.data_liberacao_programada %}<span class="badge bg-info text-dark ms-2 fw-normal">Liberação: {{ modulo.data_liberacao_programada|date:"d/m/Y" }}</span>{% endif %}
+                            {% endif %}
                         </button>
                     </h2>
                     <div id="collapse{{ modulo.id }}"
@@ -72,14 +83,17 @@
                                         <span class="text-muted"><i class="bi bi-circle fs-5"></i></span>
                                         {% endif %}
                                         <div>
-                                            <h3 class="h6 fw-semibold mb-1">{{ aula.titulo }}</h3>
+                                            <h3 class="h6 fw-semibold mb-1">
+                                                {{ aula.titulo }}
+                                                {% if is_manager and not aula.is_active %}<span class="badge bg-secondary fw-normal ms-1">Inativa</span>{% endif %}
+                                            </h3>
                                             <p class="small text-muted mb-0"><i class="bi bi-clock me-1"></i>{{ aula.duracao_estimada_minutos }} min</p>
                                         </div>
                                     </div>
                                     <a href="{% url 'ava:aluno_acessar_aula' curso.slug aula.id %}" class="btn btn-outline-primary btn-sm px-3">Acessar</a>
                                 </li>
                                 {% empty %}
-                                <li class="list-group-item px-4 py-3 text-muted">Nenhuma aula publicada neste módulo.</li>
+                                <li class="list-group-item px-4 py-3 text-muted">Nenhuma aula cadastrada neste módulo.</li>
                                 {% endfor %}
                             </ul>
                         </div>

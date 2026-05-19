@@ -590,7 +590,7 @@ export interface ManifestacaoPublica {
   comentario: string;
   votos: string[];
   nome_completo: string;
-  cpf: string;
+  cpf?: string;
   cidade: string;
   estado: string;
   contato_email: string | null;
