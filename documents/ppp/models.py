@@ -13,3 +13,6 @@ class PlanoMetaPPP(TenantModel):
         ordering = ("codigo",)
         unique_together = ("cliente", "codigo")
 
+    def __str__(self) -> str:  # pragma: no cover
+        return f"[{self.codigo}] {self.titulo}"
+

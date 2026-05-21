@@ -223,8 +223,11 @@ class CursoViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
-        super().partial_update(request, *args, **kwargs)
         curso = self.get_object()
+        serializer = self.get_serializer(curso, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        curso = serializer.instance
         progresso = None
         if not _is_admin_or_super(request.user):
             progresso = _get_or_create_progress(curso, request.user)

@@ -267,18 +267,10 @@ class PerguntaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
     
     def _get_pergunta_id_from_request(self, request):
-        """Extrai o ID da pergunta da URL de edição."""
         try:
-            # Verificar se é uma URL de edição
-            if hasattr(request, 'path') and '/change/' in request.path:
-                url_parts = request.path.split('/')
-                # Procurar por padrão: .../pergunta/{id}/change/
-                for i, part in enumerate(url_parts):
-                    if part == 'pergunta' and i + 1 < len(url_parts):
-                        return int(url_parts[i + 1])
-        except (ValueError, IndexError):
-            pass
-        return None
+            return int(request.resolver_match.kwargs.get("object_id", ""))
+        except (ValueError, TypeError):
+            return None
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Customiza o queryset para campos ForeignKey."""

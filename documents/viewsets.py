@@ -1,3 +1,5 @@
+from django.db.models import Count
+
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -29,14 +31,16 @@ class PlanoMetaPPPViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="relatorio")
     def relatorio(self, request, pk=None):
         meta = self.get_object()
-        planos_all = list(PlanoAula.objects.filter(cliente_id=meta.cliente_id).values("id", "escola", "metas_ppp"))
-        planos = [p for p in planos_all if isinstance(p.get("metas_ppp"), list) and meta.codigo in p["metas_ppp"]]
-        by_school: dict[str, int] = {}
-        for plano in planos:
-            school = (plano.get("escola") or "").strip() or "Não informado"
-            by_school[school] = by_school.get(school, 0) + 1
-        por_escola = [{"escola": escola, "total": total} for escola, total in sorted(by_school.items(), key=lambda i: i[1], reverse=True)]
-        return Response({"meta": PlanoMetaPPPSerializer(meta).data, "total_planos": len(planos), "por_escola": por_escola})
+        planos_qs = PlanoAula.objects.filter(
+            cliente_id=meta.cliente_id,
+            metas_ppp__contains=[meta.codigo],
+        )
+        total_planos = planos_qs.count()
+        por_escola = [
+            {"escola": (row["escola"] or "").strip() or "Não informado", "total": row["total"]}
+            for row in planos_qs.values("escola").annotate(total=Count("id")).order_by("-total")
+        ]
+        return Response({"meta": PlanoMetaPPPSerializer(meta).data, "total_planos": total_planos, "por_escola": por_escola})
 
 
 class ReferencialHabilidadeViewSet(viewsets.ModelViewSet):

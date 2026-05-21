@@ -21,6 +21,7 @@ class GT(TenantModel):
         verbose_name = "Grupo de Trabalho"
         verbose_name_plural = "Grupos de Trabalho"
         ordering = ("nome",)
+        unique_together = ("cliente", "nome", "etapa")
 
     def __str__(self) -> str:  # pragma: no cover
         return self.nome
@@ -179,9 +180,6 @@ class Resposta(TenantModel):
 
     class Meta:
         unique_together = ("cliente", "gt", "pergunta")
-        indexes = [
-            models.Index(fields=["cliente", "gt", "pergunta"]),
-        ]
 
     def save(self, *args, **kwargs):  # type: ignore[override]
         if self.pk:
@@ -233,9 +231,6 @@ class TextoUnico(TenantModel):
 
     class Meta:
         unique_together = ("cliente", "gt", "tarefa")
-        indexes = [
-            models.Index(fields=["cliente", "gt", "tarefa"]),
-        ]
 
     def save(self, *args, **kwargs):  # type: ignore[override]
         if self.pk:
