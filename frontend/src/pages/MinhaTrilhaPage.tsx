@@ -88,7 +88,12 @@ export function MinhaTrilhaPage() {
         if (!selectedGtId) return true;
         return pergunta.gts.includes(selectedGtId);
       });
-      const respostasDaTrilha = (respostas ?? []).filter((resp) => resp.tarefa_id === tarefa.id);
+      const respostasDaTarefa = (respostas ?? []).filter((resp) => resp.tarefa_id === tarefa.id);
+      // Filtra pelo GT selecionado para evitar dupla contagem quando uma pergunta
+      // pertence a múltiplos GTs e o usuário tem respostas em mais de um GT.
+      const respostasDaTrilha = selectedGtId
+        ? respostasDaTarefa.filter((resp) => resp.gt === selectedGtId)
+        : respostasDaTarefa;
       const respondidas = respostasDaTrilha.filter((resp) => resp.conteudo_html?.trim()).length;
       const total = perguntas.length;
       let status: StatusTrilha = 'nao_iniciado';
@@ -104,7 +109,7 @@ export function MinhaTrilhaPage() {
         total,
         respondidas,
         status,
-        percentual: total ? Math.round((respondidas / total) * 100) : 0,
+        percentual: total ? Math.min(100, Math.round((respondidas / total) * 100)) : 0,
       };
     });
   }, [tarefas, perguntaMap, respostas, revisoesMap, selectedGtId]);

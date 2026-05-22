@@ -133,6 +133,23 @@ def dashboard(request):
     )
 
 
+def _motivo_bloqueio_modulo(matricula, modulo, agora=None):
+    """Retorna string descritiva do motivo do bloqueio, ou None se disponível."""
+    if not modulo.is_active:
+        return None  # inativo, não mostrar para aluno
+
+    agora = agora or timezone.now()
+    if modulo.data_liberacao_programada and modulo.data_liberacao_programada > agora:
+        return f"Disponível a partir de {modulo.data_liberacao_programada.astimezone().strftime('%d/%m/%Y às %H:%M')}"
+
+    if modulo.pre_requisito_modulo_id:
+        pre_req = modulo.pre_requisito_modulo
+        titulo_prereq = pre_req.titulo if pre_req else "módulo anterior"
+        return f"Requer conclusão de: {titulo_prereq}"
+
+    return None
+
+
 @login_required
 def curso_detalhe(request, slug):
     """
@@ -146,6 +163,7 @@ def curso_detalhe(request, slug):
     ProgressoService.sincronizar_matricula(matricula)
 
     is_manager = _is_ava_manager(request.user)
+    modulos_bloqueados = []
     if is_manager:
         modulos = list(
             matricula.curso.modulos.order_by("ordem", "id")
@@ -157,8 +175,9 @@ def curso_detalhe(request, slug):
             )
         )
     else:
-        modulos = list(
+        todos_modulos = list(
             matricula.curso.modulos.filter(is_active=True)
+            .select_related("pre_requisito_modulo")
             .order_by("ordem", "id")
             .prefetch_related(
                 Prefetch(
@@ -167,7 +186,16 @@ def curso_detalhe(request, slug):
                 )
             )
         )
-        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
+        agora = timezone.now()
+        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, todos_modulos, agora)
+        for modulo in todos_modulos:
+            if modulo in modulos:
+                continue
+            motivo = _motivo_bloqueio_modulo(matricula, modulo, agora)
+            if motivo:
+                modulos_bloqueados.append({"modulo": modulo, "motivo": motivo})
+
+    total_modulos = len(modulos) + len(modulos_bloqueados)
     aulas = [aula for modulo in modulos for aula in modulo.aulas.all()]
     _aplicar_status_progresso_aulas(matricula, aulas)
 
@@ -178,6 +206,8 @@ def curso_detalhe(request, slug):
             "matricula": matricula,
             "curso": matricula.curso,
             "modulos": modulos,
+            "modulos_bloqueados": modulos_bloqueados,
+            "total_modulos": total_modulos,
             "is_manager": is_manager,
         },
     )

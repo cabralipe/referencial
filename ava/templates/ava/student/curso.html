@@ -20,12 +20,28 @@
             </div>
             <div class="w-100" style="max-width: 420px;">
                 <div class="d-flex justify-content-between text-white small fw-semibold mb-2">
-                    <span>Progresso geral</span>
+                    <span class="d-flex align-items-center gap-1">
+                        Progresso geral
+                        {% if modulos_bloqueados %}
+                        <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="O progresso considera apenas os módulos já disponíveis ({{ modulos|length }} de {{ total_modulos }}). Conforme novos módulos forem liberados, a porcentagem será recalculada."
+                            style="cursor: help;">
+                            <i class="bi bi-info-circle text-white-50"></i>
+                        </span>
+                        {% endif %}
+                    </span>
                     <span>{{ matricula.progresso_percentual }}%</span>
                 </div>
                 <div class="progress" style="height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.3);">
                     <div class="progress-bar bg-success" role="progressbar" style="width: {{ matricula.progresso_percentual }}%; border-radius: 999px;" aria-valuenow="{{ matricula.progresso_percentual }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
+                {% if modulos_bloqueados %}
+                <p class="text-white-50 small mt-2 mb-0">
+                    <i class="bi bi-lock me-1"></i>{{ modulos_bloqueados|length }} módulo{{ modulos_bloqueados|length|pluralize }} ainda não liberado{{ modulos_bloqueados|length|pluralize }}.
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -103,6 +119,37 @@
                 <div class="ava-surface p-4 text-center text-muted">Nenhum módulo foi publicado ainda.</div>
                 {% endfor %}
             </div>
+
+            {% if modulos_bloqueados %}
+            <div class="mt-4">
+                <h3 class="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-lock-fill text-muted"></i>
+                    Próximos módulos
+                </h3>
+                <div class="d-flex flex-column gap-3">
+                {% for item in modulos_bloqueados %}
+                    <div class="ava-surface p-4 border border-secondary-subtle opacity-75">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="text-muted" style="min-width: 24px;">
+                                    <i class="bi bi-lock fs-5"></i>
+                                </div>
+                                <div>
+                                    <h4 class="h6 fw-semibold mb-1 text-muted">Módulo {{ item.modulo.ordem }}: {{ item.modulo.titulo }}</h4>
+                                    {% if item.modulo.descricao %}
+                                    <p class="small text-muted mb-1">{{ item.modulo.descricao }}</p>
+                                    {% endif %}
+                                    <span class="badge text-bg-secondary fw-normal">
+                                        <i class="bi bi-clock me-1"></i>{{ item.motivo }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-lg-4">

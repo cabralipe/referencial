@@ -231,7 +231,7 @@ class ProgressoService:
             is_concluida=True,
         ).count()
 
-        percent = int((aulas_concluidas / aulas_obrig) * 100) if aulas_obrig > 0 else 100
+        percent = min(100, int((aulas_concluidas / aulas_obrig) * 100)) if aulas_obrig > 0 else 100
         prog_modulo.percentual = percent
 
         if percent >= 100 and not prog_modulo.is_concluido:
@@ -261,11 +261,11 @@ class ProgressoService:
                     modulo_id__in=modulos_ids,
                 ).values_list("modulo_id", "percentual")
             }
-            percent = int(sum(percentuais.get(modulo_id, 0) for modulo_id in modulos_ids) / len(modulos_ids))
+            percent = min(100, int(sum(percentuais.get(modulo_id, 0) for modulo_id in modulos_ids) / len(modulos_ids)))
         elif matricula.status == MatriculaCurso.Status.CONCLUIDA:
-            percent = max(matricula.progresso_percentual, 100)
+            percent = 100
         else:
-            percent = matricula.progresso_percentual
+            percent = min(100, matricula.progresso_percentual)
         matricula.progresso_percentual = percent
 
         if percent >= matricula.curso.progresso_minimo and matricula.status != "concluida":

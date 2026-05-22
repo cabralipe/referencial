@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Felipe Cabral\\\\referencial\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(xargs grep -l \"trilha\\\\|Trilha\")",
+      "Bash(python manage.py makemigrations curriculum --name=\"remove_redundant_indexes_add_gt_unique\")",
+      "PowerShell(Get-Command python3 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command python -ErrorAction SilentlyContinue)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; \\(Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\" -ErrorAction SilentlyContinue\\) | Select-Object Name)"
+    ]
+  }
+}

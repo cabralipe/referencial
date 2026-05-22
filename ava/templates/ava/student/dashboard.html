@@ -37,7 +37,16 @@
 
                 <div class="mt-auto">
                     <div class="d-flex justify-content-between small fw-semibold mb-2">
-                        <span>Progresso</span>
+                        <span class="d-flex align-items-center gap-1">
+                            Progresso
+                            <span
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Reflete apenas os módulos já disponíveis. Conforme novos módulos forem liberados, a porcentagem será recalculada."
+                                style="cursor: help; color: var(--text-muted);">
+                                <i class="bi bi-info-circle"></i>
+                            </span>
+                        </span>
                         <span>{{ matricula.progresso_percentual }}%</span>
                     </div>
                     <div class="progress mb-4" style="height: 10px; border-radius: 999px; background: var(--surface-elevated);">
