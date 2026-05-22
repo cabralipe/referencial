@@ -241,6 +241,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipEls = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipEls.forEach(function (el) { new bootstrap.Tooltip(el); });
+            var popoverEls = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverEls.forEach(function (el) { new bootstrap.Popover(el); });
         });
     </script>
     {% block scripts %}{% endblock %}
