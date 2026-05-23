@@ -73,9 +73,15 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
         description={description}
         actions={(
           <div className="inicio__actions">
-            <Link to="/ppp">
-              <Button variant="primary" disabled={!user?.escolaId}>Abrir PPP</Button>
-            </Link>
+            {user?.escolaId ? (
+              <Link to="/ppp">
+                <Button variant="primary">Abrir PPP</Button>
+              </Link>
+            ) : (
+              <span title="Associe uma escola ao seu usuário para acessar o PPP">
+                <Button variant="primary" disabled>Abrir PPP</Button>
+              </span>
+            )}
             <a href={avaHref} target="_blank" rel="noopener noreferrer">
               <Button variant="secondary">Acessar AVA</Button>
             </a>

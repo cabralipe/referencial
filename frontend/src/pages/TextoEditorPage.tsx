@@ -79,6 +79,7 @@ export function TextoEditorPage() {
   const [bnccCode, setBnccCode] = useState('');
   const [feedback, setFeedback] = useState('');
   const [submitFeedback, setSubmitFeedback] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const autoSaveTimer = useRef<number | null>(null);
   const lastSaved = useRef<string>('');
 
@@ -98,6 +99,7 @@ export function TextoEditorPage() {
     }
     if (draft === lastSaved.current) return;
     autoSaveTimer.current = window.setTimeout(async () => {
+      setIsSaving(true);
       try {
         await updateResposta.mutateAsync({
           respostaId: resposta.id,
@@ -110,6 +112,8 @@ export function TextoEditorPage() {
         setFeedback('Salvo automaticamente.');
       } catch (error) {
         setFeedback('Falha no auto-save.');
+      } finally {
+        setIsSaving(false);
       }
     }, 1500);
   }, [draft, isFocus, resposta, updateResposta]);
@@ -362,7 +366,8 @@ export function TextoEditorPage() {
             </div>
           </div>
 
-          {feedback && <p className="texto-editor__feedback">{feedback}</p>}
+          {isSaving && <p className="texto-editor__feedback">Salvando...</p>}
+          {!isSaving && feedback && <p className="texto-editor__feedback">{feedback}</p>}
           {submitFeedback && <p className="texto-editor__feedback">{submitFeedback}</p>}
           <details className="texto-editor__preview">
             <summary>Pré-visualização</summary>
@@ -461,6 +466,7 @@ export function TextoEditorPage() {
               variant="ghost"
               onClick={async () => {
                 if (!diffFrom || !diffTo) return;
+                if (diffFrom >= diffTo) return;
                 const response = await buildDiff.mutateAsync({
                   alvoTipo: 'resposta',
                   alvoId: resposta.id,
@@ -469,10 +475,13 @@ export function TextoEditorPage() {
                 });
                 setDiffHtml(response.html);
               }}
-              disabled={buildDiff.isPending}
+              disabled={buildDiff.isPending || !diffFrom || !diffTo || diffFrom >= diffTo}
             >
               {buildDiff.isPending ? 'Comparando...' : 'Comparar'}
             </Button>
+            {diffFrom && diffTo && diffFrom >= diffTo && (
+              <p className="texto-editor__feedback">Selecione "De" anterior a "Para".</p>
+            )}
           </div>
           {diffHtml && (
             <div className="texto-editor__diff" dangerouslySetInnerHTML={{ __html: diffHtml }} />
