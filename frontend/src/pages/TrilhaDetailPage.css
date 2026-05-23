@@ -69,26 +69,34 @@
   font-weight: bold;
 }
 
-.trilha-detail__checklist {
+.trilha-detail__steps {
   display: grid;
   gap: 0.35rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   margin-bottom: 1rem;
 }
 
-.trilha-detail__checklist label {
+.trilha-detail__step {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
-  width: auto;
+  color: var(--color-text-muted);
 }
 
-.trilha-detail__checklist input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-  accent-color: var(--color-primary);
-  transform: scale(1.1);
+.trilha-detail__step.is-done {
+  color: var(--color-text-secondary);
+}
+
+.trilha-detail__step-icon {
+  width: 1.1rem;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--color-border);
+  font-size: 0.8rem;
+}
+
+.trilha-detail__step.is-done .trilha-detail__step-icon {
+  color: var(--color-primary);
 }
 
 .trilha-detail__actions {

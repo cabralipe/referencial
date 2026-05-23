@@ -167,19 +167,17 @@ export function TrilhaDetailPage() {
                 dangerouslySetInnerHTML={{ __html: bloco.pergunta.texto }}
               />
 
-              <div className="trilha-detail__checklist">
-                <label>
-                  <input type="checkbox" checked={Boolean(bloco.resposta?.conteudo_html?.trim())} readOnly />
-                  Resposta registrada
-                </label>
-                <label>
-                  <input type="checkbox" checked={['em_revisao', 'concluido'].includes(bloco.status)} readOnly />
-                  Em revisão
-                </label>
-                <label>
-                  <input type="checkbox" checked={bloco.status === 'concluido'} readOnly />
-                  Validado pelo redator
-                </label>
+              <div className="trilha-detail__steps">
+                {([
+                  { label: 'Resposta registrada', done: Boolean(bloco.resposta?.conteudo_html?.trim()) },
+                  { label: 'Em revisão', done: ['em_revisao', 'concluido'].includes(bloco.status) },
+                  { label: 'Validado pelo redator', done: bloco.status === 'concluido' },
+                ] as const).map(({ label, done }) => (
+                  <div key={label} className={`trilha-detail__step${done ? ' is-done' : ''}`}>
+                    <span className="trilha-detail__step-icon" aria-hidden="true">{done ? '✓' : '○'}</span>
+                    <span>{label}</span>
+                  </div>
+                ))}
               </div>
 
               <div className="trilha-detail__actions">

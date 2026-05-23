@@ -3,7 +3,8 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from reportlab.lib.pagesizes import A4
@@ -123,6 +124,33 @@ def dashboard(request):
         ProgressoService.sincronizar_matricula(matricula)
     matriculas_em_andamento = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.ATIVA]
     matriculas_concluidas = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.CONCLUIDA]
+
+    aulas_concluidas_por_matricula = {}
+    for matricula in matriculas_em_andamento:
+        aulas_concluidas_por_matricula[matricula.id] = set(
+            ProgressoAula.objects.filter(matricula=matricula, is_concluida=True)
+            .values_list("aula_id", flat=True)
+        )
+
+    for matricula in matriculas_em_andamento:
+        modulos = list(
+            matricula.curso.modulos.filter(is_active=True)
+            .order_by("ordem", "id")
+            .prefetch_related(
+                Prefetch("aulas", queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id"))
+            )
+        )
+        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
+        concluidas = aulas_concluidas_por_matricula.get(matricula.id, set())
+        matricula.proxima_aula = None
+        for modulo in modulos:
+            for aula in modulo.aulas.all():
+                if aula.id not in concluidas:
+                    matricula.proxima_aula = aula
+                    break
+            if matricula.proxima_aula:
+                break
+
     return render(
         request,
         "ava/student/dashboard.html",
@@ -442,12 +470,11 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                     AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivo)
                     messages.success(request, "Tarefa concluída com sucesso.")
 
-                return redirect(
+                url = reverse(
                     "ava:aluno_responder_atividade",
-                    curso_slug=curso_slug,
-                    aula_id=aula_id,
-                    atividade_id=atividade_id,
+                    kwargs={"curso_slug": curso_slug, "aula_id": aula_id, "atividade_id": atividade_id},
                 )
+                return HttpResponseRedirect(url + "#resultado")
 
     quiz_resultados = []
     if tentativa and tentativa.status in FINALIZED_ATTEMPT_STATUSES and usa_formulario_quiz:
