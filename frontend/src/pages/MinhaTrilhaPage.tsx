@@ -188,7 +188,6 @@ export function MinhaTrilhaPage() {
       <section className="minha-trilha__gt-section">
         <div className="minha-trilha__section-header">
           <h3>Seu Grupo de Trabalho</h3>
-          <span>Ver todos</span>
         </div>
         <div className="minha-trilha__gt-chips">
           {gtOptions.map((gt) => {

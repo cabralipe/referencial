@@ -58,9 +58,15 @@
                             aria-valuemax="100"></div>
                     </div>
 
-                    <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-primary w-100">
+                    {% if matricula.proxima_aula %}
+                    <a href="{% url 'ava:aluno_acessar_aula' matricula.curso.slug matricula.proxima_aula.id %}" class="btn btn-primary w-100">
                         Continuar aprendendo <i class="bi bi-arrow-right ms-1"></i>
                     </a>
+                    {% else %}
+                    <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-primary w-100">
+                        Ver curso <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </article>
         </div>

@@ -813,6 +813,11 @@ export function TaskDetailPage() {
                   setNovaFeedback('Informe o texto da missao.');
                   return;
                 }
+                const ordemVal = Number(novaOrdem);
+                if (!novaOrdem.trim() || !Number.isFinite(ordemVal) || ordemVal <= 0) {
+                  setNovaFeedback('Informe a ordem da missão (número inteiro maior que 0).');
+                  return;
+                }
                 createPergunta.mutate();
               }}
             >
