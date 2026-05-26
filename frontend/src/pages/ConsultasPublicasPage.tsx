@@ -106,7 +106,8 @@ function FormulariosInscricaoTab() {
     event.preventDefault();
     setMensagem(null);
     setErro(null);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const titulo = String(form.get('titulo') ?? '').trim();
     const subtitulo = String(form.get('subtitulo') ?? '').trim();
     const descricao = String(form.get('descricao') ?? '').trim();
@@ -122,7 +123,7 @@ function FormulariosInscricaoTab() {
         opcoes_representacao: parseOpcoes(repsTexto),
       });
       setMensagem('Formulário criado! Compartilhe o link público para iniciar as inscrições.');
-      event.currentTarget.reset();
+      formElement.reset();
       setAreasTexto(AREAS_PADRAO.join('\n'));
       setRepsTexto(REPS_PADRAO.join('\n'));
     } catch (e: any) {

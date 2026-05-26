@@ -120,6 +120,7 @@ export function MuralPage() {
 
   const handleSubmitFile = async (event: FormEvent<HTMLFormElement>, item: Extract<MuralItem, { kind: 'mural' }>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     const arquivo = selectedFiles[item.id];
     if (!arquivo) {
       setFeedback((prev) => ({ ...prev, [item.id]: 'Selecione um arquivo para enviar.' }));
@@ -144,7 +145,7 @@ export function MuralPage() {
       await submitMuralFile.mutateAsync({ id: item.id, payload });
       setSelectedFiles((prev) => ({ ...prev, [item.id]: null }));
       setFeedback((prev) => ({ ...prev, [item.id]: 'Arquivo enviado com sucesso.' }));
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       setFeedback((prev) => ({
         ...prev,

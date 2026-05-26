@@ -141,7 +141,8 @@ export function RevisoesPage() {
 
   const handleSubmitNovaRevisao = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const alvoTipo = String(form.get('alvoTipo') ?? '').trim();
     const alvoIdValue = String(form.get('alvoId') ?? '');
     const alvoId = parseNumericId(alvoIdValue);
@@ -152,7 +153,7 @@ export function RevisoesPage() {
     }
     await createRevisao.mutateAsync({ alvoTipo, alvoId, parecerHtml: parecer || undefined, revisor, status: 'em_revisao' });
     refetch();
-    event.currentTarget.reset();
+    formElement.reset();
   };
 
   const handleAtualizar = async (revisaoId: number, etag: string) => {

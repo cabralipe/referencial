@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import { fetchAllPaginated } from '@/utils/pagination';
 import type { FormularioInscricao, FormularioInscricaoPublic, InscricaoPublica } from '@/api/types';
 
 export function useFormulariosInscricao() {
@@ -14,10 +15,12 @@ export function useFormulariosInscricao() {
     queryKey: ['formularios_inscricao', clienteId],
     enabled,
     queryFn: async () => {
-      const response = await client.get<FormularioInscricao[]>('/formularios_inscricao', {
+      if (!clienteId) {
+        throw new Error('Cliente não identificado para carregar formulários.');
+      }
+      return fetchAllPaginated<FormularioInscricao>(client.get, '/formularios_inscricao', {
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
       });
-      return response.data;
     },
   });
 }

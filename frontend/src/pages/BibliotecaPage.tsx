@@ -85,7 +85,8 @@ export function BibliotecaPage() {
       setBlocoError('Selecione um GT nos filtros para cadastrar referências.');
       return;
     }
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const titulo = String(form.get('titulo') ?? '').trim();
     const conteudo = novoConteudo.trim();
     const tags = String(form.get('tags') ?? '')
@@ -97,7 +98,7 @@ export function BibliotecaPage() {
     }
     try {
       await criarBloco.mutateAsync({ titulo, conteudo_html: conteudo, tags, gt: gtId, pergunta: perguntaId });
-      event.currentTarget.reset();
+      formElement.reset();
       setNovoConteudo('');
       refetchBlocos();
     } catch (error) {
@@ -112,7 +113,8 @@ export function BibliotecaPage() {
       setMidiaError('Selecione um GT nos filtros para cadastrar links.');
       return;
     }
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const titulo = String(form.get('titulo') ?? '').trim();
     const url = String(form.get('url') ?? '').trim();
     const descricao = String(form.get('descricao') ?? '').trim();
@@ -132,7 +134,7 @@ export function BibliotecaPage() {
         gt: gtId,
         pergunta: perguntaId,
       });
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       setMidiaError('Não foi possível salvar o link. Verifique o endereço e tente novamente.');
     }

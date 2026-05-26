@@ -193,7 +193,8 @@ export function ComentariosPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const alvoTipo = alvoTipoNovo.trim();
     const alvoId = Number(alvoIdNovo);
     const conteudo = String(form.get('conteudo') ?? '').trim();
@@ -220,7 +221,7 @@ export function ComentariosPage() {
       mentions: mentions.length > 0 ? mentions : undefined,
     });
     refetch();
-    event.currentTarget.reset();
+    formElement.reset();
     setAnchorLocal('');
     setAnchorTrecho('');
     setAlvoIdNovo('');
