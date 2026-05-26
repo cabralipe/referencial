@@ -41,6 +41,7 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
+import { InscricaoPublicaPage } from './pages/InscricaoPublicaPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
 import { ThrottleBlocksPage } from './pages/ThrottleBlocksPage';
 import { PlanoEditorPage } from './pages/PlanoEditorPage';
@@ -472,5 +473,9 @@ export const router = createBrowserRouter([
   {
     path: '/consultas-publicas/:token',
     element: <ConsultaPublicaPublicPage />,
+  },
+  {
+    path: '/inscricoes/:token',
+    element: <InscricaoPublicaPage />,
   },
 ]);

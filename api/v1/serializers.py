@@ -15,7 +15,14 @@ from urllib.parse import urlparse
 from core.models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, ThrottleBlock, TipoUsuarioCadastro, UserSessionLog
 from core.utils import coletar_contexto_do_cliente
 from comments.models import Comentario
-from consultas.models import ConsultaPublica, ManifestacaoPublica
+from consultas.models import (
+    ConsultaPublica,
+    ManifestacaoPublica,
+    FormularioInscricao,
+    InscricaoPublica,
+    _AREAS_ATUACAO_PADRAO,
+    _REPRESENTACOES_PADRAO,
+)
 from curriculum.models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
 from exports.models import ExportJob
@@ -1575,3 +1582,140 @@ class AiAssistSerializer(serializers.Serializer):
     mode = serializers.ChoiceField(choices=["draft", "grammar", "review"])
     text = serializers.CharField()
     context = serializers.CharField(required=False, allow_blank=True)
+
+
+# ── Formulário de Inscrição ────────────────────────────────────────────────
+
+class FormularioInscricaoSerializer(serializers.ModelSerializer):
+    public_url = serializers.SerializerMethodField()
+    total_inscricoes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FormularioInscricao
+        fields = (
+            "id",
+            "titulo",
+            "subtitulo",
+            "descricao",
+            "token_acesso",
+            "ativo",
+            "opcoes_area_atuacao",
+            "opcoes_representacao",
+            "public_url",
+            "total_inscricoes",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "token_acesso", "public_url", "total_inscricoes", "created_at", "updated_at")
+
+    def get_public_url(self, obj):
+        request = self.context.get("request")
+        path = f"/inscricoes/{obj.token_acesso}"
+        if request:
+            return request.build_absolute_uri(path)
+        return path
+
+    def get_total_inscricoes(self, obj):
+        if hasattr(obj, "inscricoes_count"):
+            return obj.inscricoes_count
+        return obj.inscricoes.count()
+
+    def validate_opcoes_area_atuacao(self, value):
+        if not value:
+            return list(_AREAS_ATUACAO_PADRAO)
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Informe uma lista de opções.")
+        return [str(v).strip() for v in value if str(v).strip()]
+
+    def validate_opcoes_representacao(self, value):
+        if not value:
+            return list(_REPRESENTACOES_PADRAO)
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Informe uma lista de opções.")
+        return [str(v).strip() for v in value if str(v).strip()]
+
+    def create(self, validated_data):
+        if not validated_data.get("opcoes_area_atuacao"):
+            validated_data["opcoes_area_atuacao"] = list(_AREAS_ATUACAO_PADRAO)
+        if not validated_data.get("opcoes_representacao"):
+            validated_data["opcoes_representacao"] = list(_REPRESENTACOES_PADRAO)
+        return super().create(validated_data)
+
+
+class FormularioInscricaoPublicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FormularioInscricao
+        fields = (
+            "titulo",
+            "subtitulo",
+            "descricao",
+            "ativo",
+            "opcoes_area_atuacao",
+            "opcoes_representacao",
+        )
+        read_only_fields = fields
+
+
+class InscricaoPublicaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InscricaoPublica
+        fields = (
+            "id",
+            "formulario",
+            "nome_completo",
+            "instituicao_comunidade",
+            "telefone",
+            "email",
+            "areas_atuacao",
+            "area_atuacao_outro",
+            "representacoes",
+            "representacao_outro",
+            "ip_address",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class InscricaoPublicaCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InscricaoPublica
+        fields = (
+            "nome_completo",
+            "instituicao_comunidade",
+            "telefone",
+            "email",
+            "areas_atuacao",
+            "area_atuacao_outro",
+            "representacoes",
+            "representacao_outro",
+        )
+
+    def validate_nome_completo(self, value):
+        nome = (value or "").strip()
+        if not nome:
+            raise serializers.ValidationError("Informe seu nome completo.")
+        return nome
+
+    def validate_areas_atuacao(self, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Informe uma lista de áreas.")
+        return [str(v).strip() for v in value if str(v).strip()]
+
+    def validate_representacoes(self, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Informe uma lista de representações.")
+        return [str(v).strip() for v in value if str(v).strip()]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        areas = attrs.get("areas_atuacao") or []
+        representacoes = attrs.get("representacoes") or []
+        if not areas and not representacoes:
+            raise serializers.ValidationError(
+                "Selecione ao menos uma área de atuação ou representação."
+            )
+        return attrs

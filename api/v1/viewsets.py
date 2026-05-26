@@ -48,7 +48,7 @@ from core.permissions import (
 from core.scope import resolve_cliente_scope
 from core.utils import coletar_contexto_do_cliente, obter_config, verificar_flag, usuario_e_membro_do_gt
 from comments.models import Comentario
-from consultas.models import ConsultaPublica, ManifestacaoPublica
+from consultas.models import ConsultaPublica, ManifestacaoPublica, FormularioInscricao, InscricaoPublica
 from curriculum.models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
 from curriculum.services.collab_sync import broadcast_texto_colaborativo, sync_texto_colaborativo_from_resposta
 from dynamicforms.models import CampoDinamico, FormularioDinamico, RespostaCampoDinamico
@@ -108,6 +108,8 @@ from .serializers import (
     UsuarioLookupSerializer,
     ConsultaPublicaSerializer,
     ManifestacaoPublicaSerializer,
+    FormularioInscricaoSerializer,
+    InscricaoPublicaSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -956,6 +958,54 @@ class ConsultaPublicaViewSet(viewsets.ModelViewSet):
         _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN})
         manifestacoes = ManifestacaoPublica.objects.filter(consulta=consulta)
         serializer = ManifestacaoPublicaSerializer(manifestacoes, many=True)
+        return Response(serializer.data)
+
+
+class FormularioInscricaoViewSet(viewsets.ModelViewSet):
+    serializer_class = FormularioInscricaoSerializer
+    permission_classes = [HasClientScope]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ("titulo",)
+    ordering = ("-created_at",)
+
+    def get_queryset(self):
+        cliente_id = _get_request_cliente_id(self.request)
+        return FormularioInscricao.objects.filter(cliente_id=cliente_id).annotate(
+            inscricoes_count=Count("inscricoes")
+        )
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        try:
+            ctx["cliente_id"] = _get_request_cliente_id(self.request)
+        except ValidationError:
+            ctx["cliente_id"] = None
+        return ctx
+
+    def perform_create(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
+        serializer.save(
+            cliente_id=_get_request_cliente_id(self.request),
+            criado_por=self.request.user,
+        )
+
+    def perform_update(self, serializer):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
+        super().perform_destroy(instance)
+
+    @action(detail=True, methods=["get"], url_path="inscricoes")
+    def inscricoes(self, request, pk=None):
+        formulario = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN})
+        qs = InscricaoPublica.objects.filter(formulario=formulario)
+        nome_filtro = request.query_params.get("nome_completo", "").strip()
+        if nome_filtro:
+            qs = qs.filter(nome_completo__icontains=nome_filtro)
+        serializer = InscricaoPublicaSerializer(qs, many=True)
         return Response(serializer.data)
 
 
