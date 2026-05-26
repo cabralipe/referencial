@@ -12,6 +12,7 @@ from .viewsets import (
     ComentarioViewSet,
     ExportJobViewSet,
     ConsultaPublicaViewSet,
+    FormularioInscricaoViewSet,
     AreaViewSet,
     EscolaViewSet,
     GTViewSet,
@@ -118,6 +119,7 @@ router.register("meb/threads", MebThreadViewSet, basename="meb_thread")
 router.register("meb/mensagens", MebMessageViewSet, basename="meb_message")
 router.register("usuarios/lookup", UsuarioLookupViewSet, basename="usuario_lookup")
 router.register("consultas_publicas", ConsultaPublicaViewSet, basename="consulta_publica")
+router.register("formularios_inscricao", FormularioInscricaoViewSet, basename="formulario_inscricao")
 router.register("ppp", PppViewSet, basename="ppp")
 router.register("cursos", CursoViewSet, basename="curso")
 router.register("planos-aula", PlanoAulaViewSet, basename="plano_aula")

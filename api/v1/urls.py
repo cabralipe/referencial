@@ -22,6 +22,8 @@ from .views import (
     ManifestacaoPublicaView,
     PublicClientesEscolasView,
     CadastroView,
+    FormularioInscricaoPublicView,
+    InscricaoPublicaView,
 )
 
 schema_view = get_schema_view(
@@ -62,4 +64,14 @@ urlpatterns = [
         name="public-cadastro-data"
     ),
     path("public/cadastro", CadastroView.as_view(), name="public-cadastro"),
+    path(
+        "formularios_inscricao/public/<str:token>",
+        FormularioInscricaoPublicView.as_view(),
+        name="formulario-inscricao-public",
+    ),
+    path(
+        "formularios_inscricao/public/<str:token>/inscricoes",
+        InscricaoPublicaView.as_view(),
+        name="inscricao-publica-create",
+    ),
 ]

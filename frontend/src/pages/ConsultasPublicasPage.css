@@ -964,3 +964,46 @@
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ── Tabs ────────────────────────────────────────────────── */
+.consultas-admin__tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.consultas-admin__tab {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: -2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.consultas-admin__tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+.consultas-admin__tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: none;
+}
+
+/* ── Inscricoes filtro ────────────────────────────────────── */
+.inscricoes-filtro {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}

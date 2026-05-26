@@ -22,7 +22,7 @@ from core.permissions import HasClientScope
 from core.scope import resolve_cliente_scope
 from services.progress import get_next_block_for_user
 from services.diff import diff_last_approved
-from consultas.models import ConsultaPublica, ManifestacaoPublica
+from consultas.models import ConsultaPublica, ManifestacaoPublica, FormularioInscricao, InscricaoPublica
 from curriculum.models import Escola
 
 from .serializers import (
@@ -35,6 +35,9 @@ from .serializers import (
     PublicClienteSerializer,
     PublicEscolaSerializer,
     PublicTipoUsuarioCadastroSerializer,
+    FormularioInscricaoPublicSerializer,
+    InscricaoPublicaCreateSerializer,
+    InscricaoPublicaSerializer,
 )
 
 
@@ -307,3 +310,40 @@ class CadastroView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response({"message": "Usuário cadastrado com sucesso", "id": user.id}, status=201)
+
+
+def _formulario_inscricao_por_token(token: str) -> FormularioInscricao:
+    formulario = FormularioInscricao.raw_objects.filter(token_acesso=token).first()
+    if not formulario:
+        raise NotFound("Formulário de inscrição não encontrado.")
+    return formulario
+
+
+class FormularioInscricaoPublicView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def get(self, request, token: str):
+        formulario = _formulario_inscricao_por_token(token)
+        serializer = FormularioInscricaoPublicSerializer(formulario)
+        return Response(serializer.data)
+
+
+class InscricaoPublicaView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def post(self, request, token: str):
+        formulario = _formulario_inscricao_por_token(token)
+        if not formulario.ativo:
+            raise ValidationError("Este formulário não está aceitando inscrições no momento.")
+        serializer = InscricaoPublicaCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        inscricao = serializer.save(
+            formulario=formulario,
+            cliente_id=formulario.cliente_id,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.headers.get("User-Agent", "")[:500],
+        )
+        resposta = InscricaoPublicaSerializer(inscricao)
+        return Response(resposta.data, status=201)

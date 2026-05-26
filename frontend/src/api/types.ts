@@ -612,6 +612,45 @@ export interface ManifestacaoPublicaPublic {
   created_at: string;
 }
 
+export interface FormularioInscricao {
+  id: number;
+  titulo: string;
+  subtitulo: string;
+  descricao: string;
+  token_acesso: string;
+  ativo: boolean;
+  opcoes_area_atuacao: string[];
+  opcoes_representacao: string[];
+  public_url: string;
+  total_inscricoes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FormularioInscricaoPublic {
+  titulo: string;
+  subtitulo: string;
+  descricao: string;
+  ativo: boolean;
+  opcoes_area_atuacao: string[];
+  opcoes_representacao: string[];
+}
+
+export interface InscricaoPublica {
+  id: number;
+  formulario: number;
+  nome_completo: string;
+  instituicao_comunidade: string;
+  telefone: string;
+  email: string;
+  areas_atuacao: string[];
+  area_atuacao_outro: string;
+  representacoes: string[];
+  representacao_outro: string;
+  ip_address?: string | null;
+  created_at: string;
+}
+
 export interface DiffResponse {
   html: string;
 }
