@@ -290,3 +290,107 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* --- ESTILOS DO HERO COM IMAGEM (1920x180) --- */
+.inscricao-publica__hero.has-image {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 auto var(--space-4) !important;
+  height: auto !important;
+  max-width: 1080px;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+}
+
+.inscricao-publica__hero-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Card de informações abaixo da imagem de banner */
+.inscricao-publica__hero-info {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto var(--space-2);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.05);
+  text-align: center;
+}
+
+.inscricao-publica__hero-info h1 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.inscricao-publica__hero-info h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.inscricao-publica__hero-info p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.inscricao-publica__hero-info .inscricao-publica__chip.neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .inscricao-publica__hero.has-image {
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3) !important;
+  }
+
+  .inscricao-publica__hero-info {
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+  }
+
+  .inscricao-publica__hero-info h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .inscricao-publica__hero.has-image {
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2) !important;
+  }
+
+  .inscricao-publica__hero-info {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+
+  .inscricao-publica__hero-info h1 {
+    font-size: 1.25rem;
+  }
+
+  .inscricao-publica__hero-info h2 {
+    font-size: 1rem;
+  }
+
+  .inscricao-publica__hero-info p {
+    font-size: 0.875rem;
+  }
+}

@@ -101,18 +101,40 @@ export function ConsultaPublicaPublicPage() {
 
   return (
     <div className="consulta-publica">
-      <header className="consulta-publica__hero">
-        <div>
-          <span className="consulta-publica__chip">Consulta pública</span>
-          <h1>{consulta?.titulo ?? 'Consulta'}</h1>
-          <p>{consulta?.descricao || 'Documento disponível para leitura, comentários por página e voto com identificação.'}</p>
-          <div className="consulta-publica__meta">
-            <span>Publicação: {formatDate(consulta?.data_publicacao)}</span>
-            <span>Validade: {formatDate(consulta?.data_validade)}</span>
-            <span>Encerramento: {formatDate(consulta?.data_fechamento)}</span>
+      {consulta?.imagem_hero_url ? (
+        <>
+          <header className="consulta-publica__hero has-image">
+            <img
+              src={consulta.imagem_hero_url}
+              alt={consulta.titulo}
+              className="consulta-publica__hero-banner-img"
+            />
+          </header>
+          <div className="consulta-publica__hero-info">
+            <span className="consulta-publica__chip neutral">Consulta pública</span>
+            <h1>{consulta.titulo}</h1>
+            <p>{consulta.descricao || 'Documento disponível para leitura, comentários por página e voto com identificação.'}</p>
+            <div className="consulta-publica__meta">
+              <span>Publicação: {formatDate(consulta.data_publicacao)}</span>
+              <span>Validade: {formatDate(consulta.data_validade)}</span>
+              <span>Encerramento: {formatDate(consulta.data_fechamento)}</span>
+            </div>
           </div>
-        </div>
-      </header>
+        </>
+      ) : (
+        <header className="consulta-publica__hero">
+          <div>
+            <span className="consulta-publica__chip">Consulta pública</span>
+            <h1>{consulta?.titulo ?? 'Consulta'}</h1>
+            <p>{consulta?.descricao || 'Documento disponível para leitura, comentários por página e voto com identificação.'}</p>
+            <div className="consulta-publica__meta">
+              <span>Publicação: {formatDate(consulta?.data_publicacao)}</span>
+              <span>Validade: {formatDate(consulta?.data_validade)}</span>
+              <span>Encerramento: {formatDate(consulta?.data_fechamento)}</span>
+            </div>
+          </div>
+        </header>
+      )}
 
       <div className="consulta-publica__content">
         <section className="consulta-publica__panel pdf">
