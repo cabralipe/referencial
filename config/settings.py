@@ -46,6 +46,14 @@ DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in env("CSRF_TRUSTED_ORIGINS").split(",") if origin.strip()]
 
+# Resolve Redis URL from multiple possible environment variables
+REDIS_URL = (
+    os.getenv("REFERENCIAL_REDIS_URL")
+    or os.getenv("REDIS_URL")
+    or os.getenv("REDIS_PRIVATE_URL")
+    or env("REFERENCIAL_REDIS_URL")
+)
+
 # Configurações de CSRF adicionais para desenvolvimento local
 if DEBUG:
     CSRF_TRUSTED_ORIGINS.extend([
@@ -166,7 +174,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REFERENCIAL_REDIS_URL")],
+            "hosts": [REDIS_URL],
         },
     }
 }
@@ -360,8 +368,8 @@ SIMPLE_JWT = {
 }
 
 # Celery
-CELERY_BROKER_URL = env("REFERENCIAL_REDIS_URL")
-CELERY_RESULT_BACKEND = env("REFERENCIAL_REDIS_URL")
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
