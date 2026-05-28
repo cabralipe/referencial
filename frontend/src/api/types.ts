@@ -560,6 +560,8 @@ export interface ConsultaPublica {
   descricao: string;
   pdf: string;
   pdf_url: string | null;
+  imagem_hero?: string | null;
+  imagem_hero_url?: string | null;
   data_publicacao: string;
   data_validade: string | null;
   data_fechamento: string | null;
@@ -575,6 +577,7 @@ export interface ConsultaPublicaPublic {
   titulo: string;
   descricao: string;
   pdf_url: string | null;
+  imagem_hero_url?: string | null;
   data_publicacao: string;
   data_validade: string | null;
   data_fechamento: string | null;
@@ -618,6 +621,8 @@ export interface FormularioInscricao {
   subtitulo: string;
   descricao: string;
   token_acesso: string;
+  imagem_hero?: string | null;
+  imagem_hero_url?: string | null;
   ativo: boolean;
   opcoes_area_atuacao: string[];
   opcoes_representacao: string[];
@@ -631,6 +636,7 @@ export interface FormularioInscricaoPublic {
   titulo: string;
   subtitulo: string;
   descricao: string;
+  imagem_hero_url?: string | null;
   ativo: boolean;
   opcoes_area_atuacao: string[];
   opcoes_representacao: string[];

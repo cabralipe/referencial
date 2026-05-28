@@ -592,3 +592,113 @@
     min-height: 380px;
   }
 }
+
+/* --- ESTILOS DO HERO COM IMAGEM (1920x180) --- */
+.consulta-publica__hero.has-image {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 auto 16px !important;
+  height: auto !important;
+  max-width: 1080px;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+}
+
+.consulta-publica__hero-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Container de informações abaixo da imagem de banner */
+.consulta-publica__hero-info {
+  max-width: 1080px;
+  margin: 0 auto 24px;
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.05);
+  transition: all var(--transition-normal);
+}
+
+.consulta-publica__hero-info h1 {
+  margin: 12px 0 8px;
+  font-size: 32px;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.consulta-publica__hero-info p {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.consulta-publica__hero-info .consulta-publica__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .consulta-publica__hero.has-image {
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+  }
+  
+  .consulta-publica__hero-info {
+    padding: 18px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-lg);
+  }
+  
+  .consulta-publica__hero-info h1 {
+    font-size: 24px;
+  }
+  
+  .consulta-publica__hero-info p {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .consulta-publica__hero.has-image {
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+  
+  .consulta-publica__hero-info {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: var(--radius-md);
+  }
+  
+  .consulta-publica__hero-info h1 {
+    font-size: 20px;
+    margin: 8px 0 4px;
+  }
+  
+  .consulta-publica__hero-info p {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .consulta-publica__hero-info .consulta-publica__meta {
+    font-size: 11px;
+    gap: 8px;
+  }
+}

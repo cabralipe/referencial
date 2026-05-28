@@ -101,12 +101,30 @@ export function InscricaoPublicaPage() {
 
   return (
     <div className="inscricao-publica">
-      <header className="inscricao-publica__hero">
-        <span className="inscricao-publica__chip">Formulário de Inscrição</span>
-        <h1>{formulario.titulo}</h1>
-        {formulario.subtitulo && <h2>{formulario.subtitulo}</h2>}
-        {formulario.descricao && <p>{formulario.descricao}</p>}
-      </header>
+      {formulario.imagem_hero_url ? (
+        <>
+          <header className="inscricao-publica__hero has-image">
+            <img
+              src={formulario.imagem_hero_url}
+              alt={formulario.titulo}
+              className="inscricao-publica__hero-banner-img"
+            />
+          </header>
+          <div className="inscricao-publica__hero-info">
+            <span className="inscricao-publica__chip neutral">Formulário de Inscrição</span>
+            <h1>{formulario.titulo}</h1>
+            {formulario.subtitulo && <h2>{formulario.subtitulo}</h2>}
+            {formulario.descricao && <p>{formulario.descricao}</p>}
+          </div>
+        </>
+      ) : (
+        <header className="inscricao-publica__hero">
+          <span className="inscricao-publica__chip">Formulário de Inscrição</span>
+          <h1>{formulario.titulo}</h1>
+          {formulario.subtitulo && <h2>{formulario.subtitulo}</h2>}
+          {formulario.descricao && <p>{formulario.descricao}</p>}
+        </header>
+      )}
 
       <div className="inscricao-publica__card">
         {feedback && <div className="inscricao-publica__alert success">{feedback}</div>}
