@@ -1260,6 +1260,7 @@ class MebMessageSerializer(serializers.ModelSerializer):
 
 class ConsultaPublicaSerializer(serializers.ModelSerializer):
     pdf_url = serializers.SerializerMethodField()
+    imagem_hero_url = serializers.SerializerMethodField()
     public_url = serializers.SerializerMethodField()
     total_manifestacoes = serializers.SerializerMethodField()
 
@@ -1273,6 +1274,8 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
             "descricao",
             "pdf",
             "pdf_url",
+            "imagem_hero",
+            "imagem_hero_url",
             "data_publicacao",
             "data_validade",
             "data_fechamento",
@@ -1283,7 +1286,14 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "token_acesso", "pdf_url", "public_url", "total_manifestacoes", "created_at", "updated_at")
+        read_only_fields = ("id", "token_acesso", "pdf_url", "imagem_hero_url", "public_url", "total_manifestacoes", "created_at", "updated_at")
+
+    def get_imagem_hero_url(self, obj):
+        request = self.context.get("request")
+        if not obj.imagem_hero:
+            return None
+        url = str(obj.imagem_hero.url).strip()
+        return self._build_url(request, url)
 
     def get_pdf_url(self, obj):
         request = self.context.get("request")
@@ -1369,6 +1379,7 @@ class ConsultaPublicaSerializer(serializers.ModelSerializer):
 
 class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
     pdf_url = serializers.SerializerMethodField()
+    imagem_hero_url = serializers.SerializerMethodField()
     esta_disponivel = serializers.SerializerMethodField()
     total_manifestacoes = serializers.SerializerMethodField()
 
@@ -1378,6 +1389,7 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
             "titulo",
             "descricao",
             "pdf_url",
+            "imagem_hero_url",
             "data_publicacao",
             "data_validade",
             "data_fechamento",
@@ -1386,6 +1398,13 @@ class ConsultaPublicaPublicSerializer(serializers.ModelSerializer):
             "total_manifestacoes",
         )
         read_only_fields = fields
+
+    def get_imagem_hero_url(self, obj):
+        request = self.context.get("request")
+        if not obj.imagem_hero:
+            return None
+        url = str(obj.imagem_hero.url).strip()
+        return ConsultaPublicaSerializer._build_url(request, url)
 
     def get_pdf_url(self, obj):
         request = self.context.get("request")
@@ -1600,6 +1619,7 @@ class AiAssistSerializer(serializers.Serializer):
 class FormularioInscricaoSerializer(serializers.ModelSerializer):
     public_url = serializers.SerializerMethodField()
     total_inscricoes = serializers.SerializerMethodField()
+    imagem_hero_url = serializers.SerializerMethodField()
 
     class Meta:
         model = FormularioInscricao
@@ -1609,6 +1629,8 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
             "subtitulo",
             "descricao",
             "token_acesso",
+            "imagem_hero",
+            "imagem_hero_url",
             "ativo",
             "opcoes_area_atuacao",
             "opcoes_representacao",
@@ -1617,7 +1639,14 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "token_acesso", "public_url", "total_inscricoes", "created_at", "updated_at")
+        read_only_fields = ("id", "token_acesso", "imagem_hero_url", "public_url", "total_inscricoes", "created_at", "updated_at")
+
+    def get_imagem_hero_url(self, obj):
+        request = self.context.get("request")
+        if not obj.imagem_hero:
+            return None
+        url = str(obj.imagem_hero.url).strip()
+        return ConsultaPublicaSerializer._build_url(request, url)
 
     def get_public_url(self, obj):
         request = self.context.get("request")
@@ -1634,6 +1663,12 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
     def validate_opcoes_area_atuacao(self, value):
         if not value:
             return list(_AREAS_ATUACAO_PADRAO)
+        if isinstance(value, str):
+            try:
+                import json
+                value = json.loads(value)
+            except Exception:
+                raise serializers.ValidationError("Informe uma lista de opções válida.")
         if not isinstance(value, list):
             raise serializers.ValidationError("Informe uma lista de opções.")
         return [str(v).strip() for v in value if str(v).strip()]
@@ -1641,6 +1676,12 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
     def validate_opcoes_representacao(self, value):
         if not value:
             return list(_REPRESENTACOES_PADRAO)
+        if isinstance(value, str):
+            try:
+                import json
+                value = json.loads(value)
+            except Exception:
+                raise serializers.ValidationError("Informe uma lista de opções válida.")
         if not isinstance(value, list):
             raise serializers.ValidationError("Informe uma lista de opções.")
         return [str(v).strip() for v in value if str(v).strip()]
@@ -1654,17 +1695,27 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
 
 
 class FormularioInscricaoPublicSerializer(serializers.ModelSerializer):
+    imagem_hero_url = serializers.SerializerMethodField()
+
     class Meta:
         model = FormularioInscricao
         fields = (
             "titulo",
             "subtitulo",
             "descricao",
+            "imagem_hero_url",
             "ativo",
             "opcoes_area_atuacao",
             "opcoes_representacao",
         )
         read_only_fields = fields
+
+    def get_imagem_hero_url(self, obj):
+        request = self.context.get("request")
+        if not obj.imagem_hero:
+            return None
+        url = str(obj.imagem_hero.url).strip()
+        return ConsultaPublicaSerializer._build_url(request, url)
 
 
 class InscricaoPublicaSerializer(serializers.ModelSerializer):

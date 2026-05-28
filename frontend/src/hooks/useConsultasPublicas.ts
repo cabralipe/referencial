@@ -36,6 +36,7 @@ interface CriarConsultaPublicaInput {
   slug?: string;
   descricao?: string;
   pdf: File;
+  imagem_hero?: File;
   data_publicacao: string;
   data_validade?: string;
   data_fechamento?: string;
@@ -67,6 +68,7 @@ export function useCriarConsultaPublica() {
       if (payload.slug) form.append('slug', payload.slug);
       if (payload.descricao) form.append('descricao', payload.descricao);
       form.append('pdf', payload.pdf);
+      if (payload.imagem_hero) form.append('imagem_hero', payload.imagem_hero);
       form.append('data_publicacao', payload.data_publicacao);
       if (payload.data_validade) form.append('data_validade', payload.data_validade);
       if (payload.data_fechamento) form.append('data_fechamento', payload.data_fechamento);
@@ -118,6 +120,11 @@ export function useEditarConsultaPublica() {
         if (payload.pdf.size > 0) {
           form.append('pdf', payload.pdf);
         }
+      }
+
+      // Hero image is optional in update
+      if (payload.imagem_hero) {
+        form.append('imagem_hero', payload.imagem_hero);
       }
 
       if (payload.data_publicacao) form.append('data_publicacao', payload.data_publicacao);

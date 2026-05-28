@@ -32,6 +32,7 @@ interface CriarFormularioInput {
   ativo?: boolean;
   opcoes_area_atuacao?: string[];
   opcoes_representacao?: string[];
+  imagem_hero?: File;
 }
 
 export function useCriarFormularioInscricao() {
@@ -42,8 +43,23 @@ export function useCriarFormularioInscricao() {
 
   return useMutation({
     mutationFn: async (payload: CriarFormularioInput) => {
+      const form = new FormData();
+      form.append('titulo', payload.titulo);
+      if (payload.subtitulo) form.append('subtitulo', payload.subtitulo);
+      if (payload.descricao) form.append('descricao', payload.descricao);
+      form.append('ativo', payload.ativo === false ? 'false' : 'true');
+      if (payload.opcoes_area_atuacao) {
+        form.append('opcoes_area_atuacao', JSON.stringify(payload.opcoes_area_atuacao));
+      }
+      if (payload.opcoes_representacao) {
+        form.append('opcoes_representacao', JSON.stringify(payload.opcoes_representacao));
+      }
+      if (payload.imagem_hero) {
+        form.append('imagem_hero', payload.imagem_hero);
+      }
+
       const response = await client.post<FormularioInscricao>('/formularios_inscricao', {
-        body: payload,
+        body: form,
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
       });
       return response.data;
@@ -66,8 +82,23 @@ export function useEditarFormularioInscricao() {
 
   return useMutation({
     mutationFn: async ({ id, ...payload }: EditarFormularioInput) => {
+      const form = new FormData();
+      if (payload.titulo) form.append('titulo', payload.titulo);
+      if (payload.subtitulo !== undefined) form.append('subtitulo', payload.subtitulo);
+      if (payload.descricao !== undefined) form.append('descricao', payload.descricao);
+      if (payload.ativo !== undefined) form.append('ativo', payload.ativo ? 'true' : 'false');
+      if (payload.opcoes_area_atuacao) {
+        form.append('opcoes_area_atuacao', JSON.stringify(payload.opcoes_area_atuacao));
+      }
+      if (payload.opcoes_representacao) {
+        form.append('opcoes_representacao', JSON.stringify(payload.opcoes_representacao));
+      }
+      if (payload.imagem_hero) {
+        form.append('imagem_hero', payload.imagem_hero);
+      }
+
       const response = await client.patch<FormularioInscricao>(`/formularios_inscricao/${id}`, {
-        body: payload,
+        body: form,
         headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
       });
       return response.data;

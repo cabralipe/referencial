@@ -52,6 +52,22 @@ def _upload_to(instance: "ConsultaPublica", filename: str) -> str:
     return f"consultas/{cliente_part}/{base}{ext}"
 
 
+def _upload_hero_to(instance: "ConsultaPublica", filename: str) -> str:
+    """Gera caminho de upload para a imagem de hero agrupando por cliente."""
+    base = slugify(Path(filename).stem) or "hero"
+    ext = Path(filename).suffix or ".png"
+    cliente_part = f"cliente_{instance.cliente_id or 'desconhecido'}"
+    return f"consultas/{cliente_part}/hero_{base}{ext}"
+
+
+def _upload_inscricao_hero_to(instance: "FormularioInscricao", filename: str) -> str:
+    """Gera caminho de upload para a imagem de hero do formulário de inscrição agrupando por cliente."""
+    base = slugify(Path(filename).stem) or "inscricao_hero"
+    ext = Path(filename).suffix or ".png"
+    cliente_part = f"cliente_{instance.cliente_id or 'desconhecido'}"
+    return f"inscricoes/{cliente_part}/hero_{base}{ext}"
+
+
 def _token() -> str:
     return token_urlsafe(12)
 
@@ -62,6 +78,7 @@ class ConsultaPublica(TenantModel):
     token_acesso = models.CharField(max_length=32, unique=True, default=_token)
     descricao = models.TextField(blank=True)
     pdf = models.FileField(upload_to=_upload_to)
+    imagem_hero = models.ImageField(upload_to=_upload_hero_to, null=True, blank=True)
     data_publicacao = models.DateField()
     data_validade = models.DateField(null=True, blank=True)
     data_fechamento = models.DateField(null=True, blank=True)
@@ -140,6 +157,7 @@ class FormularioInscricao(TenantModel):
     subtitulo = models.CharField(max_length=255, blank=True, default="Ficha de Inscrição")
     descricao = models.TextField(blank=True)
     token_acesso = models.CharField(max_length=32, unique=True, default=_token)
+    imagem_hero = models.ImageField(upload_to=_upload_inscricao_hero_to, null=True, blank=True)
     ativo = models.BooleanField(default=True)
     opcoes_area_atuacao = models.JSONField(default=list, blank=True)
     opcoes_representacao = models.JSONField(default=list, blank=True)
