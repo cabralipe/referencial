@@ -380,6 +380,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             atividade=atividade,
             status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA],
         )
+        .prefetch_related("arquivos")
         .order_by("-data_envio", "-data_inicio")
         .first()
     )
@@ -389,6 +390,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
             atividade=atividade,
             status=AtividadeTentativa.Status.EM_ANDAMENTO,
         )
+        .prefetch_related("arquivos")
         .order_by("-data_inicio")
         .first()
     )
@@ -448,8 +450,9 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                     atividade_id=atividade_id,
                 )
 
-            if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not request.FILES.get("arquivo_enviado"):
-                messages.error(request, "Essa atividade exige envio de arquivo.")
+            arquivos_enviados = request.FILES.getlist("arquivos_enviados")
+            if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not arquivos_enviados:
+                messages.error(request, "Essa atividade exige envio de pelo menos um arquivo.")
             elif usa_formulario_quiz and not questoes:
                 messages.error(request, "Este quiz ainda não possui questões cadastradas.")
             else:
@@ -466,8 +469,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                     messages.success(request, "Tarefa concluída com sucesso.")
                 else:
                     texto = request.POST.get("texto_resposta", "")
-                    arquivo = request.FILES.get("arquivo_enviado")
-                    AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivo)
+                    AtividadeService.submeter_tarefa_discursiva(tentativa_processada, texto, arquivos_enviados or None)
                     messages.success(request, "Tarefa concluída com sucesso.")
 
                 url = reverse(

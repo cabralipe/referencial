@@ -339,9 +339,10 @@
 
         {% elif atividade.tipo == 'envio_arquivo' %}
         <div class="mb-4">
-            <label for="arquivo_enviado" class="form-label fw-bold">Anexar arquivo</label>
-            <input type="file" name="arquivo_enviado" id="arquivo_enviado" class="form-control" required>
-            <div class="form-text mt-2">Formatos aceitos dependem das regras do curso (normalmente PDF, DOCX).</div>
+            <label for="arquivos_enviados" class="form-label fw-bold">Anexar arquivo(s)</label>
+            <input type="file" name="arquivos_enviados" id="arquivos_enviados" class="form-control" multiple required>
+            <div class="form-text mt-2">Você pode selecionar múltiplos arquivos ao mesmo tempo. Formatos aceitos dependem das regras do curso (normalmente PDF, DOCX).</div>
+            <div id="arquivos-preview" class="mt-2 d-flex flex-wrap gap-2"></div>
         </div>
 
         {% else %}
@@ -369,14 +370,23 @@
         <h2 class="h3 fw-bold mb-2">Tarefa concluída com sucesso</h2>
         <p class="text-muted mb-4">Você já enviou esta atividade em {{ tentativa.data_envio|date:"d/m/Y \\a\\s H:i" }}.</p>
 
-        {% if tentativa.arquivo_enviado %}
-        <p class="small text-muted mb-2">Anexo enviado: {{ tentativa.arquivo_enviado.name|cut:"ava/tentativas/arquivos/" }}</p>
+        {% with arquivos=tentativa.arquivos.all %}
+        {% if arquivos %}
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+            {% for arq in arquivos %}
+            <a href="{{ arq.arquivo.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-paperclip me-1"></i>{{ arq.nome_original|default:arq.arquivo.name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% elif tentativa.arquivo_enviado %}
         <p class="mb-3">
             <a href="{{ tentativa.arquivo_enviado.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
-                Abrir anexo enviado <i class="bi bi-box-arrow-up-right ms-1"></i>
+                <i class="bi bi-paperclip me-1"></i>{{ tentativa.arquivo_enviado.name|cut:"ava/tentativas/arquivos/" }}
             </a>
         </p>
         {% endif %}
+        {% endwith %}
 
         {% if usa_formulario_quiz or tentativa.status == 'corrigida' %}
         <div class="d-inline-block rounded-4 px-4 py-3 mb-3" style="background: var(--surface-elevated);">
@@ -472,6 +482,26 @@
 {% endblock %}
 
 {% block scripts %}
+{% if atividade.tipo == 'envio_arquivo' %}
+<script>
+    (() => {
+        const input = document.getElementById("arquivos_enviados");
+        const preview = document.getElementById("arquivos-preview");
+        if (!input || !preview) return;
+        input.addEventListener("change", () => {
+            preview.innerHTML = "";
+            Array.from(input.files).forEach((file) => {
+                const chip = document.createElement("span");
+                chip.className = "badge rounded-pill border fw-normal px-3 py-2";
+                chip.style.background = "var(--surface-elevated)";
+                chip.style.color = "var(--text-primary)";
+                chip.innerHTML = `<i class="bi bi-paperclip me-1"></i>${file.name}`;
+                preview.appendChild(chip);
+            });
+        });
+    })();
+</script>
+{% endif %}
 {% if is_forum %}
 <script>
     (() => {

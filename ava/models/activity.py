@@ -98,7 +98,7 @@ class AtividadeTentativa(TenantModel):
     data_correcao = models.DateTimeField(null=True, blank=True)
 
     texto_resposta = models.TextField("Resposta Discursiva", blank=True)
-    arquivo_enviado = models.FileField("Arquivo Enviado", upload_to="ava/tentativas/arquivos/", null=True, blank=True)
+    arquivo_enviado = models.FileField("Arquivo Enviado (legado)", upload_to="ava/tentativas/arquivos/", null=True, blank=True)
 
     class Meta:
         verbose_name = "Tentativa de Atividade"
@@ -107,6 +107,25 @@ class AtividadeTentativa(TenantModel):
         indexes = [
             models.Index(fields=["cliente", "aluno", "atividade"]),
         ]
+
+
+class AtividadeTentativaArquivo(TenantModel):
+    tentativa = models.ForeignKey(AtividadeTentativa, on_delete=models.CASCADE, related_name="arquivos")
+    arquivo = models.FileField("Arquivo", upload_to="ava/tentativas/arquivos/")
+    nome_original = models.CharField("Nome original", max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Arquivo de Tentativa"
+        verbose_name_plural = "Arquivos de Tentativas"
+        ordering = ["created_at", "id"]
+
+    def save(self, *args, **kwargs):
+        if self.arquivo and not self.nome_original:
+            self.nome_original = self.arquivo.name.rsplit("/", 1)[-1]
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nome_original or f"Arquivo {self.pk}"
 
 
 class QuizRespostaItem(TenantModel):

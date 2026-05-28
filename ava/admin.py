@@ -13,6 +13,7 @@ from .models import (
     AtividadeForumAnexo,
     AtividadeForumMensagem,
     AtividadeTentativa,
+    AtividadeTentativaArquivo,
     Aula,
     Certificado,
     ConfigCertificado,
@@ -333,6 +334,13 @@ class AtividadeForumAnexoAdmin(AVAModelAdmin):
     list_display = ("mensagem", "nome_original", "created_at", "cliente")
     list_filter = ("mensagem__atividade__aula__modulo__curso",)
     search_fields = ("nome_original", "mensagem__autor__nome", "mensagem__atividade__titulo")
+
+
+@admin.register(AtividadeTentativaArquivo)
+class AtividadeTentativaArquivoAdmin(AVAModelAdmin):
+    list_display = ("tentativa", "nome_original", "created_at", "cliente")
+    list_filter = ("tentativa__atividade__aula__modulo__curso",)
+    search_fields = ("nome_original", "tentativa__aluno__nome", "tentativa__atividade__titulo")
 
 
 @admin.register(MatriculaCurso)

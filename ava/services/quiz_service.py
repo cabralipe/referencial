@@ -6,6 +6,7 @@ from ava.models import (
     AtividadeForumAnexo,
     AtividadeForumMensagem,
     AtividadeTentativa,
+    AtividadeTentativaArquivo,
     MatriculaCurso,
     QuizAlternativa,
     QuizQuestao,
@@ -112,13 +113,24 @@ class AtividadeService:
 
     @staticmethod
     @transaction.atomic
-    def submeter_tarefa_discursiva(tentativa: AtividadeTentativa, texto_resposta: str, arquivo=None):
+    def submeter_tarefa_discursiva(tentativa: AtividadeTentativa, texto_resposta: str, arquivos=None):
         """
         Envia uma resposta tipo texto/arquivo que depende de correção manual.
+        Aceita uma lista de arquivos (ou um único arquivo para retrocompatibilidade).
         """
         tentativa.texto_resposta = texto_resposta
-        if arquivo:
-            tentativa.arquivo_enviado = arquivo
+
+        if arquivos:
+            if not isinstance(arquivos, (list, tuple)):
+                arquivos = [arquivos]
+            arquivos_validos = [arq for arq in arquivos if getattr(arq, "name", "")]
+            for arq in arquivos_validos:
+                AtividadeTentativaArquivo.objects.create(
+                    cliente_id=tentativa.cliente_id,
+                    tentativa=tentativa,
+                    arquivo=arq,
+                    nome_original=getattr(arq, "name", ""),
+                )
 
         tentativa.data_envio = timezone.now()
         tentativa.status = AtividadeTentativa.Status.ENVIADA

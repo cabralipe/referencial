@@ -3,9 +3,26 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useApiClient } from '@/api/client';
 
+interface CadastroCustom {
+  titulo?: string;
+  subtitulo?: string;
+  label_nome?: string;
+  placeholder_nome?: string;
+  label_email?: string;
+  placeholder_email?: string;
+  label_senha?: string;
+  label_confirmar_senha?: string;
+  label_municipio?: string;
+  placeholder_municipio?: string;
+  label_escola?: string;
+  placeholder_escola?: string;
+  label_tipo_usuario?: string;
+}
+
 interface ClienteData {
   id: number;
   nome: string;
+  cadastro_custom?: CadastroCustom;
 }
 
 interface EscolaData {
@@ -85,6 +102,7 @@ export function CadastroPage() {
   // pode ser que não funcione o filtro localmente.
   // Wait, let's keep all schools for now if we don't have cliente_id in EscolaData or let's assume filtering.
   
+  const [custom, setCustom] = useState<CadastroCustom>({});
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -223,9 +241,9 @@ export function CadastroPage() {
             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-visible flex flex-col lg:bg-transparent lg:rounded-none lg:shadow-none lg:border-none relative">
 
               <div className="pt-8 pb-4 px-8 text-center lg:p-0 lg:mb-8 lg:text-left">
-                <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 lg:text-slate-900 tracking-tight">Criar Conta</h2>
+                <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 lg:text-slate-900 tracking-tight">{custom.titulo ?? 'Criar Conta'}</h2>
                 <p className="text-slate-500 text-sm lg:text-base mt-2">
-                  Preencha os dados abaixo para se cadastrar na plataforma.
+                  {custom.subtitulo ?? 'Preencha os dados abaixo para se cadastrar na plataforma.'}
                 </p>
               </div>
 
@@ -234,7 +252,7 @@ export function CadastroPage() {
                   
                   {/* Tipo de Usuário */}
                   <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-slate-700 ml-1">Eu sou um(a)</label>
+                    <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_tipo_usuario ?? 'Eu sou um(a)'}</label>
                     {!selectedClienteId ? (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                         Selecione primeiro o município para carregar os tipos de usuário disponíveis.
@@ -283,12 +301,12 @@ export function CadastroPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Cliente / Município */}
                     <div className="space-y-2 relative">
-                      <label className="block text-sm font-semibold text-slate-700 ml-1">Município (Cliente)</label>
+                      <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_municipio ?? 'Município (Cliente)'}</label>
                       <div className="relative group">
                         <input
                           type="text"
                           className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
-                          placeholder="Digite para buscar um município"
+                          placeholder={custom.placeholder_municipio ?? 'Digite para buscar um município'}
                           value={clienteBusca}
                           onChange={(e) => {
                             setClienteBusca(e.target.value);
@@ -331,9 +349,9 @@ export function CadastroPage() {
                                       setClienteBusca(c.nome);
                                       setIsClienteDropdownOpen(false);
                                       setSelectedTipoCadastroId('');
-                                      // Reseta a escola quando um novo cliente é escolhido
                                       setSelectedEscolaId('');
                                       setEscolaBusca('');
+                                      setCustom(c.cadastro_custom ?? {});
                                    }}
                                  >
                                     {c.nome}
@@ -346,12 +364,12 @@ export function CadastroPage() {
 
                     {/* Escola */}
                     <div className="space-y-2 relative">
-                      <label className="block text-sm font-semibold text-slate-700 ml-1">Escola</label>
+                      <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_escola ?? 'Escola'}</label>
                       <div className="relative group">
                         <input
                           type="text"
                           className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                          placeholder="Digite para buscar uma escola"
+                          placeholder={custom.placeholder_escola ?? 'Digite para buscar uma escola'}
                           value={escolaBusca}
                           onChange={(e) => {
                             setEscolaBusca(e.target.value);
@@ -405,11 +423,11 @@ export function CadastroPage() {
 
                   {/* Nome */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-700 ml-1">Nome Completo</label>
+                    <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_nome ?? 'Nome Completo'}</label>
                     <div className="relative group">
                       <input
                         className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
-                        placeholder="Seu nome"
+                        placeholder={custom.placeholder_nome ?? 'Seu nome'}
                         type="text"
                         value={nome}
                         onChange={(e) => setNome(e.target.value)}
@@ -423,11 +441,11 @@ export function CadastroPage() {
 
                   {/* Email */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-700 ml-1">E-mail</label>
+                    <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_email ?? 'E-mail'}</label>
                     <div className="relative group">
                       <input
                         className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
-                        placeholder="nome@instituicao.com.br"
+                        placeholder={custom.placeholder_email ?? 'nome@instituicao.com.br'}
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -443,7 +461,7 @@ export function CadastroPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Password */}
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-slate-700 ml-1">Senha</label>
+                      <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_senha ?? 'Senha'}</label>
                       <div className="relative group">
                         <input
                           className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"
@@ -468,7 +486,7 @@ export function CadastroPage() {
 
                     {/* Confirm Password */}
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-slate-700 ml-1">Confirmar Senha</label>
+                      <label className="block text-sm font-semibold text-slate-700 ml-1">{custom.label_confirmar_senha ?? 'Confirmar Senha'}</label>
                       <div className="relative group">
                         <input
                           className="w-full h-12 pl-10 pr-10 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none font-medium shadow-sm hover:border-slate-300"

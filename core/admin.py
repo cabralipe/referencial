@@ -28,11 +28,34 @@ class ClienteAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     prepopulated_fields = {"slug": ("nome",)}
 
 
+CADASTRO_CUSTOM_KEYS_HELP = """
+Chaves de personalização visual da tela de Criar Conta (prefixo: cadastro_):
+  cadastro_titulo              — Título principal do formulário
+  cadastro_subtitulo           — Subtítulo/descrição
+  cadastro_label_tipo_usuario  — Label do seletor de tipo de usuário
+  cadastro_label_municipio     — Label do campo de município
+  cadastro_placeholder_municipio — Placeholder do campo de município
+  cadastro_label_escola        — Label do campo de escola
+  cadastro_placeholder_escola  — Placeholder do campo de escola
+  cadastro_label_nome          — Label do campo nome completo
+  cadastro_placeholder_nome    — Placeholder do campo nome completo
+  cadastro_label_email         — Label do campo e-mail
+  cadastro_placeholder_email   — Placeholder do campo e-mail
+  cadastro_label_senha         — Label do campo senha
+  cadastro_label_confirmar_senha — Label do campo confirmar senha
+"""
+
+
 @admin.register(ClienteConfig)
 class ClienteConfigAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     list_display = ("cliente", "chave", "valor_texto", "updated_at")
     search_fields = ("cliente__nome", "chave")
     list_filter = ("cliente",)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields["chave"].help_text = CADASTRO_CUSTOM_KEYS_HELP
+        return form
 
 
 @admin.register(ClienteFeatureFlag)

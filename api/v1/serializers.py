@@ -142,9 +142,20 @@ class CadastroSerializer(serializers.Serializer):
 
 
 class PublicClienteSerializer(serializers.ModelSerializer):
+    cadastro_custom = serializers.SerializerMethodField()
+
     class Meta:
         model = Cliente
-        fields = ("id", "nome")
+        fields = ("id", "nome", "cadastro_custom")
+
+    def get_cadastro_custom(self, obj):
+        from core.models import ClienteConfig
+        PREFIX = "cadastro_"
+        configs = ClienteConfig.objects.filter(
+            cliente=obj,
+            chave__startswith=PREFIX,
+        ).values_list("chave", "valor_texto")
+        return {chave[len(PREFIX):]: valor for chave, valor in configs}
 
 
 class PublicEscolaSerializer(serializers.ModelSerializer):
