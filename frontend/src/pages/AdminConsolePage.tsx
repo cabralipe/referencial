@@ -136,6 +136,12 @@ export function AdminConsolePage() {
       description: 'Gere relatórios finais.',
       to: '/admin/console/exports?new=1',
     },
+    {
+      id: 'cadastro-custom',
+      label: 'Personalizar tela de cadastro',
+      description: 'Edite textos e labels do formulário público.',
+      to: '/admin/cadastro-custom',
+    },
   ];
 
   useEffect(() => {
