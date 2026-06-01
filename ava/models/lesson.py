@@ -49,7 +49,7 @@ class ConteudoAula(TenantModel):
     # Dados de acordo com o tipo
     conteudo_texto = models.TextField("Texto Rico", blank=True)
     url = models.URLField("URL de Vídeo/Link/Embed", blank=True, max_length=1000)
-    arquivo = models.FileField("Arquivo/PDF/Mídia", upload_to="ava/aulas/arquivos/", null=True, blank=True)
+    arquivo = models.FileField("Arquivo/PDF/Mídia", upload_to="ava/aulas/arquivos/", null=True, blank=True, max_length=500)
     embed_code = models.TextField("Código de Embed (Iframe, etc)", blank=True)
 
     class Meta:

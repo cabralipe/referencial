@@ -28,34 +28,98 @@ class ClienteAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     prepopulated_fields = {"slug": ("nome",)}
 
 
-CADASTRO_CUSTOM_KEYS_HELP = """
-Chaves de personalização visual da tela de Criar Conta (prefixo: cadastro_):
-  cadastro_titulo              — Título principal do formulário
-  cadastro_subtitulo           — Subtítulo/descrição
-  cadastro_label_tipo_usuario  — Label do seletor de tipo de usuário
-  cadastro_label_municipio     — Label do campo de município
-  cadastro_placeholder_municipio — Placeholder do campo de município
-  cadastro_label_escola        — Label do campo de escola
-  cadastro_placeholder_escola  — Placeholder do campo de escola
-  cadastro_label_nome          — Label do campo nome completo
-  cadastro_placeholder_nome    — Placeholder do campo nome completo
-  cadastro_label_email         — Label do campo e-mail
-  cadastro_placeholder_email   — Placeholder do campo e-mail
-  cadastro_label_senha         — Label do campo senha
-  cadastro_label_confirmar_senha — Label do campo confirmar senha
-"""
+_CHAVE_CHOICES = [
+    ("", "— Selecione uma chave —"),
+    (
+        "Personalização da tela de Criar Conta",
+        [
+            ("cadastro_titulo", "cadastro_titulo — Título principal do formulário"),
+            ("cadastro_subtitulo", "cadastro_subtitulo — Subtítulo / descrição abaixo do título"),
+            ("cadastro_label_tipo_usuario", "cadastro_label_tipo_usuario — Label do seletor de tipo de usuário"),
+            ("cadastro_label_municipio", "cadastro_label_municipio — Label do campo de município"),
+            ("cadastro_placeholder_municipio", "cadastro_placeholder_municipio — Placeholder do campo de município"),
+            ("cadastro_label_escola", "cadastro_label_escola — Label do campo de escola"),
+            ("cadastro_placeholder_escola", "cadastro_placeholder_escola — Placeholder do campo de escola"),
+            ("cadastro_label_nome", "cadastro_label_nome — Label do campo nome completo"),
+            ("cadastro_placeholder_nome", "cadastro_placeholder_nome — Placeholder do campo nome completo"),
+            ("cadastro_label_email", "cadastro_label_email — Label do campo e-mail"),
+            ("cadastro_placeholder_email", "cadastro_placeholder_email — Placeholder do campo e-mail"),
+            ("cadastro_label_senha", "cadastro_label_senha — Label do campo senha"),
+            ("cadastro_label_confirmar_senha", "cadastro_label_confirmar_senha — Label do campo confirmar senha"),
+        ],
+    ),
+    (
+        "Plugins e integrações",
+        [
+            ("synthesis_plugin", "synthesis_plugin — Plugin de síntese de respostas (ex: openai)"),
+            ("export_plugin", "export_plugin — Plugin de exportação de dados (ex: default)"),
+        ],
+    ),
+    (
+        "Pontuação e trilhas",
+        [
+            ("score.config", "score.config — Configuração de pontuação (JSON)"),
+            ("ppp.trilhas", "ppp.trilhas — Configuração de trilhas PPP (JSON)"),
+        ],
+    ),
+]
+
+_CHAVE_HELP = {
+    "cadastro_titulo": "Texto exibido como título do formulário de cadastro.",
+    "cadastro_subtitulo": "Texto exibido logo abaixo do título.",
+    "cadastro_label_tipo_usuario": "Rótulo do seletor de tipo de usuário.",
+    "cadastro_label_municipio": "Rótulo do campo de município.",
+    "cadastro_placeholder_municipio": "Texto de exemplo dentro do campo de município.",
+    "cadastro_label_escola": "Rótulo do campo de escola.",
+    "cadastro_placeholder_escola": "Texto de exemplo dentro do campo de escola.",
+    "cadastro_label_nome": "Rótulo do campo nome completo.",
+    "cadastro_placeholder_nome": "Texto de exemplo dentro do campo nome.",
+    "cadastro_label_email": "Rótulo do campo e-mail.",
+    "cadastro_placeholder_email": "Texto de exemplo dentro do campo e-mail.",
+    "cadastro_label_senha": "Rótulo do campo senha.",
+    "cadastro_label_confirmar_senha": "Rótulo do campo confirmar senha.",
+    "synthesis_plugin": 'Identificador do provedor de síntese. Exemplo: "openai".',
+    "export_plugin": 'Identificador do provedor de exportação. Exemplo: "default".',
+    "score.config": "JSON com as configurações de pontuação do cliente.",
+    "ppp.trilhas": "JSON com a configuração de trilhas do PPP.",
+}
+
+
+class ClienteConfigAdminForm(forms.ModelForm):
+    chave = forms.ChoiceField(
+        choices=_CHAVE_CHOICES,
+        label="Chave",
+        help_text="Selecione a configuração que deseja definir para este cliente.",
+    )
+
+    class Meta:
+        model = ClienteConfig
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        instance = kwargs.get("instance")
+        if instance and instance.chave:
+            existing_values = [v for group in _CHAVE_CHOICES[1:] for v, _ in group[1]]
+            if instance.chave not in existing_values:
+                self.fields["chave"] = forms.CharField(
+                    initial=instance.chave,
+                    label="Chave",
+                    help_text="Chave personalizada (não está na lista padrão).",
+                )
+            else:
+                self.fields["chave"].initial = instance.chave
+            valor_help = _CHAVE_HELP.get(instance.chave, "")
+            if valor_help:
+                self.fields["valor_texto"].help_text = valor_help
 
 
 @admin.register(ClienteConfig)
 class ClienteConfigAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
+    form = ClienteConfigAdminForm
     list_display = ("cliente", "chave", "valor_texto", "updated_at")
     search_fields = ("cliente__nome", "chave")
     list_filter = ("cliente",)
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        form.base_fields["chave"].help_text = CADASTRO_CUSTOM_KEYS_HELP
-        return form
 
 
 @admin.register(ClienteFeatureFlag)
