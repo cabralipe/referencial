@@ -2,12 +2,21 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
 from asgiref.sync import async_to_sync
+from channels_redis.core import RedisChannelLayer
+from django.conf import settings
 
 from sockets.consumers import PresenceConsumer
 
 
-def test_presence_consumer_broadcast(usuario):
+@pytest.fixture(autouse=True)
+def habilitar_flags():
+    pass
+
+
+def test_presence_consumer_broadcast():
+    usuario = SimpleNamespace(id=123)
     consumer = PresenceConsumer()
     consumer.scope = {
         "url_route": {
@@ -54,3 +63,9 @@ def test_presence_consumer_broadcast(usuario):
     assert payloads[0]["user_id"] == usuario.id
     assert payloads[1]["event"] == "event"
     assert payloads[1]["action"] == "typing"
+
+
+def test_channel_redis_socket_timeout_exceeds_blocking_read_timeout():
+    host_config = settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"][0]
+
+    assert host_config["socket_timeout"] > RedisChannelLayer.brpop_timeout

@@ -1,0 +1,146 @@
+.cadastro-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.cadastro-custom__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cadastro-custom__header h1 {
+  margin: 0 0 0.35rem 0;
+  color: #0f172a;
+}
+
+.cadastro-custom__header p {
+  margin: 0;
+  color: #475569;
+}
+
+.cadastro-custom__save-btn {
+  border-radius: 0.8rem;
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  background: #2563eb;
+  color: #fff;
+  padding: 0.65rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cadastro-custom__save-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cadastro-custom__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cadastro-custom__section {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fff;
+  padding: 1.25rem 1.5rem;
+}
+
+.cadastro-custom__section-title {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cadastro-custom__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.cadastro-custom__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cadastro-custom__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cadastro-custom__hint {
+  font-weight: 400;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.cadastro-custom__input {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cadastro-custom__input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+}
+
+.cadastro-custom__default {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.cadastro-custom__status {
+  padding: 0.8rem 1rem;
+  border-radius: 0.8rem;
+  font-weight: 600;
+}
+
+.cadastro-custom__status.success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.cadastro-custom__status.error {
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+@media (max-width: 640px) {
+  .cadastro-custom__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .cadastro-custom__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cadastro-custom__save-btn {
+    width: 100%;
+  }
+}

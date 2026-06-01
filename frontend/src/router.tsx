@@ -43,6 +43,7 @@ import { ConsultasPublicasPage } from './pages/ConsultasPublicasPage';
 import { ConsultaPublicaPublicPage } from './pages/ConsultaPublicaPublicPage';
 import { InscricaoPublicaPage } from './pages/InscricaoPublicaPage';
 import { ScoreConfigPage } from './pages/ScoreConfigPage';
+import { CadastroCustomPage } from './pages/CadastroCustomPage';
 import { ThrottleBlocksPage } from './pages/ThrottleBlocksPage';
 import { PlanoEditorPage } from './pages/PlanoEditorPage';
 
@@ -293,6 +294,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allowed={['admin_cliente', 'super_admin']}>
             <AdminPppPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'admin/cadastro-custom',
+        element: (
+          <RoleRoute allowed={['admin_cliente', 'super_admin']}>
+            <CadastroCustomPage />
           </RoleRoute>
         ),
       },

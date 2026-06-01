@@ -35,6 +35,9 @@ env = environ.Env(
     DEFAULT_HOOK_PLUGIN=(str, "default"),
     JWT_ACCESS_TOKEN_LIFETIME_MINUTES=(int, 60),
     JWT_REFRESH_TOKEN_LIFETIME_DAYS=(int, 7),
+    CHANNEL_REDIS_SOCKET_CONNECT_TIMEOUT=(int, 5),
+    CHANNEL_REDIS_SOCKET_TIMEOUT=(int, 15),
+    CHANNEL_REDIS_HEALTH_CHECK_INTERVAL=(int, 30),
     CSRF_TRUSTED_ORIGINS=(str, "http://localhost:5173,http://127.0.0.1:5173"),
 )
 
@@ -72,6 +75,10 @@ if render_host := os.getenv("RENDER_EXTERNAL_HOSTNAME"):
     render_origin = f"https://{render_host}"
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
+
+# Render encaminha a requisição HTTPS para o app em HTTP; isso preserva URLs públicas https.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 # Configurações de CSRF para permitir acesso do JavaScript
 CSRF_COOKIE_HTTPONLY = False  # Permite que JavaScript acesse o cookie CSRF
@@ -174,7 +181,18 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [REDIS_URL],
+            "hosts": [
+                {
+                    "address": REDIS_URL,
+                    "socket_connect_timeout": env("CHANNEL_REDIS_SOCKET_CONNECT_TIMEOUT"),
+                    "socket_timeout": env("CHANNEL_REDIS_SOCKET_TIMEOUT"),
+                    "health_check_interval": env("CHANNEL_REDIS_HEALTH_CHECK_INTERVAL"),
+                    "socket_keepalive": True,
+                    "retry_on_timeout": True,
+                }
+            ],
+            "capacity": 1500,
+            "expiry": 60,
         },
     }
 }
