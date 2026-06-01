@@ -6,8 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("ava", "0005_add_atividade_tentativa_arquivo"),
-        ("ava", "0005_alter_atividadeforumanexo_options_and_more"),
+        ("ava", "0006_merge_0005_migrations"),
     ]
 
     operations = [
