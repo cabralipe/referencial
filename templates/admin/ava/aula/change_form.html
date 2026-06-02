@@ -1,0 +1,10 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original and original.pk %}
+    <li>
+        <a href="{% url 'admin:ava_aula_editor_visual' original.pk %}" class="historylink">Abrir editor visual da imagem</a>
+    </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

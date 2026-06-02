@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
+from django.utils.html import format_html
 
 from ava.forms import CursoEstruturaCopyForm
 from ava.services import CourseCloneService
@@ -278,10 +279,125 @@ class CursoModuloAdmin(AVAModelAdmin):
 
 @admin.register(Aula)
 class AulaAdmin(AVAModelAdmin):
-    list_display = ("titulo", "modulo", "ordem", "tipo", "is_active")
+    list_display = ("titulo", "modulo", "ordem", "tipo", "is_active", "editor_visual_link")
     list_filter = ("modulo__curso", "tipo", "is_active")
     search_fields = ("titulo", "modulo__titulo", "modulo__curso__titulo")
     inlines = [ConteudoAulaInline, AtividadeInline]
+    fieldsets = (
+        (None, {
+            "fields": (
+                "modulo",
+                "titulo",
+                "resumo",
+                "ordem",
+                "tipo",
+                "duracao_estimada_minutos",
+                "is_obigatoria",
+                "is_active",
+                "data_liberacao",
+                "pre_requisito_aula",
+            ),
+        }),
+        ("Imagem de exibição", {
+            "description": (
+                "Use o <strong>Editor visual</strong> (botão no topo desta página, "
+                "após salvar) para enviar a imagem e ajustar tamanho/posição com pré-visualização."
+            ),
+            "fields": (
+                "imagem_display",
+                "imagem_posicao",
+                "imagem_largura_percent",
+                "imagem_alinhamento",
+            ),
+        }),
+    )
+    change_form_template = "admin/ava/aula/change_form.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<int:object_id>/editor-visual/",
+                self.admin_site.admin_view(self.editor_visual_view),
+                name="ava_aula_editor_visual",
+            ),
+        ]
+        return custom + urls
+
+    def editor_visual_link(self, obj):
+        if obj.pk is None:
+            return "—"
+        url = reverse("admin:ava_aula_editor_visual", args=[obj.pk])
+        return format_html('<a class="button" href="{}">Abrir editor visual</a>', url)
+
+    editor_visual_link.short_description = "Editor visual"
+
+    def editor_visual_view(self, request, object_id):
+        from ava.views.editor_visual import editor_visual_aula
+        return editor_visual_aula(self, request, object_id)
+
+
+@admin.register(ConteudoAula)
+class ConteudoAulaAdmin(AVAModelAdmin):
+    list_display = ("titulo", "aula", "tipo", "ordem", "editor_visual_link")
+    list_filter = ("tipo", "aula__modulo__curso")
+    search_fields = ("titulo", "aula__titulo", "aula__modulo__titulo")
+    fieldsets = (
+        (None, {
+            "fields": (
+                "aula",
+                "tipo",
+                "titulo",
+                "descricao",
+                "ordem",
+                "is_obrigatorio",
+            ),
+        }),
+        ("Conteúdo específico do tipo", {
+            "fields": (
+                "conteudo_texto",
+                "url",
+                "arquivo",
+                "embed_code",
+            ),
+        }),
+        ("Imagem de exibição", {
+            "description": (
+                "Use o <strong>Editor visual</strong> (botão no topo desta página, "
+                "após salvar) para enviar a imagem e ajustar tamanho/posição com pré-visualização."
+            ),
+            "fields": (
+                "imagem_display",
+                "imagem_posicao",
+                "imagem_largura_percent",
+                "imagem_alinhamento",
+            ),
+        }),
+    )
+    change_form_template = "admin/ava/conteudoaula/change_form.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<int:object_id>/editor-visual/",
+                self.admin_site.admin_view(self.editor_visual_view),
+                name="ava_conteudoaula_editor_visual",
+            ),
+        ]
+        return custom + urls
+
+    def editor_visual_link(self, obj):
+        if obj.pk is None:
+            return "—"
+        url = reverse("admin:ava_conteudoaula_editor_visual", args=[obj.pk])
+        return format_html('<a class="button" href="{}">Abrir editor visual</a>', url)
+
+    editor_visual_link.short_description = "Editor visual"
+
+    def editor_visual_view(self, request, object_id):
+        from ava.views.editor_visual import editor_visual_conteudo
+        return editor_visual_conteudo(self, request, object_id)
 
 
 @admin.register(Atividade)

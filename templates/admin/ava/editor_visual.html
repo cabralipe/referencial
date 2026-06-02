@@ -1,0 +1,442 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django admin') }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <style>
+    .ev-wrapper {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 1.5rem;
+      margin: 1rem 0 2rem;
+    }
+    @media (max-width: 960px) {
+      .ev-wrapper { grid-template-columns: 1fr; }
+    }
+    .ev-panel {
+      background: var(--body-bg, #fff);
+      border: 1px solid var(--hairline-color, #d6dbe2);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+    .ev-panel h2 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--body-quiet-color, #4b5563);
+      margin: 0 0 0.75rem;
+    }
+    .ev-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+    }
+    .ev-field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .ev-radio-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .ev-radio-group label {
+      flex: 1 1 auto;
+      cursor: pointer;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--hairline-color, #d6dbe2);
+      border-radius: 0.5rem;
+      text-align: center;
+      font-weight: 500;
+      background: var(--body-bg, #fff);
+      transition: all 0.12s ease;
+    }
+    .ev-radio-group input { display: none; }
+    .ev-radio-group input:checked + span,
+    .ev-radio-group label.is-active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+    .ev-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ev-slider-row input[type="range"] { flex: 1; }
+    .ev-slider-value {
+      min-width: 3.5rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+    .ev-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .ev-actions button,
+    .ev-actions a.button {
+      padding: 0.55rem 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+    }
+    .ev-actions button.primary {
+      background: #2563eb;
+      color: #fff;
+    }
+    .ev-actions button.secondary {
+      background: #fff;
+      color: #1f2937;
+      border-color: var(--hairline-color, #d6dbe2);
+    }
+    .ev-actions a.cancel {
+      background: transparent;
+      color: var(--body-quiet-color, #4b5563);
+    }
+    .ev-preview {
+      background: #f8fafc;
+      border: 1px solid var(--hairline-color, #d6dbe2);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      min-height: 420px;
+    }
+    .ev-preview h2.ev-preview-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.6rem;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+    .ev-preview-resumo {
+      color: #334155;
+      font-size: 1rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .ev-preview-secundario {
+      margin-top: 0.75rem;
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .ev-image-block {
+      margin: 1rem 0;
+      display: flex;
+    }
+    .ev-image-block.is-esquerda { justify-content: flex-start; }
+    .ev-image-block.is-centro { justify-content: center; }
+    .ev-image-block.is-direita { justify-content: flex-end; }
+    .ev-image-wrap {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+    }
+    .ev-image-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .ev-image-resize-handle {
+      position: absolute;
+      right: -8px;
+      bottom: -8px;
+      width: 18px;
+      height: 18px;
+      background: #2563eb;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      cursor: nwse-resize;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+    }
+    .ev-image-empty {
+      border: 2px dashed var(--hairline-color, #d6dbe2);
+      border-radius: 0.5rem;
+      padding: 2rem;
+      text-align: center;
+      color: var(--body-quiet-color, #4b5563);
+      background: #fff;
+    }
+    .ev-helper {
+      font-size: 0.78rem;
+      color: var(--body-quiet-color, #4b5563);
+      margin-top: 0.4rem;
+    }
+    .ev-current-image {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ev-current-image img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 0.3rem;
+      border: 1px solid var(--hairline-color, #d6dbe2);
+    }
+    .ev-subtitle {
+      color: var(--body-quiet-color, #4b5563);
+      margin: -0.25rem 0 1rem;
+      font-size: 0.9rem;
+    }
+  </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; <a href="{{ voltar_url }}">{{ alvo_titulo }}</a>
+    &rsaquo; Editor visual
+  </div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p class="ev-subtitle">{{ subtitle }}</p>
+
+<form method="post" enctype="multipart/form-data" id="ev-form">
+  {% csrf_token %}
+  <div class="ev-wrapper">
+    <div class="ev-panel">
+      <h2>Imagem</h2>
+      <div class="ev-field">
+        <label for="id_imagem_display">Enviar/atualizar imagem</label>
+        <input type="file" name="imagem_display" id="id_imagem_display" accept="image/*">
+        {% if object.imagem_display %}
+          <div class="ev-current-image">
+            <img src="{{ object.imagem_display.url }}" alt="Imagem atual">
+            <span>Imagem atual carregada.</span>
+          </div>
+          <label class="ev-helper">
+            <input type="checkbox" name="remover_imagem" value="1"> Remover imagem ao salvar
+          </label>
+        {% else %}
+          <p class="ev-helper">Nenhuma imagem cadastrada ainda.</p>
+        {% endif %}
+      </div>
+
+      <h2 style="margin-top:1.25rem;">Posição em relação ao texto</h2>
+      <div class="ev-field">
+        <div class="ev-radio-group" data-radio-group="posicao">
+          {% for value, label in posicao_choices %}
+          <label data-value="{{ value }}" class="{% if object.imagem_posicao == value %}is-active{% endif %}">
+            <input type="radio" name="imagem_posicao" value="{{ value }}" {% if object.imagem_posicao == value %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.25rem;">Alinhamento</h2>
+      <div class="ev-field">
+        <div class="ev-radio-group" data-radio-group="alinhamento">
+          {% for value, label in alinhamento_choices %}
+          <label data-value="{{ value }}" class="{% if object.imagem_alinhamento == value %}is-active{% endif %}">
+            <input type="radio" name="imagem_alinhamento" value="{{ value }}" {% if object.imagem_alinhamento == value %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.25rem;">Tamanho (largura)</h2>
+      <div class="ev-field">
+        <div class="ev-slider-row">
+          <input type="range" id="ev-largura-slider" name="imagem_largura_percent" min="10" max="100" step="1" value="{{ object.imagem_largura_percent|default:100 }}">
+          <span class="ev-slider-value"><span id="ev-largura-valor">{{ object.imagem_largura_percent|default:100 }}</span>%</span>
+        </div>
+        <p class="ev-helper">Também é possível arrastar o canto inferior direito da imagem na pré-visualização para redimensionar.</p>
+      </div>
+
+      <div class="ev-actions">
+        <button type="submit" name="salvar" class="primary">Salvar</button>
+        <button type="submit" name="salvar_e_voltar" value="1" class="secondary">Salvar e voltar</button>
+        <a href="{{ voltar_url }}" class="cancel">Cancelar</a>
+      </div>
+    </div>
+
+    <div class="ev-preview" id="ev-preview">
+      <div id="ev-image-acima" class="ev-image-block is-{{ object.imagem_alinhamento|default:'centro' }}" {% if object.imagem_posicao != 'acima' %}style="display:none"{% endif %}>
+        {% if object.imagem_display %}
+        <div class="ev-image-wrap" style="width: {{ object.imagem_largura_percent|default:100 }}%;">
+          <img id="ev-img-top" src="{{ object.imagem_display.url }}" alt="Pré-visualização">
+          <span class="ev-image-resize-handle" data-handle="top" title="Arraste para redimensionar"></span>
+        </div>
+        {% else %}
+        <div class="ev-image-empty">Envie uma imagem para visualizá-la aqui.</div>
+        {% endif %}
+      </div>
+
+      <h2 class="ev-preview-title" id="ev-preview-title">{{ alvo_titulo }}</h2>
+      {% if alvo_resumo %}
+      <p class="ev-preview-resumo">{{ alvo_resumo }}</p>
+      {% else %}
+      <p class="ev-preview-resumo" style="color:#94a3b8;font-style:italic;">(Sem texto introdutório cadastrado)</p>
+      {% endif %}
+      {% if alvo_texto_secundario %}
+      <div class="ev-preview-secundario">{{ alvo_texto_secundario|safe }}</div>
+      {% endif %}
+
+      <div id="ev-image-abaixo" class="ev-image-block is-{{ object.imagem_alinhamento|default:'centro' }}" {% if object.imagem_posicao != 'abaixo' %}style="display:none"{% endif %}>
+        {% if object.imagem_display %}
+        <div class="ev-image-wrap" style="width: {{ object.imagem_largura_percent|default:100 }}%;">
+          <img id="ev-img-bottom" src="{{ object.imagem_display.url }}" alt="Pré-visualização">
+          <span class="ev-image-resize-handle" data-handle="bottom" title="Arraste para redimensionar"></span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('id_imagem_display');
+  const slider = document.getElementById('ev-largura-slider');
+  const sliderValue = document.getElementById('ev-largura-valor');
+  const previewTopBlock = document.getElementById('ev-image-acima');
+  const previewBottomBlock = document.getElementById('ev-image-abaixo');
+  const imgTop = document.getElementById('ev-img-top');
+  const imgBottom = document.getElementById('ev-img-bottom');
+
+  function setWidth(value) {
+    sliderValue.textContent = value;
+    [previewTopBlock, previewBottomBlock].forEach(block => {
+      if (!block) return;
+      const wrap = block.querySelector('.ev-image-wrap');
+      if (wrap) wrap.style.width = value + '%';
+    });
+  }
+
+  slider.addEventListener('input', () => setWidth(slider.value));
+
+  function setAlinhamento(value) {
+    ['esquerda', 'centro', 'direita'].forEach(v => {
+      previewTopBlock && previewTopBlock.classList.remove('is-' + v);
+      previewBottomBlock && previewBottomBlock.classList.remove('is-' + v);
+    });
+    previewTopBlock && previewTopBlock.classList.add('is-' + value);
+    previewBottomBlock && previewBottomBlock.classList.add('is-' + value);
+  }
+
+  function setPosicao(value) {
+    if (previewTopBlock) previewTopBlock.style.display = value === 'acima' ? '' : 'none';
+    if (previewBottomBlock) previewBottomBlock.style.display = value === 'abaixo' ? '' : 'none';
+  }
+
+  document.querySelectorAll('[data-radio-group]').forEach(group => {
+    const groupName = group.dataset.radioGroup;
+    group.querySelectorAll('label').forEach(lbl => {
+      lbl.addEventListener('click', () => {
+        group.querySelectorAll('label').forEach(l => l.classList.remove('is-active'));
+        lbl.classList.add('is-active');
+        const val = lbl.dataset.value;
+        if (groupName === 'alinhamento') setAlinhamento(val);
+        if (groupName === 'posicao') setPosicao(val);
+      });
+    });
+  });
+
+  fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      ensureImageInBlock(previewTopBlock, dataUrl, 'top');
+      ensureImageInBlock(previewBottomBlock, dataUrl, 'bottom');
+      // Re-attach handles after replacing
+      attachResizeHandles();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function ensureImageInBlock(block, src, handleId) {
+    if (!block) return;
+    const empty = block.querySelector('.ev-image-empty');
+    if (empty) empty.remove();
+    let wrap = block.querySelector('.ev-image-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'ev-image-wrap';
+      wrap.style.width = slider.value + '%';
+      const img = document.createElement('img');
+      img.id = 'ev-img-' + handleId;
+      img.alt = 'Pré-visualização';
+      const handle = document.createElement('span');
+      handle.className = 'ev-image-resize-handle';
+      handle.dataset.handle = handleId;
+      handle.title = 'Arraste para redimensionar';
+      wrap.appendChild(img);
+      wrap.appendChild(handle);
+      block.appendChild(wrap);
+    }
+    wrap.querySelector('img').src = src;
+  }
+
+  function attachResizeHandles() {
+    document.querySelectorAll('.ev-image-resize-handle').forEach(handle => {
+      if (handle.dataset.bound === '1') return;
+      handle.dataset.bound = '1';
+      handle.addEventListener('mousedown', startResize);
+      handle.addEventListener('touchstart', startResize, { passive: false });
+    });
+  }
+
+  function startResize(e) {
+    e.preventDefault();
+    const wrap = e.target.closest('.ev-image-wrap');
+    const block = e.target.closest('.ev-image-block');
+    const previewEl = document.getElementById('ev-preview');
+    if (!wrap || !previewEl) return;
+    const startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    const startW = wrap.getBoundingClientRect().width;
+    const previewW = previewEl.getBoundingClientRect().width - 48; // padding
+    const align = block ? (block.classList.contains('is-direita') ? 'direita' : block.classList.contains('is-esquerda') ? 'esquerda' : 'centro') : 'centro';
+
+    function onMove(ev) {
+      const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+      let delta = cx - startX;
+      if (align === 'esquerda') {
+        // dragging right increases width
+      } else if (align === 'direita') {
+        delta = -delta;
+      } else {
+        delta = delta * 2;
+      }
+      let newW = startW + delta;
+      let pct = Math.round((newW / previewW) * 100);
+      pct = Math.max(10, Math.min(100, pct));
+      slider.value = pct;
+      setWidth(pct);
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  }
+
+  attachResizeHandles();
+})();
+</script>
+{% endblock %}
