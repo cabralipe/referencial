@@ -64,6 +64,142 @@ function exportarCsv(inscricoes: InscricaoPublica[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function exportarPdf(inscricoes: InscricaoPublica[], titulo: string) {
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const datas = inscricoes.map((i) => new Date(i.created_at));
+  const minData = datas.length ? new Date(Math.min(...datas.map((d) => d.getTime()))) : null;
+  const maxData = datas.length ? new Date(Math.max(...datas.map((d) => d.getTime()))) : null;
+  const periodo = minData && maxData
+    ? `${minData.toLocaleDateString('pt-BR')} a ${maxData.toLocaleDateString('pt-BR')}`
+    : '—';
+  const ultimaAtualizacao = maxData ? maxData.toLocaleString('pt-BR') : '—';
+
+  const contarOcorrencias = (lista: string[]) => {
+    const map: Record<string, number> = {};
+    lista.forEach((v) => { map[v] = (map[v] ?? 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  };
+
+  const todasReps = inscricoes.flatMap((i) =>
+    [...(i.representacoes || []), ...(i.representacao_outro ? [`Outro: ${i.representacao_outro}`] : [])],
+  );
+  const todasAreas = inscricoes.flatMap((i) =>
+    [...(i.areas_atuacao || []), ...(i.area_atuacao_outro ? [`Outro: ${i.area_atuacao_outro}`] : [])],
+  );
+
+  const pillsReps = contarOcorrencias(todasReps.filter(Boolean))
+    .map(([k, v]) => `<span class="pill"><strong>${esc(k)}</strong><em>${v}</em></span>`)
+    .join('\n');
+  const pillsAreas = contarOcorrencias(todasAreas.filter(Boolean))
+    .map(([k, v]) => `<span class="pill"><strong>${esc(k)}</strong><em>${v}</em></span>`)
+    .join('\n');
+
+  const linhasTabela = inscricoes.map((i) => `
+    <tr>
+      <td class="center id">${i.id}</td>
+      <td class="name">${esc(i.nome_completo)}</td>
+      <td>${esc(i.instituicao_comunidade)}</td>
+      <td class="nowrap">${esc(i.telefone)}</td>
+      <td class="email">${esc(i.email)}</td>
+      <td>${esc([...(i.areas_atuacao || []), ...(i.area_atuacao_outro ? [`Outro: ${i.area_atuacao_outro}`] : [])].join('; '))}</td>
+      <td>${esc([...(i.representacoes || []), ...(i.representacao_outro ? [`Outro: ${i.representacao_outro}`] : [])].join('; '))}</td>
+      <td class="date-cell">${new Date(i.created_at).toLocaleString('pt-BR')}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório de Inscrições – ${esc(titulo)}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    @page { size: A4 portrait; margin: 12mm 14mm 12mm 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1f2933; background: #ffffff; font-size: 9.6px; line-height: 1.22; }
+    .page { width: 100%; margin: 0 auto; }
+    header { border-bottom: 2px solid #243b53; padding-bottom: 8px; margin-bottom: 10px; }
+    .kicker { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #52606d; margin-bottom: 2px; font-weight: 700; }
+    h1 { margin: 0; font-size: 20px; color: #102a43; line-height: 1.1; }
+    .subtitle { margin-top: 4px; color: #334e68; font-size: 10.5px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0 8px 0; }
+    .meta-card { border: 1px solid #bcccdc; border-radius: 8px; padding: 7px 8px; background: #f8fafc; }
+    .meta-label { display: block; color: #627d98; font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; font-weight: 700; }
+    .meta-value { display: block; color: #102a43; font-size: 14px; font-weight: 700; }
+    .section-title { font-size: 12px; margin: 11px 0 5px 0; color: #102a43; border-left: 4px solid #486581; padding-left: 6px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+    .pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d9e2ec; border-radius: 999px; padding: 3px 6px; background: #ffffff; color: #243b53; max-width: 100%; }
+    .pill strong { font-size: 8.6px; font-weight: 700; }
+    .pill em { font-style: normal; font-size: 8.1px; background: #e6eef6; color: #102a43; padding: 1px 5px; border-radius: 999px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; page-break-inside: auto; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    th { background: #243b53; color: #ffffff; font-weight: 700; text-align: left; padding: 5px 4px; border: 1px solid #243b53; font-size: 8px; vertical-align: middle; }
+    td { border: 1px solid #d9e2ec; padding: 3.5px; vertical-align: top; overflow-wrap: anywhere; word-break: normal; }
+    tbody tr:nth-child(even) td { background: #f8fafc; }
+    .center { text-align: center; }
+    .nowrap { white-space: nowrap; }
+    .date-cell { white-space: normal; font-size: 8.1px; line-height: 1.12; overflow-wrap: normal; word-break: keep-all; padding-right: 6px; }
+    .id { font-weight: 700; color: #102a43; }
+    .name { font-weight: 700; color: #102a43; }
+    .email { font-size: 8.3px; }
+    .footer { margin-top: 8px; padding-top: 5px; border-top: 1px solid #d9e2ec; color: #627d98; font-size: 8.5px; display: flex; justify-content: space-between; gap: 10px; }
+    .no-print { display: block; margin: 10px 0; padding: 8px; border: 1px solid #d9e2ec; border-radius: 8px; background: #f8fafc; color: #334e68; font-size: 12px; }
+    .print-button { border: 0; border-radius: 6px; padding: 8px 12px; background: #243b53; color: #fff; font-weight: 700; cursor: pointer; }
+    @media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } a { color: inherit; text-decoration: none; } }
+    @media screen { body { background: #e5eaf0; padding: 18px; } .page { max-width: 210mm; background: #fff; padding: 12mm 10mm; box-shadow: 0 10px 35px rgba(16,42,67,.18); } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="no-print">
+      <button class="print-button" onclick="window.print()">Imprimir / Salvar em PDF</button>
+      &nbsp;Layout configurado para A4. Na impressão, selecione papel A4 e margens padrão ou personalizadas.
+    </div>
+    <header>
+      <div class="kicker">Relatório para impressão</div>
+      <h1>Lista de Inscrições</h1>
+      <div class="subtitle">${esc(titulo)}</div>
+    </header>
+    <section class="meta-grid" aria-label="Resumo geral">
+      <div class="meta-card"><span class="meta-label">Total de inscrições</span><span class="meta-value">${inscricoes.length}</span></div>
+      <div class="meta-card"><span class="meta-label">Período</span><span class="meta-value">${esc(periodo)}</span></div>
+      <div class="meta-card"><span class="meta-label">Última atualização registrada</span><span class="meta-value">${esc(ultimaAtualizacao)}</span></div>
+    </section>
+    <h2 class="section-title">Resumo por representação</h2>
+    <div class="pills">${pillsReps || '<em>—</em>'}</div>
+    <h2 class="section-title">Resumo por área de atuação</h2>
+    <div class="pills">${pillsAreas || '<em>—</em>'}</div>
+    <h2 class="section-title">Relação completa dos inscritos</h2>
+    <table>
+      <colgroup>
+        <col style="width:4%"><col style="width:17%"><col style="width:18%"><col style="width:10%">
+        <col style="width:15%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="center">ID</th><th>Nome completo</th><th>Instituição / Comunidade</th>
+          <th>Telefone</th><th>E-mail</th><th>Área</th><th>Representação</th><th>Data</th>
+        </tr>
+      </thead>
+      <tbody>${linhasTabela}</tbody>
+    </table>
+    <div class="footer">
+      <span>Documento preparado para impressão em A4.</span>
+      <span>Total: ${inscricoes.length} inscrições.</span>
+    </div>
+  </main>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
 // ── Formulários de Inscrição tab ──────────────────────────────────────────────
 
 const AREAS_PADRAO = ['Educação', 'Saúde', 'Assistência Social', 'Cultura', 'Gestão Pública', 'Sociedade Civil'];
@@ -329,14 +465,24 @@ function FormulariosInscricaoTab() {
                         Filtrar
                       </button>
                       {inscricoes && inscricoes.length > 0 && (
-                        <button
-                          type="button"
-                          className="ghost"
-                          onClick={() => exportarCsv(inscricoes, `inscricoes-${f.token_acesso}.csv`)}
-                          style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-primary-light)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
-                        >
-                          Exportar CSV
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => exportarCsv(inscricoes, `inscricoes-${f.token_acesso}.csv`)}
+                            style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-primary-light)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            Exportar CSV
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => exportarPdf(inscricoes, f.titulo)}
+                            style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid #243b53', color: '#243b53', background: '#f0f4f8', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            Exportar PDF
+                          </button>
+                        </>
                       )}
                     </div>
                     {carregandoInscricoes && <p>Carregando inscrições...</p>}
