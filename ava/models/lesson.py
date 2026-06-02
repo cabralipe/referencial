@@ -2,6 +2,18 @@ from django.db import models
 from core.mixins import TenantModel
 from .module import CursoModulo
 
+
+class PosicaoImagem(models.TextChoices):
+    ACIMA = "acima", "Acima do texto"
+    ABAIXO = "abaixo", "Abaixo do texto"
+
+
+class AlinhamentoImagem(models.TextChoices):
+    ESQUERDA = "esquerda", "Esquerda"
+    CENTRO = "centro", "Centro"
+    DIREITA = "direita", "Direita"
+
+
 class Aula(TenantModel):
     class Tipo(models.TextChoices):
         CONTEUDO = "conteudo", "Conteúdo Teórico"
@@ -18,6 +30,30 @@ class Aula(TenantModel):
     is_active = models.BooleanField("Aula Publicada?", default=True)
     data_liberacao = models.DateTimeField("Data de liberação", null=True, blank=True)
     pre_requisito_aula = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="aulas_dependentes")
+
+    imagem_display = models.ImageField(
+        "Imagem de exibição",
+        upload_to="ava/aulas/imagens/",
+        null=True,
+        blank=True,
+        max_length=500,
+    )
+    imagem_posicao = models.CharField(
+        "Posição da imagem",
+        max_length=10,
+        choices=PosicaoImagem.choices,
+        default=PosicaoImagem.ACIMA,
+    )
+    imagem_largura_percent = models.PositiveIntegerField(
+        "Largura da imagem (%)",
+        default=100,
+    )
+    imagem_alinhamento = models.CharField(
+        "Alinhamento da imagem",
+        max_length=10,
+        choices=AlinhamentoImagem.choices,
+        default=AlinhamentoImagem.CENTRO,
+    )
 
     class Meta:
         verbose_name = "Aula"
@@ -51,6 +87,30 @@ class ConteudoAula(TenantModel):
     url = models.URLField("URL de Vídeo/Link/Embed", blank=True, max_length=1000)
     arquivo = models.FileField("Arquivo/PDF/Mídia", upload_to="ava/aulas/arquivos/", null=True, blank=True, max_length=500)
     embed_code = models.TextField("Código de Embed (Iframe, etc)", blank=True)
+
+    imagem_display = models.ImageField(
+        "Imagem de exibição",
+        upload_to="ava/aulas/imagens/",
+        null=True,
+        blank=True,
+        max_length=500,
+    )
+    imagem_posicao = models.CharField(
+        "Posição da imagem",
+        max_length=10,
+        choices=PosicaoImagem.choices,
+        default=PosicaoImagem.ACIMA,
+    )
+    imagem_largura_percent = models.PositiveIntegerField(
+        "Largura da imagem (%)",
+        default=100,
+    )
+    imagem_alinhamento = models.CharField(
+        "Alinhamento da imagem",
+        max_length=10,
+        choices=AlinhamentoImagem.choices,
+        default=AlinhamentoImagem.CENTRO,
+    )
 
     class Meta:
         verbose_name = "Conteúdo de Aula"

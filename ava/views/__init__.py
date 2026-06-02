@@ -1,3 +1,3 @@
-from . import management, public, student
+from . import editor_visual, management, public, student
 
-__all__ = ["public", "student", "management"]
+__all__ = ["editor_visual", "public", "student", "management"]

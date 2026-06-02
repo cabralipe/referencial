@@ -51,6 +51,12 @@
             </div>
 
             <div class="p-4 p-md-5">
+                {% if aula.imagem_display and aula.imagem_posicao == 'acima' %}
+                <div class="ava-aula-image-block ava-align-{{ aula.imagem_alinhamento|default:'centro' }} mb-4">
+                    <img src="{{ aula.imagem_display.url }}" alt="{{ aula.titulo }}" style="width: {{ aula.imagem_largura_percent|default:100 }}%; max-width: 100%; height: auto; border-radius: 0.5rem;">
+                </div>
+                {% endif %}
+
                 <header class="mb-4">
                     <span class="ava-chip px-3 py-2">Aula {{ aula.ordem }}</span>
                     <h1 class="h2 fw-bold mt-3 mb-2">{{ aula.titulo }}</h1>
@@ -58,6 +64,12 @@
                     <p class="text-muted mb-0">{{ aula.resumo }}</p>
                     {% endif %}
                 </header>
+
+                {% if aula.imagem_display and aula.imagem_posicao == 'abaixo' %}
+                <div class="ava-aula-image-block ava-align-{{ aula.imagem_alinhamento|default:'centro' }} mb-4">
+                    <img src="{{ aula.imagem_display.url }}" alt="{{ aula.titulo }}" style="width: {{ aula.imagem_largura_percent|default:100 }}%; max-width: 100%; height: auto; border-radius: 0.5rem;">
+                </div>
+                {% endif %}
 
                 <div class="mb-5">
                     {% for conteudo in conteudos_outros %}
@@ -70,6 +82,15 @@
                         </div>
 
                         <div class="p-4">
+                            {% if conteudo.imagem_display and conteudo.imagem_posicao == 'acima' %}
+                            <div class="ava-aula-image-block ava-align-{{ conteudo.imagem_alinhamento|default:'centro' }} mb-3">
+                                <img src="{{ conteudo.imagem_display.url }}" alt="{{ conteudo.titulo }}" style="width: {{ conteudo.imagem_largura_percent|default:100 }}%; max-width: 100%; height: auto; border-radius: 0.5rem;">
+                            </div>
+                            {% endif %}
+                            {% if conteudo.descricao %}
+                            <p class="text-muted">{{ conteudo.descricao }}</p>
+                            {% endif %}
+
                             {% if conteudo.tipo == 'texto' %}
                             <div class="lh-lg">{{ conteudo.conteudo_texto|safe }}</div>
 
@@ -126,6 +147,12 @@
 
                             {% else %}
                             <p class="text-muted mb-0">Tipo de conteúdo ainda não suportado nesta tela.</p>
+                            {% endif %}
+
+                            {% if conteudo.imagem_display and conteudo.imagem_posicao == 'abaixo' %}
+                            <div class="ava-aula-image-block ava-align-{{ conteudo.imagem_alinhamento|default:'centro' }} mt-3">
+                                <img src="{{ conteudo.imagem_display.url }}" alt="{{ conteudo.titulo }}" style="width: {{ conteudo.imagem_largura_percent|default:100 }}%; max-width: 100%; height: auto; border-radius: 0.5rem;">
+                            </div>
                             {% endif %}
 
                             <div class="mt-4 text-end">
