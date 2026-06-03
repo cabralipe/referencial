@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAllPaginated } from '@/utils/pagination';
-import type { FormularioInscricao, FormularioInscricaoPublic, InscricaoPublica } from '@/api/types';
+import type { CampoFormulario, FormularioInscricao, FormularioInscricaoPublic, InscricaoPublica } from '@/api/types';
 
 export function useFormulariosInscricao() {
   const client = useApiClient();
@@ -32,6 +32,7 @@ interface CriarFormularioInput {
   ativo?: boolean;
   opcoes_area_atuacao?: string[];
   opcoes_representacao?: string[];
+  campos_config?: CampoFormulario[];
   imagem_hero?: File;
 }
 
@@ -53,6 +54,9 @@ export function useCriarFormularioInscricao() {
       }
       if (payload.opcoes_representacao) {
         form.append('opcoes_representacao', JSON.stringify(payload.opcoes_representacao));
+      }
+      if (payload.campos_config) {
+        form.append('campos_config', JSON.stringify(payload.campos_config));
       }
       if (payload.imagem_hero) {
         form.append('imagem_hero', payload.imagem_hero);
@@ -92,6 +96,9 @@ export function useEditarFormularioInscricao() {
       }
       if (payload.opcoes_representacao) {
         form.append('opcoes_representacao', JSON.stringify(payload.opcoes_representacao));
+      }
+      if (payload.campos_config !== undefined) {
+        form.append('campos_config', JSON.stringify(payload.campos_config));
       }
       if (payload.imagem_hero) {
         form.append('imagem_hero', payload.imagem_hero);
@@ -173,6 +180,7 @@ interface EnviarInscricaoInput {
   area_atuacao_outro?: string;
   representacoes?: string[];
   representacao_outro?: string;
+  dados_extras?: Record<string, unknown>;
 }
 
 export function useEnviarInscricao() {

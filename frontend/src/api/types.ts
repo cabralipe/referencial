@@ -615,6 +615,19 @@ export interface ManifestacaoPublicaPublic {
   created_at: string;
 }
 
+export type CampoFormularioTipo = 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox_group' | 'number';
+
+export interface CampoFormulario {
+  chave: string;
+  label: string;
+  tipo: CampoFormularioTipo;
+  obrigatorio: boolean;
+  ordem: number;
+  ativo: boolean;
+  padrao?: boolean;
+  opcoes?: string[];
+}
+
 export interface FormularioInscricao {
   id: number;
   titulo: string;
@@ -626,6 +639,7 @@ export interface FormularioInscricao {
   ativo: boolean;
   opcoes_area_atuacao: string[];
   opcoes_representacao: string[];
+  campos_config: CampoFormulario[];
   public_url: string;
   total_inscricoes: number;
   created_at: string;
@@ -640,6 +654,8 @@ export interface FormularioInscricaoPublic {
   ativo: boolean;
   opcoes_area_atuacao: string[];
   opcoes_representacao: string[];
+  campos_config: CampoFormulario[];
+  campos_efetivos: CampoFormulario[];
 }
 
 export interface InscricaoPublica {
@@ -653,6 +669,7 @@ export interface InscricaoPublica {
   area_atuacao_outro: string;
   representacoes: string[];
   representacao_outro: string;
+  dados_extras: Record<string, unknown>;
   ip_address?: string | null;
   created_at: string;
 }

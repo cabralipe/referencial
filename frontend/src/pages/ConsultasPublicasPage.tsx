@@ -17,7 +17,7 @@ import {
   useExcluirFormularioInscricao,
   useInscricoesFormulario,
 } from '@/hooks/useFormulariosInscricao';
-import type { ConsultaPublica, FormularioInscricao, InscricaoPublica } from '@/api/types';
+import type { CampoFormulario, CampoFormularioTipo, ConsultaPublica, FormularioInscricao, InscricaoPublica } from '@/api/types';
 
 import './ConsultasPublicasPage.css';
 
@@ -212,6 +212,219 @@ const REPS_PADRAO = [
   'Comunidade do Campo', 'Assentamento',
 ];
 
+const CAMPOS_PADRAO: CampoFormulario[] = [
+  { chave: 'nome_completo', label: 'Nome Completo', tipo: 'text', obrigatorio: true, ordem: 1, ativo: true, padrao: true },
+  { chave: 'instituicao_comunidade', label: 'Instituição / Comunidade', tipo: 'text', obrigatorio: false, ordem: 2, ativo: true, padrao: true },
+  { chave: 'telefone', label: 'Telefone', tipo: 'tel', obrigatorio: false, ordem: 3, ativo: true, padrao: true },
+  { chave: 'email', label: 'E-mail', tipo: 'email', obrigatorio: false, ordem: 4, ativo: true, padrao: true },
+  { chave: 'areas_atuacao', label: 'Área de Atuação', tipo: 'checkbox_group', obrigatorio: false, ordem: 5, ativo: true, padrao: true },
+  { chave: 'representacoes', label: 'Representação', tipo: 'checkbox_group', obrigatorio: false, ordem: 6, ativo: true, padrao: true },
+];
+
+const TIPO_LABELS: Record<CampoFormularioTipo, string> = {
+  text: 'Texto curto',
+  email: 'E-mail',
+  tel: 'Telefone',
+  textarea: 'Texto longo',
+  select: 'Seleção (dropdown)',
+  checkbox_group: 'Caixas de seleção',
+  number: 'Número',
+};
+
+interface GerenciadorCamposProps {
+  campos: CampoFormulario[];
+  onChange: (campos: CampoFormulario[]) => void;
+}
+
+function GerenciadorCampos({ campos, onChange }: GerenciadorCamposProps) {
+  const [editandoCampo, setEditandoCampo] = useState<CampoFormulario | null>(null);
+  const [editandoIndex, setEditandoIndex] = useState<number | null>(null);
+
+  const moverCampo = (index: number, direcao: -1 | 1) => {
+    const alvo = index + direcao;
+    if (alvo < 0 || alvo >= campos.length) return;
+    const novos = [...campos];
+    [novos[index], novos[alvo]] = [novos[alvo], novos[index]];
+    novos.forEach((c, i) => { c.ordem = i + 1; });
+    onChange(novos);
+  };
+
+  const toggleAtivo = (index: number) => {
+    const novos = campos.map((c, i) => i === index ? { ...c, ativo: !c.ativo } : c);
+    onChange(novos);
+  };
+
+  const excluirCampo = (index: number) => {
+    onChange(campos.filter((_, i) => i !== index));
+  };
+
+  const abrirEdicaoCampo = (campo: CampoFormulario, index: number) => {
+    setEditandoCampo({ ...campo, opcoes: campo.opcoes ? [...campo.opcoes] : [] });
+    setEditandoIndex(index);
+  };
+
+  const adicionarNovoCampo = () => {
+    const novoCampo: CampoFormulario = {
+      chave: `campo_${Date.now()}`,
+      label: 'Novo campo',
+      tipo: 'text',
+      obrigatorio: false,
+      ordem: campos.length + 1,
+      ativo: true,
+      padrao: false,
+    };
+    setEditandoCampo(novoCampo);
+    setEditandoIndex(campos.length);
+  };
+
+  const salvarCampoEditado = () => {
+    if (!editandoCampo) return;
+    const novos = [...campos];
+    if (editandoIndex !== null && editandoIndex < campos.length) {
+      novos[editandoIndex] = editandoCampo;
+    } else {
+      novos.push(editandoCampo);
+    }
+    novos.forEach((c, i) => { c.ordem = i + 1; });
+    onChange(novos);
+    setEditandoCampo(null);
+    setEditandoIndex(null);
+  };
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <strong style={{ fontSize: '0.9rem' }}>Campos do formulário</strong>
+        <button type="button" className="ghost" onClick={adicionarNovoCampo}
+          style={{ padding: '0.375rem 0.75rem', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--color-border)', cursor: 'pointer' }}>
+          + Adicionar campo
+        </button>
+      </div>
+
+      {campos.length === 0 && (
+        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+          Nenhum campo configurado. Clique em "+ Adicionar campo" ou o formulário usará os campos padrão.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {campos.map((campo, index) => (
+          <div key={campo.chave}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.5rem 0.75rem', borderRadius: '6px',
+              border: '1px solid var(--color-border)',
+              background: campo.ativo ? 'var(--color-surface)' : '#f5f5f5',
+              opacity: campo.ativo ? 1 : 0.6,
+            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '4px' }}>
+              <button type="button" onClick={() => moverCampo(index, -1)} disabled={index === 0}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '1px 4px', fontSize: '0.65rem', lineHeight: 1, color: index === 0 ? '#ccc' : 'inherit' }}>▲</button>
+              <button type="button" onClick={() => moverCampo(index, 1)} disabled={index === campos.length - 1}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '1px 4px', fontSize: '0.65rem', lineHeight: 1, color: index === campos.length - 1 ? '#ccc' : 'inherit' }}>▼</button>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {campo.label}
+                {campo.obrigatorio && <span style={{ color: '#dc2626', marginLeft: '4px' }}>*</span>}
+                {campo.padrao && <span style={{ fontSize: '0.7rem', background: '#e0f2fe', color: '#0369a1', padding: '1px 5px', borderRadius: '4px', marginLeft: '6px' }}>padrão</span>}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                {TIPO_LABELS[campo.tipo] ?? campo.tipo} — chave: {campo.chave}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+              <button type="button" onClick={() => toggleAtivo(index)}
+                style={{ padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'none', cursor: 'pointer', fontSize: '0.75rem' }}>
+                {campo.ativo ? 'Ocultar' : 'Mostrar'}
+              </button>
+              <button type="button" onClick={() => abrirEdicaoCampo(campo, index)}
+                style={{ padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'none', cursor: 'pointer', fontSize: '0.75rem' }}>
+                Editar
+              </button>
+              {!campo.padrao && (
+                <button type="button" onClick={() => excluirCampo(index)}
+                  style={{ padding: '3px 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: '#fff5f5', color: '#dc2626', cursor: 'pointer', fontSize: '0.75rem' }}>
+                  Excluir
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {editandoCampo && (
+        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)' }}>
+          <strong style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.75rem' }}>
+            {editandoIndex !== null && editandoIndex < campos.length ? 'Editar campo' : 'Novo campo'}
+          </strong>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8125rem' }}>
+              <span>Rótulo (label)</span>
+              <input
+                value={editandoCampo.label}
+                onChange={(e) => setEditandoCampo({ ...editandoCampo, label: e.target.value })}
+                style={{ padding: '0.375rem 0.5rem', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '0.8125rem' }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8125rem' }}>
+              <span>Chave (identificador)</span>
+              <input
+                value={editandoCampo.chave}
+                disabled={editandoCampo.padrao}
+                onChange={(e) => setEditandoCampo({ ...editandoCampo, chave: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
+                style={{ padding: '0.375rem 0.5rem', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: editandoCampo.padrao ? '#f5f5f5' : undefined }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8125rem' }}>
+              <span>Tipo</span>
+              <select
+                value={editandoCampo.tipo}
+                disabled={editandoCampo.padrao}
+                onChange={(e) => setEditandoCampo({ ...editandoCampo, tipo: e.target.value as CampoFormularioTipo })}
+                style={{ padding: '0.375rem 0.5rem', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: editandoCampo.padrao ? '#f5f5f5' : undefined }}
+              >
+                {(Object.entries(TIPO_LABELS) as [CampoFormularioTipo, string][]).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', paddingTop: '1.25rem' }}>
+              <input
+                type="checkbox"
+                checked={editandoCampo.obrigatorio}
+                onChange={(e) => setEditandoCampo({ ...editandoCampo, obrigatorio: e.target.checked })}
+              />
+              <span>Campo obrigatório</span>
+            </label>
+          </div>
+          {(editandoCampo.tipo === 'select' || (editandoCampo.tipo === 'checkbox_group' && !editandoCampo.padrao)) && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8125rem', marginTop: '0.75rem' }}>
+              <span>Opções (uma por linha)</span>
+              <textarea
+                rows={4}
+                value={(editandoCampo.opcoes ?? []).join('\n')}
+                onChange={(e) => setEditandoCampo({ ...editandoCampo, opcoes: e.target.value.split('\n').map((l) => l.trim()).filter(Boolean) })}
+                style={{ padding: '0.375rem 0.5rem', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', resize: 'vertical' }}
+              />
+            </label>
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <button type="button" onClick={salvarCampoEditado}
+              style={{ padding: '0.375rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+              Salvar campo
+            </button>
+            <button type="button" onClick={() => { setEditandoCampo(null); setEditandoIndex(null); }}
+              style={{ padding: '0.375rem 1rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'none', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FormulariosInscricaoTab() {
   const { data: formularios, isLoading } = useFormulariosInscricao();
   const criarFormulario = useCriarFormularioInscricao();
@@ -230,6 +443,10 @@ function FormulariosInscricaoTab() {
   // opcoes editaveis como texto (uma por linha)
   const [areasTexto, setAreasTexto] = useState(AREAS_PADRAO.join('\n'));
   const [repsTexto, setRepsTexto] = useState(REPS_PADRAO.join('\n'));
+
+  // campos do formulário
+  const [camposConfig, setCamposConfig] = useState<CampoFormulario[]>(CAMPOS_PADRAO.map((c) => ({ ...c })));
+  const [camposConfigEdicao, setCamposConfigEdicao] = useState<CampoFormulario[]>([]);
 
   const { data: inscricoes, isLoading: carregandoInscricoes } = useInscricoesFormulario(
     abaInscricoes ?? undefined,
@@ -258,6 +475,7 @@ function FormulariosInscricaoTab() {
         ativo,
         opcoes_area_atuacao: parseOpcoes(areasTexto),
         opcoes_representacao: parseOpcoes(repsTexto),
+        campos_config: camposConfig,
         imagem_hero: heroImageFile || undefined,
       });
       setMensagem('Formulário criado! Compartilhe o link público para iniciar as inscrições.');
@@ -265,6 +483,7 @@ function FormulariosInscricaoTab() {
       setHeroImageFile(null);
       setAreasTexto(AREAS_PADRAO.join('\n'));
       setRepsTexto(REPS_PADRAO.join('\n'));
+      setCamposConfig(CAMPOS_PADRAO.map((c) => ({ ...c })));
     } catch (e: any) {
       setErro(e?.message ?? 'Não foi possível criar o formulário.');
     }
@@ -289,6 +508,7 @@ function FormulariosInscricaoTab() {
         ativo,
         opcoes_area_atuacao: parseOpcoes(areasTexto),
         opcoes_representacao: parseOpcoes(repsTexto),
+        campos_config: camposConfigEdicao,
         imagem_hero: heroImageFile || undefined,
       });
       setMensagem('Formulário atualizado.');
@@ -324,6 +544,11 @@ function FormulariosInscricaoTab() {
     setEditando(f);
     setAreasTexto((f.opcoes_area_atuacao || AREAS_PADRAO).join('\n'));
     setRepsTexto((f.opcoes_representacao || REPS_PADRAO).join('\n'));
+    setCamposConfigEdicao(
+      f.campos_config && f.campos_config.length > 0
+        ? f.campos_config.map((c) => ({ ...c }))
+        : CAMPOS_PADRAO.map((c) => ({ ...c }))
+    );
   };
 
   if (isLoading && !formularios) return <FullPageLoader message="Carregando formulários..." />;
@@ -375,6 +600,9 @@ function FormulariosInscricaoTab() {
               placeholder="Poder Executivo&#10;Poder Legislativo&#10;..."
               style={{ width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
             />
+          </div>
+          <div className="full">
+            <GerenciadorCampos campos={camposConfig} onChange={setCamposConfig} />
           </div>
           <label className="full">
             <span>Imagem de Capa (opcional)</span>
@@ -569,6 +797,9 @@ function FormulariosInscricaoTab() {
                     onChange={(e) => setRepsTexto(e.target.value)}
                     style={{ width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
                   />
+                </div>
+                <div className="full">
+                  <GerenciadorCampos campos={camposConfigEdicao} onChange={setCamposConfigEdicao} />
                 </div>
                 <label className="full">
                   <span>Imagem de Capa (opcional)</span>
