@@ -21,6 +21,7 @@ from consultas.models import (
     FormularioInscricao,
     InscricaoPublica,
     _AREAS_ATUACAO_PADRAO,
+    _CAMPOS_FORMULARIO_PADRAO,
     _REPRESENTACOES_PADRAO,
 )
 from curriculum.models import Area, Anexo, Escola, GT, PPP, Pergunta, Resposta, Tarefa, TextoColaborativo, TextoUnico
@@ -1634,6 +1635,7 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
             "ativo",
             "opcoes_area_atuacao",
             "opcoes_representacao",
+            "campos_config",
             "public_url",
             "total_inscricoes",
             "created_at",
@@ -1686,16 +1688,40 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Informe uma lista de opções.")
         return [str(v).strip() for v in value if str(v).strip()]
 
+    def validate_campos_config(self, value):
+        if not value:
+            return []
+        if isinstance(value, str):
+            try:
+                import json as _json
+                value = _json.loads(value)
+            except Exception:
+                raise serializers.ValidationError("campos_config deve ser uma lista JSON válida.")
+        if not isinstance(value, list):
+            raise serializers.ValidationError("campos_config deve ser uma lista.")
+        TIPOS_VALIDOS = {"text", "email", "tel", "textarea", "select", "checkbox_group", "number"}
+        for campo in value:
+            if not isinstance(campo, dict):
+                raise serializers.ValidationError("Cada campo deve ser um objeto JSON.")
+            if not campo.get("chave"):
+                raise serializers.ValidationError("Cada campo precisa de uma chave.")
+            if campo.get("tipo") and campo["tipo"] not in TIPOS_VALIDOS:
+                raise serializers.ValidationError(f"Tipo inválido: {campo['tipo']}.")
+        return value
+
     def create(self, validated_data):
         if not validated_data.get("opcoes_area_atuacao"):
             validated_data["opcoes_area_atuacao"] = list(_AREAS_ATUACAO_PADRAO)
         if not validated_data.get("opcoes_representacao"):
             validated_data["opcoes_representacao"] = list(_REPRESENTACOES_PADRAO)
+        if not validated_data.get("campos_config"):
+            validated_data["campos_config"] = [dict(c) for c in _CAMPOS_FORMULARIO_PADRAO]
         return super().create(validated_data)
 
 
 class FormularioInscricaoPublicSerializer(serializers.ModelSerializer):
     imagem_hero_url = serializers.SerializerMethodField()
+    campos_efetivos = serializers.SerializerMethodField()
 
     class Meta:
         model = FormularioInscricao
@@ -1707,6 +1733,8 @@ class FormularioInscricaoPublicSerializer(serializers.ModelSerializer):
             "ativo",
             "opcoes_area_atuacao",
             "opcoes_representacao",
+            "campos_config",
+            "campos_efetivos",
         )
         read_only_fields = fields
 
@@ -1716,6 +1744,12 @@ class FormularioInscricaoPublicSerializer(serializers.ModelSerializer):
             return None
         url = str(obj.imagem_hero.url).strip()
         return ConsultaPublicaSerializer._build_url(request, url)
+
+    def get_campos_efetivos(self, obj):
+        """Retorna campos_config ou o padrão caso esteja vazio."""
+        if obj.campos_config:
+            return obj.campos_config
+        return [dict(c) for c in _CAMPOS_FORMULARIO_PADRAO]
 
 
 class InscricaoPublicaSerializer(serializers.ModelSerializer):
@@ -1732,6 +1766,7 @@ class InscricaoPublicaSerializer(serializers.ModelSerializer):
             "area_atuacao_outro",
             "representacoes",
             "representacao_outro",
+            "dados_extras",
             "ip_address",
             "created_at",
         )
@@ -1739,6 +1774,8 @@ class InscricaoPublicaSerializer(serializers.ModelSerializer):
 
 
 class InscricaoPublicaCreateSerializer(serializers.ModelSerializer):
+    dados_extras = serializers.DictField(child=serializers.JSONField(), required=False, default=dict)
+
     class Meta:
         model = InscricaoPublica
         fields = (
@@ -1750,6 +1787,7 @@ class InscricaoPublicaCreateSerializer(serializers.ModelSerializer):
             "area_atuacao_outro",
             "representacoes",
             "representacao_outro",
+            "dados_extras",
         )
 
     def validate_nome_completo(self, value):
@@ -1771,13 +1809,3 @@ class InscricaoPublicaCreateSerializer(serializers.ModelSerializer):
         if not isinstance(value, list):
             raise serializers.ValidationError("Informe uma lista de representações.")
         return [str(v).strip() for v in value if str(v).strip()]
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        areas = attrs.get("areas_atuacao") or []
-        representacoes = attrs.get("representacoes") or []
-        if not areas and not representacoes:
-            raise serializers.ValidationError(
-                "Selecione ao menos uma área de atuação ou representação."
-            )
-        return attrs
