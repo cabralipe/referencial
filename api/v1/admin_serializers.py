@@ -13,6 +13,7 @@ from core.models import (
     ClienteConfig,
     ClienteFeatureFlag,
     ClienteTema,
+    Eixo,
     ScoreEntry,
     ThrottleBlock,
     UserSessionLog,
@@ -63,6 +64,12 @@ class ClienteTemaAdminSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class EixoAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Eixo
+        fields = "__all__"
+
+
 class UsuarioAdminSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
@@ -82,9 +89,11 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
         cliente = attrs.get("cliente", getattr(instance, "cliente", None))
         clientes = attrs.get("clientes")
         escola = attrs.get("escola", getattr(instance, "escola", None))
+        eixos = attrs.get("eixos")
         scope_cliente_id = getattr(request, "cliente_id", None) if request else None
         cliente_id = getattr(cliente, "id", None)
         clientes_list = list(clientes) if clientes is not None else None
+        eixos_list = list(eixos) if eixos is not None else None
 
         if not cliente_id and clientes_list:
             cliente = clientes_list[0]
@@ -123,6 +132,11 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
         if escola and cliente_id and escola.cliente_id != cliente_id:
             raise serializers.ValidationError({"escola": "Escola deve pertencer ao mesmo cliente do usuario."})
+
+        if eixos_list is not None:
+            target_cliente_id = cliente_id or scope_cliente_id
+            if target_cliente_id and any(eixo.cliente_id != target_cliente_id for eixo in eixos_list):
+                raise serializers.ValidationError({"eixos": "Eixos devem pertencer ao mesmo cliente do usuario."})
 
         return attrs
 

@@ -66,6 +66,7 @@ from .admin_viewsets import (
     ClienteTemaAdminViewSet,
     ComentarioAdminViewSet,
     ConsultaPublicaAdminViewSet,
+    EixoAdminViewSet,
     ExportJobAdminViewSet,
     FormularioDinamicoAdminViewSet,
     GTAdminViewSet,
@@ -142,6 +143,7 @@ router.register("admin/clientes", ClienteAdminViewSet, basename="admin_clientes"
 router.register("admin/clientes-config", ClienteConfigAdminViewSet, basename="admin_clientes_config")
 router.register("admin/clientes-feature-flags", ClienteFeatureFlagAdminViewSet, basename="admin_clientes_feature_flags")
 router.register("admin/clientes-temas", ClienteTemaAdminViewSet, basename="admin_clientes_temas")
+router.register("admin/eixos", EixoAdminViewSet, basename="admin_eixos")
 router.register("admin/usuarios", UsuarioAdminViewSet, basename="admin_usuarios")
 router.register("admin/audit-logs", AuditLogAdminViewSet, basename="admin_audit_logs")
 router.register("admin/throttle-blocks", ThrottleBlockAdminViewSet, basename="admin_throttle_blocks")

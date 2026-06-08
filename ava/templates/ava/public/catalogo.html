@@ -52,6 +52,26 @@
         <span class="ava-chip px-3 py-2">Atualizado</span>
     </div>
 
+    {% if eixos %}
+    <form method="get" class="ava-surface p-3 mb-4">
+        <label for="catalogo-eixo" class="form-label fw-semibold mb-2">Filtrar por eixo</label>
+        <div class="d-flex flex-column flex-md-row gap-2">
+            <select id="catalogo-eixo" name="eixo" class="form-select">
+                <option value="">Todos os eixos</option>
+                {% for eixo in eixos %}
+                <option value="{{ eixo.id }}" {% if eixo_selecionado and eixo.id == eixo_selecionado.id %}selected{% endif %}>
+                    {{ eixo.nome }}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary px-4">Filtrar</button>
+            {% if eixo_selecionado %}
+            <a href="{% url 'ava:catalogo' %}" class="btn btn-outline-secondary px-4">Limpar</a>
+            {% endif %}
+        </div>
+    </form>
+    {% endif %}
+
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4">
         {% for curso in cursos %}
         <div class="col">

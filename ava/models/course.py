@@ -50,6 +50,13 @@ class Curso(TenantModel):
     
     categoria = models.ForeignKey(CursoCategoria, on_delete=models.SET_NULL, null=True, blank=True, related_name="cursos")
     trilhas = models.ManyToManyField(TrilhaFormativa, related_name="cursos", blank=True)
+    eixos = models.ManyToManyField(
+        "core.Eixo",
+        related_name="ava_cursos",
+        blank=True,
+        verbose_name="Eixos",
+        help_text="Se informado, apenas usuarios vinculados a pelo menos um destes eixos poderao acessar o curso.",
+    )
 
     carga_horaria = models.PositiveIntegerField("Carga Horária", default=0)
     nivel = models.CharField("Nível", max_length=100, blank=True)

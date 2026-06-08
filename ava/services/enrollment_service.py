@@ -1,5 +1,6 @@
 from django.db import transaction
 from ava.models import Curso, MatriculaCurso, TrilhaFormativa, MatriculaTrilha
+from ava.services.access_control import course_eixo_block_message, user_can_access_course_by_eixo
 
 
 class InscricaoService:
@@ -10,6 +11,9 @@ class InscricaoService:
     @staticmethod
     @transaction.atomic
     def matricular_aluno_curso(aluno, curso: Curso, autor_matricula=None):
+        if not user_can_access_course_by_eixo(aluno, curso):
+            raise ValueError(course_eixo_block_message(curso))
+
         matricula, created = MatriculaCurso.objects.get_or_create(
             curso=curso,
             aluno=aluno,
@@ -52,6 +56,8 @@ class InscricaoService:
 
         if matricular_cursos:
             for curso in trilha.cursos.filter(is_aberto=True):
+                if not user_can_access_course_by_eixo(aluno, curso):
+                    continue
                 InscricaoService.matricular_aluno_curso(aluno, curso)
 
         return matricula, created

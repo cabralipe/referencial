@@ -6,6 +6,12 @@ from django.views.decorators.http import require_POST
 
 from ava.models import Curso, MatriculaCurso, TrilhaFormativa
 from ava.services import InscricaoService
+from ava.services.access_control import (
+    course_eixo_block_message,
+    filter_courses_for_user_by_eixo,
+    user_can_access_course_by_eixo,
+)
+from core.models import Eixo
 from core.models import Usuario
 
 
@@ -24,7 +30,7 @@ def catalogo_cursos(request):
     """
     Página pública exibindo os cursos disponíveis.
     """
-    cursos_qs = Curso.objects.filter(status=Curso.Status.PUBLICADO)
+    cursos_qs = Curso.objects.filter(status=Curso.Status.PUBLICADO).prefetch_related("eixos")
     if (
         request.user.is_authenticated
         and getattr(request.user, "role", None) == Usuario.Role.PROFESSOR
@@ -32,6 +38,15 @@ def catalogo_cursos(request):
     ):
         cursos_qs = cursos_qs.exclude(slug=CURSO_PPP_SLUG)
 
+    eixos = Eixo.objects.filter(ativo=True).order_by("ordem_exibicao", "nome")
+    eixo_id = (request.GET.get("eixo") or "").strip()
+    eixo_selecionado = None
+    if eixo_id.isdigit():
+        eixo_selecionado = eixos.filter(pk=int(eixo_id)).first()
+        if eixo_selecionado:
+            cursos_qs = cursos_qs.filter(eixos=eixo_selecionado)
+
+    cursos_qs = filter_courses_for_user_by_eixo(cursos_qs, request.user)
     cursos = list(cursos_qs.order_by("-created_at"))
     trilhas = TrilhaFormativa.objects.filter(is_active=True)
     matriculados_ids = set()
@@ -53,6 +68,8 @@ def catalogo_cursos(request):
         {
             "cursos": cursos,
             "trilhas": trilhas,
+            "eixos": eixos,
+            "eixo_selecionado": eixo_selecionado,
         },
     )
 
@@ -62,13 +79,19 @@ def detalhes_curso_publico(request, slug):
     Landing page do curso.
     """
     curso = get_object_or_404(Curso, slug=slug, status="publicado")
+    acesso_bloqueado = not user_can_access_course_by_eixo(request.user, curso)
+    motivo_bloqueio = course_eixo_block_message(curso) if acesso_bloqueado else ""
 
     # Se o usuário está logado e matriculado, manda para o curso.
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and not acesso_bloqueado:
         if curso.matriculas.filter(aluno=request.user, status__in=VISIBLE_ENROLLMENT_STATUSES).exists():
             return redirect("ava:aluno_curso_detalhe", slug=slug)
 
-    return render(request, "ava/public/detalhes.html", {"curso": curso})
+    return render(
+        request,
+        "ava/public/detalhes.html",
+        {"curso": curso, "acesso_bloqueado": acesso_bloqueado, "motivo_bloqueio": motivo_bloqueio},
+    )
 
 
 @login_required
@@ -99,6 +122,9 @@ def matricular_curso_agora(request, slug):
     """
     if request.method == "POST":
         curso = get_object_or_404(Curso, slug=slug, is_aberto=True, status="publicado")
+        if not user_can_access_course_by_eixo(request.user, curso):
+            messages.warning(request, course_eixo_block_message(curso))
+            return redirect("ava:detalhes_curso", slug=slug)
         status_anterior = (
             MatriculaCurso.objects.filter(curso=curso, aluno=request.user).values_list("status", flat=True).first()
         )

@@ -62,6 +62,22 @@ class ClienteTema(TenantModel):
         unique_together = ("cliente", "cor_primaria", "cor_secundaria")
 
 
+class Eixo(TenantModel):
+    nome = models.CharField("Nome", max_length=150)
+    descricao = models.TextField("Descricao", blank=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    ordem_exibicao = models.PositiveIntegerField("Ordem de exibicao", default=0)
+
+    class Meta:
+        ordering = ("ordem_exibicao", "nome")
+        unique_together = ("cliente", "nome")
+        verbose_name = "Eixo"
+        verbose_name_plural = "Eixos"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.nome
+
+
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
 
@@ -192,6 +208,13 @@ class Usuario(AbstractUser):
     area_atuacao_confirmada_em = models.DateTimeField(null=True, blank=True)
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.LEITOR)
     seguimento = models.CharField(max_length=40, choices=Seguimento.choices, blank=True, default="")
+    eixos = models.ManyToManyField(
+        Eixo,
+        related_name="usuarios",
+        blank=True,
+        verbose_name="Eixos AVA",
+        help_text="Eixos que este usuario pode acessar no AVA.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = ["nome"]

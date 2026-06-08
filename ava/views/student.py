@@ -22,6 +22,7 @@ from ava.models import (
     ProgressoConteudo,
 )
 from ava.services import AtividadeService, ProgressoService
+from ava.services.access_control import course_eixo_block_message, user_can_access_course_by_eixo
 
 
 FINALIZED_ATTEMPT_STATUSES = [
@@ -120,6 +121,7 @@ def dashboard(request):
             status__in=[MatriculaCurso.Status.ATIVA, MatriculaCurso.Status.CONCLUIDA],
         ).select_related("curso")
     )
+    matriculas = [matricula for matricula in matriculas if user_can_access_course_by_eixo(request.user, matricula.curso)]
     for matricula in matriculas:
         ProgressoService.sincronizar_matricula(matricula)
     matriculas_em_andamento = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.ATIVA]
@@ -188,6 +190,9 @@ def curso_detalhe(request, slug):
         aluno=request.user,
         curso__slug=slug,
     )
+    if not user_can_access_course_by_eixo(request.user, matricula.curso):
+        messages.warning(request, course_eixo_block_message(matricula.curso))
+        return redirect("ava:catalogo")
     ProgressoService.sincronizar_matricula(matricula)
 
     is_manager = _is_ava_manager(request.user)
@@ -247,6 +252,9 @@ def acessar_aula(request, curso_slug, aula_id):
     Página de consumo da aula (video, textos).
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
+    if not user_can_access_course_by_eixo(request.user, matricula.curso):
+        messages.warning(request, course_eixo_block_message(matricula.curso))
+        return redirect("ava:catalogo")
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     is_manager = _is_ava_manager(request.user)
@@ -362,6 +370,9 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     Página de resposta da atividade/questionario.
     """
     matricula = get_object_or_404(MatriculaCurso, aluno=request.user, curso__slug=curso_slug)
+    if not user_can_access_course_by_eixo(request.user, matricula.curso):
+        messages.warning(request, course_eixo_block_message(matricula.curso))
+        return redirect("ava:catalogo")
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     if not ProgressoService.modulo_disponivel(matricula, aula.modulo):

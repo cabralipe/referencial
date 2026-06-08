@@ -24,7 +24,7 @@ from ava.models import (
     QuizRespostaItem,
 )
 from ava.services import ProgressoService
-from core.models import Cliente, TipoUsuarioCadastro
+from core.models import Cliente, Eixo, TipoUsuarioCadastro
 from curriculum.models import Escola
 
 
@@ -108,6 +108,34 @@ class AVAStudentFlowTests(TestCase):
         self.assertContains(response, 'name="arquivo_enviado"', html=False)
         self.assertNotContains(response, "Atividade concluida")
         self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
+
+    def test_catalogo_filtra_cursos_por_eixo_do_usuario(self):
+        eixo = Eixo.objects.create(cliente=self.cliente, nome="Alfabetizacao")
+        self.curso.eixos.add(eixo)
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.curso.titulo)
+
+        self.user.eixos.add(eixo)
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.curso.titulo)
+
+    def test_curso_matriculado_bloqueia_acesso_sem_eixo_do_usuario(self):
+        eixo = Eixo.objects.create(cliente=self.cliente, nome="Matematica")
+        self.curso.eixos.add(eixo)
+
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertRedirects(response, reverse("ava:catalogo"))
+
+        self.user.eixos.add(eixo)
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertEqual(response.status_code, 200)
 
     def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
         atividade = Atividade.objects.create(

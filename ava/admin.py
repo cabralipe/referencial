@@ -203,6 +203,17 @@ class CursoAdminForm(forms.ModelForm):
         return slug
 
 
+    def clean(self):
+        cleaned_data = super().clean()
+        cliente = cleaned_data.get("cliente") or getattr(self.instance, "cliente", None)
+        eixos = cleaned_data.get("eixos")
+        if cliente and eixos is not None:
+            invalidos = eixos.exclude(cliente=cliente)
+            if invalidos.exists():
+                raise forms.ValidationError("Todos os eixos selecionados devem pertencer ao mesmo cliente do curso.")
+        return cleaned_data
+
+
 @admin.register(TrilhaFormativa)
 class TrilhaFormativaAdmin(AVAModelAdmin):
     list_display = ("nome", "cliente", "is_active", "ordem_exibicao")
@@ -220,10 +231,21 @@ class CursoCategoriaAdmin(AVAModelAdmin):
 class CursoAdmin(AVAModelAdmin):
     form = CursoAdminForm
     change_list_template = "admin/ava/curso/change_list.html"
-    list_display = ("titulo", "slug", "cliente", "status", "is_aberto")
-    list_filter = ("status", "cliente", "is_aberto")
+    list_display = ("titulo", "slug", "cliente", "status", "is_aberto", "eixos_resumo")
+    list_filter = ("status", "cliente", "is_aberto", "eixos")
     search_fields = ("titulo", "descricao_curta")
     prepopulated_fields = {"slug": ("titulo",)}
+    filter_horizontal = ("trilhas", "eixos")
+
+    def eixos_resumo(self, obj):
+        nomes = list(obj.eixos.order_by("ordem_exibicao", "nome").values_list("nome", flat=True)[:3])
+        if not nomes:
+            return "Livre"
+        if obj.eixos.count() > 3:
+            return f"{', '.join(nomes)}..."
+        return ", ".join(nomes)
+
+    eixos_resumo.short_description = "Eixos"
 
     def get_urls(self):
         urls = super().get_urls()

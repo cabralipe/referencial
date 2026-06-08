@@ -15,6 +15,7 @@ from core.models import (
     ClienteConfig,
     ClienteFeatureFlag,
     ClienteTema,
+    Eixo,
     ScoreEntry,
     ThrottleBlock,
     UserSessionLog,
@@ -55,6 +56,7 @@ from .admin_serializers import (
     ClienteTemaAdminSerializer,
     ComentarioAdminSerializer,
     ConsultaPublicaAdminSerializer,
+    EixoAdminSerializer,
     ExportJobAdminSerializer,
     FormularioDinamicoAdminSerializer,
     GTAdminSerializer,
@@ -272,6 +274,11 @@ class ClienteFeatureFlagAdminViewSet(AdminModelViewSet):
 class ClienteTemaAdminViewSet(AdminModelViewSet):
     queryset = ClienteTema.raw_objects.all()
     serializer_class = ClienteTemaAdminSerializer
+
+
+class EixoAdminViewSet(AdminModelViewSet):
+    queryset = Eixo.raw_objects.all()
+    serializer_class = EixoAdminSerializer
 
 
 class AuditLogAdminViewSet(AdminModelViewSet):

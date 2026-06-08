@@ -9,7 +9,7 @@ from meb.services import deliver_admin_broadcast
 
 from .admin_mixins import ClienteScopedAdminMixin
 from .forms import ClienteTemaAdminForm, UsuarioChangeForm, UsuarioCreationForm
-from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, TipoUsuarioCadastro, Usuario
+from .models import AuditLog, Cliente, ClienteConfig, ClienteFeatureFlag, ClienteTema, Eixo, TipoUsuarioCadastro, Usuario
 
 
 class BroadcastMessageForm(ActionForm):
@@ -144,6 +144,14 @@ class ClienteTemaAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     search_fields = ("cliente__nome",)
 
 
+@admin.register(Eixo)
+class EixoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
+    list_display = ("nome", "cliente", "ativo", "ordem_exibicao")
+    list_filter = ("cliente", "ativo")
+    search_fields = ("nome", "descricao")
+    ordering = ("cliente", "ordem_exibicao", "nome")
+
+
 class TipoUsuarioCadastroAdminForm(forms.ModelForm):
     class Meta:
         model = TipoUsuarioCadastro
@@ -219,9 +227,10 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
+    filter_horizontal = ("clientes", "eixos", "groups", "user_permissions")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "tipo_cadastro", "role", "seguimento")}),
+        ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "tipo_cadastro", "role", "seguimento", "eixos")}),
         (
             "Permissoes",
             {
@@ -250,6 +259,7 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                     "tipo_cadastro",
                     "role",
                     "seguimento",
+                    "eixos",
                     "password1",
                     "password2",
                     "is_active",
