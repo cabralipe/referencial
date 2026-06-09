@@ -150,6 +150,16 @@ class ManifestacaoPublica(TenantModel):
         return f"Manifestação {destino} em {self.consulta_id}"
 
 
+_CAMPOS_FORMULARIO_PADRAO = [
+    {"chave": "nome_completo", "label": "Nome Completo", "tipo": "text", "obrigatorio": True, "ordem": 1, "ativo": True, "padrao": True},
+    {"chave": "instituicao_comunidade", "label": "Instituição / Comunidade", "tipo": "text", "obrigatorio": False, "ordem": 2, "ativo": True, "padrao": True},
+    {"chave": "telefone", "label": "Telefone", "tipo": "tel", "obrigatorio": False, "ordem": 3, "ativo": True, "padrao": True},
+    {"chave": "email", "label": "E-mail", "tipo": "email", "obrigatorio": False, "ordem": 4, "ativo": True, "padrao": True},
+    {"chave": "areas_atuacao", "label": "Área de Atuação", "tipo": "checkbox_group", "obrigatorio": False, "ordem": 5, "ativo": True, "padrao": True},
+    {"chave": "representacoes", "label": "Representação", "tipo": "checkbox_group", "obrigatorio": False, "ordem": 6, "ativo": True, "padrao": True},
+]
+
+
 class FormularioInscricao(TenantModel):
     """Formulário de inscrição configurável para audiências públicas."""
 
@@ -161,6 +171,14 @@ class FormularioInscricao(TenantModel):
     ativo = models.BooleanField(default=True)
     opcoes_area_atuacao = models.JSONField(default=list, blank=True)
     opcoes_representacao = models.JSONField(default=list, blank=True)
+    campos_config = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Configuração dos campos do formulário. "
+            "Formato: [{chave, label, tipo, obrigatorio, ordem, ativo, padrao, opcoes}]"
+        ),
+    )
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -196,6 +214,7 @@ class InscricaoPublica(TenantModel):
     area_atuacao_outro = models.CharField(max_length=255, blank=True)
     representacoes = models.JSONField(default=list, blank=True)
     representacao_outro = models.CharField(max_length=255, blank=True)
+    dados_extras = models.JSONField(default=dict, blank=True, help_text="Respostas dos campos customizados.")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
 
