@@ -151,6 +151,26 @@ class EixoAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     search_fields = ("nome", "descricao")
     ordering = ("cliente", "ordem_exibicao", "nome")
 
+    def _has_admin_access(self, request) -> bool:
+        if not getattr(request.user, "is_active", False) or not getattr(request.user, "is_staff", False):
+            return False
+        return getattr(request.user, "role", None) in {Usuario.Role.ADMIN_CLIENTE, Usuario.Role.SUPER_ADMIN}
+
+    def has_module_permission(self, request):
+        return self._has_admin_access(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
+    def has_add_permission(self, request):
+        return self._has_admin_access(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._has_admin_access(request) and self._belongs_to_cliente(request, obj)
+
 
 class TipoUsuarioCadastroAdminForm(forms.ModelForm):
     class Meta:
