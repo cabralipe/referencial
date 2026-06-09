@@ -182,8 +182,10 @@ class ProgressoService:
                 ~Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
                 | (
                     Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
-                    & Q(tentativas__arquivo_enviado__isnull=False)
-                    & ~Q(tentativas__arquivo_enviado="")
+                    & (
+                        Q(tentativas__arquivos__isnull=False)
+                        | (Q(tentativas__arquivo_enviado__isnull=False) & ~Q(tentativas__arquivo_enviado=""))
+                    )
                 )
             )
             .distinct()

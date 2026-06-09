@@ -26,6 +26,7 @@ from ava.models import (
 )
 from ava.services import AVAManagementReportService, AtividadeService
 from core.models import Usuario
+from curriculum.models import Escola
 
 
 ALLOWED_AVA_MANAGEMENT_ROLES = {
@@ -59,6 +60,7 @@ def _extract_dashboard_filters(request):
     data_fim_raw = request.GET.get("data_fim", "").strip()
     filtros = {
         "q": request.GET.get("q", "").strip(),
+        "escola_id": _parse_int(request.GET.get("escola")),
         "usuario_id": _parse_int(request.GET.get("usuario")),
         "curso_id": _parse_int(request.GET.get("curso")),
         "modulo_id": _parse_int(request.GET.get("modulo")),
@@ -89,34 +91,39 @@ def _is_super_admin(user) -> bool:
 def _options_queryset_for_user(user):
     user_model = get_user_model()
     usuarios = user_model.objects.filter(cursos_matriculados__isnull=False).distinct()
+    escolas = Escola.objects.all()
     cursos = Curso.objects.all()
     modulos = CursoModulo.objects.select_related("curso").all()
     aulas = Aula.objects.select_related("modulo", "modulo__curso").all()
 
     if not _is_super_admin(user):
         usuarios = usuarios.filter(cliente_id=user.cliente_id)
+        escolas = escolas.filter(cliente_id=user.cliente_id)
         cursos = cursos.filter(cliente_id=user.cliente_id)
         modulos = modulos.filter(curso__cliente_id=user.cliente_id)
         aulas = aulas.filter(modulo__curso__cliente_id=user.cliente_id)
 
     usuarios = usuarios.order_by("nome", "email")
+    escolas = escolas.distinct().order_by("nome")
     cursos = cursos.distinct().order_by("titulo")
     modulos = modulos.distinct().order_by("titulo")
     aulas = aulas.distinct().order_by("titulo")
-    return usuarios, cursos, modulos, aulas
+    return usuarios, escolas, cursos, modulos, aulas
 
 
 def _base_queryset(user):
     qs = AtividadeTentativa.objects.select_related(
         "aluno",
         "atividade__aula__modulo__curso",
-    ).prefetch_related("respostas_quiz")
+    ).prefetch_related("respostas_quiz", "arquivos")
     if not _is_super_admin(user):
         qs = qs.filter(cliente_id=user.cliente_id)
     return qs
 
 
 def _apply_filters(qs, filtros):
+    if filtros["escola_id"]:
+        qs = qs.filter(aluno__escola_id=filtros["escola_id"])
     if filtros["usuario_id"]:
         qs = qs.filter(aluno_id=filtros["usuario_id"])
     if filtros["curso_id"]:
@@ -198,11 +205,20 @@ def dashboard(request):
         matriculas_qs = matriculas_qs.filter(cliente_id=request.user.cliente_id)
         cursos_qs = cursos_qs.filter(cliente_id=request.user.cliente_id)
         atividades_qs = atividades_qs.filter(cliente_id=request.user.cliente_id)
+    if filtros["escola_id"]:
+        matriculas_qs = matriculas_qs.filter(aluno__escola_id=filtros["escola_id"])
 
     total_tentativas = tentativas_qs.count()
     total_enviadas = tentativas_qs.filter(status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA]).count()
     total_corrigidas = tentativas_qs.filter(status=AtividadeTentativa.Status.CORRIGIDA).count()
-    total_com_anexo = tentativas_qs.exclude(arquivo_enviado="").exclude(arquivo_enviado__isnull=True).count()
+    total_com_anexo = (
+        tentativas_qs.filter(
+            Q(arquivos__isnull=False)
+            | (Q(arquivo_enviado__isnull=False) & ~Q(arquivo_enviado=""))
+        )
+        .distinct()
+        .count()
+    )
     taxa_envio = round((total_enviadas / total_tentativas) * 100, 1) if total_tentativas else 0.0
     taxa_correcao = round((total_corrigidas / total_enviadas) * 100, 1) if total_enviadas else 0.0
     media_nota = tentativas_qs.exclude(nota_obtida__isnull=True).aggregate(media=Avg("nota_obtida")).get("media")
@@ -232,7 +248,9 @@ def dashboard(request):
     paginator = Paginator(tentativas_qs.order_by("-data_inicio"), 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    usuarios, cursos, modulos, aulas = _options_queryset_for_user(request.user)
+    usuarios, escolas, cursos, modulos, aulas = _options_queryset_for_user(request.user)
+    if filtros["escola_id"]:
+        usuarios = usuarios.filter(escola_id=filtros["escola_id"])
     if filtros["curso_id"]:
         modulos = modulos.filter(curso_id=filtros["curso_id"])
         aulas = aulas.filter(modulo__curso_id=filtros["curso_id"])
@@ -249,6 +267,7 @@ def dashboard(request):
         "status_choices": AtividadeTentativa.Status.choices,
         "tipo_choices": Atividade.Tipo.choices,
         "usuarios": usuarios,
+        "escolas": escolas,
         "cursos": cursos,
         "modulos": modulos,
         "aulas": aulas,
@@ -316,7 +335,7 @@ def tentativa_detalhe(request, tentativa_id):
     tentativa_qs = AtividadeTentativa.objects.select_related(
         "aluno",
         "atividade__aula__modulo__curso",
-    ).prefetch_related("respostas_quiz__questao", "respostas_quiz__alternativa_selecionada")
+    ).prefetch_related("respostas_quiz__questao", "respostas_quiz__alternativa_selecionada", "arquivos")
     if not _is_super_admin(request.user):
         tentativa_qs = tentativa_qs.filter(cliente_id=request.user.cliente_id)
     tentativa = get_object_or_404(tentativa_qs, id=tentativa_id)

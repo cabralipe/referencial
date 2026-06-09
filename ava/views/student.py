@@ -462,6 +462,8 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
                 )
 
             arquivos_enviados = request.FILES.getlist("arquivos_enviados")
+            if not arquivos_enviados:
+                arquivos_enviados = request.FILES.getlist("arquivo_enviado")
             if atividade.tipo == Atividade.Tipo.ENVIO_ARQUIVO and not arquivos_enviados:
                 messages.error(request, "Essa atividade exige envio de pelo menos um arquivo.")
             elif usa_formulario_quiz and not questoes:

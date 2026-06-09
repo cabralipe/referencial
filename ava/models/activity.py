@@ -98,7 +98,13 @@ class AtividadeTentativa(TenantModel):
     data_correcao = models.DateTimeField(null=True, blank=True)
 
     texto_resposta = models.TextField("Resposta Discursiva", blank=True)
-    arquivo_enviado = models.FileField("Arquivo Enviado (legado)", upload_to="ava/tentativas/arquivos/", null=True, blank=True)
+    arquivo_enviado = models.FileField(
+        "Arquivo Enviado (legado)",
+        upload_to="ava/tentativas/arquivos/",
+        null=True,
+        blank=True,
+        max_length=500,
+    )
 
     class Meta:
         verbose_name = "Tentativa de Atividade"
@@ -111,7 +117,7 @@ class AtividadeTentativa(TenantModel):
 
 class AtividadeTentativaArquivo(TenantModel):
     tentativa = models.ForeignKey(AtividadeTentativa, on_delete=models.CASCADE, related_name="arquivos")
-    arquivo = models.FileField("Arquivo", upload_to="ava/tentativas/arquivos/")
+    arquivo = models.FileField("Arquivo", upload_to="ava/tentativas/arquivos/", max_length=500)
     nome_original = models.CharField("Nome original", max_length=255, blank=True)
 
     class Meta:

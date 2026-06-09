@@ -11,6 +11,7 @@ from ava.models import (
     AtividadeForumAnexo,
     AtividadeForumMensagem,
     AtividadeTentativa,
+    AtividadeTentativaArquivo,
     Aula,
     ConteudoAula,
     Curso,
@@ -105,7 +106,7 @@ class AVAStudentFlowTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'name="arquivo_enviado"', html=False)
+        self.assertContains(response, 'name="arquivos_enviados"', html=False)
         self.assertNotContains(response, "Atividade concluida")
         self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
 
@@ -403,8 +404,12 @@ class AVAStudentFlowTests(TestCase):
         progresso = ProgressoAula.objects.get(matricula=self.matricula, aula=self.aula_1)
         self.assertFalse(progresso.is_concluida)
 
-        tentativa.arquivo_enviado = SimpleUploadedFile("tarefa.pdf", b"%PDF-1.4", content_type="application/pdf")
-        tentativa.save(update_fields=["arquivo_enviado"])
+        AtividadeTentativaArquivo.objects.create(
+            cliente=self.cliente,
+            tentativa=tentativa,
+            arquivo=SimpleUploadedFile("tarefa.pdf", b"%PDF-1.4", content_type="application/pdf"),
+            nome_original="tarefa.pdf",
+        )
 
         ProgressoService.recalcular_aula(self.matricula, self.aula_1)
         progresso.refresh_from_db()
@@ -425,11 +430,11 @@ class AVAStudentFlowTests(TestCase):
         )
         arquivo = SimpleUploadedFile("resposta.pdf", b"%PDF-1.4", content_type="application/pdf")
 
-        response = self.client.post(url, {"arquivo_enviado": arquivo}, follow=True)
+        response = self.client.post(url, {"arquivos_enviados": arquivo}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.redirect_chain[-1][0], url)
         self.assertContains(response, "Tarefa concluida com sucesso")
-        self.assertContains(response, "Anexo enviado:")
+        self.assertContains(response, "Anexos enviados:")
         self.assertContains(response, "resposta")
         self.assertContains(response, ".pdf")
         self.assertContains(response, "Baixar comprovante")

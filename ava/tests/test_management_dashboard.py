@@ -1,6 +1,7 @@
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -10,6 +11,7 @@ from ava.models import (
     Atividade,
     AtividadeForumMensagem,
     AtividadeTentativa,
+    AtividadeTentativaArquivo,
     Aula,
     ConteudoAula,
     Curso,
@@ -23,6 +25,7 @@ from ava.models import (
     QuizRespostaItem,
 )
 from core.models import Cliente
+from curriculum.models import Escola
 
 
 User = get_user_model()
@@ -31,6 +34,8 @@ User = get_user_model()
 class AVAManagementDashboardTests(TestCase):
     def setUp(self):
         self.cliente = Cliente.objects.create(nome="Cliente Gestao", slug="cliente-gestao")
+        self.escola_1 = Escola.objects.create(cliente=self.cliente, nome="Escola Alpha")
+        self.escola_2 = Escola.objects.create(cliente=self.cliente, nome="Escola Beta")
         self.admin = User.objects.create_user(
             email="admin@gestao.com",
             nome="Admin Gestao",
@@ -64,6 +69,7 @@ class AVAManagementDashboardTests(TestCase):
             nome="Aluno Um",
             password="123456",
             cliente=self.cliente,
+            escola=self.escola_1,
             role=User.Role.LEITOR,
         )
         self.aluno_2 = User.objects.create_user(
@@ -71,6 +77,7 @@ class AVAManagementDashboardTests(TestCase):
             nome="Aluno Dois",
             password="123456",
             cliente=self.cliente,
+            escola=self.escola_2,
             role=User.Role.LEITOR,
         )
 
@@ -192,6 +199,12 @@ class AVAManagementDashboardTests(TestCase):
             aluno=self.aluno_2,
             status=AtividadeTentativa.Status.ENVIADA,
             texto_resposta="Minha resposta discursiva",
+        )
+        AtividadeTentativaArquivo.objects.create(
+            cliente=self.cliente,
+            tentativa=self.tentativa_2,
+            arquivo=SimpleUploadedFile("atividade-gestao.pdf", b"%PDF-1.4", content_type="application/pdf"),
+            nome_original="atividade-gestao.pdf",
         )
         QuizRespostaItem.objects.create(
             cliente=self.cliente,
@@ -381,6 +394,17 @@ class AVAManagementDashboardTests(TestCase):
         tentativa_ids = {tentativa.id for tentativa in response.context["page_obj"].object_list}
         self.assertEqual(tentativa_ids, {self.tentativa_1.id})
 
+    def test_dashboard_can_filter_by_escola(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_dashboard"), {"escola": str(self.escola_1.id)})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["filtros"]["escola_id"], self.escola_1.id)
+        self.assertEqual(response.context["visao_geral"]["total_alunos"], 1)
+        self.assertEqual(response.context["metricas"]["total_tentativas"], 1)
+        tentativa_ids = {tentativa.id for tentativa in response.context["page_obj"].object_list}
+        self.assertEqual(tentativa_ids, {self.tentativa_1.id})
+
     def test_dashboard_exibe_visao_geral_real_do_cliente(self):
         curso_sem_tentativa = Curso.objects.create(
             cliente=self.cliente,
@@ -426,6 +450,14 @@ class AVAManagementDashboardTests(TestCase):
         self.assertContains(response, "Questao da gestao?")
         self.assertContains(response, "Alternativa correta")
         self.assertContains(response, "Salvar correcao")
+
+    def test_tentativa_detalhe_shows_uploaded_attempt_files(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_2.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Anexos enviados:")
+        self.assertContains(response, "atividade-gestao.pdf")
 
     def test_tentativa_detalhe_permite_corrigir_tentativa_pelo_ava(self):
         self.client.force_login(self.revisor)
@@ -479,15 +511,19 @@ class AVAManagementDashboardTests(TestCase):
         self.assertNotIn("Aluno Externo", alunos)
 
         aluno_um = alunos["Aluno Um"]
-        self.assertEqual(aluno_um[2], "Curso Gestao AVA")
-        self.assertEqual(aluno_um[5], 1)
-        self.assertEqual(aluno_um[6], 1)
-        self.assertIn("Modulo Gestao", aluno_um[7])
-        self.assertIn("Modulo Complementar (50%)", aluno_um[8])
-        self.assertEqual(aluno_um[9], 1)
-        self.assertEqual(aluno_um[12], 2)
+        self.assertEqual(aluno_um[2], "Escola Alpha")
+        self.assertEqual(aluno_um[4], "Curso Gestao AVA")
+        self.assertEqual(aluno_um[6], 50)
+        self.assertEqual(aluno_um[7], 1)
+        self.assertEqual(aluno_um[8], 1)
+        self.assertIn("Modulo Gestao", aluno_um[9])
+        self.assertIn("Modulo Complementar (50%)", aluno_um[10])
+        self.assertEqual(aluno_um[11], 1)
+        self.assertEqual(aluno_um[12], 1)
         self.assertEqual(aluno_um[14], 2)
-        self.assertEqual(aluno_um[15], 5)
+        self.assertEqual(aluno_um[15], 1)
+        self.assertEqual(aluno_um[16], 2)
+        self.assertEqual(aluno_um[19], 5)
 
     def test_dashboard_relatorio_xlsx_respeita_filtro_de_usuario(self):
         self.client.force_login(self.admin)
@@ -500,6 +536,21 @@ class AVAManagementDashboardTests(TestCase):
         workbook = load_workbook(BytesIO(response.content))
         alunos_sheet = workbook["Alunos"]
         alunos = [row[0] for row in alunos_sheet.iter_rows(min_row=2, values_only=True) if row[0]]
+        self.assertEqual(alunos, ["Aluno Um"])
+
+    def test_dashboard_relatorio_xlsx_respeita_filtro_de_escola(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(
+            reverse("ava:gestao_dashboard_relatorio", args=["xlsx"]),
+            {"escola": str(self.escola_1.id)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(BytesIO(response.content))
+        resumo_values = [cell.value for cell in workbook["Resumo"]["A"] if cell.value]
+        alunos = [row[0] for row in workbook["Alunos"].iter_rows(min_row=2, values_only=True) if row[0]]
+
+        self.assertIn("Escola: Escola Alpha", resumo_values)
         self.assertEqual(alunos, ["Aluno Um"])
 
     def test_dashboard_relatorio_pdf_retorna_arquivo_valido(self):

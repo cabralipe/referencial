@@ -453,11 +453,19 @@ class QuizAlternativaAdmin(AVAModelAdmin):
     search_fields = ("texto", "questao__enunciado")
 
 
+class AtividadeTentativaArquivoInline(admin.TabularInline):
+    model = AtividadeTentativaArquivo
+    extra = 0
+    fields = ("arquivo", "nome_original", "created_at")
+    readonly_fields = ("created_at",)
+
+
 @admin.register(AtividadeTentativa)
 class AtividadeTentativaAdmin(AVAModelAdmin):
     list_display = ("aluno", "atividade", "status", "data_inicio")
     list_filter = ("status", "atividade__aula__modulo__curso")
     search_fields = ("aluno__nome", "aluno__email", "atividade__titulo")
+    inlines = [AtividadeTentativaArquivoInline]
 
 
 @admin.register(AtividadeForumMensagem)

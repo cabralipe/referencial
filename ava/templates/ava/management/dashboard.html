@@ -71,6 +71,17 @@
                 </select>
             </div>
             <div class="col-md-4">
+                <label for="escola" class="form-label">Escola</label>
+                <select id="escola" name="escola" class="form-select">
+                    <option value="">Todas</option>
+                    {% for escola in escolas %}
+                    <option value="{{ escola.id }}" {% if filtros.escola_id == escola.id %}selected{% endif %}>
+                        {{ escola.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
                 <label for="curso" class="form-label">Curso</label>
                 <select id="curso" name="curso" class="form-select">
                     <option value="">Todos</option>
@@ -325,7 +336,7 @@
                         <td>{% if tentativa.nota_obtida is not None %}{{ tentativa.nota_obtida }}{% else %}-{% endif %}
                         </td>
                         <td>
-                            {% if tentativa.arquivo_enviado %}
+                            {% if tentativa.arquivos.all or tentativa.arquivo_enviado %}
                             <span class="badge text-bg-success">Sim</span>
                             {% else %}
                             <span class="badge text-bg-secondary">Não</span>

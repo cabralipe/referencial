@@ -22,7 +22,7 @@ from ava.models import (
     ProgressoModulo,
 )
 from core.models import UserSessionLog
-from curriculum.models import GT
+from curriculum.models import Escola, GT
 from exports.services.pdf import html_to_pdf_bytes
 
 try:  # pragma: no cover - dependencia validada pelo ambiente
@@ -84,6 +84,13 @@ class AVAManagementReportService:
         return qs
 
     @classmethod
+    def _scoped_school_queryset(cls, user):
+        qs = Escola.objects.all()
+        if not cls._is_super_admin(user):
+            qs = qs.filter(cliente_id=user.cliente_id)
+        return qs
+
+    @classmethod
     def _scoped_course_queryset(cls, user):
         qs = Curso.objects.all()
         if not cls._is_super_admin(user):
@@ -134,6 +141,8 @@ class AVAManagementReportService:
 
         if filtros.get("usuario_id"):
             qs = qs.filter(aluno_id=filtros["usuario_id"])
+        if filtros.get("escola_id"):
+            qs = qs.filter(aluno__escola_id=filtros["escola_id"])
 
         if filtros.get("q"):
             termo = filtros["q"]
@@ -156,6 +165,8 @@ class AVAManagementReportService:
 
         if filtros.get("usuario_id"):
             qs = qs.filter(aluno_id=filtros["usuario_id"])
+        if filtros.get("escola_id"):
+            qs = qs.filter(aluno__escola_id=filtros["escola_id"])
         if filtros.get("curso_id"):
             qs = qs.filter(atividade__aula__modulo__curso_id=filtros["curso_id"])
         if filtros.get("modulo_id"):
@@ -197,6 +208,8 @@ class AVAManagementReportService:
 
         if filtros.get("usuario_id"):
             qs = qs.filter(autor_id=filtros["usuario_id"])
+        if filtros.get("escola_id"):
+            qs = qs.filter(autor__escola_id=filtros["escola_id"])
         if filtros.get("curso_id"):
             qs = qs.filter(atividade__aula__modulo__curso_id=filtros["curso_id"])
         if filtros.get("modulo_id"):
@@ -231,6 +244,8 @@ class AVAManagementReportService:
 
         if filtros.get("usuario_id"):
             qs = qs.filter(progresso_aula__matricula__aluno_id=filtros["usuario_id"])
+        if filtros.get("escola_id"):
+            qs = qs.filter(progresso_aula__matricula__aluno__escola_id=filtros["escola_id"])
         if filtros.get("curso_id"):
             qs = qs.filter(conteudo__aula__modulo__curso_id=filtros["curso_id"])
         if filtros.get("modulo_id"):
@@ -256,12 +271,15 @@ class AVAManagementReportService:
     @classmethod
     def _selected_objects(cls, user, filtros) -> dict[str, Any]:
         usuario = None
+        escola = None
         curso = None
         modulo = None
         aula = None
 
         if filtros.get("usuario_id"):
             usuario = cls._scoped_user_queryset(user).filter(id=filtros["usuario_id"]).first()
+        if filtros.get("escola_id"):
+            escola = cls._scoped_school_queryset(user).filter(id=filtros["escola_id"]).first()
         if filtros.get("curso_id"):
             curso = cls._scoped_course_queryset(user).filter(id=filtros["curso_id"]).first()
         if filtros.get("modulo_id"):
@@ -271,6 +289,7 @@ class AVAManagementReportService:
 
         return {
             "usuario": usuario,
+            "escola": escola,
             "curso": curso,
             "modulo": modulo,
             "aula": aula,
@@ -283,6 +302,8 @@ class AVAManagementReportService:
             labels.append(f'Busca: "{filtros["q"]}"')
         if selected["usuario"]:
             labels.append(f"Usuário: {cls._display_user(selected['usuario'])}")
+        if selected["escola"]:
+            labels.append(f"Escola: {selected['escola'].nome}")
         if selected["curso"]:
             labels.append(f"Curso: {selected['curso'].titulo}")
         if selected["modulo"]:
@@ -349,9 +370,14 @@ class AVAManagementReportService:
             envios_atividade=Count(
                 "id",
                 filter=Q(status__in=[AtividadeTentativa.Status.ENVIADA, AtividadeTentativa.Status.CORRIGIDA]),
+                distinct=True,
             ),
-            atividades_corrigidas=Count("id", filter=Q(status=AtividadeTentativa.Status.CORRIGIDA)),
-            envios_com_anexo=Count("id", filter=Q(arquivo_enviado__isnull=False) & ~Q(arquivo_enviado="")),
+            atividades_corrigidas=Count("id", filter=Q(status=AtividadeTentativa.Status.CORRIGIDA), distinct=True),
+            envios_com_anexo=Count(
+                "id",
+                filter=Q(arquivos__isnull=False) | (Q(arquivo_enviado__isnull=False) & ~Q(arquivo_enviado="")),
+                distinct=True,
+            ),
             ultima_tentativa=Max("data_envio"),
         ):
             tentativas_stats[(item["aluno_id"], item["atividade__aula__modulo__curso_id"])] = item

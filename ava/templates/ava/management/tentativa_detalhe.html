@@ -68,9 +68,19 @@
                 </div>
             </div>
             <div class="col-md-12">
-                <strong>Anexo enviado:</strong>
+                <strong>Anexos enviados:</strong>
                 <div class="mt-2">
-                    {% if tentativa.arquivo_enviado %}
+                    {% with arquivos=tentativa.arquivos.all %}
+                    {% if arquivos %}
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for anexo in arquivos %}
+                        <a class="btn btn-sm btn-outline-primary" href="{{ anexo.arquivo.url }}" target="_blank"
+                            rel="noopener noreferrer">
+                            {{ anexo.nome_original|default:anexo.arquivo.name }} <i class="bi bi-box-arrow-up-right ms-1"></i>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% elif tentativa.arquivo_enviado %}
                     <a class="btn btn-sm btn-outline-primary" href="{{ tentativa.arquivo_enviado.url }}" target="_blank"
                         rel="noopener noreferrer">
                         Abrir arquivo <i class="bi bi-box-arrow-up-right ms-1"></i>
@@ -79,6 +89,7 @@
                     {% else %}
                     <span class="text-muted">Nenhum anexo nesta tentativa.</span>
                     {% endif %}
+                    {% endwith %}
                 </div>
             </div>
         </div>
