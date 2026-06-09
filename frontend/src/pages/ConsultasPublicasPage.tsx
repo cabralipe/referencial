@@ -229,6 +229,7 @@ const TIPO_LABELS: Record<CampoFormularioTipo, string> = {
   select: 'Seleção (dropdown)',
   checkbox_group: 'Caixas de seleção',
   number: 'Número',
+  file: 'Upload de arquivo',
 };
 
 interface GerenciadorCamposProps {

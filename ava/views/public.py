@@ -47,7 +47,11 @@ def catalogo_cursos(request):
             cursos_qs = cursos_qs.filter(eixos=eixo_selecionado)
 
     cursos_qs = filter_courses_for_user_by_eixo(cursos_qs, request.user)
-    cursos = list(cursos_qs.order_by("-created_at"))
+    cursos = [
+        curso
+        for curso in cursos_qs.order_by("-created_at")
+        if user_can_access_course_by_eixo(request.user, curso)
+    ]
     trilhas = TrilhaFormativa.objects.filter(is_active=True)
     matriculados_ids = set()
     if request.user.is_authenticated and cursos:

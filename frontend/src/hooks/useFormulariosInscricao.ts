@@ -181,13 +181,36 @@ interface EnviarInscricaoInput {
   representacoes?: string[];
   representacao_outro?: string;
   dados_extras?: Record<string, unknown>;
+  arquivos?: Record<string, File | null | undefined>;
 }
 
 export function useEnviarInscricao() {
   const client = useApiClient();
 
   return useMutation({
-    mutationFn: async ({ token, ...payload }: EnviarInscricaoInput) => {
+    mutationFn: async ({ token, arquivos, ...payload }: EnviarInscricaoInput) => {
+      const arquivosValidos = Object.entries(arquivos ?? {}).filter(([, arquivo]) => arquivo instanceof File);
+      if (arquivosValidos.length > 0) {
+        const form = new FormData();
+        form.append('nome_completo', payload.nome_completo);
+        if (payload.instituicao_comunidade) form.append('instituicao_comunidade', payload.instituicao_comunidade);
+        if (payload.telefone) form.append('telefone', payload.telefone);
+        if (payload.email) form.append('email', payload.email);
+        if (payload.areas_atuacao) form.append('areas_atuacao', JSON.stringify(payload.areas_atuacao));
+        if (payload.area_atuacao_outro) form.append('area_atuacao_outro', payload.area_atuacao_outro);
+        if (payload.representacoes) form.append('representacoes', JSON.stringify(payload.representacoes));
+        if (payload.representacao_outro) form.append('representacao_outro', payload.representacao_outro);
+        if (payload.dados_extras) form.append('dados_extras', JSON.stringify(payload.dados_extras));
+        arquivosValidos.forEach(([chave, arquivo]) => {
+          form.append(chave, arquivo as File);
+        });
+        const response = await client.post<InscricaoPublica>(
+          `/formularios_inscricao/public/${token}/inscricoes`,
+          { body: form, skipAuth: true },
+        );
+        return response.data;
+      }
+
       const response = await client.post<InscricaoPublica>(
         `/formularios_inscricao/public/${token}/inscricoes`,
         { body: payload, skipAuth: true },

@@ -615,7 +615,7 @@ export interface ManifestacaoPublicaPublic {
   created_at: string;
 }
 
-export type CampoFormularioTipo = 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox_group' | 'number';
+export type CampoFormularioTipo = 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox_group' | 'number' | 'file';
 
 export interface CampoFormulario {
   chave: string;

@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from ava.forms import CursoEstruturaCopyForm
 from ava.services import CourseCloneService
 from ava.services.course_copy_service import CourseCopyOptions
+from core.models import Usuario
 
 from .models import (
     Atividade,
@@ -31,6 +32,16 @@ from .models import (
 
 
 ADMIN_ROLES = {"admin_cliente", "super_admin"}
+
+EIXO_RESTRICAO_ROLE_CHOICES = (
+    (Usuario.Role.DIRETOR, "Diretor"),
+    (Usuario.Role.COORDENADOR_PEDAGOGICO, "Coordenador Pedagogico"),
+    (Usuario.Role.PROFESSOR, "Professor"),
+    (Usuario.Role.ARTICULADOR, "Redator"),
+    (Usuario.Role.REVISOR, "Revisor"),
+    (Usuario.Role.MEMBRO_GT, "Membro GT"),
+    (Usuario.Role.LEITOR, "Leitor"),
+)
 
 
 def _model_has_cliente(model) -> bool:
@@ -185,6 +196,14 @@ class QuizQuestaoAdminForm(forms.ModelForm):
 
 
 class CursoAdminForm(forms.ModelForm):
+    eixos_restricao_roles = forms.MultipleChoiceField(
+        label="Perfis afetados pela restricao de eixos",
+        choices=EIXO_RESTRICAO_ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Se nenhum perfil for marcado, a restricao por eixo vale para todos os perfis nao administradores.",
+    )
+
     class Meta:
         model = Curso
         fields = "__all__"
@@ -209,6 +228,30 @@ class CursoAdminForm(forms.ModelForm):
         eixos = cleaned_data.get("eixos")
         if cliente and eixos is not None:
             invalidos = eixos.exclude(cliente=cliente)
+            if invalidos.exists():
+                raise forms.ValidationError("Todos os eixos selecionados devem pertencer ao mesmo cliente do curso.")
+        return cleaned_data
+
+
+class CursoModuloAdminForm(forms.ModelForm):
+    eixos_restricao_roles = forms.MultipleChoiceField(
+        label="Perfis afetados pela restricao de eixos",
+        choices=EIXO_RESTRICAO_ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Se nenhum perfil for marcado, a restricao por eixo vale para todos os perfis nao administradores.",
+    )
+
+    class Meta:
+        model = CursoModulo
+        fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        curso = cleaned_data.get("curso") or getattr(self.instance, "curso", None)
+        eixos = cleaned_data.get("eixos")
+        if curso and eixos is not None:
+            invalidos = eixos.exclude(cliente_id=curso.cliente_id)
             if invalidos.exists():
                 raise forms.ValidationError("Todos os eixos selecionados devem pertencer ao mesmo cliente do curso.")
         return cleaned_data
@@ -293,10 +336,22 @@ class CursoAdmin(AVAModelAdmin):
 
 @admin.register(CursoModulo)
 class CursoModuloAdmin(AVAModelAdmin):
-    list_display = ("titulo", "curso", "ordem", "is_active", "data_liberacao_programada", "pre_requisito_modulo")
-    list_filter = ("curso", "is_active", "data_liberacao_programada")
+    form = CursoModuloAdminForm
+    list_display = ("titulo", "curso", "ordem", "is_active", "data_liberacao_programada", "pre_requisito_modulo", "eixos_resumo")
+    list_filter = ("curso", "is_active", "data_liberacao_programada", "eixos")
     search_fields = ("titulo", "curso__titulo")
+    filter_horizontal = ("eixos",)
     inlines = [AulaInline]
+
+    def eixos_resumo(self, obj):
+        nomes = list(obj.eixos.order_by("ordem_exibicao", "nome").values_list("nome", flat=True)[:3])
+        if not nomes:
+            return "Livre"
+        if obj.eixos.count() > 3:
+            return f"{', '.join(nomes)}..."
+        return ", ".join(nomes)
+
+    eixos_resumo.short_description = "Eixos"
 
 
 @admin.register(Aula)

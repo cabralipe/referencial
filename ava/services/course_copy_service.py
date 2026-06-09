@@ -184,6 +184,7 @@ class CourseCloneService:
             data_inicio_disponibilidade=curso_origem.data_inicio_disponibilidade,
             data_fim_disponibilidade=curso_origem.data_fim_disponibilidade,
             ordem_na_trilha=curso_origem.ordem_na_trilha,
+            eixos_restricao_roles=curso_origem.eixos_restricao_roles,
         )
         CourseCloneService._copy_trilhas(curso_origem, curso_destino, cliente_destino)
 
@@ -200,6 +201,7 @@ class CourseCloneService:
                 ordem=modulo_origem.ordem,
                 is_active=modulo_origem.is_active,
                 data_liberacao_programada=modulo_origem.data_liberacao_programada,
+                eixos_restricao_roles=modulo_origem.eixos_restricao_roles,
             )
             modulo_map[modulo_origem.id] = modulo_destino
 

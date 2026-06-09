@@ -1,9 +1,10 @@
 import datetime as dt
+import json
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from consultas.models import ManifestacaoPublica
+from consultas.models import FormularioInscricao, InscricaoPublica, ManifestacaoPublica
 
 
 @pytest.fixture
@@ -76,3 +77,38 @@ def test_consulta_fechada_rejeita_manifestacao(api_client, consulta_publica):
     )
     assert resp.status_code == 400
     assert ManifestacaoPublica.objects.filter(consulta=consulta_publica).count() == 0
+
+
+def test_inscricao_publica_aceita_campo_upload_de_arquivo(api_client, cliente, usuario, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    formulario = FormularioInscricao.objects.create(
+        cliente=cliente,
+        titulo="Inscricao com arquivo",
+        ativo=True,
+        campos_config=[
+            {"chave": "nome_completo", "label": "Nome completo", "tipo": "text", "obrigatorio": True, "ordem": 1, "ativo": True, "padrao": True},
+            {"chave": "comprovante", "label": "Comprovante", "tipo": "file", "obrigatorio": True, "ordem": 2, "ativo": True, "padrao": False},
+        ],
+        criado_por=usuario,
+    )
+    arquivo = SimpleUploadedFile("comprovante.pdf", b"%PDF-1.4 arquivo", content_type="application/pdf")
+
+    resp = api_client.post(
+        f"/api/v1/formularios_inscricao/public/{formulario.token_acesso}/inscricoes",
+        {
+            "nome_completo": "Maria da Silva",
+            "areas_atuacao": json.dumps(["Educacao"]),
+            "representacoes": json.dumps(["Professor"]),
+            "dados_extras": json.dumps({"observacao": "enviado"}),
+            "comprovante": arquivo,
+        },
+        format="multipart",
+    )
+
+    assert resp.status_code == 201
+    inscricao = InscricaoPublica.objects.get(formulario=formulario)
+    comprovante = inscricao.dados_extras["comprovante"]
+    assert comprovante["nome"] == "comprovante.pdf"
+    assert comprovante["content_type"] == "application/pdf"
+    assert comprovante["path"].startswith(f"inscricoes/cliente_{cliente.id}/formulario_{formulario.id}/comprovante/")
+    assert inscricao.dados_extras["observacao"] == "enviado"

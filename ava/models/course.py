@@ -58,6 +58,13 @@ class Curso(TenantModel):
         help_text="Se informado, apenas usuarios vinculados a pelo menos um destes eixos poderao acessar o curso.",
     )
 
+    eixos_restricao_roles = models.JSONField(
+        "Perfis afetados pela restricao de eixos",
+        default=list,
+        blank=True,
+        help_text="Se vazio, a restricao vale para todos os perfis nao administradores.",
+    )
+
     carga_horaria = models.PositiveIntegerField("Carga Horária", default=0)
     nivel = models.CharField("Nível", max_length=100, blank=True)
     publico_alvo = models.CharField("Público-alvo", max_length=255, blank=True)

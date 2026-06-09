@@ -18,6 +18,19 @@ class CursoModulo(TenantModel):
     
     pre_requisito_modulo = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name="modulos_dependentes", verbose_name="Módulo Pré-requisito")
     data_liberacao_programada = models.DateTimeField("Data de liberação programada", null=True, blank=True)
+    eixos = models.ManyToManyField(
+        "core.Eixo",
+        related_name="ava_modulos",
+        blank=True,
+        verbose_name="Eixos",
+        help_text="Se informado, restringe este modulo por eixo sem bloquear o curso inteiro.",
+    )
+    eixos_restricao_roles = models.JSONField(
+        "Perfis afetados pela restricao de eixos",
+        default=list,
+        blank=True,
+        help_text="Se vazio, a restricao vale para todos os perfis nao administradores.",
+    )
 
     class Meta:
         verbose_name = "Módulo"

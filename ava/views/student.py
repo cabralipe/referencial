@@ -22,7 +22,12 @@ from ava.models import (
     ProgressoConteudo,
 )
 from ava.services import AtividadeService, ProgressoService
-from ava.services.access_control import course_eixo_block_message, user_can_access_course_by_eixo
+from ava.services.access_control import (
+    course_eixo_block_message,
+    module_eixo_block_message,
+    user_can_access_course_by_eixo,
+    user_can_access_module_by_eixo,
+)
 
 
 FINALIZED_ATTEMPT_STATUSES = [
@@ -168,6 +173,9 @@ def _motivo_bloqueio_modulo(matricula, modulo, agora=None):
     if not modulo.is_active:
         return None  # inativo, não mostrar para aluno
 
+    if not user_can_access_module_by_eixo(matricula.aluno, modulo):
+        return module_eixo_block_message(modulo)
+
     agora = agora or timezone.now()
     if modulo.data_liberacao_programada and modulo.data_liberacao_programada > agora:
         return f"Disponível a partir de {modulo.data_liberacao_programada.astimezone().strftime('%d/%m/%Y às %H:%M')}"
@@ -258,6 +266,9 @@ def acessar_aula(request, curso_slug, aula_id):
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     is_manager = _is_ava_manager(request.user)
+    if not is_manager and not user_can_access_module_by_eixo(request.user, aula.modulo):
+        messages.warning(request, module_eixo_block_message(aula.modulo))
+        return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
     if not is_manager and not ProgressoService.modulo_disponivel(matricula, aula.modulo):
         messages.warning(request, "Este modulo ainda nao esta disponivel.")
         return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
@@ -375,6 +386,9 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
         return redirect("ava:catalogo")
     ProgressoService.sincronizar_matricula(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
+    if not user_can_access_module_by_eixo(request.user, aula.modulo):
+        messages.warning(request, module_eixo_block_message(aula.modulo))
+        return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
     if not ProgressoService.modulo_disponivel(matricula, aula.modulo):
         messages.warning(request, "Este modulo ainda nao esta disponivel.")
         return redirect("ava:aluno_curso_detalhe", slug=curso_slug)

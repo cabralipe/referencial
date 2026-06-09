@@ -138,6 +138,42 @@ class AVAStudentFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_restricao_do_curso_por_eixo_respeita_perfis_afetados(self):
+        eixo = Eixo.objects.create(cliente=self.cliente, nome="Redacao")
+        self.curso.eixos.add(eixo)
+        self.curso.eixos_restricao_roles = [User.Role.PROFESSOR]
+        self.curso.save(update_fields=["eixos_restricao_roles"])
+
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.curso.titulo)
+
+        self.user.role = User.Role.PROFESSOR
+        self.user.save(update_fields=["role"])
+        response = self.client.get(reverse("ava:catalogo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.curso.titulo)
+
+    def test_modulo_pode_ser_restrito_por_eixo_sem_bloquear_curso(self):
+        eixo = Eixo.objects.create(cliente=self.cliente, nome="Modulo Restrito")
+        self.modulo.eixos.add(eixo)
+
+        response = self.client.get(reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.modulo.titulo)
+
+        response = self.client.get(reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]))
+
+        self.assertRedirects(response, reverse("ava:aluno_curso_detalhe", args=[self.curso.slug]))
+
+        self.user.eixos.add(eixo)
+        response = self.client.get(reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]))
+
+        self.assertEqual(response.status_code, 200)
+
     def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
         atividade = Atividade.objects.create(
             cliente=self.cliente,

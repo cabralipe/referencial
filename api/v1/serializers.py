@@ -1699,7 +1699,7 @@ class FormularioInscricaoSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("campos_config deve ser uma lista JSON válida.")
         if not isinstance(value, list):
             raise serializers.ValidationError("campos_config deve ser uma lista.")
-        TIPOS_VALIDOS = {"text", "email", "tel", "textarea", "select", "checkbox_group", "number"}
+        TIPOS_VALIDOS = {"text", "email", "tel", "textarea", "select", "checkbox_group", "number", "file"}
         for campo in value:
             if not isinstance(campo, dict):
                 raise serializers.ValidationError("Cada campo deve ser um objeto JSON.")

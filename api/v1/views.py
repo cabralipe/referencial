@@ -11,6 +11,7 @@ from django.core.files.storage import default_storage
 from django.middleware.csrf import get_token
 from django.utils.text import slugify
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -319,6 +320,75 @@ def _formulario_inscricao_por_token(token: str) -> FormularioInscricao:
     return formulario
 
 
+def _campos_formulario_inscricao(formulario: FormularioInscricao) -> list[dict]:
+    if formulario.campos_config:
+        return [dict(c) for c in formulario.campos_config if isinstance(c, dict)]
+    return []
+
+
+def _normalizar_payload_inscricao(request) -> dict:
+    import json
+
+    dados = request.data.dict() if hasattr(request.data, "dict") else dict(request.data)
+    for chave in ("areas_atuacao", "representacoes", "dados_extras"):
+        valor = dados.get(chave)
+        if isinstance(valor, str):
+            valor_limpo = valor.strip()
+            if not valor_limpo:
+                dados[chave] = [] if chave != "dados_extras" else {}
+                continue
+            try:
+                dados[chave] = json.loads(valor_limpo)
+            except json.JSONDecodeError:
+                pass
+    return dados
+
+
+def _url_arquivo_inscricao(request, path: str) -> str:
+    url = default_storage.url(path)
+    if request is not None:
+        return request.build_absolute_uri(url)
+    return url
+
+
+def _salvar_arquivo_inscricao(upload, *, formulario: FormularioInscricao, campo_chave: str, request) -> dict:
+    base = slugify(Path(upload.name).stem) or "arquivo"
+    ext = Path(upload.name).suffix
+    cliente_part = f"cliente_{formulario.cliente_id or 'desconhecido'}"
+    campo_part = slugify(campo_chave) or "campo"
+    path = f"inscricoes/{cliente_part}/formulario_{formulario.id}/{campo_part}/{base}_{uuid4().hex[:10]}{ext}"
+    saved_path = default_storage.save(path, upload)
+    return {
+        "nome": upload.name,
+        "url": _url_arquivo_inscricao(request, saved_path),
+        "path": saved_path,
+        "tamanho": getattr(upload, "size", None),
+        "content_type": getattr(upload, "content_type", "") or "",
+    }
+
+
+def _aplicar_uploads_inscricao(payload: dict, *, formulario: FormularioInscricao, request) -> dict:
+    dados_extras = payload.get("dados_extras") if isinstance(payload.get("dados_extras"), dict) else {}
+    for campo in _campos_formulario_inscricao(formulario):
+        if campo.get("tipo") != "file" or campo.get("ativo") is False:
+            continue
+        chave = str(campo.get("chave") or "").strip()
+        if not chave:
+            continue
+        upload = request.FILES.get(chave)
+        if upload:
+            dados_extras[chave] = _salvar_arquivo_inscricao(
+                upload,
+                formulario=formulario,
+                campo_chave=chave,
+                request=request,
+            )
+        elif campo.get("obrigatorio"):
+            raise ValidationError({chave: "Envie o arquivo solicitado."})
+    payload["dados_extras"] = dados_extras
+    return payload
+
+
 class FormularioInscricaoPublicView(APIView):
     permission_classes = [AllowAny]
     authentication_classes: list = []
@@ -332,12 +402,15 @@ class FormularioInscricaoPublicView(APIView):
 class InscricaoPublicaView(APIView):
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def post(self, request, token: str):
         formulario = _formulario_inscricao_por_token(token)
         if not formulario.ativo:
             raise ValidationError("Este formulário não está aceitando inscrições no momento.")
-        serializer = InscricaoPublicaCreateSerializer(data=request.data)
+        payload = _normalizar_payload_inscricao(request)
+        payload = _aplicar_uploads_inscricao(payload, formulario=formulario, request=request)
+        serializer = InscricaoPublicaCreateSerializer(data=payload)
         serializer.is_valid(raise_exception=True)
         inscricao = serializer.save(
             formulario=formulario,

@@ -11,6 +11,7 @@ from ava.models import (
     ProgressoConteudo,
     ProgressoModulo,
 )
+from ava.services.access_control import user_can_access_module_by_eixo
 
 
 class ProgressoService:
@@ -28,6 +29,9 @@ class ProgressoService:
         estar satisfeitos.
         """
         if not modulo.is_active:
+            return False
+
+        if not user_can_access_module_by_eixo(matricula.aluno, modulo):
             return False
 
         agora = agora or timezone.now()

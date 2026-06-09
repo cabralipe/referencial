@@ -33,6 +33,7 @@ export function InscricaoPublicaPage() {
 
   // Valores dos campos extras (customizados)
   const [valoresExtras, setValoresExtras] = useState<Record<string, string | string[]>>({});
+  const [arquivosExtras, setArquivosExtras] = useState<Record<string, File | null>>({});
 
   const [feedback, setFeedback] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -61,6 +62,10 @@ export function InscricaoPublicaPage() {
 
   const setExtraValor = (chave: string, valor: string) => {
     setValoresExtras((prev) => ({ ...prev, [chave]: valor }));
+  };
+
+  const setExtraArquivo = (chave: string, arquivo: File | null) => {
+    setArquivosExtras((prev) => ({ ...prev, [chave]: arquivo }));
   };
 
   const camposEfetivos: CampoFormulario[] = formulario?.campos_efetivos?.length
@@ -102,6 +107,7 @@ export function InscricaoPublicaPage() {
         representacoes: repsFinais,
         representacao_outro: repOutro.trim(),
         dados_extras: Object.keys(dados_extras).length > 0 ? dados_extras : undefined,
+        arquivos: arquivosExtras,
       });
       setFeedback('Inscrição realizada com sucesso! Obrigado pela participação.');
       setNomeCompleto('');
@@ -113,6 +119,7 @@ export function InscricaoPublicaPage() {
       setRepresentacoes([]);
       setRepOutro('');
       setValoresExtras({});
+      setArquivosExtras({});
     } catch (err: any) {
       setErro(err?.message ?? 'Não foi possível enviar a inscrição.');
     }
@@ -314,6 +321,19 @@ export function InscricaoPublicaPage() {
             value={(valor as string | undefined) ?? ''}
             onChange={(e) => setExtraValor(campo.chave, e.target.value)}
             placeholder={campo.label}
+          />
+        </label>
+      );
+    }
+
+    if (campo.tipo === 'file') {
+      return (
+        <label key={campo.chave} className="full">
+          <span>{campo.label}{campo.obrigatorio && <span className="required"> *</span>}</span>
+          <input
+            type="file"
+            required={campo.obrigatorio}
+            onChange={(e) => setExtraArquivo(campo.chave, e.target.files?.[0] ?? null)}
           />
         </label>
       );
