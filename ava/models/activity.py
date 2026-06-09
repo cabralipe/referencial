@@ -26,6 +26,19 @@ class Atividade(TenantModel):
     is_obrigatoria = models.BooleanField("Atividade Obrigat\u00f3ria?", default=True)
     prazo_envio = models.DateTimeField("Prazo fatal (Opcional)", null=True, blank=True)
     tentativas_permitidas = models.PositiveIntegerField("M\u00e1ximo de Tentativas", default=1, help_text="0 para ilimitadas")
+    eixos = models.ManyToManyField(
+        "core.Eixo",
+        related_name="ava_atividades",
+        blank=True,
+        verbose_name="Eixos",
+        help_text="Se informado, restringe esta atividade por eixo sem bloquear o curso ou modulo inteiro.",
+    )
+    eixos_restricao_roles = models.JSONField(
+        "Perfis afetados pela restricao de eixos",
+        default=list,
+        blank=True,
+        help_text="Se vazio, a restricao vale para todos os perfis nao administradores.",
+    )
 
     correcao_automatica = models.BooleanField(
         "Corre\u00e7\u00e3o Autom\u00e1tica?",

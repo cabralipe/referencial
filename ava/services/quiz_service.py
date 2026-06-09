@@ -14,6 +14,7 @@ from ava.models import (
 )
 
 from .progress_service import ProgressoService
+from .access_control import user_can_access_activity_by_eixo
 
 
 class AtividadeService:
@@ -23,6 +24,9 @@ class AtividadeService:
         """
         Inicia uma tentativa para a atividade. Verifica limite de tentativas.
         """
+        if not user_can_access_activity_by_eixo(aluno, atividade):
+            return None, "Esta atividade esta restrita por eixo para este usuario."
+
         tentativa_em_andamento = (
             AtividadeTentativa.objects.filter(
                 aluno=aluno,

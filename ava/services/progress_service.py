@@ -11,7 +11,7 @@ from ava.models import (
     ProgressoConteudo,
     ProgressoModulo,
 )
-from ava.services.access_control import user_can_access_module_by_eixo
+from ava.services.access_control import user_can_access_activity_by_eixo, user_can_access_module_by_eixo
 
 
 class ProgressoService:
@@ -175,26 +175,35 @@ class ProgressoService:
         ).count()
 
         # Para ENVIO_ARQUIVO, so conta se houver arquivo anexado.
-        atividades_obrigatorias = Atividade.objects.filter(aula=aula, is_obrigatoria=True)
-        qt_atividades = atividades_obrigatorias.count()
-        qt_tentativas = (
-            atividades_obrigatorias.filter(
-                tentativas__aluno=matricula.aluno,
-                tentativas__status__in=["enviada", "corrigida"],
-            )
-            .filter(
-                ~Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
-                | (
-                    Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
-                    & (
-                        Q(tentativas__arquivos__isnull=False)
-                        | (Q(tentativas__arquivo_enviado__isnull=False) & ~Q(tentativas__arquivo_enviado=""))
+        atividades_obrigatorias = [
+            atividade
+            for atividade in Atividade.objects.filter(aula=aula, is_obrigatoria=True).prefetch_related("eixos")
+            if user_can_access_activity_by_eixo(matricula.aluno, atividade)
+        ]
+        atividade_ids = [atividade.id for atividade in atividades_obrigatorias]
+        qt_atividades = len(atividade_ids)
+        if atividade_ids:
+            qt_tentativas = (
+                Atividade.objects.filter(id__in=atividade_ids)
+                .filter(
+                    tentativas__aluno=matricula.aluno,
+                    tentativas__status__in=["enviada", "corrigida"],
+                )
+                .filter(
+                    ~Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
+                    | (
+                        Q(tipo=Atividade.Tipo.ENVIO_ARQUIVO)
+                        & (
+                            Q(tentativas__arquivos__isnull=False)
+                            | (Q(tentativas__arquivo_enviado__isnull=False) & ~Q(tentativas__arquivo_enviado=""))
+                        )
                     )
                 )
+                .distinct()
+                .count()
             )
-            .distinct()
-            .count()
-        )
+        else:
+            qt_tentativas = 0
 
         is_concluida = (qt_visualizados >= qt_conteudos) and (qt_tentativas >= qt_atividades)
 

@@ -113,6 +113,7 @@ class CourseCloneService:
             is_obrigatoria=atividade_origem.is_obrigatoria,
             prazo_envio=atividade_origem.prazo_envio,
             tentativas_permitidas=atividade_origem.tentativas_permitidas,
+            eixos_restricao_roles=list(atividade_origem.eixos_restricao_roles or []),
             correcao_automatica=atividade_origem.correcao_automatica,
             criterio_aprovacao=atividade_origem.criterio_aprovacao,
         )

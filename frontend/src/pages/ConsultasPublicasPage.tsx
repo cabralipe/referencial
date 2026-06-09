@@ -16,8 +16,17 @@ import {
   useEditarFormularioInscricao,
   useExcluirFormularioInscricao,
   useInscricoesFormulario,
+  useAnexosFormularioInscricao,
+  useBaixarAnexosFormularioInscricao,
 } from '@/hooks/useFormulariosInscricao';
-import type { CampoFormulario, CampoFormularioTipo, ConsultaPublica, FormularioInscricao, InscricaoPublica } from '@/api/types';
+import type {
+  CampoFormulario,
+  CampoFormularioTipo,
+  ConsultaPublica,
+  FormularioInscricao,
+  FormularioInscricaoAnexo,
+  InscricaoPublica,
+} from '@/api/types';
 
 import './ConsultasPublicasPage.css';
 
@@ -31,6 +40,27 @@ function formatDate(value?: string | null) {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return value;
   return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+}
+
+function formatBytes(value?: number | null) {
+  if (!value || value <= 0) return 'Tamanho não informado';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = value;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -436,6 +466,8 @@ function FormulariosInscricaoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [formularioSelecionado, setFormularioSelecionado] = useState<FormularioInscricao | null>(null);
   const [abaInscricoes, setAbaInscricoes] = useState<number | null>(null);
+  const [pastaAnexos, setPastaAnexos] = useState<number | null>(null);
+  const [anexosSelecionados, setAnexosSelecionados] = useState<string[]>([]);
   const [nomeFiltro, setNomeFiltro] = useState('');
   const [nomeFiltroAplicado, setNomeFiltroAplicado] = useState('');
   const [editando, setEditando] = useState<FormularioInscricao | null>(null);
@@ -453,6 +485,15 @@ function FormulariosInscricaoTab() {
     abaInscricoes ?? undefined,
     nomeFiltroAplicado,
   );
+  const { data: anexos, isLoading: carregandoAnexos } = useAnexosFormularioInscricao(pastaAnexos ?? undefined);
+  const baixarAnexos = useBaixarAnexosFormularioInscricao();
+
+  useEffect(() => {
+    setAnexosSelecionados([]);
+  }, [pastaAnexos]);
+
+  const anexosDaPasta = anexos ?? [];
+  const todosAnexosSelecionados = anexosDaPasta.length > 0 && anexosSelecionados.length === anexosDaPasta.length;
 
   const parseOpcoes = (texto: string) =>
     texto.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -550,6 +591,32 @@ function FormulariosInscricaoTab() {
         ? f.campos_config.map((c) => ({ ...c }))
         : CAMPOS_PADRAO.map((c) => ({ ...c }))
     );
+  };
+
+  const toggleAnexoSelecionado = (id: string) => {
+    setAnexosSelecionados((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleTodosAnexos = () => {
+    setAnexosSelecionados((prev) =>
+      prev.length === anexosDaPasta.length ? [] : anexosDaPasta.map((anexo) => anexo.id),
+    );
+  };
+
+  const baixarAnexosSelecionados = async (formulario: FormularioInscricao) => {
+    if (anexosSelecionados.length === 0) {
+      setErro('Selecione ao menos um anexo para baixar.');
+      return;
+    }
+    setErro(null);
+    try {
+      const blob = await baixarAnexos.mutateAsync({ formularioId: formulario.id, ids: anexosSelecionados });
+      downloadBlob(blob, `anexos-inscricoes-${formulario.token_acesso}.zip`);
+    } catch (e: any) {
+      setErro(e?.message ?? 'Não foi possível baixar os anexos selecionados.');
+    }
   };
 
   if (isLoading && !formularios) return <FullPageLoader message="Carregando formulários..." />;
@@ -711,10 +778,96 @@ function FormulariosInscricaoTab() {
                           >
                             Exportar PDF
                           </button>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => setPastaAnexos((prev) => (prev === f.id ? null : f.id))}
+                            style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid #047857', color: '#047857', background: '#ecfdf5', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            {pastaAnexos === f.id ? 'Fechar pasta de anexos' : 'Pasta de anexos'}
+                          </button>
                         </>
                       )}
                     </div>
                     {carregandoInscricoes && <p>Carregando inscrições...</p>}
+                    {pastaAnexos === f.id && (
+                      <div className="manifestacao" style={{ borderColor: '#a7f3d0', background: '#f0fdf4' }}>
+                        <div className="manifestacao__header">
+                          <span>Pasta de anexos</span>
+                          <span>{carregandoAnexos ? 'Carregando...' : `${anexosDaPasta.length} arquivo(s)`}</span>
+                        </div>
+                        {carregandoAnexos && <p>Carregando anexos...</p>}
+                        {!carregandoAnexos && anexosDaPasta.length === 0 && (
+                          <p className="muted">Nenhum anexo encontrado para este formulário.</p>
+                        )}
+                        {!carregandoAnexos && anexosDaPasta.length > 0 && (
+                          <>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 600 }}>
+                                <input type="checkbox" checked={todosAnexosSelecionados} onChange={toggleTodosAnexos} />
+                                Selecionar todos
+                              </label>
+                              <button
+                                type="button"
+                                className="ghost"
+                                disabled={anexosSelecionados.length === 0 || baixarAnexos.isPending}
+                                onClick={() => baixarAnexosSelecionados(f)}
+                                style={{ padding: '0.45rem 0.85rem', borderRadius: '20px', border: '1px solid #047857', color: '#047857', background: '#fff', cursor: anexosSelecionados.length === 0 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', fontWeight: 600, opacity: anexosSelecionados.length === 0 ? 0.6 : 1 }}
+                              >
+                                {baixarAnexos.isPending ? 'Gerando ZIP...' : `Baixar selecionados (${anexosSelecionados.length})`}
+                              </button>
+                            </div>
+                            <div style={{ overflowX: 'auto' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', background: '#fff', borderRadius: '8px', overflow: 'hidden' }}>
+                                <thead>
+                                  <tr style={{ background: '#dcfce7', textAlign: 'left' }}>
+                                    <th style={{ padding: '0.55rem' }}>Selecionar</th>
+                                    <th style={{ padding: '0.55rem' }}>Arquivo</th>
+                                    <th style={{ padding: '0.55rem' }}>Quem enviou</th>
+                                    <th style={{ padding: '0.55rem' }}>Campo</th>
+                                    <th style={{ padding: '0.55rem' }}>Data</th>
+                                    <th style={{ padding: '0.55rem' }}>Ação</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {anexosDaPasta.map((anexo: FormularioInscricaoAnexo) => (
+                                    <tr key={anexo.id} style={{ borderTop: '1px solid #d1fae5' }}>
+                                      <td style={{ padding: '0.55rem' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={anexosSelecionados.includes(anexo.id)}
+                                          onChange={() => toggleAnexoSelecionado(anexo.id)}
+                                          aria-label={`Selecionar ${anexo.nome}`}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '0.55rem', minWidth: '180px' }}>
+                                        <strong>{anexo.nome}</strong>
+                                        <div style={{ color: 'var(--color-text-secondary)' }}>{formatBytes(anexo.tamanho)}</div>
+                                      </td>
+                                      <td style={{ padding: '0.55rem', minWidth: '180px' }}>
+                                        <strong>{anexo.participante}</strong>
+                                        {(anexo.email || anexo.telefone) && (
+                                          <div style={{ color: 'var(--color-text-secondary)' }}>
+                                            {anexo.email || anexo.telefone}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '0.55rem' }}>{anexo.campo_label}</td>
+                                      <td style={{ padding: '0.55rem' }}>{new Date(anexo.created_at).toLocaleString('pt-BR')}</td>
+                                      <td style={{ padding: '0.55rem' }}>
+                                        <a href={anexo.url} target="_blank" rel="noreferrer" className="ghost" style={{ color: '#047857', fontWeight: 700 }}>
+                                          Baixar
+                                        </a>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                     {!carregandoInscricoes && inscricoes && inscricoes.length === 0 && (
                       <p className="muted">Nenhuma inscrição encontrada.</p>
                     )}

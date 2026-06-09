@@ -174,6 +174,42 @@ class AVAStudentFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_atividade_pode_ser_restrita_por_eixo_sem_bloquear_aula(self):
+        eixo = Eixo.objects.create(cliente=self.cliente, nome="Atividade Restrita")
+        atividade_livre = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.REFLEXAO,
+            titulo="Atividade livre",
+            is_obrigatoria=False,
+        )
+        atividade_restrita = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.REFLEXAO,
+            titulo="Atividade por eixo",
+            is_obrigatoria=True,
+        )
+        atividade_restrita.eixos.add(eixo)
+
+        response = self.client.get(reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, atividade_livre.titulo)
+        self.assertNotContains(response, atividade_restrita.titulo)
+
+        response = self.client.get(
+            reverse("ava:aluno_responder_atividade", args=[self.curso.slug, self.aula_1.id, atividade_restrita.id])
+        )
+
+        self.assertRedirects(response, reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]))
+
+        self.user.eixos.add(eixo)
+        response = self.client.get(reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, atividade_restrita.titulo)
+
     def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
         atividade = Atividade.objects.create(
             cliente=self.cliente,

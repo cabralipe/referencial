@@ -6,6 +6,8 @@ import json
 import logging
 import os
 import errno
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 from django.utils.html import escape
@@ -997,6 +999,44 @@ class FormularioInscricaoViewSet(viewsets.ModelViewSet):
         _assert_roles(self.request.user, {self.request.user.Role.ADMIN_CLIENTE, self.request.user.Role.SUPER_ADMIN})
         super().perform_destroy(instance)
 
+    def _anexos_inscricoes(self, formulario):
+        anexos = []
+        labels_por_chave = {
+            str(campo.get("chave")): str(campo.get("label") or campo.get("chave"))
+            for campo in (formulario.campos_config or [])
+            if isinstance(campo, dict) and campo.get("chave")
+        }
+        inscricoes = InscricaoPublica.objects.filter(formulario=formulario).order_by("-created_at", "-id")
+        for inscricao in inscricoes:
+            dados_extras = inscricao.dados_extras if isinstance(inscricao.dados_extras, dict) else {}
+            for campo_chave, valor in dados_extras.items():
+                if not isinstance(valor, dict):
+                    continue
+                path = str(valor.get("path") or "").strip()
+                url = str(valor.get("url") or "").strip()
+                nome = str(valor.get("nome") or Path(path).name or "").strip()
+                if not path or not nome:
+                    continue
+                anexos.append(
+                    {
+                        "id": f"{inscricao.id}:{campo_chave}",
+                        "inscricao_id": inscricao.id,
+                        "participante": inscricao.nome_completo,
+                        "email": inscricao.email,
+                        "telefone": inscricao.telefone,
+                        "instituicao_comunidade": inscricao.instituicao_comunidade,
+                        "campo_chave": campo_chave,
+                        "campo_label": labels_por_chave.get(campo_chave, campo_chave.replace("_", " ").title()),
+                        "nome": nome,
+                        "url": url or default_storage.url(path),
+                        "path": path,
+                        "tamanho": valor.get("tamanho"),
+                        "content_type": valor.get("content_type") or "",
+                        "created_at": inscricao.created_at,
+                    }
+                )
+        return anexos
+
     @action(detail=True, methods=["get"], url_path="inscricoes")
     def inscricoes(self, request, pk=None):
         formulario = self.get_object()
@@ -1007,6 +1047,56 @@ class FormularioInscricaoViewSet(viewsets.ModelViewSet):
             qs = qs.filter(nome_completo__icontains=nome_filtro)
         serializer = InscricaoPublicaSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="anexos")
+    def anexos(self, request, pk=None):
+        formulario = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN})
+        return Response(self._anexos_inscricoes(formulario))
+
+    @action(detail=True, methods=["post"], url_path="anexos/download")
+    def baixar_anexos(self, request, pk=None):
+        formulario = self.get_object()
+        _assert_roles(request.user, {request.user.Role.ADMIN_CLIENTE, request.user.Role.SUPER_ADMIN})
+        ids = request.data.get("ids") if isinstance(request.data, dict) else None
+        ids_set = {str(item) for item in ids} if isinstance(ids, list) else set()
+        anexos = self._anexos_inscricoes(formulario)
+        selecionados = [anexo for anexo in anexos if not ids_set or anexo["id"] in ids_set]
+        if not selecionados:
+            raise ValidationError({"ids": "Nenhum anexo selecionado para download."})
+
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            usados = set()
+            for anexo in selecionados:
+                path = anexo["path"]
+                if not default_storage.exists(path):
+                    continue
+                participante = Path(str(anexo["participante"] or f"inscricao-{anexo['inscricao_id']}")).stem
+                participante = "".join(ch if ch.isalnum() or ch in ("-", "_", " ") else "_" for ch in participante).strip()
+                participante = participante.replace(" ", "_") or f"inscricao_{anexo['inscricao_id']}"
+                nome = Path(anexo["nome"]).name
+                archive_name = f"{participante}/inscricao-{anexo['inscricao_id']}-{anexo['campo_chave']}-{nome}"
+                contador = 2
+                nome_base = archive_name
+                while archive_name in usados:
+                    stem = Path(nome_base).stem
+                    suffix = Path(nome_base).suffix
+                    parent = str(Path(nome_base).parent).replace("\\", "/")
+                    archive_name = f"{parent}/{stem}-{contador}{suffix}"
+                    contador += 1
+                usados.add(archive_name)
+                with default_storage.open(path, "rb") as arquivo:
+                    zip_file.writestr(archive_name, arquivo.read())
+
+        if not usados:
+            raise ValidationError({"ids": "Os arquivos selecionados nao foram encontrados no armazenamento."})
+
+        buffer.seek(0)
+        filename = f"anexos-inscricoes-{formulario.token_acesso}.zip"
+        response = HttpResponse(buffer.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 class TarefaViewSet(viewsets.ModelViewSet):

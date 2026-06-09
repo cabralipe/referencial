@@ -674,6 +674,23 @@ export interface InscricaoPublica {
   created_at: string;
 }
 
+export interface FormularioInscricaoAnexo {
+  id: string;
+  inscricao_id: number;
+  participante: string;
+  email: string;
+  telefone: string;
+  instituicao_comunidade: string;
+  campo_chave: string;
+  campo_label: string;
+  nome: string;
+  url: string;
+  path: string;
+  tamanho?: number | null;
+  content_type: string;
+  created_at: string;
+}
+
 export interface DiffResponse {
   html: string;
 }

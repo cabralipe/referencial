@@ -23,8 +23,10 @@ from ava.models import (
 )
 from ava.services import AtividadeService, ProgressoService
 from ava.services.access_control import (
+    activity_eixo_block_message,
     course_eixo_block_message,
     module_eixo_block_message,
+    user_can_access_activity_by_eixo,
     user_can_access_course_by_eixo,
     user_can_access_module_by_eixo,
 )
@@ -276,6 +278,8 @@ def acessar_aula(request, curso_slug, aula_id):
     ProgressoService.marcar_aula_visualizada(matricula, aula)
     conteudos = list(aula.conteudos.all().order_by("ordem", "id"))
     atividades = list(aula.atividades.all().order_by("titulo", "id"))
+    if not is_manager:
+        atividades = [atividade for atividade in atividades if user_can_access_activity_by_eixo(request.user, atividade)]
 
     if is_manager:
         modulos = list(
@@ -394,6 +398,9 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
         return redirect("ava:aluno_curso_detalhe", slug=curso_slug)
 
     atividade = get_object_or_404(Atividade, id=atividade_id, aula=aula)
+    if not user_can_access_activity_by_eixo(request.user, atividade):
+        messages.warning(request, activity_eixo_block_message(atividade))
+        return redirect("ava:aluno_acessar_aula", curso_slug=curso_slug, aula_id=aula.id)
 
     questoes = list(atividade.questoes.all().prefetch_related("alternativas"))
     is_forum = atividade.tipo == Atividade.Tipo.FORUM

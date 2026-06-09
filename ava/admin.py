@@ -92,6 +92,9 @@ class AVAInlinePermissionMixin:
             and getattr(request.user, "role", None) in ADMIN_ROLES
         )
 
+    def _is_super_admin(self, request) -> bool:
+        return bool(getattr(request.user, "is_superuser", False)) or getattr(request.user, "role", None) == "super_admin"
+
     def has_view_permission(self, request, obj=None):
         return self._is_admin_role(request)
 
@@ -103,6 +106,21 @@ class AVAInlinePermissionMixin:
 
     def has_delete_permission(self, request, obj=None):
         return self._is_admin_role(request)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        related_model = getattr(db_field.remote_field, "model", None)
+        if (
+            not self._is_super_admin(request)
+            and related_model is not None
+            and hasattr(related_model, "_meta")
+            and _model_has_cliente(related_model)
+        ):
+            manager = getattr(related_model, "raw_objects", related_model._default_manager)
+            related_qs = manager.filter(cliente_id=request.user.cliente_id)
+            if _model_has_soft_delete(related_model):
+                related_qs = related_qs.filter(is_deleted=False)
+            kwargs["queryset"] = related_qs
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class AVAModelAdmin(AVAAdminPermissionMixin, admin.ModelAdmin):
@@ -255,6 +273,34 @@ class CursoModuloAdminForm(forms.ModelForm):
             if invalidos.exists():
                 raise forms.ValidationError("Todos os eixos selecionados devem pertencer ao mesmo cliente do curso.")
         return cleaned_data
+
+
+class AtividadeAdminForm(forms.ModelForm):
+    eixos_restricao_roles = forms.MultipleChoiceField(
+        label="Perfis afetados pela restricao de eixos",
+        choices=EIXO_RESTRICAO_ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Se nenhum perfil for marcado, a restricao por eixo vale para todos os perfis nao administradores.",
+    )
+
+    class Meta:
+        model = Atividade
+        fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        aula = cleaned_data.get("aula") or getattr(self.instance, "aula", None)
+        eixos = cleaned_data.get("eixos")
+        if aula and eixos is not None:
+            invalidos = eixos.exclude(cliente_id=aula.modulo.cliente_id)
+            if invalidos.exists():
+                raise forms.ValidationError("Todos os eixos selecionados devem pertencer ao mesmo cliente da aula.")
+        return cleaned_data
+
+
+AtividadeInline.form = AtividadeAdminForm
+AtividadeInline.filter_horizontal = ("eixos",)
 
 
 @admin.register(TrilhaFormativa)
@@ -479,9 +525,21 @@ class ConteudoAulaAdmin(AVAModelAdmin):
 
 @admin.register(Atividade)
 class AtividadeAdmin(AVAModelAdmin):
-    list_display = ("titulo", "aula", "tipo", "is_obrigatoria")
-    list_filter = ("tipo", "is_obrigatoria", "aula__modulo__curso")
+    form = AtividadeAdminForm
+    list_display = ("titulo", "aula", "tipo", "is_obrigatoria", "eixos_resumo")
+    list_filter = ("tipo", "is_obrigatoria", "aula__modulo__curso", "eixos")
     search_fields = ("titulo", "descricao", "aula__titulo")
+    filter_horizontal = ("eixos",)
+
+    def eixos_resumo(self, obj):
+        nomes = list(obj.eixos.order_by("ordem_exibicao", "nome").values_list("nome", flat=True)[:3])
+        if not nomes:
+            return "Livre"
+        if obj.eixos.count() > 3:
+            return f"{', '.join(nomes)}..."
+        return ", ".join(nomes)
+
+    eixos_resumo.short_description = "Eixos"
 
 
 @admin.register(QuizQuestao)

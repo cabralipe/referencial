@@ -1,5 +1,7 @@
 import datetime as dt
 import json
+import zipfile
+from io import BytesIO
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -112,3 +114,47 @@ def test_inscricao_publica_aceita_campo_upload_de_arquivo(api_client, cliente, u
     assert comprovante["content_type"] == "application/pdf"
     assert comprovante["path"].startswith(f"inscricoes/cliente_{cliente.id}/formulario_{formulario.id}/comprovante/")
     assert inscricao.dados_extras["observacao"] == "enviado"
+
+
+def test_admin_lista_e_baixa_anexos_de_inscricoes(auth_client, api_client, cliente, usuario, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    formulario = FormularioInscricao.objects.create(
+        cliente=cliente,
+        titulo="Inscricao com anexos",
+        ativo=True,
+        campos_config=[
+            {"chave": "nome_completo", "label": "Nome completo", "tipo": "text", "obrigatorio": True, "ordem": 1, "ativo": True, "padrao": True},
+            {"chave": "comprovante", "label": "Comprovante de representacao", "tipo": "file", "obrigatorio": True, "ordem": 2, "ativo": True, "padrao": False},
+        ],
+        criado_por=usuario,
+    )
+    arquivo = SimpleUploadedFile("comprovante.pdf", b"%PDF-1.4 arquivo", content_type="application/pdf")
+    create_resp = api_client.post(
+        f"/api/v1/formularios_inscricao/public/{formulario.token_acesso}/inscricoes",
+        {"nome_completo": "Maria da Silva", "comprovante": arquivo},
+        format="multipart",
+    )
+    assert create_resp.status_code == 201
+
+    list_resp = auth_client.get(f"/api/v1/formularios_inscricao/{formulario.id}/anexos")
+
+    assert list_resp.status_code == 200
+    assert len(list_resp.data) == 1
+    anexo = list_resp.data[0]
+    assert anexo["participante"] == "Maria da Silva"
+    assert anexo["campo_label"] == "Comprovante de representacao"
+    assert anexo["nome"] == "comprovante.pdf"
+
+    zip_resp = auth_client.post(
+        f"/api/v1/formularios_inscricao/{formulario.id}/anexos/download",
+        {"ids": [anexo["id"]]},
+        format="json",
+    )
+
+    assert zip_resp.status_code == 200
+    assert zip_resp["Content-Type"] == "application/zip"
+    with zipfile.ZipFile(BytesIO(zip_resp.content)) as zip_file:
+        nomes = zip_file.namelist()
+        assert len(nomes) == 1
+        assert nomes[0].endswith("comprovante.pdf")
+        assert zip_file.read(nomes[0]) == b"%PDF-1.4 arquivo"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.db.models import QuerySet
 
-from ava.models import Curso, CursoModulo
+from ava.models import Atividade, Curso, CursoModulo
 from core.models import Usuario
 
 
@@ -95,4 +95,31 @@ def module_eixo_block_message(modulo: CursoModulo) -> str:
     return (
         "Este modulo esta restrito ao(s) eixo(s) "
         f"{eixos}. Seu usuario nao esta vinculado a nenhum eixo permitido para este modulo."
+    )
+
+
+def activity_requires_eixo(atividade: Atividade) -> bool:
+    return atividade.eixos.exists()
+
+
+def user_can_access_activity_by_eixo(user, atividade: Atividade) -> bool:
+    if not getattr(user, "is_authenticated", False):
+        return not activity_requires_eixo(atividade)
+    if user_bypasses_eixo_filter(user):
+        return True
+    if not eixo_restriction_applies_to_user(user, getattr(atividade, "eixos_restricao_roles", [])):
+        return True
+    if not activity_requires_eixo(atividade):
+        return True
+    user_eixo_ids = user.eixos.filter(cliente_id=atividade.cliente_id, ativo=True).values("id")
+    return atividade.eixos.filter(id__in=user_eixo_ids, ativo=True).exists()
+
+
+def activity_eixo_block_message(atividade: Atividade) -> str:
+    eixos = ", ".join(atividade.eixos.filter(ativo=True).order_by("ordem_exibicao", "nome").values_list("nome", flat=True))
+    if not eixos:
+        return "Esta atividade esta restrita por eixo e seu usuario nao possui permissao para acessa-la."
+    return (
+        "Esta atividade esta restrita ao(s) eixo(s) "
+        f"{eixos}. Seu usuario nao esta vinculado a nenhum eixo permitido para esta atividade."
     )

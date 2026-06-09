@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAllPaginated } from '@/utils/pagination';
-import type { CampoFormulario, FormularioInscricao, FormularioInscricaoPublic, InscricaoPublica } from '@/api/types';
+import type {
+  CampoFormulario,
+  FormularioInscricao,
+  FormularioInscricaoAnexo,
+  FormularioInscricaoPublic,
+  InscricaoPublica,
+} from '@/api/types';
 
 export function useFormulariosInscricao() {
   const client = useApiClient();
@@ -147,6 +153,44 @@ export function useInscricoesFormulario(formularioId?: number, nomeFiltro?: stri
       const response = await client.get<InscricaoPublica[]>(
         `/formularios_inscricao/${formularioId}/inscricoes${params}`,
         { headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined },
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useAnexosFormularioInscricao(formularioId?: number) {
+  const client = useApiClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
+
+  return useQuery({
+    queryKey: ['formularios_inscricao', formularioId, 'anexos'],
+    enabled: Boolean(formularioId),
+    queryFn: async () => {
+      const response = await client.get<FormularioInscricaoAnexo[]>(
+        `/formularios_inscricao/${formularioId}/anexos`,
+        { headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined },
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useBaixarAnexosFormularioInscricao() {
+  const client = useApiClient();
+  const { cliente, user } = useAuth();
+  const clienteId = cliente?.cliente?.id ?? user?.clienteId ?? null;
+
+  return useMutation({
+    mutationFn: async ({ formularioId, ids }: { formularioId: number; ids: string[] }) => {
+      const response = await client.post<Blob>(
+        `/formularios_inscricao/${formularioId}/anexos/download`,
+        {
+          body: { ids },
+          headers: clienteId ? { 'X-Cliente-ID': String(clienteId) } : undefined,
+          responseType: 'blob',
+        },
       );
       return response.data;
     },
