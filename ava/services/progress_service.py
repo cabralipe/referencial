@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
 from ava.models import (
@@ -160,6 +160,115 @@ class ProgressoService:
         return matricula
 
     @staticmethod
+    def sincronizar_matricula_rapida(matricula: MatriculaCurso):
+        """
+        Sincronizacao leve para telas de navegacao.
+
+        Evita recalcular todas as aulas/atividades em cada GET. Garante apenas
+        que a arvore de progresso exista para modulos/aulas disponiveis e
+        atualiza o percentual do curso a partir dos percentuais ja calculados.
+        Recalculos completos continuam acontecendo quando o aluno consome aula,
+        envia atividade ou quando uma rotina administrativa chamar
+        sincronizar_matricula().
+        """
+        if (
+            matricula.status == MatriculaCurso.Status.CONCLUIDA
+            and ProgressoService._matricula_concluida_precisa_resync(matricula)
+        ):
+            return ProgressoService.sincronizar_matricula(matricula)
+
+        modulos = list(
+            matricula.curso.modulos.filter(is_active=True)
+            .select_related("pre_requisito_modulo")
+            .prefetch_related(
+                "eixos",
+                Prefetch("aulas", queryset=Aula.objects.filter(is_active=True).order_by("ordem", "id")),
+            )
+            .order_by("ordem", "id")
+        )
+        modulos = ProgressoService.filtrar_modulos_disponiveis(matricula, modulos)
+        if not modulos:
+            ProgressoService.recalcular_curso(matricula, modulos_disponiveis=modulos)
+            matricula.refresh_from_db(fields=["status", "progresso_percentual", "data_conclusao"])
+            return matricula
+
+        modulo_ids = [modulo.id for modulo in modulos]
+        progressos_modulos_existentes = set(
+            ProgressoModulo.objects.filter(matricula=matricula, modulo_id__in=modulo_ids)
+            .values_list("modulo_id", flat=True)
+        )
+        ProgressoModulo.objects.bulk_create(
+            [
+                ProgressoModulo(matricula=matricula, modulo=modulo, cliente_id=matricula.cliente_id)
+                for modulo in modulos
+                if modulo.id not in progressos_modulos_existentes
+            ],
+            ignore_conflicts=True,
+        )
+
+        aulas = [aula for modulo in modulos for aula in modulo.aulas.all()]
+        aula_ids = [aula.id for aula in aulas]
+        if aula_ids:
+            progressos_aulas_existentes = set(
+                ProgressoAula.objects.filter(matricula=matricula, aula_id__in=aula_ids)
+                .values_list("aula_id", flat=True)
+            )
+            ProgressoAula.objects.bulk_create(
+                [
+                    ProgressoAula(matricula=matricula, aula=aula, cliente_id=matricula.cliente_id)
+                    for aula in aulas
+                    if aula.id not in progressos_aulas_existentes
+                ],
+                ignore_conflicts=True,
+            )
+
+        ProgressoService.recalcular_curso(matricula, modulos_disponiveis=modulos)
+        matricula.refresh_from_db(fields=["status", "progresso_percentual", "data_conclusao"])
+        return matricula
+
+    @staticmethod
+    def _matricula_concluida_precisa_resync(matricula: MatriculaCurso) -> bool:
+        modulo_ids = list(
+            matricula.curso.modulos.filter(is_active=True).values_list("id", flat=True)
+        )
+        if not modulo_ids:
+            return False
+
+        progressos_modulos = ProgressoModulo.objects.filter(
+            matricula=matricula,
+            modulo_id__in=modulo_ids,
+        ).count()
+        if progressos_modulos < len(modulo_ids):
+            return True
+
+        aula_ids = list(
+            Aula.objects.filter(modulo_id__in=modulo_ids, is_active=True).values_list("id", flat=True)
+        )
+        if not aula_ids:
+            return False
+
+        progressos_aulas = ProgressoAula.objects.filter(
+            matricula=matricula,
+            aula_id__in=aula_ids,
+        ).count()
+        if progressos_aulas < len(aula_ids):
+            return True
+
+        conteudos_obrigatorios = ConteudoAula.objects.filter(
+            aula_id__in=aula_ids,
+            is_obrigatorio=True,
+        ).count()
+        if not conteudos_obrigatorios:
+            return False
+
+        progressos_conteudos = ProgressoConteudo.objects.filter(
+            progresso_aula__matricula=matricula,
+            conteudo__aula_id__in=aula_ids,
+            conteudo__is_obrigatorio=True,
+        ).count()
+        return progressos_conteudos < conteudos_obrigatorios
+
+    @staticmethod
     def recalcular_aula(matricula: MatriculaCurso, aula: Aula):
         """
         Verifica se a aula foi concluída com base nos conteúdos obrigatórios.
@@ -262,11 +371,14 @@ class ProgressoService:
         ProgressoService.recalcular_curso(matricula)
 
     @staticmethod
-    def recalcular_curso(matricula: MatriculaCurso):
-        modulos = list(matricula.curso.modulos.filter(is_active=True).order_by("ordem", "id"))
-        modulos_ids = [
-            modulo.id for modulo in modulos if ProgressoService.modulo_disponivel(matricula, modulo)
-        ]
+    def recalcular_curso(matricula: MatriculaCurso, modulos_disponiveis=None):
+        if modulos_disponiveis is None:
+            modulos = list(matricula.curso.modulos.filter(is_active=True).prefetch_related("eixos").order_by("ordem", "id"))
+            modulos_ids = [
+                modulo.id for modulo in modulos if ProgressoService.modulo_disponivel(matricula, modulo)
+            ]
+        else:
+            modulos_ids = [modulo.id for modulo in modulos_disponiveis]
 
         if modulos_ids:
             percentuais = {

@@ -130,7 +130,7 @@ def dashboard(request):
     )
     matriculas = [matricula for matricula in matriculas if user_can_access_course_by_eixo(request.user, matricula.curso)]
     for matricula in matriculas:
-        ProgressoService.sincronizar_matricula(matricula)
+        ProgressoService.sincronizar_matricula_rapida(matricula)
     matriculas_em_andamento = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.ATIVA]
     matriculas_concluidas = [matricula for matricula in matriculas if matricula.status == MatriculaCurso.Status.CONCLUIDA]
 
@@ -203,7 +203,6 @@ def curso_detalhe(request, slug):
     if not user_can_access_course_by_eixo(request.user, matricula.curso):
         messages.warning(request, course_eixo_block_message(matricula.curso))
         return redirect("ava:catalogo")
-    ProgressoService.sincronizar_matricula(matricula)
 
     is_manager = _is_ava_manager(request.user)
     modulos_bloqueados = []
@@ -265,7 +264,7 @@ def acessar_aula(request, curso_slug, aula_id):
     if not user_can_access_course_by_eixo(request.user, matricula.curso):
         messages.warning(request, course_eixo_block_message(matricula.curso))
         return redirect("ava:catalogo")
-    ProgressoService.sincronizar_matricula(matricula)
+    ProgressoService.sincronizar_matricula_rapida(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     is_manager = _is_ava_manager(request.user)
     if not is_manager and not user_can_access_module_by_eixo(request.user, aula.modulo):
@@ -388,7 +387,7 @@ def responder_atividade(request, curso_slug, aula_id, atividade_id):
     if not user_can_access_course_by_eixo(request.user, matricula.curso):
         messages.warning(request, course_eixo_block_message(matricula.curso))
         return redirect("ava:catalogo")
-    ProgressoService.sincronizar_matricula(matricula)
+    ProgressoService.sincronizar_matricula_rapida(matricula)
     aula = get_object_or_404(Aula, id=aula_id, modulo__curso=matricula.curso)
     if not user_can_access_module_by_eixo(request.user, aula.modulo):
         messages.warning(request, module_eixo_block_message(aula.modulo))

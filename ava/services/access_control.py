@@ -26,6 +26,25 @@ def user_bypasses_eixo_filter(user) -> bool:
     return getattr(user, "role", None) in AVA_EIXO_BYPASS_ROLES
 
 
+def get_user_eixo_ids(user, cliente_id) -> set[int]:
+    cache = getattr(user, "_ava_eixo_ids_cache", None)
+    if cache is None:
+        cache = {}
+        setattr(user, "_ava_eixo_ids_cache", cache)
+    if cliente_id not in cache:
+        cache[cliente_id] = set(
+            user.eixos.filter(cliente_id=cliente_id, ativo=True).values_list("id", flat=True)
+        )
+    return cache[cliente_id]
+
+
+def object_has_allowed_eixo(obj, user_eixo_ids: set[int]) -> bool:
+    prefetched = getattr(obj, "_prefetched_objects_cache", {})
+    if "eixos" in prefetched:
+        return any(getattr(eixo, "ativo", False) and eixo.id in user_eixo_ids for eixo in prefetched["eixos"])
+    return obj.eixos.filter(id__in=user_eixo_ids, ativo=True).exists()
+
+
 def course_requires_eixo(curso: Curso) -> bool:
     return curso.eixos.exists()
 
@@ -49,8 +68,7 @@ def user_can_access_course_by_eixo(user, curso: Curso) -> bool:
         return True
     if not course_requires_eixo(curso):
         return True
-    user_eixo_ids = user.eixos.filter(cliente_id=curso.cliente_id, ativo=True).values("id")
-    return curso.eixos.filter(id__in=user_eixo_ids, ativo=True).exists()
+    return object_has_allowed_eixo(curso, get_user_eixo_ids(user, curso.cliente_id))
 
 
 def course_eixo_block_message(curso: Curso) -> str:
@@ -84,8 +102,7 @@ def user_can_access_module_by_eixo(user, modulo: CursoModulo) -> bool:
         return True
     if not module_requires_eixo(modulo):
         return True
-    user_eixo_ids = user.eixos.filter(cliente_id=modulo.cliente_id, ativo=True).values("id")
-    return modulo.eixos.filter(id__in=user_eixo_ids, ativo=True).exists()
+    return object_has_allowed_eixo(modulo, get_user_eixo_ids(user, modulo.cliente_id))
 
 
 def module_eixo_block_message(modulo: CursoModulo) -> str:
@@ -111,8 +128,7 @@ def user_can_access_activity_by_eixo(user, atividade: Atividade) -> bool:
         return True
     if not activity_requires_eixo(atividade):
         return True
-    user_eixo_ids = user.eixos.filter(cliente_id=atividade.cliente_id, ativo=True).values("id")
-    return atividade.eixos.filter(id__in=user_eixo_ids, ativo=True).exists()
+    return object_has_allowed_eixo(atividade, get_user_eixo_ids(user, atividade.cliente_id))
 
 
 def activity_eixo_block_message(atividade: Atividade) -> str:
