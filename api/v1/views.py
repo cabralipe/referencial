@@ -18,7 +18,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.activity import touch_user_session
-from core.models import Cliente, ClienteTema, TipoUsuarioCadastro
+from core.models import Cliente, ClienteTema, Eixo, TipoUsuarioCadastro
 from core.permissions import HasClientScope
 from core.scope import resolve_cliente_scope
 from services.progress import get_next_block_for_user
@@ -72,6 +72,7 @@ def _serialize_auth_user(user, active_cliente_id: int | None = None) -> dict:
         "tipo_cadastro_id": getattr(user, "tipo_cadastro_id", None),
         "tipo_cadastro_nome": getattr(getattr(user, "tipo_cadastro", None), "nome", None),
         "area_atuacao_pendente": bool(getattr(user, "area_atuacao_pendente", False)),
+        "eixos_pendente": bool(getattr(user, "eixos_pendente", False)),
     }
 
 
@@ -148,6 +149,56 @@ class AreaAtuacaoView(APIView):
 
         user.confirmar_area_atuacao(tipo_cadastro)
         user.refresh_from_db(fields=["tipo_cadastro", "role", "seguimento", "cliente", "area_atuacao_confirmada_em"])
+        return Response({"required": False, "user": _serialize_auth_user(user)})
+
+
+class EixosView(APIView):
+    """Popup obrigatorio de selecao de eixos.
+
+    Obrigatorio para todos os papeis, exceto administradores. Aparece tanto
+    para usuarios ja cadastrados quanto para os recem cadastrados enquanto
+    nao houver nenhum eixo vinculado ao usuario.
+    """
+
+    permission_classes = [HasClientScope]
+
+    def _get_eixos(self, request):
+        cliente_id = getattr(request, "cliente_id", None) or getattr(request.user, "cliente_id", None)
+        return Eixo.raw_objects.filter(
+            cliente_id=cliente_id,
+            is_deleted=False,
+            ativo=True,
+        ).order_by("ordem_exibicao", "nome")
+
+    def get(self, request):
+        user = request.user
+        eixos = self._get_eixos(request)
+        return Response(
+            {
+                "required": bool(user.eixos_pendente),
+                "title": "Selecione seus eixos",
+                "eixos": [
+                    {"id": eixo.id, "nome": eixo.nome, "descricao": eixo.descricao}
+                    for eixo in eixos
+                ],
+                "current_eixos_ids": list(user.eixos.values_list("id", flat=True)),
+            }
+        )
+
+    def post(self, request):
+        user = request.user
+        if not user.eixos_pendente:
+            return Response({"required": False, "user": _serialize_auth_user(user)})
+
+        eixos_ids = request.data.get("eixos_ids")
+        if not isinstance(eixos_ids, list) or not eixos_ids:
+            raise ValidationError({"eixos_ids": "Selecione ao menos um eixo para continuar."})
+
+        eixos = list(self._get_eixos(request).filter(pk__in=eixos_ids))
+        if not eixos:
+            raise ValidationError({"eixos_ids": "Eixos inválidos para este município."})
+
+        user.eixos.add(*eixos)
         return Response({"required": False, "user": _serialize_auth_user(user)})
 
 

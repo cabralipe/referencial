@@ -285,10 +285,14 @@
 
 .app-shell__modal-option input {
   margin: 0;
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
   accent-color: var(--app-primary);
 }
 
 .app-shell__modal-option span {
+  flex: 1 1 auto;
   font-weight: 600;
   line-height: 1.35;
 }

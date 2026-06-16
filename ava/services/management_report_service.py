@@ -129,6 +129,22 @@ class AVAManagementReportService:
             )
         return None
 
+    @staticmethod
+    def _eixo_atividade_q(eixo_id):
+        return (
+            Q(atividade__eixos=eixo_id)
+            | Q(atividade__aula__modulo__eixos=eixo_id)
+            | Q(atividade__aula__modulo__curso__eixos=eixo_id)
+        )
+
+    @classmethod
+    def _eixo_course_ids(cls, user, eixo_id):
+        cursos = cls._scoped_course_queryset(user)
+        ids = set(cursos.filter(eixos=eixo_id).values_list("id", flat=True))
+        ids |= set(cursos.filter(modulos__eixos=eixo_id).values_list("id", flat=True))
+        ids |= set(cursos.filter(modulos__aulas__atividades__eixos=eixo_id).values_list("id", flat=True))
+        return ids
+
     @classmethod
     def _matriculas_queryset(cls, user, filtros):
         qs = MatriculaCurso.objects.select_related("aluno", "aluno__escola", "curso")
@@ -143,6 +159,8 @@ class AVAManagementReportService:
             qs = qs.filter(aluno_id=filtros["usuario_id"])
         if filtros.get("escola_id"):
             qs = qs.filter(aluno__escola_id=filtros["escola_id"])
+        if filtros.get("eixo_id"):
+            qs = qs.filter(curso_id__in=cls._eixo_course_ids(user, filtros["eixo_id"]))
 
         if filtros.get("q"):
             termo = filtros["q"]
@@ -173,6 +191,8 @@ class AVAManagementReportService:
             qs = qs.filter(atividade__aula__modulo_id=filtros["modulo_id"])
         if filtros.get("aula_id"):
             qs = qs.filter(atividade__aula_id=filtros["aula_id"])
+        if filtros.get("eixo_id"):
+            qs = qs.filter(cls._eixo_atividade_q(filtros["eixo_id"])).distinct()
         if filtros.get("status"):
             qs = qs.filter(status=filtros["status"])
         if filtros.get("tipo"):
@@ -216,6 +236,8 @@ class AVAManagementReportService:
             qs = qs.filter(atividade__aula__modulo_id=filtros["modulo_id"])
         if filtros.get("aula_id"):
             qs = qs.filter(atividade__aula_id=filtros["aula_id"])
+        if filtros.get("eixo_id"):
+            qs = qs.filter(cls._eixo_atividade_q(filtros["eixo_id"])).distinct()
         if filtros.get("data_inicio"):
             qs = qs.filter(created_at__date__gte=filtros["data_inicio"])
         if filtros.get("data_fim"):

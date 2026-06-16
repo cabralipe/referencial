@@ -40,7 +40,23 @@ interface AreaAtuacaoResponse {
   current_tipo_cadastro_id: number | null;
 }
 
+interface EixoOption {
+  id: number;
+  nome: string;
+  descricao?: string;
+}
+
+interface EixosResponse {
+  required: boolean;
+  title: string;
+  eixos: EixoOption[];
+  current_eixos_ids: number[];
+}
+
 const AREA_ATUACAO_ROLES = new Set(['diretor', 'coordenador_pedagogico', 'professor']);
+
+// Papeis dispensados do popup de eixos (administradores).
+const EIXOS_EXEMPT_ROLES = new Set(['super_admin', 'admin_cliente']);
 
 export function AppLayout() {
   const { cliente, user, logout, activeClienteId, setActiveCliente } = useAuth();
@@ -72,6 +88,13 @@ export function AppLayout() {
   const [selectedAreaAtuacaoId, setSelectedAreaAtuacaoId] = useState<number | ''>('');
   const [areaAtuacaoTitle, setAreaAtuacaoTitle] = useState('Qual sua área de atuação?');
   const [areaAtuacaoError, setAreaAtuacaoError] = useState<string | null>(null);
+  const [eixosRequired, setEixosRequired] = useState(false);
+  const [eixosLoading, setEixosLoading] = useState(false);
+  const [eixosSubmitting, setEixosSubmitting] = useState(false);
+  const [eixosOptions, setEixosOptions] = useState<EixoOption[]>([]);
+  const [selectedEixosIds, setSelectedEixosIds] = useState<number[]>([]);
+  const [eixosTitle, setEixosTitle] = useState('Selecione seus eixos');
+  const [eixosError, setEixosError] = useState<string | null>(null);
   const sidenavInnerRef = useRef<HTMLDivElement | null>(null);
 
   const roleLabel = useMemo(() => {
@@ -302,6 +325,81 @@ export function AppLayout() {
 
   const showAreaAtuacaoModal = shouldCheckAreaAtuacao && (areaAtuacaoLoading || areaAtuacaoRequired);
 
+  const shouldCheckEixos = Boolean(
+    user?.id && user?.clienteId && !EIXOS_EXEMPT_ROLES.has(user.role),
+  );
+
+  useEffect(() => {
+    if (!shouldCheckEixos) {
+      setEixosRequired(false);
+      setEixosLoading(false);
+      setEixosSubmitting(false);
+      setEixosOptions([]);
+      setSelectedEixosIds([]);
+      setEixosError(null);
+      setEixosTitle('Selecione seus eixos');
+      return;
+    }
+
+    let cancelled = false;
+    setEixosLoading(true);
+    setEixosError(null);
+
+    api
+      .get<EixosResponse>('auth/eixos')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setEixosRequired(Boolean(data.required));
+        setEixosTitle(data.title || 'Selecione seus eixos');
+        setEixosOptions(data.eixos || []);
+        setSelectedEixosIds(data.current_eixos_ids || []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setEixosRequired(true);
+        setEixosOptions([]);
+        setEixosError(error instanceof Error ? error.message : 'Não foi possível carregar os eixos.');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setEixosLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, shouldCheckEixos, user?.id, user?.clienteId, user?.role]);
+
+  const toggleEixo = (id: number) => {
+    setSelectedEixosIds((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  };
+
+  const handleConfirmarEixos = async () => {
+    if (!selectedEixosIds.length) {
+      setEixosError('Selecione ao menos um eixo para continuar.');
+      return;
+    }
+    setEixosSubmitting(true);
+    setEixosError(null);
+    try {
+      await api.post('auth/eixos', {
+        body: { eixos_ids: selectedEixosIds },
+      });
+      window.location.reload();
+    } catch (error) {
+      setEixosSubmitting(false);
+      setEixosError(error instanceof Error ? error.message : 'Não foi possível salvar seus eixos.');
+    }
+  };
+
+  // O popup de eixos so aparece apos a confirmacao da area de atuacao,
+  // evitando dois modais obrigatorios sobrepostos.
+  const showEixosModal =
+    shouldCheckEixos && !showAreaAtuacaoModal && (eixosLoading || eixosRequired);
+
   return (
     <div
       className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`}
@@ -517,6 +615,62 @@ export function AppLayout() {
                     disabled={areaAtuacaoSubmitting || areaAtuacaoLoading || !areaAtuacaoOptions.length}
                   >
                     {areaAtuacaoSubmitting ? 'Confirmando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showEixosModal && (
+        <div className="app-shell__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="eixos-title">
+          <div className="app-shell__modal" onClick={(event) => event.stopPropagation()}>
+            <header className="app-shell__modal-header">
+              <p className="app-shell__modal-eyebrow">Cadastro complementar</p>
+              <h2 id="eixos-title">{eixosTitle}</h2>
+              <p>Selecione um ou mais eixos para continuar. Essa seleção é obrigatória.</p>
+            </header>
+
+            {eixosLoading ? (
+              <div className="app-shell__modal-state">Carregando eixos...</div>
+            ) : (
+              <>
+                <div className="app-shell__modal-options">
+                  {eixosOptions.map((option) => (
+                    <label
+                      key={option.id}
+                      className={`app-shell__modal-option ${selectedEixosIds.includes(option.id) ? 'is-selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="eixos"
+                        value={option.id}
+                        checked={selectedEixosIds.includes(option.id)}
+                        onChange={() => toggleEixo(option.id)}
+                        disabled={eixosSubmitting}
+                      />
+                      <span>{option.nome}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {!eixosOptions.length && (
+                  <div className="app-shell__modal-state">
+                    Nenhum eixo ativo foi encontrado para este município.
+                  </div>
+                )}
+
+                {eixosError && <div className="app-shell__modal-error">{eixosError}</div>}
+
+                <div className="app-shell__modal-actions">
+                  <button
+                    type="button"
+                    className="app-shell__modal-button"
+                    onClick={handleConfirmarEixos}
+                    disabled={eixosSubmitting || eixosLoading || !eixosOptions.length || !selectedEixosIds.length}
+                  >
+                    {eixosSubmitting ? 'Confirmando...' : 'Confirmar'}
                   </button>
                 </div>
               </>

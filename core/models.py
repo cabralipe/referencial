@@ -176,6 +176,12 @@ class Usuario(AbstractUser):
         Role.PROFESSOR,
     }
 
+    # Papeis dispensados de selecionar eixos (administradores).
+    EIXO_EXEMPT_ROLES = {
+        Role.SUPER_ADMIN,
+        Role.ADMIN_CLIENTE,
+    }
+
     username = None
     email = models.EmailField("E-mail", unique=True)
     nome = models.CharField(max_length=255)
@@ -252,6 +258,19 @@ class Usuario(AbstractUser):
         if not self.tipo_cadastro_id:
             return True
         return (getattr(self.tipo_cadastro, "slug", "") or "") in self.AREA_ATUACAO_GENERIC_SLUGS
+
+    @property
+    def eixos_pendente(self) -> bool:
+        """Indica se o usuario ainda precisa selecionar seus eixos.
+
+        Obrigatorio para todos os papeis, exceto administradores
+        (super admin e admin do cliente).
+        """
+        if self.role in self.EIXO_EXEMPT_ROLES:
+            return False
+        if not self.pk or not self.cliente_id:
+            return False
+        return not self.eixos.exists()
 
     def clean(self):  # type: ignore[override]
         self._sync_from_tipo_cadastro()
