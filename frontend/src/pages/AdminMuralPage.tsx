@@ -1,6 +1,7 @@
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageInstructions } from '@/components/common/PageInstructions';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
@@ -398,6 +399,25 @@ export function AdminMuralPage({
     <div className="admin-mural">
       <PageHeader title={title} description={description} />
 
+      <PageInstructions
+        title="Como publicar no mural"
+        description="Cada aviso aparece para os GTs na ordem definida abaixo. Use textos curtos e destaque o essencial em negrito."
+        items={[
+          {
+            title: '1. Escreva o aviso',
+            description: 'Dê um título claro e escreva o conteúdo. Adicione um link ou anexos quando útil.',
+          },
+          {
+            title: '2. Direcione e organize',
+            description: 'Escolha os GTs, marque "Recebe arquivo" se precisar de envios e fixe os avisos mais importantes.',
+          },
+          {
+            title: '3. Acompanhe',
+            description: 'Reordene arrastando os cards e acompanhe envios e downloads no relatório ao final da página.',
+          },
+        ]}
+      />
+
       <Card>
         <form className="admin-mural__form" onSubmit={handleSubmit}>
           <h2>{editingId ? 'Editar aviso' : 'Novo aviso'}</h2>
@@ -573,7 +593,7 @@ export function AdminMuralPage({
                           <strong>{envio.nome_arquivo}</strong>
                           <span>
                             {envio.gt_nome ? `${envio.gt_nome} · ` : ''}
-                            {envio.usuario_nome || 'Usuario'}
+                            {envio.usuario_nome || 'Usuário'}
                           </span>
                         </div>
                         <a href={envio.arquivo_url} target="_blank" rel="noreferrer">
@@ -615,7 +635,7 @@ export function AdminMuralPage({
       <section className="admin-mural__report">
         <div className="admin-mural__list-header">
           <div>
-            <h2>Relatorio do mural</h2>
+            <h2>Relatório do mural</h2>
             <p>Confira quem enviou arquivos nos murais de recebimento e quem baixou anexos publicados no mural.</p>
           </div>
           <Button type="button" variant="ghost" onClick={exportReportCsv}>
@@ -642,7 +662,7 @@ export function AdminMuralPage({
                     {post.envios_arquivo.length > 0 ? (
                       post.envios_arquivo.map((envio) => (
                         <p key={`envio-${envio.id}`}>
-                          <strong>{envio.usuario_nome || 'Usuario'}</strong>
+                          <strong>{envio.usuario_nome || 'Usuário'}</strong>
                           <span>{envio.gt_nome ? `${envio.gt_nome} · ` : ''}{envio.nome_arquivo}</span>
                           <small>{new Date(envio.updated_at).toLocaleString('pt-BR')}</small>
                         </p>
@@ -656,7 +676,7 @@ export function AdminMuralPage({
                     {post.downloads.length > 0 ? (
                       post.downloads.map((download) => (
                         <p key={`download-${download.id}`}>
-                          <strong>{download.usuario_nome || download.usuario_email || 'Usuario'}</strong>
+                          <strong>{download.usuario_nome || download.usuario_email || 'Usuário'}</strong>
                           <span>{download.anexo_titulo}</span>
                           <small>{new Date(download.created_at).toLocaleString('pt-BR')}</small>
                         </p>
@@ -710,7 +730,7 @@ export function AdminMuralPage({
               </Card>
             );
           })}
-          {referencias.length === 0 && <p className="admin-mural__references-empty">Nenhuma referencia encontrada.</p>}
+          {referencias.length === 0 && <p className="admin-mural__references-empty">Nenhuma referência encontrada.</p>}
         </div>
       </section>
     </div>

@@ -25,6 +25,7 @@ type Rect = { top: number; left: number; width: number; height: number } | null;
 const PADDING = 8;
 const CARD_WIDTH = 340;
 const CARD_GAP = 14;
+const CARD_EST_HEIGHT = 240;
 
 function getRect(selector?: string): Rect {
   if (!selector) return null;
@@ -35,13 +36,88 @@ function getRect(selector?: string): Rect {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
+
 export function GuidedTour({ steps, open, onClose, onFinish }: GuidedTourProps) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect>(null);
+  const [cardStyle, setCardStyle] = useState<CSSProperties>({
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+  });
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   const total = steps.length;
   const step = steps[index];
+
+  // Calcula a posição do cartão a partir do alvo, sempre dentro da viewport.
+  const positionCard = useCallback(
+    (targetRect: Rect, placement: TourStep['placement']) => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cardW = cardRef.current?.offsetWidth || CARD_WIDTH;
+      const cardH = cardRef.current?.offsetHeight || CARD_EST_HEIGHT;
+
+      const resolved = placement ?? (targetRect ? 'bottom' : 'center');
+
+      if (!targetRect || resolved === 'center') {
+        setCardStyle({
+          top: clamp((vh - cardH) / 2, CARD_GAP, vh - cardH - CARD_GAP),
+          left: clamp((vw - cardW) / 2, CARD_GAP, vw - cardW - CARD_GAP),
+          transform: 'none',
+        });
+        return;
+      }
+
+      let top: number;
+      let left: number;
+
+      switch (resolved) {
+        case 'right':
+          left = targetRect.left + targetRect.width + CARD_GAP;
+          top = targetRect.top;
+          break;
+        case 'left':
+          left = targetRect.left - cardW - CARD_GAP;
+          top = targetRect.top;
+          break;
+        case 'top':
+          left = targetRect.left + targetRect.width / 2 - cardW / 2;
+          top = targetRect.top - cardH - CARD_GAP;
+          break;
+        case 'bottom':
+        default:
+          left = targetRect.left + targetRect.width / 2 - cardW / 2;
+          top = targetRect.top + targetRect.height + CARD_GAP;
+          break;
+      }
+
+      // Se não couber ao lado direito, reposiciona abaixo (ou acima) do alvo.
+      if (resolved === 'right' && left + cardW > vw - CARD_GAP) {
+        left = targetRect.left + targetRect.width / 2 - cardW / 2;
+        top = targetRect.top + targetRect.height + CARD_GAP;
+      }
+      if (resolved === 'left' && left < CARD_GAP) {
+        left = targetRect.left + targetRect.width / 2 - cardW / 2;
+        top = targetRect.top + targetRect.height + CARD_GAP;
+      }
+      // Se ficaria abaixo da viewport, joga para cima do alvo.
+      if (top + cardH > vh - CARD_GAP) {
+        const above = targetRect.top - cardH - CARD_GAP;
+        if (above >= CARD_GAP) top = above;
+      }
+
+      setCardStyle({
+        top: clamp(top, CARD_GAP, vh - cardH - CARD_GAP),
+        left: clamp(left, CARD_GAP, vw - cardW - CARD_GAP),
+        transform: 'none',
+      });
+    },
+    [],
+  );
 
   const recompute = useCallback(() => {
     if (!open || !step) return;
@@ -49,8 +125,10 @@ export function GuidedTour({ steps, open, onClose, onFinish }: GuidedTourProps) 
     if (el) {
       el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }
-    setRect(getRect(step.target));
-  }, [open, step]);
+    const nextRect = getRect(step.target);
+    setRect(nextRect);
+    positionCard(nextRect, step.placement);
+  }, [open, step, positionCard]);
 
   // Reinicia no começo sempre que abre.
   useEffect(() => {
@@ -60,11 +138,14 @@ export function GuidedTour({ steps, open, onClose, onFinish }: GuidedTourProps) 
   useLayoutEffect(() => {
     if (!open) return;
     recompute();
-    const id = window.setTimeout(recompute, 320); // após o scroll suave
+    // Recalcula após o scroll suave e após o cartão renderizar com a altura real.
+    const id1 = window.setTimeout(recompute, 80);
+    const id2 = window.setTimeout(recompute, 360);
     window.addEventListener('resize', recompute);
     window.addEventListener('scroll', recompute, true);
     return () => {
-      window.clearTimeout(id);
+      window.clearTimeout(id1);
+      window.clearTimeout(id2);
       window.removeEventListener('resize', recompute);
       window.removeEventListener('scroll', recompute, true);
     };
@@ -111,9 +192,6 @@ export function GuidedTour({ steps, open, onClose, onFinish }: GuidedTourProps) 
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         back();
-      } else if (event.key === 'Tab') {
-        // Mantém o foco dentro do cartão (foco simples).
-        cardRef.current?.focus();
       }
     };
     window.addEventListener('keydown', handler);
@@ -121,29 +199,6 @@ export function GuidedTour({ steps, open, onClose, onFinish }: GuidedTourProps) 
   }, [open, next, back, onClose]);
 
   if (!open || !step) return null;
-
-  const placement = step.placement ?? (rect ? 'bottom' : 'center');
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-
-  // Posiciona o cartão.
-  let cardStyle: CSSProperties;
-  if (!rect || placement === 'center') {
-    cardStyle = {
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-    };
-  } else {
-    const spaceBelow = viewportH - (rect.top + rect.height);
-    const useTop = placement === 'top' || (placement === 'bottom' && spaceBelow < 220);
-    let top = useTop ? rect.top - CARD_GAP : rect.top + rect.height + CARD_GAP;
-    let left = rect.left + rect.width / 2 - CARD_WIDTH / 2;
-    left = Math.max(CARD_GAP, Math.min(left, viewportW - CARD_WIDTH - CARD_GAP));
-    const transform = useTop ? 'translateY(-100%)' : 'none';
-    top = Math.max(CARD_GAP, top);
-    cardStyle = { top, left, transform };
-  }
 
   const spotlightStyle: CSSProperties | undefined = rect
     ? {

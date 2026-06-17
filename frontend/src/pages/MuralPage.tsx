@@ -1,8 +1,10 @@
 import { FormEvent, MouseEvent, useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageInstructions } from '@/components/common/PageInstructions';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
+import Icon from '@/components/common/Icon';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { useAuth } from '@/context/AuthContext';
 import { useAvailableGts } from '@/hooks/useAvailableGts';
@@ -50,6 +52,19 @@ type MuralItem =
     link_url: string;
     updated_at: string;
   };
+
+const KIND_META: Record<MuralItem['kind'], { label: string; icon: string; className: string }> = {
+  mural: { label: 'Aviso', icon: 'comment', className: 'mural__chip--aviso' },
+  bloco: { label: 'Referência', icon: 'library', className: 'mural__chip--ref' },
+  midia: { label: 'Link', icon: 'document', className: 'mural__chip--link' },
+};
+
+function formatMuralDate(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export function MuralPage() {
   const { user } = useAuth();
@@ -104,9 +119,6 @@ export function MuralPage() {
       const positionA = a.kind === 'mural' ? (a.position ?? a.ordem ?? 0) : Infinity;
       const positionB = b.kind === 'mural' ? (b.position ?? b.ordem ?? 0) : Infinity;
       if (positionA !== positionB) return positionA - positionB;
-      if (a.kind === 'mural' && b.kind === 'mural') {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
   }, [posts, blocos, midias]);
@@ -184,40 +196,66 @@ export function MuralPage() {
     <div className="mural">
       <PageHeader title="Mural" description="Acompanhe os avisos e documentos publicados pela administração." />
 
+      <PageInstructions
+        title="O que você encontra no mural"
+        description="Tudo o que a coordenação publica para você fica reunido aqui, do mais recente ao mais antigo."
+        items={[
+          {
+            title: 'Avisos',
+            description: 'Comunicados e orientações. Alguns pedem o envio de um arquivo do seu GT.',
+          },
+          {
+            title: 'Referências',
+            description: 'Textos de apoio e modelos para consultar durante a escrita.',
+          },
+          {
+            title: 'Links',
+            description: 'Materiais externos e recursos complementares indicados pela equipe.',
+          },
+        ]}
+      />
+
       <div className="mural__grid">
         {ordered.map((item) => {
+          const meta = KIND_META[item.kind];
+
           if (item.kind === 'midia') {
             const descricao = item.descricao?.trim() || item.link_url;
             return (
-              <Card key={item.id}>
-                <div className="mural__card">
-                  <header>
-                    <div>
-                      <h2>{item.titulo}</h2>
-                      <span>{new Date(item.updated_at).toLocaleString('pt-BR')}</span>
-                    </div>
+              <Card key={item.id} className="mural__card-wrap">
+                <article className="mural__card">
+                  <header className="mural__head">
+                    <span className={`mural__chip ${meta.className}`}>
+                      <Icon name={meta.icon} className="mural__chip-icon" ariaHidden />
+                      {meta.label}
+                    </span>
+                    {formatMuralDate(item.updated_at) && <time className="mural__date">{formatMuralDate(item.updated_at)}</time>}
                   </header>
-                  <p>{descricao}</p>
+                  <h2 className="mural__title">{item.titulo}</h2>
+                  <p className="mural__excerpt">{descricao}</p>
                   <a className="mural__link" href={item.link_url} target="_blank" rel="noreferrer">
+                    <Icon name="export" className="mural__chip-icon" ariaHidden />
                     Abrir link
                   </a>
-                </div>
+                </article>
               </Card>
             );
           }
 
           if (item.kind === 'bloco') {
             return (
-              <Card key={item.id}>
-                <div className="mural__card">
-                  <header>
-                    <div>
-                      <h2>{item.titulo}</h2>
-                      <span>{new Date(item.updated_at).toLocaleString('pt-BR')}</span>
-                    </div>
+              <Card key={item.id} className="mural__card-wrap">
+                <article className="mural__card">
+                  <header className="mural__head">
+                    <span className={`mural__chip ${meta.className}`}>
+                      <Icon name={meta.icon} className="mural__chip-icon" ariaHidden />
+                      {meta.label}
+                    </span>
+                    {formatMuralDate(item.updated_at) && <time className="mural__date">{formatMuralDate(item.updated_at)}</time>}
                   </header>
-                  <div dangerouslySetInnerHTML={{ __html: item.conteudo_html }} />
-                </div>
+                  <h2 className="mural__title">{item.titulo}</h2>
+                  <div className="mural__body rich-content" dangerouslySetInnerHTML={{ __html: item.conteudo_html }} />
+                </article>
               </Card>
             );
           }
@@ -226,21 +264,24 @@ export function MuralPage() {
           const canSubmitFile = user?.role === 'membro_gt' && item.modalidade === 'recebimento_arquivo' && eligibleGts.length > 0;
 
           return (
-            <Card key={item.id}>
-              <div className="mural__card">
-                <header>
-                  <div>
-                    <h2>{item.titulo}</h2>
-                    <span>{new Date(item.updated_at).toLocaleString('pt-BR')}</span>
-                  </div>
+            <Card key={item.id} className={`mural__card-wrap ${item.fixado ? 'mural__card-wrap--pinned' : ''}`}>
+              <article className="mural__card">
+                <header className="mural__head">
+                  <span className={`mural__chip ${meta.className}`}>
+                    <Icon name={meta.icon} className="mural__chip-icon" ariaHidden />
+                    {meta.label}
+                  </span>
                   <div className="mural__meta">
                     {item.modalidade === 'recebimento_arquivo' && <span className="mural__badge mural__badge--info">Recebe arquivo</span>}
-                    {item.fixado && <span className="mural__badge">Fixado</span>}
+                    {item.fixado && <span className="mural__badge mural__badge--pin">Fixado</span>}
+                    {formatMuralDate(item.updated_at) && <time className="mural__date">{formatMuralDate(item.updated_at)}</time>}
                   </div>
                 </header>
-                <div dangerouslySetInnerHTML={{ __html: item.conteudo_html }} />
+                <h2 className="mural__title">{item.titulo}</h2>
+                <div className="mural__body rich-content" dangerouslySetInnerHTML={{ __html: item.conteudo_html }} />
                 {item.link_url && (
                   <a className="mural__link" href={item.link_url} target="_blank" rel="noreferrer">
+                    <Icon name="export" className="mural__chip-icon" ariaHidden />
                     Abrir link
                   </a>
                 )}
@@ -312,12 +353,23 @@ export function MuralPage() {
                     ))}
                   </div>
                 )}
-                {item.criado_por?.nome && <p className="mural__autor">Publicado por {item.criado_por.nome}</p>}
-              </div>
+                {item.criado_por?.nome && (
+                  <p className="mural__autor">
+                    <Icon name="users" className="mural__chip-icon" ariaHidden />
+                    Publicado por {item.criado_por.nome}
+                  </p>
+                )}
+              </article>
             </Card>
           );
         })}
-        {ordered.length === 0 && <p className="mural__empty">Nenhum aviso publicado ainda.</p>}
+        {ordered.length === 0 && (
+          <div className="mural__empty">
+            <Icon name="comment" className="mural__empty-icon" ariaHidden />
+            <h2>Nenhum aviso por aqui ainda</h2>
+            <p>Quando a coordenação publicar avisos, referências ou links, eles aparecerão neste mural.</p>
+          </div>
+        )}
       </div>
     </div>
   );
