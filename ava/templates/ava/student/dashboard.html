@@ -116,10 +116,50 @@
                             aria-valuemax="100"></div>
                     </div>
 
-                    <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-outline-success w-100">
-                        Rever curso <i class="bi bi-arrow-right ms-1"></i>
-                    </a>
+                    <div class="d-grid gap-2">
+                        {% if matricula.certificado_disponivel %}
+                        <a href="{% url 'ava:aluno_baixar_certificado' matricula.certificado_disponivel.id %}" class="btn btn-success w-100">
+                            Baixar certificado <i class="bi bi-download ms-1"></i>
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-outline-success w-100">
+                            Rever curso <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
                 </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if certificados_liberados %}
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mt-5 mb-4">
+        <h2 class="h4 fw-bold mb-0">Meus certificados ({{ certificados_liberados|length }})</h2>
+        <span class="ava-chip px-3 py-2">Liberados</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for certificado in certificados_liberados %}
+        <div class="col">
+            <article class="ava-surface h-100 p-4 d-flex flex-column">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                    <span class="ava-chip px-3 py-2">Certificado</span>
+                    <span class="badge text-bg-light rounded-pill">{{ certificado.data_emissao|date:"d/m/Y" }}</span>
+                </div>
+                <h3 class="h5 fw-bold mb-2">
+                    {% if certificado.matricula_curso %}
+                    {{ certificado.matricula_curso.curso.titulo }}
+                    {% elif certificado.matricula_trilha %}
+                    {{ certificado.matricula_trilha.trilha.nome }}
+                    {% else %}
+                    Certificado AVA
+                    {% endif %}
+                </h3>
+                <p class="text-muted small mb-4">Código de validação: {{ certificado.codigo_validacao }}</p>
+                <a href="{% url 'ava:aluno_baixar_certificado' certificado.id %}" class="btn btn-primary w-100 mt-auto">
+                    Baixar PDF <i class="bi bi-download ms-1"></i>
+                </a>
             </article>
         </div>
         {% endfor %}

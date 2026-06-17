@@ -13,7 +13,7 @@ from ava.models.activity import (
 )
 from ava.models.enrollment import MatriculaCurso, MatriculaTrilha, AutorizacaoCurso
 from ava.models.progress import ProgressoAula, ProgressoConteudo, ProgressoModulo
-from ava.models.certificate import ConfigCertificado, Certificado
+from ava.models.certificate import AssinaturaCertificado, ConfigCertificado, Certificado
 
 __all__ = [
     "TrilhaFormativa",
@@ -37,5 +37,6 @@ __all__ = [
     "ProgressoConteudo",
     "ProgressoModulo",
     "ConfigCertificado",
+    "AssinaturaCertificado",
     "Certificado",
 ]

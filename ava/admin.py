@@ -1,16 +1,27 @@
+import io
+import zipfile
+
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.text import slugify
 
 from ava.forms import CursoEstruturaCopyForm
+from ava.models.certificate import CERTIFICATE_VARIABLES, DEFAULT_CERTIFICATE_VARIABLES
 from ava.services import CourseCloneService
+from ava.services.certificate_service import CertificacaoService
 from ava.services.course_copy_service import CourseCopyOptions
-from core.models import Usuario
+from core.models import Eixo, TipoUsuarioCadastro, Usuario
+from curriculum.models import Escola, GT
 
 from .models import (
+    AssinaturaCertificado,
     Atividade,
     AtividadeForumAnexo,
     AtividadeForumMensagem,
@@ -301,6 +312,148 @@ class AtividadeAdminForm(forms.ModelForm):
 
 AtividadeInline.form = AtividadeAdminForm
 AtividadeInline.filter_horizontal = ("eixos",)
+
+
+class ConfigCertificadoAdminForm(forms.ModelForm):
+    campos_variaveis = forms.MultipleChoiceField(
+        label="Campos que entram no certificado",
+        choices=CERTIFICATE_VARIABLES,
+        required=False,
+        initial=DEFAULT_CERTIFICATE_VARIABLES,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    class Meta:
+        model = ConfigCertificado
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["campos_variaveis"].initial = self.instance.campos_variaveis or DEFAULT_CERTIFICATE_VARIABLES
+
+    def clean_campos_variaveis(self):
+        return list(self.cleaned_data.get("campos_variaveis") or DEFAULT_CERTIFICATE_VARIABLES)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        curso = cleaned_data.get("curso")
+        trilha = cleaned_data.get("trilha")
+        if not curso and not trilha:
+            raise forms.ValidationError("Informe um curso ou uma trilha para a configuracao do certificado.")
+        if curso and trilha:
+            raise forms.ValidationError("Use uma configuracao separada para curso e trilha.")
+        return cleaned_data
+
+
+class CertificadoBatchEmitForm(forms.Form):
+    config = forms.ModelChoiceField(
+        label="Modelo/configuracao",
+        queryset=ConfigCertificado.objects.none(),
+        required=True,
+    )
+    curso = forms.ModelChoiceField(
+        label="Curso",
+        queryset=Curso.objects.none(),
+        required=False,
+        help_text="Opcional quando o modelo ja estiver vinculado a um curso.",
+    )
+    aluno = forms.ModelChoiceField(
+        label="Cursista individual",
+        queryset=Usuario.objects.none(),
+        required=False,
+    )
+    eixos = forms.ModelMultipleChoiceField(
+        label="Eixo",
+        queryset=Eixo.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Filtra por eixo do curso ou eixo vinculado ao usuario.",
+    )
+    escola = forms.ModelChoiceField(label="Escola", queryset=Escola.objects.none(), required=False)
+    gt = forms.ModelChoiceField(label="GT", queryset=GT.objects.none(), required=False)
+    tipos_usuario = forms.MultipleChoiceField(
+        label="Tipos de usuarios",
+        choices=Usuario.Role.choices,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    tipo_cadastro = forms.ModelChoiceField(
+        label="Tipo de cadastro",
+        queryset=TipoUsuarioCadastro.objects.none(),
+        required=False,
+    )
+    campos_variaveis = forms.MultipleChoiceField(
+        label="Campos impressos neste lote",
+        choices=CERTIFICATE_VARIABLES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    liberar_agora = forms.BooleanField(label="Liberar no AVA agora", required=False, initial=True)
+    liberar_em = forms.DateTimeField(
+        label="Programar liberacao para",
+        required=False,
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        help_text="Use este campo quando nao marcar liberacao imediata.",
+    )
+    aprovar_pendentes = forms.BooleanField(
+        label="Emitir tambem para cursistas sem conclusao",
+        required=False,
+        help_text="A tela de confirmacao mostra quem ainda nao concluiu antes de emitir.",
+    )
+
+    def __init__(self, *args, request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        cliente_id = None if getattr(request.user, "role", None) == Usuario.Role.SUPER_ADMIN else request.user.cliente_id
+        configs = ConfigCertificado.objects.select_related("curso", "trilha").order_by("curso__titulo", "trilha__nome", "id")
+        cursos = Curso.objects.order_by("titulo")
+        usuarios = Usuario.objects.order_by("nome", "email")
+        eixos = Eixo.objects.order_by("ordem_exibicao", "nome")
+        escolas = Escola.objects.order_by("nome")
+        gts = GT.objects.order_by("nome")
+        tipos = TipoUsuarioCadastro.objects.order_by("nome")
+        if cliente_id:
+            configs = configs.filter(cliente_id=cliente_id)
+            cursos = cursos.filter(cliente_id=cliente_id)
+            usuarios = usuarios.filter(cliente_id=cliente_id)
+            eixos = eixos.filter(cliente_id=cliente_id)
+            escolas = escolas.filter(cliente_id=cliente_id)
+            gts = gts.filter(cliente_id=cliente_id)
+            tipos = tipos.filter(cliente_id=cliente_id)
+
+        self.fields["config"].queryset = configs
+        self.fields["curso"].queryset = cursos
+        self.fields["aluno"].queryset = usuarios
+        self.fields["eixos"].queryset = eixos
+        self.fields["escola"].queryset = escolas
+        self.fields["gt"].queryset = gts
+        self.fields["tipo_cadastro"].queryset = tipos
+
+        config_id = self.data.get("config") if self.is_bound else None
+        config = configs.filter(pk=config_id).first() if config_id else None
+        self.fields["campos_variaveis"].initial = (
+            config.campos_variaveis if config and config.campos_variaveis else DEFAULT_CERTIFICATE_VARIABLES
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        config = cleaned_data.get("config")
+        curso = cleaned_data.get("curso")
+        if config and config.curso_id:
+            cleaned_data["curso"] = config.curso
+        elif not curso:
+            raise forms.ValidationError("Selecione um curso ou uma configuracao vinculada a curso.")
+
+        if not cleaned_data.get("liberar_agora") and not cleaned_data.get("liberar_em"):
+            raise forms.ValidationError("Informe uma data para programar a liberacao ou marque liberar agora.")
+        return cleaned_data
+
+
+class AssinaturaCertificadoInline(AVATabularInline):
+    model = AssinaturaCertificado
+    extra = 0
+    fields = ("ordem", "titulo", "cargo", "imagem", "x", "y", "largura")
+    exclude = ("cliente",)
 
 
 @admin.register(TrilhaFormativa)
@@ -616,13 +769,242 @@ class MatriculaTrilhaAdmin(AVAModelAdmin):
     search_fields = ("aluno__nome", "aluno__email", "trilha__nome")
 
 
+def _certificado_nome_arquivo(certificado):
+    aluno_nome = certificado.dados_impressos.get("aluno_nome") or getattr(certificado.aluno, "nome", "") or certificado.aluno.email
+    curso_nome = certificado.dados_impressos.get("curso_nome")
+    if not curso_nome and certificado.matricula_curso_id:
+        curso_nome = certificado.matricula_curso.curso.titulo
+    base = slugify(f"{aluno_nome}-{curso_nome or certificado.codigo_validacao}") or certificado.codigo_validacao
+    return f"{base}.pdf"
+
+
+def _candidate_queryset_from_form(form, request):
+    data = form.cleaned_data
+    curso = data["curso"]
+    qs = (
+        MatriculaCurso.objects.select_related(
+            "aluno",
+            "aluno__escola",
+            "aluno__tipo_cadastro",
+            "curso",
+        )
+        .prefetch_related("aluno__grupos_trabalho", "aluno__eixos", "curso__eixos")
+        .filter(curso=curso)
+        .order_by("aluno__nome", "aluno__email")
+    )
+    if getattr(request.user, "role", None) != Usuario.Role.SUPER_ADMIN:
+        qs = qs.filter(cliente_id=request.user.cliente_id)
+    if data.get("aluno"):
+        qs = qs.filter(aluno=data["aluno"])
+    if data.get("escola"):
+        qs = qs.filter(aluno__escola=data["escola"])
+    if data.get("gt"):
+        qs = qs.filter(aluno__grupos_trabalho=data["gt"])
+    if data.get("tipos_usuario"):
+        qs = qs.filter(aluno__role__in=data["tipos_usuario"])
+    if data.get("tipo_cadastro"):
+        qs = qs.filter(aluno__tipo_cadastro=data["tipo_cadastro"])
+    eixos = data.get("eixos")
+    if eixos:
+        qs = qs.filter(Q(curso__eixos__in=eixos) | Q(aluno__eixos__in=eixos)).distinct()
+    return qs
+
+
 @admin.register(Certificado)
 class CertificadoAdmin(AVAModelAdmin):
-    list_display = ("aluno", "codigo_validacao", "data_emissao")
+    change_list_template = "admin/ava/certificado/change_list.html"
+    list_display = ("aluno", "curso_certificado", "codigo_validacao", "data_emissao", "liberado_em", "pdf_link")
+    list_filter = ("liberado_em", "matricula_curso__curso", "aluno__escola")
     search_fields = ("aluno__nome", "aluno__email", "codigo_validacao")
-    readonly_fields = ("codigo_validacao", "dados_impressos", "data_emissao")
+    readonly_fields = ("codigo_validacao", "dados_impressos", "data_emissao", "arquivo_pdf")
+    actions = ("baixar_certificados_zip",)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "emitir/",
+                self.admin_site.admin_view(self.emitir_view),
+                name="ava_certificado_emitir_lote",
+            ),
+            path(
+                "<int:object_id>/baixar/",
+                self.admin_site.admin_view(self.baixar_pdf_view),
+                name="ava_certificado_baixar_pdf",
+            ),
+        ]
+        return custom + urls
+
+    def curso_certificado(self, obj):
+        if obj.matricula_curso_id:
+            return obj.matricula_curso.curso.titulo
+        if obj.matricula_trilha_id:
+            return obj.matricula_trilha.trilha.nome
+        return "-"
+
+    curso_certificado.short_description = "Curso/Trilha"
+
+    def pdf_link(self, obj):
+        if not obj.pk or not obj.arquivo_pdf:
+            return "-"
+        url = reverse("admin:ava_certificado_baixar_pdf", args=[obj.pk])
+        return format_html('<a class="button" href="{}">Baixar PDF</a>', url)
+
+    pdf_link.short_description = "PDF"
+
+    def baixar_pdf_view(self, request, object_id):
+        certificado = get_object_or_404(self.get_queryset(request), pk=object_id)
+        if not certificado.arquivo_pdf:
+            raise Http404("Certificado sem PDF gerado.")
+        return FileResponse(certificado.arquivo_pdf.open("rb"), as_attachment=True, filename=_certificado_nome_arquivo(certificado))
+
+    def baixar_certificados_zip(self, request, queryset):
+        certificados = list(queryset.select_related("aluno", "matricula_curso__curso"))
+        buffer = io.BytesIO()
+        total = 0
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for certificado in certificados:
+                if not certificado.arquivo_pdf:
+                    continue
+                certificado.arquivo_pdf.open("rb")
+                try:
+                    zip_file.writestr(_certificado_nome_arquivo(certificado), certificado.arquivo_pdf.read())
+                finally:
+                    certificado.arquivo_pdf.close()
+                total += 1
+        if not total:
+            self.message_user(request, "Nenhum certificado selecionado possui PDF gerado.", level=messages.WARNING)
+            return None
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = 'attachment; filename="certificados-ava.zip"'
+        return response
+
+    baixar_certificados_zip.short_description = "Baixar certificados selecionados em ZIP"
+
+    def emitir_view(self, request):
+        form = CertificadoBatchEmitForm(request.POST or None, request=request)
+        candidatos = []
+        pendentes = []
+        elegiveis = []
+        emitidos = []
+
+        if request.method == "POST" and form.is_valid():
+            candidatos = list(_candidate_queryset_from_form(form, request))
+            for matricula in candidatos:
+                elegibilidade = CertificacaoService.avaliar_matricula(matricula)
+                item = {"matricula": matricula, "elegibilidade": elegibilidade}
+                if elegibilidade.approved:
+                    elegiveis.append(item)
+                else:
+                    pendentes.append(item)
+
+            if request.POST.get("confirmar") == "1":
+                if pendentes and not form.cleaned_data.get("aprovar_pendentes"):
+                    messages.warning(
+                        request,
+                        "Ha cursistas sem conclusao. Marque a aprovacao de pendentes para confirmar a emissao mesmo assim.",
+                    )
+                else:
+                    liberar_em = timezone.now() if form.cleaned_data.get("liberar_agora") else form.cleaned_data.get("liberar_em")
+                    campos = form.cleaned_data.get("campos_variaveis") or form.cleaned_data["config"].campos_variaveis
+                    for matricula in candidatos:
+                        certificado, _, _ = CertificacaoService.emitir_para_matricula(
+                            matricula,
+                            form.cleaned_data["config"],
+                            emitido_por=request.user,
+                            campos=campos,
+                            liberado_em=liberar_em,
+                            aprovar_pendente=form.cleaned_data.get("aprovar_pendentes"),
+                        )
+                        if certificado:
+                            emitidos.append(certificado)
+                    messages.success(request, f"{len(emitidos)} certificado(s) emitido(s) com sucesso.")
+                    return redirect("admin:ava_certificado_changelist")
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Elaborar certificados AVA",
+            "opts": self.model._meta,
+            "form": form,
+            "media": self.media + form.media,
+            "candidatos": candidatos,
+            "elegiveis": elegiveis,
+            "pendentes": pendentes,
+            "confirmacao_exigida": bool(candidatos),
+        }
+        return render(request, "admin/ava/certificado/batch_emit.html", context)
 
 
 @admin.register(ConfigCertificado)
 class ConfigCertificadoAdmin(AVAModelAdmin):
-    list_display = ("__str__", "cliente")
+    form = ConfigCertificadoAdminForm
+    inlines = [AssinaturaCertificadoInline]
+    list_display = ("__str__", "cliente", "tema_padrao", "quantidade_assinaturas", "preview_link")
+    list_filter = ("cliente", "tema_padrao")
+    search_fields = ("curso__titulo", "trilha__nome", "titulo")
+    fieldsets = (
+        (None, {"fields": ("cliente", "curso", "trilha", "titulo", "subtitulo", "template_html", "campos_variaveis")}),
+        ("Fundo e tema", {"fields": ("fundo", "tema_padrao", "cor_texto")}),
+        (
+            "Posicao do texto",
+            {"fields": ("texto_x", "texto_y", "texto_largura", "titulo_tamanho", "texto_tamanho")},
+        ),
+        ("Carga horaria e assinaturas", {"fields": ("carga_horaria_impressa", "quantidade_assinaturas", "assinatura_digital_url")}),
+    )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<int:object_id>/preview/",
+                self.admin_site.admin_view(self.preview_view),
+                name="ava_configcertificado_preview",
+            ),
+        ]
+        return custom + urls
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = list(super().get_fieldsets(request, obj))
+        if self._is_super_admin(request):
+            return fieldsets
+        sanitized = []
+        for title, options in fieldsets:
+            fields = tuple(field for field in options.get("fields", ()) if field != "cliente")
+            sanitized_options = {**options, "fields": fields}
+            sanitized.append((title, sanitized_options))
+        return sanitized
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if isinstance(obj, AssinaturaCertificado):
+                obj.cliente_id = form.instance.cliente_id
+            obj.save()
+        for obj in formset.deleted_objects:
+            obj.delete()
+        formset.save_m2m()
+
+    def preview_link(self, obj):
+        if not obj.pk:
+            return "-"
+        url = reverse("admin:ava_configcertificado_preview", args=[obj.pk])
+        return format_html('<a class="button" target="_blank" href="{}">Preview</a>', url)
+
+    preview_link.short_description = "Preview"
+
+    def preview_view(self, request, object_id):
+        config = get_object_or_404(self.get_queryset(request), pk=object_id)
+        matricula = None
+        if config.curso_id:
+            matricula = (
+                MatriculaCurso.objects.select_related("aluno", "aluno__escola", "aluno__tipo_cadastro", "curso")
+                .prefetch_related("aluno__grupos_trabalho", "aluno__eixos", "curso__eixos")
+                .filter(curso=config.curso)
+                .order_by("aluno__nome", "aluno__email")
+                .first()
+            )
+        if not matricula:
+            return HttpResponse("Cadastre ao menos uma matricula no curso para visualizar o preview.", status=404)
+        html = CertificacaoService.renderizar_html(None, matricula, config)
+        return HttpResponse(html)

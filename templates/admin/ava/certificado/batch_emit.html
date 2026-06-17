@@ -1,0 +1,163 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .certificate-admin-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+        gap: 24px;
+        align-items: start;
+    }
+    .certificate-admin-panel {
+        background: var(--body-bg);
+        border: 1px solid var(--hairline-color);
+        border-radius: 8px;
+        padding: 18px;
+    }
+    .certificate-admin-panel .form-row {
+        border-bottom: 1px solid var(--hairline-color);
+        padding: 10px 0;
+    }
+    .certificate-admin-panel .form-row:last-child {
+        border-bottom: 0;
+    }
+    .certificate-admin-panel label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .certificate-admin-panel select,
+    .certificate-admin-panel input[type="text"],
+    .certificate-admin-panel input[type="datetime-local"] {
+        width: 100%;
+        max-width: 100%;
+    }
+    .certificate-summary {
+        display: grid;
+        gap: 12px;
+    }
+    .certificate-summary-card {
+        border: 1px solid var(--hairline-color);
+        border-radius: 8px;
+        padding: 14px;
+        background: var(--darkened-bg);
+    }
+    .certificate-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+    }
+    .certificate-table th,
+    .certificate-table td {
+        border-bottom: 1px solid var(--hairline-color);
+        padding: 9px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .status-ok {
+        color: #166534;
+        font-weight: 700;
+    }
+    .status-warning {
+        color: #92400e;
+        font-weight: 700;
+    }
+    @media (max-width: 900px) {
+        .certificate-admin-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:ava_certificado_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; Elaborar certificados
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+    <div class="certificate-admin-grid">
+        <div class="certificate-admin-panel">
+            {% if form.non_field_errors %}
+                <div class="errornote">{{ form.non_field_errors }}</div>
+            {% endif %}
+            {% for field in form %}
+                <div class="form-row{% if field.errors %} errors{% endif %}">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <div class="submit-row">
+                <input type="submit" class="default" value="Pré-visualizar candidatos">
+                {% if confirmacao_exigida %}
+                    <button type="submit" class="button" name="confirmar" value="1">Confirmar e emitir certificados</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <aside class="certificate-summary">
+            <div class="certificate-summary-card">
+                <h2>Resumo</h2>
+                <p><strong>{{ candidatos|length }}</strong> matrícula(s) encontrada(s).</p>
+                <p><strong>{{ elegiveis|length }}</strong> elegível(is) pela regra do curso.</p>
+                <p><strong>{{ pendentes|length }}</strong> pendente(s) de conclusão/nota/progresso.</p>
+            </div>
+            {% if pendentes %}
+            <div class="certificate-summary-card">
+                <h2>Atenção</h2>
+                <p>Há cursistas que ainda não concluíram todos os requisitos. Para emitir mesmo assim, marque o campo de aprovação de pendentes antes de confirmar.</p>
+            </div>
+            {% endif %}
+        </aside>
+    </div>
+
+    {% if candidatos %}
+    <table class="certificate-table">
+        <thead>
+            <tr>
+                <th>Cursista</th>
+                <th>Curso</th>
+                <th>Progresso</th>
+                <th>Nota</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in elegiveis %}
+            <tr>
+                <td>{{ item.matricula.aluno.nome|default:item.matricula.aluno.email }}</td>
+                <td>{{ item.matricula.curso.titulo }}</td>
+                <td>{{ item.matricula.progresso_percentual }}%</td>
+                <td>{{ item.matricula.nota_final_obtida }}</td>
+                <td class="status-ok">Elegível</td>
+            </tr>
+            {% endfor %}
+            {% for item in pendentes %}
+            <tr>
+                <td>{{ item.matricula.aluno.nome|default:item.matricula.aluno.email }}</td>
+                <td>{{ item.matricula.curso.titulo }}</td>
+                <td>{{ item.matricula.progresso_percentual }}%</td>
+                <td>{{ item.matricula.nota_final_obtida }}</td>
+                <td class="status-warning">
+                    Pendente:
+                    {% for reason in item.elegibilidade.reasons %}
+                        {{ reason }}{% if not forloop.last %}; {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</form>
+{% endblock %}

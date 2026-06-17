@@ -3,7 +3,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -17,6 +17,7 @@ from ava.models import (
     AtividadeForumMensagem,
     AtividadeTentativa,
     Aula,
+    Certificado,
     MatriculaCurso,
     ProgressoAula,
     ProgressoConteudo,
@@ -160,14 +161,50 @@ def dashboard(request):
             if matricula.proxima_aula:
                 break
 
+    certificados_liberados = list(
+        Certificado.objects.filter(
+            aluno=request.user,
+            liberado_em__isnull=False,
+            liberado_em__lte=timezone.now(),
+            arquivo_pdf__isnull=False,
+        )
+        .select_related("matricula_curso__curso", "matricula_trilha__trilha")
+        .order_by("-data_emissao")
+    )
+    certificados_por_matricula = {
+        certificado.matricula_curso_id: certificado
+        for certificado in certificados_liberados
+        if certificado.matricula_curso_id
+    }
+    for matricula in matriculas_concluidas:
+        matricula.certificado_disponivel = certificados_por_matricula.get(matricula.id)
+
     return render(
         request,
         "ava/student/dashboard.html",
         {
             "matriculas_em_andamento": matriculas_em_andamento,
             "matriculas_concluidas": matriculas_concluidas,
+            "certificados_liberados": certificados_liberados,
         },
     )
+
+
+@login_required
+def baixar_certificado(request, certificado_id):
+    certificado = get_object_or_404(
+        Certificado.objects.select_related("aluno"),
+        pk=certificado_id,
+        aluno=request.user,
+        liberado_em__isnull=False,
+        liberado_em__lte=timezone.now(),
+    )
+    if not certificado.arquivo_pdf:
+        raise Http404("Certificado sem arquivo PDF.")
+    nome = certificado.dados_impressos.get("aluno_nome") or request.user.email
+    curso = certificado.dados_impressos.get("curso_nome") or "certificado"
+    filename = f"{nome}-{curso}.pdf".replace("/", "-").replace("\\", "-")
+    return FileResponse(certificado.arquivo_pdf.open("rb"), as_attachment=True, filename=filename)
 
 
 def _motivo_bloqueio_modulo(matricula, modulo, agora=None):
