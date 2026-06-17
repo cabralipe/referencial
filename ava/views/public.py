@@ -66,6 +66,11 @@ def catalogo_cursos(request):
     for curso in cursos:
         curso.aluno_matriculado = curso.id in matriculados_ids
 
+    eixos_pendente = bool(getattr(request.user, "eixos_pendente", False))
+    eixos_para_selecao = (
+        list(_eixos_disponiveis_para(request.user)) if eixos_pendente else []
+    )
+
     return render(
         request,
         "ava/public/catalogo.html",
@@ -74,6 +79,8 @@ def catalogo_cursos(request):
             "trilhas": trilhas,
             "eixos": eixos,
             "eixo_selecionado": eixo_selecionado,
+            "eixos_pendente": eixos_pendente and bool(eixos_para_selecao),
+            "eixos_para_selecao": eixos_para_selecao,
         },
     )
 
@@ -116,6 +123,39 @@ def registrar_seguimento_professor(request):
     request.user.seguimento = seguimento
     request.user.save(update_fields=["seguimento"])
     messages.success(request, "Seguimento registrado com sucesso.")
+    return HttpResponseRedirect(_next_or_catalogo(request))
+
+
+def _eixos_disponiveis_para(user):
+    """Eixos ativos do cliente do usuário, usados na seleção dentro do AVA."""
+    cliente_id = getattr(user, "cliente_id", None)
+    if not cliente_id:
+        return Eixo.objects.none()
+    return Eixo.objects.filter(
+        cliente_id=cliente_id, ativo=True
+    ).order_by("ordem_exibicao", "nome")
+
+
+@login_required
+@require_POST
+def selecionar_eixos(request):
+    """Salva os eixos escolhidos pelo usuário ao entrar no AVA.
+
+    A seleção deixou de ser um popup obrigatório do Referencial/PPP e passou a
+    ocorrer somente aqui, no módulo AVA, quando o usuário ainda não tem eixos.
+    """
+    if not getattr(request.user, "eixos_pendente", False):
+        return HttpResponseRedirect(_next_or_catalogo(request))
+
+    ids_brutos = request.POST.getlist("eixos")
+    ids = [int(valor) for valor in ids_brutos if str(valor).isdigit()]
+    eixos = list(_eixos_disponiveis_para(request.user).filter(pk__in=ids))
+    if not eixos:
+        messages.error(request, "Selecione ao menos um eixo para continuar.")
+        return HttpResponseRedirect(_next_or_catalogo(request))
+
+    request.user.eixos.add(*eixos)
+    messages.success(request, "Eixos registrados com sucesso. Bons estudos!")
     return HttpResponseRedirect(_next_or_catalogo(request))
 
 

@@ -7,6 +7,8 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageInstructions } from '@/components/common/PageInstructions';
+import { HelpHint } from '@/components/common/HelpHint';
 import { RichTextEditor } from '@/components/common/RichTextEditor';
 import { useAuth } from '@/context/AuthContext';
 import { useComentarios, useCreateComentario, useUpdateComentario } from '@/hooks/useComentarios';
@@ -78,29 +80,6 @@ function formatCommentReference(anchor: unknown) {
   return parts.join(' • ');
 }
 
-function extractCommentReference(anchor: unknown) {
-  if (!anchor) return { local: '', trecho: '' };
-
-  let parsed = anchor;
-  if (typeof parsed === 'string') {
-    try {
-      parsed = JSON.parse(parsed);
-    } catch {
-      return { local: '', trecho: parsed };
-    }
-  }
-
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { local: '', trecho: String(parsed) };
-  }
-
-  const record = parsed as Record<string, unknown>;
-  return {
-    local: typeof record.local === 'string' ? record.local : '',
-    trecho: typeof record.trecho === 'string' ? record.trecho : '',
-  };
-}
-
 function stripHtml(value?: string | null) {
   return (value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -148,9 +127,11 @@ export function PppPage({ adminMode = false }: PppPageProps) {
   }, [escolaAssociadaId, selectedEscolaId, shouldLoadOverview]);
 
   const escolaIdAtiva = shouldLoadOverview ? selectedEscolaId : escolaAssociadaId;
+  // Sem escola definida não há PPP para buscar: evita o erro 400 do backend
+  // e deixa a página mostrar um aviso amigável.
   const documentoQuery = usePppDocumento({
     escolaId: escolaIdAtiva ?? undefined,
-    enabled: !shouldLoadOverview || Boolean(selectedEscolaId),
+    enabled: shouldLoadOverview ? Boolean(selectedEscolaId) : Boolean(escolaAssociadaId),
   });
   const updatePpp = useUpdatePppConteudo();
   const concludePpp = useConcludePpp();
@@ -199,8 +180,6 @@ export function PppPage({ adminMode = false }: PppPageProps) {
     () => (comentarios ?? []).slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [comentarios],
   );
-
-  const anchorPreview = '';
 
   const selectedOverview = useMemo(
     () => overviewQuery.data?.find((item) => item.escola_id === selectedEscolaId) ?? null,
@@ -363,12 +342,12 @@ export function PppPage({ adminMode = false }: PppPageProps) {
         <Card>
           <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center">
             <h2 className="mb-2 text-xl font-extrabold text-[var(--color-text)]">
-              {shouldLoadOverview ? 'Nenhum PPP disponível' : 'Usuário sem escola vinculada'}
+              {shouldLoadOverview ? 'Nenhum PPP disponível' : 'Sua conta ainda não está vinculada a uma escola'}
             </h2>
             <p className="mx-auto max-w-2xl text-sm text-[var(--color-text-secondary)]">
               {shouldLoadOverview
                 ? 'Escolha uma escola para iniciar a elaboração ou ver o documento existente.'
-                : 'Associe uma escola ao usuário para abrir automaticamente o PPP correspondente.'}
+                : 'O PPP é organizado por escola. Peça a um administrador para vincular sua conta a uma escola e o documento será aberto automaticamente aqui.'}
             </p>
           </div>
         </Card>
@@ -457,7 +436,12 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Local</span>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
+                    Local
+                    <HelpHint label="O que é o campo Local">
+                      Indique a parte do documento, por exemplo "Capítulo 2" ou "Introdução".
+                    </HelpHint>
+                  </span>
                   <input
                     value={comentarioLocal}
                     onChange={(event) => setComentarioLocal(event.target.value)}
@@ -466,7 +450,12 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                   />
                 </label>
                 <label className="block space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Trecho</span>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
+                    Trecho
+                    <HelpHint label="O que é o campo Trecho">
+                      Cole ou descreva a frase exata que deseja comentar, para localizar com facilidade.
+                    </HelpHint>
+                  </span>
                   <input
                     value={comentarioTrecho}
                     onChange={(event) => setComentarioTrecho(event.target.value)}
@@ -475,10 +464,10 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                   />
                 </label>
               </div>
-              <div className="rounded-[14px] bg-[var(--color-surface-muted)] p-3 text-xs text-[var(--color-text-secondary)]">
-                <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
-                <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
-              </div>
+              <p className="rounded-[14px] bg-[var(--color-surface-muted)] p-3 text-xs text-[var(--color-text-secondary)]">
+                <strong className="text-[var(--color-text)]">Dica:</strong> informar o local e o trecho ajuda quem
+                vai ler a entender exatamente onde aplicar o ajuste.
+              </p>
               <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
                 {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
               </Button>
@@ -649,6 +638,30 @@ export function PppPage({ adminMode = false }: PppPageProps) {
         )}
       />
 
+      {!isReadOnlyPpp && (
+        <PageInstructions
+          title="Como construir o PPP em 3 passos"
+          description="Um guia rápido para escrever um documento claro e fácil de ler."
+          items={[
+            {
+              title: '1. Escreva o texto',
+              description:
+                'Use a barra de ferramentas para organizar em parágrafos, títulos e listas. Destaque o essencial em negrito.',
+            },
+            {
+              title: '2. Combine os ajustes',
+              description:
+                'Registre comentários indicando o local e o trecho. Diretor e Coordenação acompanham e resolvem cada pendência.',
+            },
+            {
+              title: '3. Conclua e baixe o PDF',
+              description:
+                'Quando o texto estiver pronto, clique em "Concluir PPP". Depois é possível baixar a versão final em PDF.',
+            },
+          ]}
+        />
+      )}
+
       <div className="relative overflow-visible rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -658,7 +671,7 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             backgroundSize: '32px 32px, 32px 32px',
           }}
         />
-        <div className="relative grid grid-cols-1 gap-4 px-3 py-3 sm:px-5 sm:py-5">
+        <div className="relative grid grid-cols-1 gap-4 px-3 py-3 sm:px-5 sm:py-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] lg:items-start">
           <div className="min-w-0 space-y-4">
             <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--color-surface-muted)] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1 space-y-2">
@@ -694,7 +707,12 @@ export function PppPage({ adminMode = false }: PppPageProps) {
               {isPppAvailable ? (
                 <div className="space-y-4 rounded-[14px] bg-white p-3 sm:p-4">
                   <label className="block space-y-2">
-                    <span className="text-sm font-semibold text-[var(--color-text)]">Título do documento</span>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text)]">
+                      Título do documento
+                      <HelpHint label="O que é o título do documento">
+                        Nome oficial do PPP, normalmente "Projeto Político-Pedagógico" seguido do nome da escola.
+                      </HelpHint>
+                    </span>
                     <input
                       value={titulo}
                       onChange={(event) => setTitulo(event.target.value)}
@@ -711,6 +729,14 @@ export function PppPage({ adminMode = false }: PppPageProps) {
                         </span>
                       )}
                     </div>
+                    {ppp.can_edit && (
+                      <p className="rounded-[12px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                        <strong className="text-[var(--color-text)]">Como escrever:</strong> organize o conteúdo em
+                        parágrafos curtos e use <strong className="text-[var(--color-text)]">negrito</strong> para
+                        destacar o essencial. Aproveite os títulos e listas da barra de ferramentas para facilitar a
+                        leitura.
+                      </p>
+                    )}
                     <RichTextEditor
                       className="ppp-page__editor"
                       value={conteudo}
@@ -754,235 +780,9 @@ export function PppPage({ adminMode = false }: PppPageProps) {
             </Card>
           </div>
 
-          <div className="space-y-4">
-            {shouldLoadOverview && (
-              <Card>
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg font-extrabold text-[var(--color-text)]">Panorama por escola</h3>
-                    <p className="text-sm text-[var(--color-text-secondary)]">
-                      Visão rápida do avanço do PPP em cada unidade.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {(overviewQuery.data ?? []).map((item) => (
-                      <button
-                        key={item.escola_id}
-                        type="button"
-                        onClick={() => setSelectedEscolaId(item.escola_id)}
-                        className={`w-full rounded-[14px] border px-4 py-3 text-left transition ${
-                          selectedEscolaId === item.escola_id
-                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
-                            : 'border-[var(--color-border)] bg-white'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <strong className="text-sm text-[var(--color-text)]">{item.escola_nome}</strong>
-                          <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_CLASSES[item.status] ?? statusClass}`}>
-                            {STATUS_LABELS[item.status] ?? item.status}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-                          <span>{item.comentarios_abertos} comentário(s) aberto(s)</span>
-                          <span>{formatDateTime(item.updated_at)}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  {selectedOverview && (
-                    <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
-                      Escola ativa: <strong className="text-[var(--color-text)]">{selectedOverview.escola_nome}</strong>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            <Card>
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-lg font-extrabold text-[var(--color-text)]">
-                    {isReadOnlyPpp ? 'Acesso de visualização' : 'Fila de comentários'}
-                  </h3>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    {isReadOnlyPpp
-                      ? 'Perfis com permissão apenas de visualização acessam somente a versão concluída do PPP da escola.'
-                      : 'O redator pode comentar o texto; Diretor e Coordenação acompanham e fecham as pendências.'}
-                  </p>
-                </div>
-
-                {isReadOnlyPpp ? (
-                  <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-6 sm:py-8">
-                    <p className="text-sm text-[var(--color-text-secondary)]">
-                      Esta área fica disponível apenas para consulta do documento final. Comentários, edição, conclusão e exportação em PDF permanecem restritos aos perfis responsáveis pela elaboração.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <form className="space-y-3" onSubmit={handleCreateComentario}>
-                      <label className="block space-y-2">
-                        <span className="text-sm font-semibold text-[var(--color-text)]">Novo comentário</span>
-                        <textarea
-                          rows={4}
-                          value={comentarioTexto}
-                          onChange={(event) => setComentarioTexto(event.target.value)}
-                          disabled={!ppp.can_comment || createComentario.isPending}
-                          placeholder="Descreva o ajuste, a dúvida ou o encaminhamento desejado."
-                        />
-                      </label>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block space-y-2">
-                          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Local</span>
-                          <input
-                            value={comentarioLocal}
-                            onChange={(event) => setComentarioLocal(event.target.value)}
-                            disabled={!ppp.can_comment || createComentario.isPending}
-                            placeholder="Ex.: capítulo 2"
-                          />
-                        </label>
-                        <label className="block space-y-2">
-                          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Trecho</span>
-                          <input
-                            value={comentarioTrecho}
-                            onChange={(event) => setComentarioTrecho(event.target.value)}
-                            disabled={!ppp.can_comment || createComentario.isPending}
-                            placeholder="Palavras-chave ou trecho"
-                          />
-                        </label>
-                      </div>
-                      <div className="rounded-[14px] bg-[var(--color-surface-muted)] p-3 text-xs text-[var(--color-text-secondary)]">
-                        <strong className="block text-[var(--color-text)]">Âncora JSON</strong>
-                        <code className="mt-2 block whitespace-pre-wrap break-all">{anchorPreview || 'Nenhuma referência informada.'}</code>
-                      </div>
-                      <Button className="w-full sm:w-auto" type="submit" variant="primary" disabled={!ppp.can_comment || createComentario.isPending}>
-                        {createComentario.isPending ? 'Enviando...' : 'Registrar comentário'}
-                      </Button>
-                    </form>
-
-                    <div className="space-y-3">
-                      {comentariosOrdenados.map((comentario) => (
-                        <div key={comentario.id} className="rounded-[14px] border border-[var(--color-border)] bg-white p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <strong className="text-sm text-[var(--color-text)]">Comentário</strong>
-                                <span
-                                  className={`rounded-full px-2 py-1 text-[11px] font-bold ${
-                                    comentario.resolvido
-                                      ? 'bg-[rgba(22,163,74,0.12)] text-[var(--color-success)]'
-                                      : 'bg-[rgba(245,158,11,0.12)] text-[var(--color-warning)]'
-                                  }`}
-                                >
-                                  {comentario.resolvido ? 'Resolvido' : 'Aberto'}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                                Criado em {formatDateTime(comentario.created_at)}
-                              </p>
-                            </div>
-                            {!comentario.resolvido && ppp.can_conclude && (
-                              <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => handleResolveComentario(comentario)}>
-                                Resolver
-                              </Button>
-                            )}
-                          </div>
-
-                          {comentario.anchor_json && (
-                            <div className="mt-3 rounded-[12px] bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
-                              <strong className="mr-2 text-[var(--color-text)]">Referência:</strong>
-                              {formatCommentReference(comentario.anchor_json)}
-                            </div>
-                          )}
-
-                          <div
-                            className="prose prose-sm mt-3 max-w-none text-[var(--color-text)]"
-                            dangerouslySetInnerHTML={{ __html: comentario.conteudo_html }}
-                          />
-
-                          {comentario.resposta_html && (
-                            <div className="mt-3 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-3">
-                              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                                <strong className="text-[var(--color-text)]">Resposta</strong>
-                                {comentario.respondido_em && <span>Respondido em {formatDateTime(comentario.respondido_em)}</span>}
-                              </div>
-                              <div
-                                className="prose prose-sm max-w-none text-[var(--color-text)]"
-                                dangerouslySetInnerHTML={{ __html: comentario.resposta_html }}
-                              />
-                            </div>
-                          )}
-
-                          {!comentario.resolvido && ppp.can_comment && comentario.autor === user?.id && (
-                            <div className="mt-3 space-y-2">
-                              <textarea
-                                rows={3}
-                                value={comentarioDrafts[comentario.id] ?? ''}
-                                onChange={(event) => setComentarioDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
-                                placeholder="Atualize o texto do comentário, se necessário."
-                              />
-                              <Button
-                                className="w-full sm:w-auto"
-                                size="sm"
-                                variant="ghost"
-                                style={COMMENT_ACTION_BUTTON_STYLE}
-                                onClick={() => handleUpdateComentario(comentario)}
-                              >
-                                Atualizar comentário
-                              </Button>
-                            </div>
-                          )}
-
-                          {!comentario.resolvido &&
-                            ppp.can_comment &&
-                            comentario.autor !== user?.id &&
-                            (!comentario.respondido_por || comentario.respondido_por === user?.id) && (
-                            <div className="mt-3">
-                              {comentarioRespostaAbertaId === comentario.id ? (
-                                <div className="space-y-2">
-                                  <textarea
-                                    rows={3}
-                                    value={comentarioRespostaDrafts[comentario.id] ?? ''}
-                                    onChange={(event) => setComentarioRespostaDrafts((prev) => ({ ...prev, [comentario.id]: event.target.value }))}
-                                    placeholder="Escreva a resposta para este comentário."
-                                  />
-                                  <div className="flex flex-col gap-2 sm:flex-row">
-                                    <Button className="w-full sm:w-auto" size="sm" variant="primary" onClick={() => handleSubmitRespostaComentario(comentario)}>
-                                      {comentario.resposta_html ? 'Atualizar resposta' : 'Enviar resposta'}
-                                    </Button>
-                                    <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setComentarioRespostaAbertaId(null)}>
-                                      Cancelar
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <Button
-                                  className="w-full sm:w-auto"
-                                  size="sm"
-                                  variant="ghost"
-                                  style={COMMENT_ACTION_BUTTON_STYLE}
-                                  onClick={() => handleReplyComentario(comentario)}
-                                >
-                                  {comentario.resposta_html ? 'Editar resposta' : 'Responder comentário'}
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {comentariosOrdenados.length === 0 && (
-                        <div className="rounded-[14px] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-8 text-center">
-                          <h4 className="text-base font-extrabold text-[var(--color-text)]">Nenhum comentário registrado</h4>
-                          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                            Use este painel para orientar a construção do texto e registrar pendências.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </Card>
+          <div className="ppp-page__sidebar space-y-4">
+            {overviewPanel}
+            {comentariosPanel}
           </div>
         </div>
       </div>

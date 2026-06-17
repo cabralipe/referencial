@@ -17,8 +17,8 @@ import type { Revisao } from '@/api/types';
 import './InicioPage.css';
 
 const PPP_STATUS_LABELS: Record<string, string> = {
-  em_elaboracao: 'Em elaboracao',
-  concluido: 'Concluido',
+  em_elaboracao: 'Em elaboração',
+  concluido: 'Concluído',
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -54,7 +54,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
   });
 
   if (pppQuery.isLoading) {
-    return <FullPageLoader message="Carregando inicio..." />;
+    return <FullPageLoader message="Carregando início..." />;
   }
 
   const ppp = pppQuery.data;
@@ -64,7 +64,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
   const title = isProfessor ? 'Acompanhamento da escola' : 'Painel da escola';
   const description = isProfessor
     ? 'Consulte o PPP liberado, acompanhe os avisos e acesse rapidamente o AVA.'
-    : 'Acompanhe o andamento do PPP da escola, comentarios abertos e atalhos principais.';
+    : 'Acompanhe o andamento do PPP da escola, comentários abertos e atalhos principais.';
 
   return (
     <div className="inicio">
@@ -96,8 +96,8 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
             <strong>{ppp?.escola_nome || 'Não informada'}</strong>
             <p>
               {user?.escolaId
-                ? 'Os dados desta pagina consideram a escola associada ao seu usuario.'
-                : 'Associe uma escola ao usuario para liberar os dados institucionais.'}
+                ? 'Os dados desta página consideram a escola associada ao seu usuário.'
+                : 'Associe uma escola ao usuário para liberar os dados institucionais.'}
             </p>
           </div>
         </Card>
@@ -107,19 +107,19 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
             <strong>{statusLabel}</strong>
             <p>
               {isProfessor
-                ? 'Professores consultam a versao disponibilizada pela gestao.'
-                : 'Direcao e coordenacao acompanham a elaboracao e publicacao do documento.'}
+                ? 'Professores consultam a versão disponibilizada pela gestão.'
+                : 'Direção e coordenação acompanham a elaboração e publicação do documento.'}
             </p>
           </div>
         </Card>
         <Card>
           <div className="inicio__stat">
-            <span>{isProfessor ? 'Disponibilidade' : 'Comentarios abertos'}</span>
+            <span>{isProfessor ? 'Disponibilidade' : 'Comentários abertos'}</span>
             <strong>{isProfessor ? (isAvailable ? 'Liberado' : 'Aguardando') : comentariosAbertos}</strong>
             <p>
               {isProfessor
                 ? (ppp?.availability_message ?? 'O documento será exibido assim que a versão concluída estiver disponível.')
-                : 'Pendencias e observacoes registradas no fluxo do PPP da escola.'}
+                : 'Pendências e observações registradas no fluxo do PPP da escola.'}
             </p>
           </div>
         </Card>
@@ -131,7 +131,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
             <div className="inicio__panel-header">
               <div>
                 <h2>Resumo do PPP</h2>
-                <p>Situacao atual do documento institucional da escola.</p>
+                <p>Situação atual do documento institucional da escola.</p>
               </div>
             </div>
             {ppp ? (
@@ -145,15 +145,15 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
                   <strong>{formatDateTime(ppp.updated_at)}</strong>
                 </div>
                 <div className="inicio__meta-item">
-                  <span>Responsavel pela ultima edicao</span>
+                  <span>Responsável pela última edição</span>
                   <strong>{ppp.ultima_edicao_por_nome ?? 'Não identificado'}</strong>
                 </div>
                 <div className="inicio__meta-item">
-                  <span>Versao</span>
+                  <span>Versão</span>
                   <strong>{ppp.version}</strong>
                 </div>
                 <div className="inicio__meta-item">
-                  <span>Conclusao</span>
+                  <span>Conclusão</span>
                   <strong>{ppp.concluido_em ? formatDateTime(ppp.concluido_em) : 'Ainda não concluído'}</strong>
                 </div>
               </div>
@@ -167,8 +167,8 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
           <div className="inicio__panel">
             <div className="inicio__panel-header">
               <div>
-                <h2>Proximos acessos</h2>
-                <p>Atalhos uteis para a rotina escolar.</p>
+                <h2>Próximos acessos</h2>
+                <p>Atalhos úteis para a rotina escolar.</p>
               </div>
             </div>
             <div className="inicio__quick-links">
@@ -177,7 +177,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
                 <span>
                   {isProfessor
                     ? 'Abra a versão disponível do documento da escola.'
-                    : 'Edite, acompanhe comentarios e finalize o documento.'}
+                    : 'Edite, acompanhe comentários e finalize o documento.'}
                 </span>
               </Link>
               <a className="inicio__quick-link" href={avaHref} target="_blank" rel="noopener noreferrer">
@@ -186,7 +186,7 @@ function SchoolInicioContent({ isProfessor }: { isProfessor: boolean }) {
               </a>
               <Link className="inicio__quick-link" to="/mural">
                 <strong>Acompanhar mural</strong>
-                <span>Consulte comunicados e atualizacoes recentes publicados para sua escola.</span>
+                <span>Consulte comunicados e atualizações recentes publicados para sua escola.</span>
               </Link>
             </div>
           </div>
@@ -213,14 +213,14 @@ function MemberInicioContent() {
   }, [revisoes, respostaIds]);
 
   if (gtsLoading || respostasLoading || revisoesLoading) {
-    return <FullPageLoader message="Carregando inicio..." />;
+    return <FullPageLoader message="Carregando início..." />;
   }
 
   return (
     <div className="inicio">
       <PageHeader
         title="Bem-vindo(a) ao PROLUC"
-        description="Aqui voce acompanha suas trilhas e os pareceres do redator."
+        description="Aqui você acompanha suas trilhas e os pareceres do redator."
         actions={(
           <div className="inicio__actions">
             <Button
@@ -247,7 +247,7 @@ function MemberInicioContent() {
           <div className="inicio__stat">
             <span>GTs vinculados</span>
             <strong>{gtOptions.length}</strong>
-            <p>Esses sao os grupos em que voce atua.</p>
+            <p>Esses são os grupos em que você atua.</p>
           </div>
         </Card>
         <Card>
@@ -286,7 +286,7 @@ function MemberInicioContent() {
               return (
                 <div key={rev.id} className="inicio__parecer">
                   <div>
-                    <strong>Revisao #{rev.id}</strong>
+                    <strong>Revisão #{rev.id}</strong>
                     <span>{stripHtml(rev.parecer_html) || 'Sem parecer detalhado.'}</span>
                   </div>
                   <div className="inicio__parecer-meta">

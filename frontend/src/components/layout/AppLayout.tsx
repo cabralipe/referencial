@@ -5,6 +5,7 @@ import { useApiClient } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/common/Icon';
 import { MebAssistant } from '@/components/meb/MebAssistant';
+import { GuidedTour, type TourStep } from '@/components/common/GuidedTour';
 import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 import { buildBackendUrl } from '@/config/env';
 
@@ -40,23 +41,10 @@ interface AreaAtuacaoResponse {
   current_tipo_cadastro_id: number | null;
 }
 
-interface EixoOption {
-  id: number;
-  nome: string;
-  descricao?: string;
-}
-
-interface EixosResponse {
-  required: boolean;
-  title: string;
-  eixos: EixoOption[];
-  current_eixos_ids: number[];
-}
-
 const AREA_ATUACAO_ROLES = new Set(['diretor', 'coordenador_pedagogico', 'professor']);
 
-// Papeis dispensados do popup de eixos (administradores).
-const EIXOS_EXEMPT_ROLES = new Set(['super_admin', 'admin_cliente']);
+// A seleção de eixos deixou de ser um popup obrigatório no Referencial/PPP.
+// Agora ela acontece somente ao entrar no módulo AVA (ver ava/templates/ava/public/catalogo.html).
 
 export function AppLayout() {
   const { cliente, user, logout, activeClienteId, setActiveCliente } = useAuth();
@@ -88,13 +76,6 @@ export function AppLayout() {
   const [selectedAreaAtuacaoId, setSelectedAreaAtuacaoId] = useState<number | ''>('');
   const [areaAtuacaoTitle, setAreaAtuacaoTitle] = useState('Qual sua área de atuação?');
   const [areaAtuacaoError, setAreaAtuacaoError] = useState<string | null>(null);
-  const [eixosRequired, setEixosRequired] = useState(false);
-  const [eixosLoading, setEixosLoading] = useState(false);
-  const [eixosSubmitting, setEixosSubmitting] = useState(false);
-  const [eixosOptions, setEixosOptions] = useState<EixoOption[]>([]);
-  const [selectedEixosIds, setSelectedEixosIds] = useState<number[]>([]);
-  const [eixosTitle, setEixosTitle] = useState('Selecione seus eixos');
-  const [eixosError, setEixosError] = useState<string | null>(null);
   const sidenavInnerRef = useRef<HTMLDivElement | null>(null);
 
   const roleLabel = useMemo(() => {
@@ -190,13 +171,12 @@ export function AppLayout() {
         { to: '/texto', label: 'Construção de Texto', icon: 'document' },
         { to: '/cadernos', label: 'Cadernos', icon: 'library' },
         { to: '/mural', label: 'Mural', icon: 'comment' },
-        { to: '/ppp', label: 'PPP', icon: 'kanban' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
       ];
     }
     if (isSchoolLeader || isProfessor) {
       return [
-        { to: '/inicio', label: 'Inicio', icon: 'dashboard' },
+        { to: '/inicio', label: 'Início', icon: 'dashboard' },
         avaNavItem,
         { to: '/ppp', label: 'PPP da Escola', icon: 'document' },
         { to: '/ajuda', label: 'Ajuda', icon: 'help' },
@@ -325,86 +305,114 @@ export function AppLayout() {
 
   const showAreaAtuacaoModal = shouldCheckAreaAtuacao && (areaAtuacaoLoading || areaAtuacaoRequired);
 
-  const shouldCheckEixos = Boolean(
-    user?.id && user?.clienteId && !EIXOS_EXEMPT_ROLES.has(user.role),
-  );
+  const hasPpp = isSchoolLeader || isProfessor || isRedator || isAdmin;
+
+  const tourSteps = useMemo<TourStep[]>(() => {
+    const firstName = user?.nome?.split(' ')[0];
+    const steps: TourStep[] = [
+      {
+        title: firstName ? `Olá, ${firstName}!` : 'Bem-vindo(a)!',
+        body: 'Este tutorial rápido mostra onde fica cada coisa. Leva menos de um minuto e você pode revê-lo quando quiser.',
+        placement: 'center',
+      },
+      {
+        title: 'Menu principal',
+        body: 'Use o menu lateral para navegar entre as áreas disponíveis para o seu perfil.',
+        target: '#app-sidenav',
+        placement: 'right',
+      },
+      {
+        title: 'Ambiente Virtual (AVA)',
+        body: 'Aqui ficam os cursos e a formação continuada. É também onde você escolhe seus eixos no primeiro acesso.',
+        target: '[data-tour="ava"]',
+        placement: 'right',
+      },
+    ];
+    if (isGtMember) {
+      steps.push({
+        title: 'Minha Trilha',
+        body: 'Responda as etapas da trilha e construa os textos do seu Grupo de Trabalho, em parágrafos curtos e com negrito no que for essencial.',
+        target: '[data-tour="trilha"]',
+        placement: 'right',
+      });
+    }
+    if (hasPpp) {
+      steps.push({
+        title: 'PPP da Escola',
+        body: 'Construa e acompanhe o Projeto Político-Pedagógico. Escreva em parágrafos e use negrito para destacar o que é importante.',
+        target: '[data-tour="ppp"]',
+        placement: 'right',
+      });
+    }
+    steps.push(
+      {
+        title: 'Busca rápida',
+        body: 'Encontre páginas e recursos digitando aqui.',
+        target: '.app-shell__header-search',
+        placement: 'bottom',
+      },
+      {
+        title: 'Assistente de ajuda',
+        body: 'Tem uma dúvida? Fale com o assistente no canto inferior da tela a qualquer momento.',
+        target: '.meb-toggle',
+        placement: 'left',
+      },
+      {
+        title: 'Rever o tutorial',
+        body: 'Quando precisar, clique no botão de ajuda aqui no topo para abrir este passo a passo novamente.',
+        target: '[data-tour="help"]',
+        placement: 'bottom',
+      },
+    );
+    return steps;
+  }, [user?.nome, isGtMember, hasPpp]);
+
+  const [tourOpen, setTourOpen] = useState(false);
+  const tourStorageKey = user?.id ? `appTourSeen:${user.id}` : null;
 
   useEffect(() => {
-    if (!shouldCheckEixos) {
-      setEixosRequired(false);
-      setEixosLoading(false);
-      setEixosSubmitting(false);
-      setEixosOptions([]);
-      setSelectedEixosIds([]);
-      setEixosError(null);
-      setEixosTitle('Selecione seus eixos');
-      return;
-    }
+    if (!tourStorageKey || showAreaAtuacaoModal) return;
+    if (window.localStorage.getItem(tourStorageKey)) return;
+    const id = window.setTimeout(() => setTourOpen(true), 600);
+    return () => window.clearTimeout(id);
+  }, [tourStorageKey, showAreaAtuacaoModal]);
 
-    let cancelled = false;
-    setEixosLoading(true);
-    setEixosError(null);
-
-    api
-      .get<EixosResponse>('auth/eixos')
-      .then(({ data }) => {
-        if (cancelled) return;
-        setEixosRequired(Boolean(data.required));
-        setEixosTitle(data.title || 'Selecione seus eixos');
-        setEixosOptions(data.eixos || []);
-        setSelectedEixosIds(data.current_eixos_ids || []);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setEixosRequired(true);
-        setEixosOptions([]);
-        setEixosError(error instanceof Error ? error.message : 'Não foi possível carregar os eixos.');
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setEixosLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [api, shouldCheckEixos, user?.id, user?.clienteId, user?.role]);
-
-  const toggleEixo = (id: number) => {
-    setSelectedEixosIds((current) =>
-      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
-    );
+  const handleCloseTour = () => {
+    setTourOpen(false);
+    if (tourStorageKey) window.localStorage.setItem(tourStorageKey, '1');
   };
 
-  const handleConfirmarEixos = async () => {
-    if (!selectedEixosIds.length) {
-      setEixosError('Selecione ao menos um eixo para continuar.');
-      return;
-    }
-    setEixosSubmitting(true);
-    setEixosError(null);
-    try {
-      await api.post('auth/eixos', {
-        body: { eixos_ids: selectedEixosIds },
-      });
-      window.location.reload();
-    } catch (error) {
-      setEixosSubmitting(false);
-      setEixosError(error instanceof Error ? error.message : 'Não foi possível salvar seus eixos.');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+
+  const searchResults = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return [];
+    const role = user?.role ?? '';
+    return navItems
+      .filter((item) => !item.only || item.only.includes(role))
+      .filter((item) => item.label.toLowerCase().includes(term))
+      .slice(0, 6);
+  }, [searchTerm, navItems, user?.role]);
+
+  const goToSearchResult = (item: (typeof navItems)[number]) => {
+    setSearchTerm('');
+    setSearchActive(false);
+    if (item.external) {
+      window.open(item.href, '_blank', 'noopener,noreferrer');
+    } else if (item.to) {
+      navigate(item.to);
     }
   };
-
-  // O popup de eixos so aparece apos a confirmacao da area de atuacao,
-  // evitando dois modais obrigatorios sobrepostos.
-  const showEixosModal =
-    shouldCheckEixos && !showAreaAtuacaoModal && (eixosLoading || eixosRequired);
 
   return (
     <div
       className={`app-shell ${isGtMember ? 'app-shell--gt' : ''} ${focusMode ? 'app-shell--focus' : ''} ${sidebarOpen ? 'app-shell--sidebar-open' : 'app-shell--sidebar-closed'} ${isDesktop && sidebarCompact ? 'app-shell--sidebar-compact' : ''}`}
       style={themeStyles}
     >
+      <a className="app-shell__skip-link" href="#main-content">
+        Pular para o conteúdo
+      </a>
       <aside
         id="app-sidenav"
         className={`app-shell__sidenav ${sidebarOpen ? 'is-open' : 'is-closed'}`}
@@ -459,14 +467,20 @@ export function AppLayout() {
               }
               if (item.external) {
                 return (
-                  <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer">
+                  <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" data-tour="ava">
                     <Icon name={item.icon} className="menu__icon" ariaHidden />
                     <span className="menu__label">{item.label}</span>
                   </a>
                 );
               }
+              const tourId =
+                item.to === '/ppp' || item.to === '/admin/ppp'
+                  ? 'ppp'
+                  : item.to === '/minha-trilha'
+                    ? 'trilha'
+                    : undefined;
               return (
-                <NavLink key={item.to} to={item.to!} end={item.to === '/'}>
+                <NavLink key={item.to} to={item.to!} end={item.to === '/'} data-tour={tourId}>
                   <Icon name={item.icon} className="menu__icon" ariaHidden />
                   <span className="menu__label">{item.label}</span>
                 </NavLink>
@@ -512,12 +526,67 @@ export function AppLayout() {
           </div>
         )}
 
-        <div className="app-shell__header-search">
+        <div className={`app-shell__header-search ${searchActive && searchTerm.trim() ? 'is-open' : ''}`}>
           <Icon name="search" className="menu__icon" ariaHidden />
-          <input type="search" placeholder="Buscar recursos..." aria-label="Buscar recursos" />
+          <input
+            type="search"
+            placeholder="Buscar páginas..."
+            aria-label="Buscar páginas e recursos"
+            role="combobox"
+            aria-expanded={searchActive && searchResults.length > 0}
+            aria-controls="app-search-results"
+            value={searchTerm}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              setSearchActive(true);
+            }}
+            onFocus={() => setSearchActive(true)}
+            onBlur={() => window.setTimeout(() => setSearchActive(false), 150)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && searchResults[0]) {
+                event.preventDefault();
+                goToSearchResult(searchResults[0]);
+              } else if (event.key === 'Escape') {
+                setSearchTerm('');
+                setSearchActive(false);
+              }
+            }}
+          />
+          {searchActive && searchTerm.trim() && (
+            <ul className="app-shell__search-results" id="app-search-results" role="listbox" aria-label="Resultados da busca">
+              {searchResults.length ? (
+                searchResults.map((item) => (
+                  <li key={item.external ? item.label : item.to} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        goToSearchResult(item);
+                      }}
+                    >
+                      <Icon name={item.icon} className="menu__icon" ariaHidden />
+                      <span>{item.label}</span>
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="app-shell__search-empty">Nada encontrado para “{searchTerm}”.</li>
+              )}
+            </ul>
+          )}
         </div>
 
         <div className="app-shell__user">
+          <button
+            type="button"
+            className="app-shell__notify"
+            aria-label="Abrir tutorial guiado"
+            title="Tutorial guiado"
+            data-tour="help"
+            onClick={() => setTourOpen(true)}
+          >
+            <Icon name="help" className="menu__icon" ariaHidden />
+          </button>
           <button type="button" className="app-shell__notify" aria-label="Notificações">
             <Icon name="notifications" className="menu__icon" ariaHidden />
             <span className="app-shell__notify-dot" />
@@ -554,7 +623,7 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="app-shell__main">
+      <main className="app-shell__main" id="main-content" tabIndex={-1}>
         <div className="app-shell__content">
           <Breadcrumbs />
           <Outlet />
@@ -566,6 +635,8 @@ export function AppLayout() {
       )}
 
       <MebAssistant />
+
+      <GuidedTour steps={tourSteps} open={tourOpen} onClose={handleCloseTour} onFinish={handleCloseTour} />
 
       {showAreaAtuacaoModal && (
         <div className="app-shell__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="area-atuacao-title">
@@ -623,61 +694,6 @@ export function AppLayout() {
         </div>
       )}
 
-      {showEixosModal && (
-        <div className="app-shell__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="eixos-title">
-          <div className="app-shell__modal" onClick={(event) => event.stopPropagation()}>
-            <header className="app-shell__modal-header">
-              <p className="app-shell__modal-eyebrow">Cadastro complementar</p>
-              <h2 id="eixos-title">{eixosTitle}</h2>
-              <p>Selecione um ou mais eixos para continuar. Essa seleção é obrigatória.</p>
-            </header>
-
-            {eixosLoading ? (
-              <div className="app-shell__modal-state">Carregando eixos...</div>
-            ) : (
-              <>
-                <div className="app-shell__modal-options">
-                  {eixosOptions.map((option) => (
-                    <label
-                      key={option.id}
-                      className={`app-shell__modal-option ${selectedEixosIds.includes(option.id) ? 'is-selected' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        name="eixos"
-                        value={option.id}
-                        checked={selectedEixosIds.includes(option.id)}
-                        onChange={() => toggleEixo(option.id)}
-                        disabled={eixosSubmitting}
-                      />
-                      <span>{option.nome}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {!eixosOptions.length && (
-                  <div className="app-shell__modal-state">
-                    Nenhum eixo ativo foi encontrado para este município.
-                  </div>
-                )}
-
-                {eixosError && <div className="app-shell__modal-error">{eixosError}</div>}
-
-                <div className="app-shell__modal-actions">
-                  <button
-                    type="button"
-                    className="app-shell__modal-button"
-                    onClick={handleConfirmarEixos}
-                    disabled={eixosSubmitting || eixosLoading || !eixosOptions.length || !selectedEixosIds.length}
-                  >
-                    {eixosSubmitting ? 'Confirmando...' : 'Confirmar'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
