@@ -131,6 +131,15 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-md-4">
+                <label for="eixo" class="form-label">Eixo</label>
+                <select id="eixo" name="eixo" class="form-select">
+                    <option value="">Todos</option>
+                    {% for eixo in eixos %}
+                    <option value="{{ eixo.id }}" {% if filtros.eixo_id == eixo.id %}selected{% endif %}>{{ eixo.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <div class="col-md-3">
                 <label for="data_inicio" class="form-label">Data inicial</label>
                 <input id="data_inicio" type="date" name="data_inicio" class="form-control"

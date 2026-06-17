@@ -12,6 +12,7 @@ from analytics.viewsets import AdminDashboardView, UserDashboardView
 from .views import (
     AuthMeView,
     AreaAtuacaoView,
+    EixosView,
     CsrfTokenView,
     SessionLoginView,
     RoleTokenObtainPairView,
@@ -40,6 +41,7 @@ urlpatterns = [
     path("auth/login", SessionLoginView.as_view(), name="auth-login"),
     path("auth/me", AuthMeView.as_view(), name="auth-me"),
     path("auth/area-atuacao", AreaAtuacaoView.as_view(), name="auth-area-atuacao"),
+    path("auth/eixos", EixosView.as_view(), name="auth-eixos"),
     path("auth/jwt", RoleTokenObtainPairView.as_view(), name="token-obtain"),
     path("auth/jwt/refresh", TokenRefreshView.as_view(), name="token-refresh"),
     path("meb/avatar", MebAvatarUploadView.as_view(), name="meb-avatar-upload"),

@@ -25,7 +25,7 @@ from ava.models import (
     QuizRespostaItem,
 )
 from ava.services import AVAManagementReportService, AtividadeService
-from core.models import Usuario
+from core.models import Eixo, Usuario
 from curriculum.models import Escola
 
 
@@ -65,6 +65,7 @@ def _extract_dashboard_filters(request):
         "curso_id": _parse_int(request.GET.get("curso")),
         "modulo_id": _parse_int(request.GET.get("modulo")),
         "aula_id": _parse_int(request.GET.get("aula")),
+        "eixo_id": _parse_int(request.GET.get("eixo")),
         "status": request.GET.get("status", "").strip(),
         "tipo": request.GET.get("tipo", "").strip(),
         "data_inicio": _parse_date(data_inicio_raw),
@@ -95,6 +96,7 @@ def _options_queryset_for_user(user):
     cursos = Curso.objects.all()
     modulos = CursoModulo.objects.select_related("curso").all()
     aulas = Aula.objects.select_related("modulo", "modulo__curso").all()
+    eixos = Eixo.objects.filter(ativo=True)
 
     if not _is_super_admin(user):
         usuarios = usuarios.filter(cliente_id=user.cliente_id)
@@ -102,13 +104,15 @@ def _options_queryset_for_user(user):
         cursos = cursos.filter(cliente_id=user.cliente_id)
         modulos = modulos.filter(curso__cliente_id=user.cliente_id)
         aulas = aulas.filter(modulo__curso__cliente_id=user.cliente_id)
+        eixos = eixos.filter(cliente_id=user.cliente_id)
 
     usuarios = usuarios.order_by("nome", "email")
     escolas = escolas.distinct().order_by("nome")
     cursos = cursos.distinct().order_by("titulo")
     modulos = modulos.distinct().order_by("titulo")
     aulas = aulas.distinct().order_by("titulo")
-    return usuarios, escolas, cursos, modulos, aulas
+    eixos = eixos.distinct().order_by("ordem_exibicao", "nome")
+    return usuarios, escolas, cursos, modulos, aulas, eixos
 
 
 def _base_queryset(user):
@@ -132,6 +136,12 @@ def _apply_filters(qs, filtros):
         qs = qs.filter(atividade__aula__modulo_id=filtros["modulo_id"])
     if filtros["aula_id"]:
         qs = qs.filter(atividade__aula_id=filtros["aula_id"])
+    if filtros["eixo_id"]:
+        qs = qs.filter(
+            Q(atividade__eixos=filtros["eixo_id"])
+            | Q(atividade__aula__modulo__eixos=filtros["eixo_id"])
+            | Q(atividade__aula__modulo__curso__eixos=filtros["eixo_id"])
+        ).distinct()
     if filtros["status"]:
         qs = qs.filter(status=filtros["status"])
     if filtros["tipo"]:
@@ -248,7 +258,7 @@ def dashboard(request):
     paginator = Paginator(tentativas_qs.order_by("-data_inicio"), 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    usuarios, escolas, cursos, modulos, aulas = _options_queryset_for_user(request.user)
+    usuarios, escolas, cursos, modulos, aulas, eixos = _options_queryset_for_user(request.user)
     if filtros["escola_id"]:
         usuarios = usuarios.filter(escola_id=filtros["escola_id"])
     if filtros["curso_id"]:
@@ -271,6 +281,7 @@ def dashboard(request):
         "cursos": cursos,
         "modulos": modulos,
         "aulas": aulas,
+        "eixos": eixos,
         "page_obj": page_obj,
         "querystring": query_params.urlencode(),
         "visao_geral": {
