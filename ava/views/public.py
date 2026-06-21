@@ -66,7 +66,10 @@ def catalogo_cursos(request):
     for curso in cursos:
         curso.aluno_matriculado = curso.id in matriculados_ids
 
-    eixos_pendente = bool(getattr(request.user, "eixos_pendente", False))
+    popup_eixos_ativo = bool(
+        getattr(getattr(request.user, "cliente", None), "popup_eixos_ativo", False)
+    )
+    eixos_pendente = popup_eixos_ativo and bool(getattr(request.user, "eixos_pendente", False))
     eixos_para_selecao = (
         list(_eixos_disponiveis_para(request.user)) if eixos_pendente else []
     )
@@ -182,3 +185,4 @@ def matricular_curso_agora(request, slug):
         return redirect("ava:aluno_curso_detalhe", slug=slug)
 
     return redirect("ava:catalogo")
+

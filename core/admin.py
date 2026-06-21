@@ -22,8 +22,9 @@ class BroadcastMessageForm(ActionForm):
 @admin.register(Cliente)
 class ClienteAdmin(ClienteScopedAdminMixin, admin.ModelAdmin):
     cliente_scope_lookup = "pk"
-    list_display = ("nome", "slug", "ativo", "created_at")
-    list_filter = ("ativo",)
+    list_display = ("nome", "slug", "ativo", "popup_eixos_ativo", "created_at")
+    list_filter = ("ativo", "popup_eixos_ativo")
+    list_editable = ("popup_eixos_ativo",)
     search_fields = ("nome", "slug")
     prepopulated_fields = {"slug": ("nome",)}
 

@@ -18,6 +18,14 @@ class Cliente(TimeStampedModel):
     nome = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, validators=[RegexValidator(r"^[a-z0-9-]+$")])
     ativo = models.BooleanField(default=True)
+    popup_eixos_ativo = models.BooleanField(
+        "Exibir popup de seleção de eixos no AVA",
+        default=False,
+        help_text=(
+            "Quando ativo, exibe o popup obrigatório de seleção de eixos ao entrar no "
+            "catálogo do AVA para usuários que ainda não escolheram seus eixos."
+        ),
+    )
 
     class Meta:
         ordering = ("nome",)
