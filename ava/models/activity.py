@@ -20,6 +20,16 @@ class Atividade(TenantModel):
     titulo = models.CharField("T\u00edtulo", max_length=255)
     descricao = models.TextField("Descri\u00e7\u00e3o/Enunciado", blank=True)
     instrucoes = models.TextField("Instru\u00e7\u00f5es de envio", blank=True)
+    acesso_bloqueado = models.BooleanField(
+        "Acesso bloqueado?",
+        default=False,
+        help_text="Quando marcado, alunos nao conseguem abrir ou responder esta atividade.",
+    )
+    mensagem_bloqueio = models.TextField(
+        "Mensagem de bloqueio",
+        blank=True,
+        help_text="Mensagem exibida ao aluno. Se vazio, o aviso padrao de atividade bloqueada sera usado.",
+    )
 
     nota_maxima = models.DecimalField("Nota M\u00e1xima", max_digits=5, decimal_places=2, default=100.0)
     peso = models.DecimalField("Peso na composi\u00e7\u00e3o da m\u00e9dia", max_digits=5, decimal_places=2, default=1.0)

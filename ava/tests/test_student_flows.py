@@ -210,6 +210,40 @@ class AVAStudentFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, atividade_restrita.titulo)
 
+    def test_atividade_bloqueada_aparece_com_aviso_e_impede_acesso(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.REFLEXAO,
+            titulo="Atividade bloqueada pelo admin",
+            is_obrigatoria=True,
+            acesso_bloqueado=True,
+            mensagem_bloqueio="Atividade bloqueada pelo administrador.",
+        )
+
+        aula_response = self.client.get(
+            reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id])
+        )
+
+        self.assertEqual(aula_response.status_code, 200)
+        self.assertContains(aula_response, atividade.titulo)
+        self.assertContains(aula_response, "Atividade bloqueada")
+        self.assertContains(aula_response, "Atividade bloqueada pelo administrador.")
+
+        url = reverse(
+            "ava:aluno_responder_atividade",
+            args=[self.curso.slug, self.aula_1.id, atividade.id],
+        )
+        response = self.client.get(url, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            reverse("ava:aluno_acessar_aula", args=[self.curso.slug, self.aula_1.id]),
+        )
+        self.assertContains(response, "Atividade bloqueada pelo administrador.")
+        self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
+
     def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
         atividade = Atividade.objects.create(
             cliente=self.cliente,

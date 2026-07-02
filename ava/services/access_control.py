@@ -119,6 +119,17 @@ def activity_requires_eixo(atividade: Atividade) -> bool:
     return atividade.eixos.exists()
 
 
+def activity_is_manually_blocked(atividade: Atividade) -> bool:
+    return bool(getattr(atividade, "acesso_bloqueado", False))
+
+
+def activity_manual_block_message(atividade: Atividade) -> str:
+    mensagem = (getattr(atividade, "mensagem_bloqueio", "") or "").strip()
+    if mensagem:
+        return mensagem
+    return "Atividade bloqueada. Esta atividade esta temporariamente indisponivel."
+
+
 def user_can_access_activity_by_eixo(user, atividade: Atividade) -> bool:
     if not getattr(user, "is_authenticated", False):
         return not activity_requires_eixo(atividade)
@@ -131,6 +142,14 @@ def user_can_access_activity_by_eixo(user, atividade: Atividade) -> bool:
     return object_has_allowed_eixo(atividade, get_user_eixo_ids(user, atividade.cliente_id))
 
 
+def user_can_access_activity(user, atividade: Atividade) -> bool:
+    if getattr(user, "is_authenticated", False) and user_bypasses_eixo_filter(user):
+        return True
+    if activity_is_manually_blocked(atividade):
+        return False
+    return user_can_access_activity_by_eixo(user, atividade)
+
+
 def activity_eixo_block_message(atividade: Atividade) -> str:
     eixos = ", ".join(atividade.eixos.filter(ativo=True).order_by("ordem_exibicao", "nome").values_list("nome", flat=True))
     if not eixos:
@@ -139,3 +158,10 @@ def activity_eixo_block_message(atividade: Atividade) -> str:
         "Esta atividade esta restrita ao(s) eixo(s) "
         f"{eixos}. Seu usuario nao esta vinculado a nenhum eixo permitido para esta atividade."
     )
+
+
+def activity_block_message(user, atividade: Atividade) -> str:
+    if not (getattr(user, "is_authenticated", False) and user_bypasses_eixo_filter(user)):
+        if activity_is_manually_blocked(atividade):
+            return activity_manual_block_message(atividade)
+    return activity_eixo_block_message(atividade)

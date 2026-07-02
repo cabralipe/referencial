@@ -284,6 +284,9 @@
                                             </button>
                                         </div>
                                         <span class="badge text-bg-secondary mt-1">{{ atividade.get_tipo_display }}</span>
+                                        {% if atividade.acesso_bloqueado_para_usuario %}
+                                        <span class="badge text-bg-warning mt-1">Atividade bloqueada</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 {% if atividade.descricao %}
@@ -291,16 +294,29 @@
                                     <p class="small text-muted mb-0">{{ atividade.descricao|truncatewords:14 }}</p>
                                 </div>
                                 {% endif %}
+                                {% if atividade.aviso_bloqueio %}
+                                <div class="px-3 pt-2 pb-1">
+                                    <p class="small text-warning-emphasis mb-0">
+                                        <i class="bi bi-lock-fill me-1"></i>{{ atividade.aviso_bloqueio }}
+                                    </p>
+                                </div>
+                                {% endif %}
                                 <div class="p-3 mt-auto d-flex flex-column gap-2">
                                     {% if atividade.tentativas_existentes %}
                                     <span class="badge rounded-pill align-self-start" style="background: var(--success-subtle); color: #166534;">
                                         {% if atividade.tipo == 'forum' %}Participando{% else %}Enviada{% endif %}
                                     </span>
+                                    {% elif atividade.acesso_bloqueado_para_usuario %}
+                                    <span class="badge rounded-pill align-self-start" style="background: var(--warning-subtle); color: #92400e;">Bloqueada</span>
                                     {% else %}
                                     <span class="badge rounded-pill align-self-start" style="background: var(--warning-subtle); color: #92400e;">Pendente</span>
                                     {% endif %}
-                                    <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}" class="btn btn-primary btn-sm w-100">
+                                    <a href="{% url 'ava:aluno_responder_atividade' aula.modulo.curso.slug aula.id atividade.id %}" class="btn {% if atividade.acesso_bloqueado_para_usuario %}btn-outline-secondary{% else %}btn-primary{% endif %} btn-sm w-100">
+                                        {% if atividade.acesso_bloqueado_para_usuario %}
+                                        Atividade bloqueada
+                                        {% else %}
                                         {% if atividade.tipo == 'forum' %}Entrar no fórum{% else %}Acessar atividade{% endif %}
+                                        {% endif %}
                                         <i class="bi bi-arrow-right ms-1"></i>
                                     </a>
                                 </div>

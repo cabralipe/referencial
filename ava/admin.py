@@ -679,8 +679,8 @@ class ConteudoAulaAdmin(AVAModelAdmin):
 @admin.register(Atividade)
 class AtividadeAdmin(AVAModelAdmin):
     form = AtividadeAdminForm
-    list_display = ("titulo", "aula", "tipo", "is_obrigatoria", "eixos_resumo")
-    list_filter = ("tipo", "is_obrigatoria", "aula__modulo__curso", "eixos")
+    list_display = ("titulo", "aula", "tipo", "is_obrigatoria", "acesso_bloqueado", "eixos_resumo")
+    list_filter = ("tipo", "is_obrigatoria", "acesso_bloqueado", "aula__modulo__curso", "eixos")
     search_fields = ("titulo", "descricao", "aula__titulo")
     filter_horizontal = ("eixos",)
 
