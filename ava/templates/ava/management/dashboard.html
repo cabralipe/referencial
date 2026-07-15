@@ -54,6 +54,17 @@
     <section class="ava-surface p-4 mb-4">
         <h2 class="h5 fw-bold mb-3">Filtros</h2>
         <form method="get" class="row g-3 align-items-end">
+            {% if pode_gerir_multiplos_avas %}
+            <div class="col-md-4">
+                <label for="municipio" class="form-label">Município / AVA</label>
+                <select id="municipio" name="municipio" class="form-select">
+                    <option value="">Todos os municípios permitidos</option>
+                    {% for municipio in municipios_ava %}
+                    <option value="{{ municipio.id }}" {% if filtros.cliente_id == municipio.id %}selected{% endif %}>{{ municipio.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div class="col-md-4">
                 <label for="q" class="form-label">Busca</label>
                 <input id="q" name="q" class="form-control" value="{{ filtros.q }}"
@@ -316,6 +327,7 @@
                 <thead>
                     <tr>
                         <th>Usuário</th>
+                        {% if pode_gerir_multiplos_avas %}<th>Município</th>{% endif %}
                         <th>Curso / Módulo / Aula</th>
                         <th>Atividade</th>
                         <th>Status</th>
@@ -332,6 +344,7 @@
                             <strong>{{ tentativa.aluno.nome|default:tentativa.aluno.email }}</strong><br>
                             <small class="text-muted">{{ tentativa.aluno.email }}</small>
                         </td>
+                        {% if pode_gerir_multiplos_avas %}<td>{{ tentativa.cliente.nome }}</td>{% endif %}
                         <td>
                             <strong>{{ tentativa.atividade.aula.modulo.curso.titulo }}</strong><br>
                             <small class="text-muted">{{ tentativa.atividade.aula.modulo.titulo }} - {{ tentativa.atividade.aula.titulo }}</small>
@@ -358,7 +371,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros
+                        <td colspan="{% if pode_gerir_multiplos_avas %}9{% else %}8{% endif %}" class="text-center text-muted py-4">Nenhuma tentativa encontrada para os filtros
                             selecionados.</td>
                     </tr>
                     {% endfor %}

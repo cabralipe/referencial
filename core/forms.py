@@ -54,6 +54,8 @@ class UsuarioCreationForm(UserCreationForm):
             "role",
             "seguimento",
             "eixos",
+            "ava_multimunicipio",
+            "ava_clientes",
             "is_active",
             "is_staff",
             "is_superuser",
@@ -71,6 +73,12 @@ class UsuarioCreationForm(UserCreationForm):
             cleaned_data["cliente"] = None
             if "clientes" in self.fields:
                 cleaned_data["clientes"] = self.fields["clientes"].queryset.none()
+        ava_multimunicipio = cleaned_data.get("ava_multimunicipio", False)
+        ava_clientes = cleaned_data.get("ava_clientes")
+        if ava_multimunicipio and role != Usuario.Role.ARTICULADOR:
+            self.add_error("ava_multimunicipio", "Esta funcionalidade está disponível apenas para redatores.")
+        if role == Usuario.Role.ARTICULADOR and ava_multimunicipio and not ava_clientes:
+            self.add_error("ava_clientes", "Selecione ao menos um município para a Gestão AVA.")
         return cleaned_data
 
     def save(self, commit=True):
@@ -93,6 +101,8 @@ class UsuarioChangeForm(UserChangeForm):
             "role",
             "seguimento",
             "eixos",
+            "ava_multimunicipio",
+            "ava_clientes",
             "is_active",
             "is_staff",
             "is_superuser",
@@ -112,6 +122,12 @@ class UsuarioChangeForm(UserChangeForm):
             cleaned_data["cliente"] = None
             if "clientes" in self.fields:
                 cleaned_data["clientes"] = self.fields["clientes"].queryset.none()
+        ava_multimunicipio = cleaned_data.get("ava_multimunicipio", False)
+        ava_clientes = cleaned_data.get("ava_clientes")
+        if ava_multimunicipio and role != Usuario.Role.ARTICULADOR:
+            self.add_error("ava_multimunicipio", "Esta funcionalidade está disponível apenas para redatores.")
+        if role == Usuario.Role.ARTICULADOR and ava_multimunicipio and not ava_clientes:
+            self.add_error("ava_clientes", "Selecione ao menos um município para a Gestão AVA.")
         return cleaned_data
 
     def save(self, commit=True):

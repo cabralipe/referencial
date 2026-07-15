@@ -53,6 +53,31 @@ class AVAManagementReportService:
         return getattr(user, "role", None) == get_user_model().Role.SUPER_ADMIN
 
     @staticmethod
+    def _raw_queryset(model):
+        return getattr(model, "raw_objects", model._default_manager).all()
+
+    @classmethod
+    def _ava_cliente_ids(cls, user, filtros=None) -> list[int]:
+        permitidos = user.get_ava_clientes_queryset()
+        cliente_id = (filtros or {}).get("cliente_id")
+        if cliente_id and permitidos.filter(pk=cliente_id).exists():
+            return [cliente_id]
+        return list(permitidos.values_list("id", flat=True))
+
+    @classmethod
+    def _cliente_label(cls, user, filtros) -> str:
+        municipios = user.get_ava_clientes_queryset()
+        cliente_id = filtros.get("cliente_id")
+        if cliente_id:
+            municipio = municipios.filter(pk=cliente_id).first()
+            if municipio:
+                return municipio.nome
+        nomes = list(municipios.values_list("nome", flat=True))
+        if len(nomes) == 1:
+            return nomes[0]
+        return "Visão consolidada: " + ", ".join(nomes) if nomes else "Sem municípios permitidos"
+
+    @staticmethod
     def _display_user(usuario) -> str:
         return getattr(usuario, "nome", "") or usuario.get_full_name() or usuario.email
 
@@ -79,37 +104,27 @@ class AVAManagementReportService:
     @classmethod
     def _scoped_user_queryset(cls, user):
         qs = get_user_model().objects.all()
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-        return qs
+        return qs.filter(cliente_id__in=cls._ava_cliente_ids(user))
 
     @classmethod
     def _scoped_school_queryset(cls, user):
-        qs = Escola.objects.all()
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-        return qs
+        return cls._raw_queryset(Escola).filter(is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user))
 
     @classmethod
     def _scoped_course_queryset(cls, user):
-        qs = Curso.objects.all()
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-        return qs
+        return cls._raw_queryset(Curso).filter(is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user))
 
     @classmethod
     def _scoped_module_queryset(cls, user):
-        qs = CursoModulo.objects.select_related("curso")
-        if not cls._is_super_admin(user):
-            qs = qs.filter(curso__cliente_id=user.cliente_id)
-        return qs
+        return cls._raw_queryset(CursoModulo).filter(
+            is_deleted=False, curso__cliente_id__in=cls._ava_cliente_ids(user)
+        ).select_related("curso")
 
     @classmethod
     def _scoped_lesson_queryset(cls, user):
-        qs = Aula.objects.select_related("modulo", "modulo__curso")
-        if not cls._is_super_admin(user):
-            qs = qs.filter(modulo__curso__cliente_id=user.cliente_id)
-        return qs
+        return cls._raw_queryset(Aula).filter(
+            is_deleted=False, modulo__curso__cliente_id__in=cls._ava_cliente_ids(user)
+        ).select_related("modulo", "modulo__curso")
 
     @classmethod
     def _resolve_course_ids(cls, user, filtros) -> list[int] | None:
@@ -147,9 +162,9 @@ class AVAManagementReportService:
 
     @classmethod
     def _matriculas_queryset(cls, user, filtros):
-        qs = MatriculaCurso.objects.select_related("aluno", "aluno__escola", "curso")
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
+        qs = cls._raw_queryset(MatriculaCurso).filter(
+            is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user, filtros)
+        ).select_related("aluno", "aluno__escola", "curso", "cliente")
 
         course_ids = cls._resolve_course_ids(user, filtros)
         if course_ids is not None:
@@ -174,13 +189,12 @@ class AVAManagementReportService:
 
     @classmethod
     def _tentativas_queryset(cls, user, filtros):
-        qs = AtividadeTentativa.objects.select_related(
+        qs = cls._raw_queryset(AtividadeTentativa).filter(
+            is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user, filtros)
+        ).select_related(
             "aluno",
             "atividade__aula__modulo__curso",
         )
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-
         if filtros.get("usuario_id"):
             qs = qs.filter(aluno_id=filtros["usuario_id"])
         if filtros.get("escola_id"):
@@ -216,16 +230,15 @@ class AVAManagementReportService:
     @classmethod
     def _forum_queryset(cls, user, filtros):
         if filtros.get("tipo") and filtros["tipo"] != Atividade.Tipo.FORUM:
-            return AtividadeForumMensagem.objects.none()
+            return cls._raw_queryset(AtividadeForumMensagem).none()
 
-        qs = AtividadeForumMensagem.objects.select_related(
+        qs = cls._raw_queryset(AtividadeForumMensagem).filter(
+            is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user, filtros)
+        ).select_related(
             "autor",
             "atividade__aula__modulo__curso",
             "resposta_para",
         )
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-
         if filtros.get("usuario_id"):
             qs = qs.filter(autor_id=filtros["usuario_id"])
         if filtros.get("escola_id"):
@@ -257,13 +270,12 @@ class AVAManagementReportService:
 
     @classmethod
     def _content_queryset(cls, user, filtros):
-        qs = ProgressoConteudo.objects.select_related(
+        qs = cls._raw_queryset(ProgressoConteudo).filter(
+            is_deleted=False, cliente_id__in=cls._ava_cliente_ids(user, filtros)
+        ).select_related(
             "progresso_aula__matricula__aluno",
             "conteudo__aula__modulo__curso",
         ).filter(is_visualizado=True)
-        if not cls._is_super_admin(user):
-            qs = qs.filter(cliente_id=user.cliente_id)
-
         if filtros.get("usuario_id"):
             qs = qs.filter(progresso_aula__matricula__aluno_id=filtros["usuario_id"])
         if filtros.get("escola_id"):
@@ -320,6 +332,10 @@ class AVAManagementReportService:
     @classmethod
     def _filter_labels(cls, user, filtros, selected):
         labels = []
+        if filtros.get("cliente_id"):
+            municipio = user.get_ava_clientes_queryset().filter(pk=filtros["cliente_id"]).first()
+            if municipio:
+                labels.append(f"Município: {municipio.nome}")
         if filtros.get("q"):
             labels.append(f'Busca: "{filtros["q"]}"')
         if selected["usuario"]:
@@ -355,17 +371,20 @@ class AVAManagementReportService:
 
         gts_por_usuario: dict[int, list[str]] = defaultdict(list)
         if aluno_ids:
-            gts_qs = GT.objects.filter(membros__id__in=aluno_ids)
-            if not cls._is_super_admin(user):
-                gts_qs = gts_qs.filter(cliente_id=user.cliente_id)
+            gts_qs = cls._raw_queryset(GT).filter(
+                is_deleted=False,
+                membros__id__in=aluno_ids,
+                cliente_id__in=cls._ava_cliente_ids(user, filtros),
+            )
             for item in gts_qs.values("membros__id", "nome").order_by("nome"):
                 gts_por_usuario[item["membros__id"]].append(item["nome"])
 
         acessos_por_usuario = {}
         if aluno_ids:
-            session_qs = UserSessionLog.objects.filter(usuario_id__in=aluno_ids)
-            if not cls._is_super_admin(user):
-                session_qs = session_qs.filter(cliente_id=user.cliente_id)
+            session_qs = cls._raw_queryset(UserSessionLog).filter(
+                usuario_id__in=aluno_ids,
+                cliente_id__in=cls._ava_cliente_ids(user, filtros),
+            )
             for item in session_qs.values("usuario_id").annotate(
                 total_acessos=Count("id"),
                 ultimo_acesso=Max("last_seen_at"),
@@ -374,14 +393,14 @@ class AVAManagementReportService:
 
         modulos_por_curso = defaultdict(list)
         if curso_ids:
-            for modulo in CursoModulo.objects.filter(curso_id__in=curso_ids, is_active=True).order_by("curso_id", "ordem", "id"):
+            for modulo in cls._raw_queryset(CursoModulo).filter(is_deleted=False, curso_id__in=curso_ids, is_active=True).order_by("curso_id", "ordem", "id"):
                 modulos_por_curso[modulo.curso_id].append(modulo)
 
         progresso_modulos = {}
         if matricula_ids:
             progresso_modulos = {
                 (progresso.matricula_id, progresso.modulo_id): progresso
-                for progresso in ProgressoModulo.objects.filter(matricula_id__in=matricula_ids).select_related("modulo")
+                for progresso in cls._raw_queryset(ProgressoModulo).filter(is_deleted=False, matricula_id__in=matricula_ids).select_related("modulo")
             }
 
         tentativas_stats = {}
@@ -423,6 +442,7 @@ class AVAManagementReportService:
             conteudo_stats[item["progresso_aula__matricula_id"]] = item
 
         linhas = []
+        multiplos_municipios = len(cls._ava_cliente_ids(user, filtros)) > 1
         for matricula in matriculas:
             key = (matricula.aluno_id, matricula.curso_id)
             tentativas = tentativas_stats.get(key, {})
@@ -450,7 +470,11 @@ class AVAManagementReportService:
                 "aluno_email": matricula.aluno.email,
                 "escola_nome": getattr(getattr(matricula.aluno, "escola", None), "nome", "") or "Sem escola vinculada",
                 "gts": gts_por_usuario.get(matricula.aluno_id, []),
-                "curso_titulo": matricula.curso.titulo,
+                "curso_titulo": (
+                    f"{matricula.curso.titulo} — {matricula.cliente.nome}"
+                    if multiplos_municipios
+                    else matricula.curso.titulo
+                ),
                 "status": matricula.status,
                 "status_label": matricula.get_status_display(),
                 "progresso_percentual": matricula.progresso_percentual,
@@ -515,7 +539,7 @@ class AVAManagementReportService:
 
         return {
             "generated_at": timezone.localtime(),
-            "cliente_label": getattr(getattr(user, "cliente", None), "nome", "") or "Visão global",
+            "cliente_label": cls._cliente_label(user, filtros),
             "escopo_label": escopo,
             "applied_filters": cls._filter_labels(user, filtros, selected),
             "linhas": linhas,

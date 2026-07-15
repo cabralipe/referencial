@@ -443,6 +443,44 @@ class AVAManagementDashboardTests(TestCase):
         curso_ids = {curso.id for curso in response.context["cursos"]}
         self.assertNotIn(self.curso_externo.id, curso_ids)
 
+    def test_redator_habilitado_gerencia_avas_dos_municipios_selecionados(self):
+        self.redator.ava_multimunicipio = True
+        self.redator.save(update_fields=["ava_multimunicipio"])
+        self.redator.ava_clientes.set([self.cliente, self.outro_cliente])
+
+        self.client.force_login(self.redator)
+        response = self.client.get(reverse("ava:gestao_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        tentativa_ids = {tentativa.id for tentativa in response.context["page_obj"].object_list}
+        self.assertIn(self.tentativa_1.id, tentativa_ids)
+        self.assertIn(self.tentativa_externa.id, tentativa_ids)
+        self.assertContains(response, "Município / AVA")
+        self.assertContains(response, self.cliente.nome)
+        self.assertContains(response, self.outro_cliente.nome)
+
+        filtrado = self.client.get(
+            reverse("ava:gestao_dashboard"),
+            {"municipio": str(self.outro_cliente.id)},
+        )
+        ids_filtrados = {tentativa.id for tentativa in filtrado.context["page_obj"].object_list}
+        self.assertEqual(ids_filtrados, {self.tentativa_externa.id})
+
+        detalhe = self.client.get(
+            reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_externa.id])
+        )
+        self.assertEqual(detalhe.status_code, 200)
+
+    def test_redator_sem_habilitacao_nao_acessa_ava_de_outro_municipio(self):
+        self.redator.ava_clientes.add(self.outro_cliente)
+        self.client.force_login(self.redator)
+
+        response = self.client.get(
+            reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_externa.id])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
     def test_tentativa_detalhe_shows_quiz_resposta(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("ava:gestao_tentativa_detalhe", args=[self.tentativa_1.id]))

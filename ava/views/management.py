@@ -9,14 +9,16 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
-from django.db.models import Avg, Count, Max, Q
+from django.db.models import Avg, Count, Max, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ava.forms import AtividadeTentativaCorrecaoForm
 from ava.models import (
     Atividade,
+    AtividadeForumAnexo,
     AtividadeForumMensagem,
     AtividadeTentativa,
+    AtividadeTentativaArquivo,
     Aula,
     Curso,
     CursoModulo,
@@ -26,6 +28,7 @@ from ava.models import (
 )
 from ava.services import AVAManagementReportService, AtividadeService
 from core.models import Eixo, Usuario
+from core.threadlocals import cliente_scope
 from curriculum.models import Escola
 
 
@@ -60,6 +63,7 @@ def _extract_dashboard_filters(request):
     data_fim_raw = request.GET.get("data_fim", "").strip()
     filtros = {
         "q": request.GET.get("q", "").strip(),
+        "cliente_id": _parse_int(request.GET.get("municipio")),
         "escola_id": _parse_int(request.GET.get("escola")),
         "usuario_id": _parse_int(request.GET.get("usuario")),
         "curso_id": _parse_int(request.GET.get("curso")),
@@ -89,22 +93,33 @@ def _is_super_admin(user) -> bool:
     return getattr(user, "role", None) == Usuario.Role.SUPER_ADMIN
 
 
-def _options_queryset_for_user(user):
+def _ava_cliente_ids(user, cliente_id=None) -> list[int]:
+    permitidos = user.get_ava_clientes_queryset()
+    if cliente_id and permitidos.filter(pk=cliente_id).exists():
+        return [cliente_id]
+    return list(permitidos.values_list("id", flat=True))
+
+
+def _raw_queryset(model):
+    return getattr(model, "raw_objects", model._default_manager).all()
+
+
+def _options_queryset_for_user(user, cliente_id=None):
+    cliente_ids = _ava_cliente_ids(user, cliente_id)
     user_model = get_user_model()
     usuarios = user_model.objects.filter(cursos_matriculados__isnull=False).distinct()
-    escolas = Escola.objects.all()
-    cursos = Curso.objects.all()
-    modulos = CursoModulo.objects.select_related("curso").all()
-    aulas = Aula.objects.select_related("modulo", "modulo__curso").all()
-    eixos = Eixo.objects.filter(ativo=True)
+    escolas = _raw_queryset(Escola)
+    cursos = _raw_queryset(Curso)
+    modulos = _raw_queryset(CursoModulo).select_related("curso")
+    aulas = _raw_queryset(Aula).select_related("modulo", "modulo__curso")
+    eixos = _raw_queryset(Eixo).filter(ativo=True)
 
-    if not _is_super_admin(user):
-        usuarios = usuarios.filter(cliente_id=user.cliente_id)
-        escolas = escolas.filter(cliente_id=user.cliente_id)
-        cursos = cursos.filter(cliente_id=user.cliente_id)
-        modulos = modulos.filter(curso__cliente_id=user.cliente_id)
-        aulas = aulas.filter(modulo__curso__cliente_id=user.cliente_id)
-        eixos = eixos.filter(cliente_id=user.cliente_id)
+    usuarios = usuarios.filter(cliente_id__in=cliente_ids)
+    escolas = escolas.filter(cliente_id__in=cliente_ids, is_deleted=False)
+    cursos = cursos.filter(cliente_id__in=cliente_ids, is_deleted=False)
+    modulos = modulos.filter(curso__cliente_id__in=cliente_ids, is_deleted=False)
+    aulas = aulas.filter(modulo__curso__cliente_id__in=cliente_ids, is_deleted=False)
+    eixos = eixos.filter(cliente_id__in=cliente_ids, is_deleted=False)
 
     usuarios = usuarios.order_by("nome", "email")
     escolas = escolas.distinct().order_by("nome")
@@ -115,14 +130,22 @@ def _options_queryset_for_user(user):
     return usuarios, escolas, cursos, modulos, aulas, eixos
 
 
-def _base_queryset(user):
-    qs = AtividadeTentativa.objects.select_related(
+def _base_queryset(user, cliente_id=None):
+    qs = _raw_queryset(AtividadeTentativa).filter(is_deleted=False).select_related(
+        "cliente",
         "aluno",
         "atividade__aula__modulo__curso",
-    ).prefetch_related("respostas_quiz", "arquivos")
-    if not _is_super_admin(user):
-        qs = qs.filter(cliente_id=user.cliente_id)
-    return qs
+    ).prefetch_related(
+        Prefetch(
+            "respostas_quiz",
+            queryset=_raw_queryset(QuizRespostaItem).filter(is_deleted=False),
+        ),
+        Prefetch(
+            "arquivos",
+            queryset=_raw_queryset(AtividadeTentativaArquivo).filter(is_deleted=False),
+        ),
+    )
+    return qs.filter(cliente_id__in=_ava_cliente_ids(user, cliente_id))
 
 
 def _apply_filters(qs, filtros):
@@ -182,15 +205,19 @@ def _quiz_resolution_metrics(tentativas_filtradas):
     tentativa_ids = [tentativa_id for tentativa_id, _ in quiz_tentativas]
     atividade_ids = {atividade_id for _, atividade_id in quiz_tentativas}
     questoes_por_atividade = dict(
-        QuizQuestao.objects.filter(atividade_id__in=atividade_ids)
+        _raw_queryset(QuizQuestao).filter(is_deleted=False, atividade_id__in=atividade_ids)
         .values("atividade_id")
         .annotate(total=Count("id"))
         .values_list("atividade_id", "total")
     )
 
     total_previstas = sum(questoes_por_atividade.get(atividade_id, 0) for _, atividade_id in quiz_tentativas)
-    total_respondidas = QuizRespostaItem.objects.filter(tentativa_id__in=tentativa_ids).count()
-    total_corretas = QuizRespostaItem.objects.filter(tentativa_id__in=tentativa_ids, is_correta=True).count()
+    total_respondidas = _raw_queryset(QuizRespostaItem).filter(
+        is_deleted=False, tentativa_id__in=tentativa_ids
+    ).count()
+    total_corretas = _raw_queryset(QuizRespostaItem).filter(
+        is_deleted=False, tentativa_id__in=tentativa_ids, is_correta=True
+    ).count()
     taxa_resolucao = round((total_respondidas / total_previstas) * 100, 1) if total_previstas else 0.0
     taxa_acerto = round((total_corretas / total_respondidas) * 100, 1) if total_respondidas else 0.0
     return {
@@ -206,15 +233,12 @@ def _quiz_resolution_metrics(tentativas_filtradas):
 def dashboard(request):
     filtros, data_inicio_raw, data_fim_raw = _extract_dashboard_filters(request)
 
-    tentativas_qs = _apply_filters(_base_queryset(request.user), filtros)
+    tentativas_qs = _apply_filters(_base_queryset(request.user, filtros["cliente_id"]), filtros)
 
-    matriculas_qs = MatriculaCurso.objects.select_related("curso", "aluno")
-    cursos_qs = Curso.objects.all()
-    atividades_qs = Atividade.objects.all()
-    if not _is_super_admin(request.user):
-        matriculas_qs = matriculas_qs.filter(cliente_id=request.user.cliente_id)
-        cursos_qs = cursos_qs.filter(cliente_id=request.user.cliente_id)
-        atividades_qs = atividades_qs.filter(cliente_id=request.user.cliente_id)
+    cliente_ids = _ava_cliente_ids(request.user, filtros["cliente_id"])
+    matriculas_qs = _raw_queryset(MatriculaCurso).filter(is_deleted=False, cliente_id__in=cliente_ids).select_related("curso", "aluno")
+    cursos_qs = _raw_queryset(Curso).filter(is_deleted=False, cliente_id__in=cliente_ids)
+    atividades_qs = _raw_queryset(Atividade).filter(is_deleted=False, cliente_id__in=cliente_ids)
     if filtros["escola_id"]:
         matriculas_qs = matriculas_qs.filter(aluno__escola_id=filtros["escola_id"])
 
@@ -258,7 +282,9 @@ def dashboard(request):
     paginator = Paginator(tentativas_qs.order_by("-data_inicio"), 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    usuarios, escolas, cursos, modulos, aulas, eixos = _options_queryset_for_user(request.user)
+    usuarios, escolas, cursos, modulos, aulas, eixos = _options_queryset_for_user(
+        request.user, filtros["cliente_id"]
+    )
     if filtros["escola_id"]:
         usuarios = usuarios.filter(escola_id=filtros["escola_id"])
     if filtros["curso_id"]:
@@ -272,6 +298,8 @@ def dashboard(request):
 
     context = {
         "filtros": filtros,
+        "municipios_ava": request.user.get_ava_clientes_queryset(),
+        "pode_gerir_multiplos_avas": request.user.get_ava_clientes_queryset().count() > 1,
         "data_inicio_raw": data_inicio_raw,
         "data_fim_raw": data_fim_raw,
         "status_choices": AtividadeTentativa.Status.choices,
@@ -343,20 +371,42 @@ def dashboard_relatorio_entenda(request):
 
 @ava_management_required
 def tentativa_detalhe(request, tentativa_id):
-    tentativa_qs = AtividadeTentativa.objects.select_related(
+    tentativa_qs = _raw_queryset(AtividadeTentativa).filter(
+        is_deleted=False,
+        cliente_id__in=_ava_cliente_ids(request.user),
+    ).select_related(
+        "cliente",
         "aluno",
         "atividade__aula__modulo__curso",
-    ).prefetch_related("respostas_quiz__questao", "respostas_quiz__alternativa_selecionada", "arquivos")
-    if not _is_super_admin(request.user):
-        tentativa_qs = tentativa_qs.filter(cliente_id=request.user.cliente_id)
+    ).prefetch_related(
+        Prefetch(
+            "respostas_quiz",
+            queryset=_raw_queryset(QuizRespostaItem).filter(is_deleted=False).select_related(
+                "questao", "alternativa_selecionada"
+            ).order_by("questao__ordem", "questao_id"),
+        ),
+        Prefetch(
+            "arquivos",
+            queryset=_raw_queryset(AtividadeTentativaArquivo).filter(is_deleted=False),
+        ),
+    )
     tentativa = get_object_or_404(tentativa_qs, id=tentativa_id)
-    respostas_quiz = tentativa.respostas_quiz.all().order_by("questao__ordem", "questao_id")
+    respostas_quiz = list(tentativa.respostas_quiz.all())
     forum_messages = []
     if tentativa.atividade.tipo == Atividade.Tipo.FORUM:
         forum_messages = list(
-            AtividadeForumMensagem.objects.filter(atividade=tentativa.atividade)
+            _raw_queryset(AtividadeForumMensagem).filter(
+                is_deleted=False,
+                cliente_id__in=_ava_cliente_ids(request.user),
+                atividade=tentativa.atividade,
+            )
             .select_related("autor", "resposta_para__autor")
-            .prefetch_related("anexos")
+            .prefetch_related(
+                Prefetch(
+                    "anexos",
+                    queryset=_raw_queryset(AtividadeForumAnexo).filter(is_deleted=False),
+                )
+            )
             .order_by("created_at", "id")
         )
 
@@ -364,13 +414,14 @@ def tentativa_detalhe(request, tentativa_id):
     if request.method == "POST":
         correcao_form = AtividadeTentativaCorrecaoForm(request.POST, instance=tentativa)
         if correcao_form.is_valid():
-            AtividadeService.corrigir_tentativa(
-                tentativa,
-                corretor=request.user,
-                status=correcao_form.cleaned_data["status"],
-                nota_obtida=correcao_form.cleaned_data["nota_obtida"],
-                feedback_tutor=correcao_form.cleaned_data["feedback_tutor"],
-            )
+            with cliente_scope(tentativa.cliente_id):
+                AtividadeService.corrigir_tentativa(
+                    tentativa,
+                    corretor=request.user,
+                    status=correcao_form.cleaned_data["status"],
+                    nota_obtida=correcao_form.cleaned_data["nota_obtida"],
+                    feedback_tutor=correcao_form.cleaned_data["feedback_tutor"],
+                )
             messages.success(request, "Correção salva com sucesso.")
             return redirect("ava:gestao_tentativa_detalhe", tentativa_id=tentativa.id)
         messages.error(request, "Não foi possível salvar a correção. Revise os campos do formulário.")

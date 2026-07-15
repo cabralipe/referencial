@@ -241,17 +241,25 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
         "tipo_cadastro",
         "role",
         "seguimento",
+        "ava_multimunicipio",
         "is_active",
         "last_login",
     )
-    list_filter = ("role", "tipo_cadastro", "seguimento", "is_active", "cliente", "escola")
+    list_filter = ("role", "ava_multimunicipio", "tipo_cadastro", "seguimento", "is_active", "cliente", "escola")
     search_fields = ("email", "nome")
     ordering = ("email",)
     readonly_fields = ("last_login", "date_joined")
-    filter_horizontal = ("clientes", "eixos", "groups", "user_permissions")
+    filter_horizontal = ("clientes", "ava_clientes", "eixos", "groups", "user_permissions")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Informacoes pessoais", {"fields": ("nome", "cliente", "clientes", "escola", "tipo_cadastro", "role", "seguimento", "eixos")}),
+        (
+            "Gestão AVA em múltiplos municípios",
+            {
+                "fields": ("ava_multimunicipio", "ava_clientes"),
+                "description": "Para redatores, habilite a função e selecione exatamente quais municípios poderão ser gerenciados.",
+            },
+        ),
         (
             "Permissoes",
             {
@@ -281,6 +289,8 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
                     "role",
                     "seguimento",
                     "eixos",
+                    "ava_multimunicipio",
+                    "ava_clientes",
                     "password1",
                     "password2",
                     "is_active",
@@ -292,6 +302,35 @@ class UsuarioAdmin(ClienteScopedAdminMixin, DjangoUserAdmin):
     )
     action_form = BroadcastMessageForm
     actions = ["broadcast_chat_message"]
+
+    def _can_configure_ava_multimunicipio(self, request) -> bool:
+        if self._is_super_admin(request):
+            return True
+        return (
+            getattr(request.user, "role", None) == Usuario.Role.ADMIN_CLIENTE
+            and request.user.get_clientes_queryset().count() > 1
+        )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if self._can_configure_ava_multimunicipio(request):
+            return fieldsets
+        cleaned = []
+        for name, options in fieldsets:
+            fields = tuple(
+                field
+                for field in options.get("fields", ())
+                if field not in {"ava_multimunicipio", "ava_clientes"}
+            )
+            if fields:
+                cleaned.append((name, {**options, "fields": fields}))
+        return cleaned
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_manytomany(db_field, request, **kwargs)
+        if db_field.name == "ava_clientes" and not self._is_super_admin(request):
+            formfield.queryset = request.user.get_clientes_queryset()
+        return formfield
 
     def clientes_resumo(self, obj):
         clientes = list(obj.clientes.values_list("nome", flat=True)[:3])

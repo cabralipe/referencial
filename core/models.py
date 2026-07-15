@@ -229,6 +229,18 @@ class Usuario(AbstractUser):
         verbose_name="Eixos AVA",
         help_text="Eixos que este usuario pode acessar no AVA.",
     )
+    ava_multimunicipio = models.BooleanField(
+        "Permitir gestão de múltiplos municípios no AVA",
+        default=False,
+        help_text="Disponível para redatores. Quando ativo, limita a Gestão AVA aos municípios selecionados abaixo.",
+    )
+    ava_clientes = models.ManyToManyField(
+        Cliente,
+        related_name="redatores_ava_permitidos",
+        blank=True,
+        verbose_name="Municípios permitidos na Gestão AVA",
+        help_text="Municípios cujos AVAs este redator poderá visualizar e gerenciar.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = ["nome"]
@@ -345,6 +357,26 @@ class Usuario(AbstractUser):
         if not cliente_ids:
             return Cliente.objects.none()
         return Cliente.objects.filter(pk__in=cliente_ids, ativo=True).order_by("nome")
+
+    def get_ava_clientes_queryset(self):
+        """Municípios que o usuário pode consultar na Gestão AVA."""
+        if self.role == self.Role.SUPER_ADMIN:
+            return Cliente.objects.filter(ativo=True).order_by("nome")
+        if self.role == self.Role.ARTICULADOR and self.ava_multimunicipio:
+            permitidos = self.ava_clientes.filter(ativo=True).order_by("nome")
+            if permitidos.exists():
+                return permitidos
+        if self.cliente_id:
+            return Cliente.objects.filter(pk=self.cliente_id, ativo=True)
+        return Cliente.objects.none()
+
+    def get_ava_cliente_ids(self) -> list[int]:
+        return list(self.get_ava_clientes_queryset().values_list("id", flat=True))
+
+    def can_manage_ava_cliente(self, cliente_id: int | None) -> bool:
+        if not cliente_id:
+            return False
+        return self.get_ava_clientes_queryset().filter(pk=cliente_id).exists()
 
     @property
     def is_super_admin(self) -> bool:
