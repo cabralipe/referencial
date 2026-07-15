@@ -322,6 +322,7 @@ class CertificacaoService:
         campos=None,
         liberado_em=None,
         aprovar_pendente=False,
+        gerar_pdf=True,
     ):
         elegibilidade = CertificacaoService.avaliar_matricula(matricula)
         if not elegibilidade.approved and not aprovar_pendente:
@@ -346,8 +347,7 @@ class CertificacaoService:
         )
         certificado.dados_impressos = CertificacaoService.montar_variaveis(matricula, certificado, config)
         certificado.save()
-        CertificacaoService.gerar_pdf(certificado, config, campos=campos)
-        certificado.save(update_fields=[
+        update_fields = [
             "config",
             "aluno",
             "emitido_por",
@@ -355,8 +355,11 @@ class CertificacaoService:
             "nota_final",
             "carga_horaria",
             "dados_impressos",
-            "arquivo_pdf",
-        ])
+        ]
+        if gerar_pdf:
+            CertificacaoService.gerar_pdf(certificado, config, campos=campos)
+            update_fields.append("arquivo_pdf")
+        certificado.save(update_fields=update_fields)
         return certificado, created, elegibilidade
 
     @staticmethod

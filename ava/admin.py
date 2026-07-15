@@ -4,6 +4,7 @@ import zipfile
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,6 +20,7 @@ from ava.services.certificate_service import CertificacaoService
 from ava.services.course_copy_service import CourseCopyOptions
 from core.models import Eixo, TipoUsuarioCadastro, Usuario
 from curriculum.models import Escola, GT
+from tasks.certificates import build_certificate_pdf
 
 from .models import (
     AssinaturaCertificado,
@@ -916,10 +918,19 @@ class CertificadoAdmin(AVAModelAdmin):
                             campos=campos,
                             liberado_em=liberar_em,
                             aprovar_pendente=form.cleaned_data.get("aprovar_pendentes"),
+                            gerar_pdf=False,
                         )
                         if certificado:
                             emitidos.append(certificado)
-                    messages.success(request, f"{len(emitidos)} certificado(s) emitido(s) com sucesso.")
+                            transaction.on_commit(
+                                lambda certificado_id=certificado.pk, campos_pdf=list(campos): (
+                                    build_certificate_pdf.delay(certificado_id, campos_pdf)
+                                )
+                            )
+                    messages.success(
+                        request,
+                        f"{len(emitidos)} certificado(s) preparado(s). Os PDFs serao gerados em segundo plano.",
+                    )
                     return redirect("admin:ava_certificado_changelist")
 
         context = {

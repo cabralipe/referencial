@@ -405,6 +405,14 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ALWAYS_EAGER = env.bool("REFERENCIAL_CELERY_ALWAYS_EAGER", default=DEBUG)
 CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_IMPORTS = (
+    "tasks.certificates",
+    "tasks.cleanup",
+    "tasks.diffs",
+    "tasks.exports",
+    "tasks.notifications",
+    "tasks.synthesis",
+)
 
 # Logging básico para auditoria
 LOGGING = {
