@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, Q
+from django.db.models import F, Prefetch, Q
 from django.utils import timezone
 
 from ava.models import (
@@ -11,7 +11,7 @@ from ava.models import (
     ProgressoConteudo,
     ProgressoModulo,
 )
-from ava.services.access_control import user_can_access_activity_by_eixo, user_can_access_module_by_eixo
+from ava.services.access_control import user_can_access_activity, user_can_access_module_by_eixo
 
 
 class ProgressoService:
@@ -171,7 +171,7 @@ class ProgressoService:
         envia atividade ou quando uma rotina administrativa chamar
         sincronizar_matricula().
         """
-        if (
+        if ProgressoService._atividade_alterada_apos_progresso(matricula) or (
             matricula.status == MatriculaCurso.Status.CONCLUIDA
             and ProgressoService._matricula_concluida_precisa_resync(matricula)
         ):
@@ -269,6 +269,14 @@ class ProgressoService:
         return progressos_conteudos < conteudos_obrigatorios
 
     @staticmethod
+    def _atividade_alterada_apos_progresso(matricula: MatriculaCurso) -> bool:
+        """Detecta atividade criada/alterada depois do último cálculo da aula."""
+        return Atividade.raw_objects.filter(
+            aula__progressos_alunos__matricula=matricula,
+            updated_at__gt=F("aula__progressos_alunos__updated_at"),
+        ).exists()
+
+    @staticmethod
     def recalcular_aula(matricula: MatriculaCurso, aula: Aula):
         """
         Verifica se a aula foi concluída com base nos conteúdos obrigatórios.
@@ -287,7 +295,7 @@ class ProgressoService:
         atividades_obrigatorias = [
             atividade
             for atividade in Atividade.objects.filter(aula=aula, is_obrigatoria=True).prefetch_related("eixos")
-            if user_can_access_activity_by_eixo(matricula.aluno, atividade)
+            if user_can_access_activity(matricula.aluno, atividade)
         ]
         atividade_ids = [atividade.id for atividade in atividades_obrigatorias]
         qt_atividades = len(atividade_ids)
@@ -319,13 +327,18 @@ class ProgressoService:
         if is_concluida and not prog_aula.is_concluida:
             prog_aula.is_concluida = True
             prog_aula.data_conclusao = timezone.now()
-            prog_aula.save(update_fields=["is_concluida", "data_conclusao"])
+            prog_aula.save(update_fields=["is_concluida", "data_conclusao", "updated_at"])
             ProgressoService.recalcular_modulo(matricula, aula.modulo)
         elif not is_concluida and prog_aula.is_concluida:
             prog_aula.is_concluida = False
             prog_aula.data_conclusao = None
-            prog_aula.save(update_fields=["is_concluida", "data_conclusao"])
+            prog_aula.save(update_fields=["is_concluida", "data_conclusao", "updated_at"])
             ProgressoService.recalcular_modulo(matricula, aula.modulo)
+        else:
+            # Marca quando as obrigações desta aula foram verificadas. Esse
+            # timestamp permite detectar depois uma atividade liberada,
+            # bloqueada ou alterada sem recalcular o curso a cada navegação.
+            prog_aula.save(update_fields=["updated_at"])
 
     @staticmethod
     def recalcular_modulo(matricula: MatriculaCurso, modulo):
@@ -336,14 +349,22 @@ class ProgressoService:
                 aula=aula,
                 defaults={"cliente_id": matricula.cliente_id},
             )
-            tem_obrigacoes = ConteudoAula.objects.filter(aula=aula, is_obrigatorio=True).exists() or Atividade.objects.filter(
-                aula=aula,
-                is_obrigatoria=True,
-            ).exists()
+            atividades_obrigatorias = [
+                atividade
+                for atividade in Atividade.objects.filter(
+                    aula=aula,
+                    is_obrigatoria=True,
+                ).prefetch_related("eixos")
+                if user_can_access_activity(matricula.aluno, atividade)
+            ]
+            tem_obrigacoes = (
+                ConteudoAula.objects.filter(aula=aula, is_obrigatorio=True).exists()
+                or bool(atividades_obrigatorias)
+            )
             if not tem_obrigacoes and not prog_aula.is_concluida:
                 prog_aula.is_concluida = True
                 prog_aula.data_conclusao = timezone.now()
-                prog_aula.save(update_fields=["is_concluida", "data_conclusao"])
+                prog_aula.save(update_fields=["is_concluida", "data_conclusao", "updated_at"])
 
         prog_modulo = ProgressoModulo.objects.get(matricula=matricula, modulo=modulo)
         aulas_obrig = len(aulas_modulo)

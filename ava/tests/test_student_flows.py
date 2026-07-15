@@ -244,6 +244,52 @@ class AVAStudentFlowTests(TestCase):
         self.assertContains(response, "Atividade bloqueada pelo administrador.")
         self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
 
+    def test_atividade_bloqueada_nao_reduz_progresso_do_aluno(self):
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.REFLEXAO,
+            titulo="Atividade obrigatoria bloqueada",
+            is_obrigatoria=True,
+            acesso_bloqueado=True,
+        )
+
+        ProgressoService.sincronizar_matricula(self.matricula)
+
+        progresso_aula = ProgressoAula.objects.get(matricula=self.matricula, aula=self.aula_1)
+        progresso_modulo = ProgressoModulo.objects.get(matricula=self.matricula, modulo=self.modulo)
+        self.matricula.refresh_from_db()
+        self.assertTrue(progresso_aula.is_concluida)
+        self.assertEqual(progresso_modulo.percentual, 100)
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+        self.assertFalse(AtividadeTentativa.objects.filter(aluno=self.user, atividade=atividade).exists())
+
+    def test_dashboard_recupera_progresso_quando_atividade_pendente_e_bloqueada(self):
+        ProgressoService.sincronizar_matricula(self.matricula)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+
+        atividade = Atividade.objects.create(
+            cliente=self.cliente,
+            aula=self.aula_1,
+            tipo=Atividade.Tipo.REFLEXAO,
+            titulo="Atividade liberada depois da conclusao",
+            is_obrigatoria=True,
+        )
+        ProgressoService.sincronizar_matricula(self.matricula)
+        self.matricula.refresh_from_db()
+        self.assertLess(self.matricula.progresso_percentual, 100)
+
+        atividade.acesso_bloqueado = True
+        atividade.save(update_fields=["acesso_bloqueado", "updated_at"])
+
+        response = self.client.get(reverse("ava:aluno_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.matricula.refresh_from_db()
+        self.assertEqual(self.matricula.progresso_percentual, 100)
+        self.assertEqual(self.matricula.status, MatriculaCurso.Status.CONCLUIDA)
+
     def test_quiz_com_questao_aparece_na_tela_da_atividade(self):
         atividade = Atividade.objects.create(
             cliente=self.cliente,
