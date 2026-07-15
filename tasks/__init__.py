@@ -1,3 +1,3 @@
 """Namespace de tarefas Celery."""
 
-__all__ = ["exports", "synthesis", "cleanup", "notifications", "diffs"]
+__all__ = ["certificates", "exports", "synthesis", "cleanup", "notifications", "diffs"]

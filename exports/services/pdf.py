@@ -11,18 +11,20 @@ from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except (ImportError, OSError):
-    WEASYPRINT_AVAILABLE = False
-
 
 def html_to_pdf_bytes(template_name: str, context: Dict[str, Any]) -> bytes:
     html = render_to_string(template_name, context)
     base_url = str(Path(settings.BASE_DIR))
 
-    if WEASYPRINT_AVAILABLE:
+    # WeasyPrint carrega Pango/Cairo e folhas de estilo internas. Mantenha o
+    # import sob demanda para que o processo web nao retenha esse custo de
+    # memoria quando nenhuma exportacao estiver sendo gerada.
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError):
+        HTML = None
+
+    if HTML is not None:
         return HTML(string=html, base_url=base_url).write_pdf()
 
     # Fallback: gera um PDF "falso" válido para não travar o fluxo.
