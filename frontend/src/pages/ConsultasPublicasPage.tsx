@@ -65,10 +65,56 @@ function downloadBlob(blob: Blob, filename: string) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function exportarCsv(inscricoes: InscricaoPublica[], filename: string) {
+const CHAVES_CAMPOS_PADRAO = new Set([
+  'nome_completo',
+  'instituicao_comunidade',
+  'telefone',
+  'email',
+  'areas_atuacao',
+  'representacoes',
+]);
+
+function camposExtrasParaExportacao(formulario: FormularioInscricao) {
+  const chavesIncluidas = new Set<string>();
+
+  return (formulario.campos_config || [])
+    .filter((campo) => {
+      if (
+        campo.ativo === false
+        || campo.padrao
+        || CHAVES_CAMPOS_PADRAO.has(campo.chave)
+        || chavesIncluidas.has(campo.chave)
+      ) {
+        return false;
+      }
+      chavesIncluidas.add(campo.chave);
+      return true;
+    })
+    .sort((a, b) => a.ordem - b.ordem);
+}
+
+function formatarValorExportacao(valor: unknown): string {
+  if (valor === null || valor === undefined) return '';
+  if (Array.isArray(valor)) return valor.map(formatarValorExportacao).filter(Boolean).join('; ');
+  if (typeof valor === 'object') {
+    const arquivo = valor as Record<string, unknown>;
+    if (typeof arquivo.nome === 'string') return arquivo.nome;
+    return JSON.stringify(valor);
+  }
+  return String(valor);
+}
+
+function exportarCsv(
+  inscricoes: InscricaoPublica[],
+  formulario: FormularioInscricao,
+  filename: string,
+) {
+  const camposExtras = camposExtrasParaExportacao(formulario);
   const cabecalho = [
     'ID', 'Nome Completo', 'Instituição / Comunidade', 'Telefone', 'E-mail',
-    'Áreas de Atuação', 'Área Outro', 'Representações', 'Representação Outro', 'Data',
+    'Áreas de Atuação', 'Área Outro', 'Representações', 'Representação Outro',
+    ...camposExtras.map((campo) => campo.label),
+    'Data',
   ];
   const linhas = inscricoes.map((i) => [
     i.id,
@@ -80,6 +126,7 @@ function exportarCsv(inscricoes: InscricaoPublica[], filename: string) {
     i.area_atuacao_outro,
     (i.representacoes || []).join('; '),
     i.representacao_outro,
+    ...camposExtras.map((campo) => formatarValorExportacao(i.dados_extras?.[campo.chave])),
     new Date(i.created_at).toLocaleString('pt-BR'),
   ]);
   const conteudo = [cabecalho, ...linhas]
@@ -94,9 +141,11 @@ function exportarCsv(inscricoes: InscricaoPublica[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function exportarPdf(inscricoes: InscricaoPublica[], titulo: string) {
+function exportarPdf(inscricoes: InscricaoPublica[], formulario: FormularioInscricao) {
   const esc = (s: string | number | undefined | null) =>
     String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const camposExtras = camposExtrasParaExportacao(formulario);
+  const titulo = formulario.titulo;
 
   const datas = inscricoes.map((i) => new Date(i.created_at));
   const minData = datas.length ? new Date(Math.min(...datas.map((d) => d.getTime()))) : null;
@@ -135,8 +184,15 @@ function exportarPdf(inscricoes: InscricaoPublica[], titulo: string) {
       <td class="email">${esc(i.email)}</td>
       <td>${esc([...(i.areas_atuacao || []), ...(i.area_atuacao_outro ? [`Outro: ${i.area_atuacao_outro}`] : [])].join('; '))}</td>
       <td>${esc([...(i.representacoes || []), ...(i.representacao_outro ? [`Outro: ${i.representacao_outro}`] : [])].join('; '))}</td>
+      ${camposExtras.map((campo) => `<td>${esc(formatarValorExportacao(i.dados_extras?.[campo.chave]))}</td>`).join('')}
       <td class="date-cell">${new Date(i.created_at).toLocaleString('pt-BR')}</td>
     </tr>`).join('');
+  const cabecalhosExtras = camposExtras.map((campo) => `<th>${esc(campo.label)}</th>`).join('');
+  const pesosColunas = [4, 17, 18, 10, 15, 10, 14, ...camposExtras.map(() => 12), 12];
+  const pesoTotal = pesosColunas.reduce((total, peso) => total + peso, 0);
+  const colunasTabela = pesosColunas
+    .map((peso) => `<col style="width:${((peso / pesoTotal) * 100).toFixed(2)}%">`)
+    .join('');
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -145,7 +201,7 @@ function exportarPdf(inscricoes: InscricaoPublica[], titulo: string) {
   <title>Relatório de Inscrições – ${esc(titulo)}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    @page { size: A4 portrait; margin: 12mm 14mm 12mm 10mm; }
+    @page { size: A4 ${camposExtras.length > 0 ? 'landscape' : 'portrait'}; margin: 12mm 14mm 12mm 10mm; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1f2933; background: #ffffff; font-size: 9.6px; line-height: 1.22; }
     .page { width: 100%; margin: 0 auto; }
@@ -204,13 +260,12 @@ function exportarPdf(inscricoes: InscricaoPublica[], titulo: string) {
     <h2 class="section-title">Relação completa dos inscritos</h2>
     <table>
       <colgroup>
-        <col style="width:4%"><col style="width:17%"><col style="width:18%"><col style="width:10%">
-        <col style="width:15%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
+        ${colunasTabela}
       </colgroup>
       <thead>
         <tr>
           <th class="center">ID</th><th>Nome completo</th><th>Instituição / Comunidade</th>
-          <th>Telefone</th><th>E-mail</th><th>Área</th><th>Representação</th><th>Data</th>
+          <th>Telefone</th><th>E-mail</th><th>Área</th><th>Representação</th>${cabecalhosExtras}<th>Data</th>
         </tr>
       </thead>
       <tbody>${linhasTabela}</tbody>
@@ -765,7 +820,7 @@ function FormulariosInscricaoTab() {
                           <button
                             type="button"
                             className="ghost"
-                            onClick={() => exportarCsv(inscricoes, `inscricoes-${f.token_acesso}.csv`)}
+                            onClick={() => exportarCsv(inscricoes, f, `inscricoes-${f.token_acesso}.csv`)}
                             style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-primary-light)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                           >
                             Exportar CSV
@@ -773,7 +828,7 @@ function FormulariosInscricaoTab() {
                           <button
                             type="button"
                             className="ghost"
-                            onClick={() => exportarPdf(inscricoes, f.titulo)}
+                            onClick={() => exportarPdf(inscricoes, f)}
                             style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid #243b53', color: '#243b53', background: '#f0f4f8', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                           >
                             Exportar PDF
