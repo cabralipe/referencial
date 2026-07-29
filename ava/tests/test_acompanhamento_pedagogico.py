@@ -212,6 +212,16 @@ class AcompanhamentoPedagogicoTests(TestCase):
         self.assertEqual(documento.aluno, self.aluno_a)
         self.assertEqual(documento.created_by, self.professor_a)
 
+    def test_formulario_exibe_busca_de_aluno_por_nome(self):
+        self.client.force_login(self.professor_a)
+
+        response = self.client.get(reverse("ava:gestao_acompanhamento_novo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Buscar aluno pelo nome")
+        self.assertContains(response, 'id="filtro_nome_aluno"')
+        self.assertContains(response, "Digite parte do nome do aluno")
+
     def test_professor_nao_vincula_documento_a_aluno_de_outra_escola(self):
         self.client.force_login(self.professor_a)
 

@@ -39,9 +39,21 @@
                     {% for error in form.curso.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="filtro_nome_aluno">Buscar aluno pelo nome</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input class="form-control" id="filtro_nome_aluno" type="search"
+                            placeholder="Digite parte do nome do aluno" autocomplete="off">
+                        <button class="btn btn-outline-secondary" id="limpar_filtro_aluno" type="button"
+                            aria-label="Limpar busca do aluno" title="Limpar busca">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                     <label class="form-label fw-semibold" for="{{ form.aluno.id_for_label }}">{{ form.aluno.label }}</label>
                     {{ form.aluno }}
-                    <div class="form-text">Opcional para frequência consolidada e registros coletivos.</div>
+                    <div class="form-text" id="resultado_filtro_aluno" aria-live="polite">
+                        Digite um nome acima para reduzir a lista. O vínculo é opcional para registros coletivos.
+                    </div>
                     {% for error in form.aluno.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="col-md-6">
@@ -89,4 +101,78 @@
         </form>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('filtro_nome_aluno');
+        const clearButton = document.getElementById('limpar_filtro_aluno');
+        const studentSelect = document.getElementById('{{ form.aluno.id_for_label }}');
+        const resultText = document.getElementById('resultado_filtro_aluno');
+
+        if (!searchInput || !studentSelect) return;
+
+        const originalOptions = Array.from(studentSelect.options).map(function (option) {
+            return {
+                value: option.value,
+                label: option.textContent,
+                selected: option.selected,
+                disabled: option.disabled
+            };
+        });
+        let selectedStudentValue = studentSelect.value;
+
+        function normalize(value) {
+            return (value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLocaleLowerCase('pt-BR')
+                .trim();
+        }
+
+        function filterStudents() {
+            const term = normalize(searchInput.value);
+            const placeholder = originalOptions.find(function (option) { return option.value === ''; });
+            const matches = originalOptions.filter(function (option) {
+                return option.value !== '' && (!term || normalize(option.label).includes(term));
+            });
+
+            studentSelect.replaceChildren();
+            if (placeholder) {
+                studentSelect.add(new Option(placeholder.label, '', false, selectedStudentValue === ''));
+            }
+            matches.forEach(function (option) {
+                const newOption = new Option(
+                    option.label,
+                    option.value,
+                    false,
+                    option.value === selectedStudentValue
+                );
+                newOption.disabled = option.disabled;
+                studentSelect.add(newOption);
+            });
+
+            if (term && matches.length === 0) {
+                const emptyOption = new Option('Nenhum aluno encontrado', '', false, true);
+                emptyOption.disabled = true;
+                studentSelect.add(emptyOption);
+            }
+
+            resultText.textContent = term
+                ? matches.length + (matches.length === 1 ? ' aluno encontrado.' : ' alunos encontrados.')
+                : 'Digite um nome acima para reduzir a lista. O vínculo é opcional para registros coletivos.';
+        }
+
+        studentSelect.addEventListener('change', function () {
+            selectedStudentValue = studentSelect.value;
+        });
+        searchInput.addEventListener('input', filterStudents);
+        clearButton.addEventListener('click', function () {
+            searchInput.value = '';
+            filterStudents();
+            searchInput.focus();
+        });
+    });
+</script>
 {% endblock %}
