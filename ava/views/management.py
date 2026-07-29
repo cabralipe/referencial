@@ -500,6 +500,7 @@ def acompanhamento_lista(request):
         "escola_id": _parse_int(request.GET.get("escola")),
         "curso_id": _parse_int(request.GET.get("curso")),
         "aluno_id": _parse_int(request.GET.get("aluno")),
+        "nome_aluno": request.GET.get("nome_aluno", "").strip(),
         "categoria": request.GET.get("categoria", "").strip(),
         "situacao": request.GET.get("situacao", "ativos").strip(),
     }
@@ -518,6 +519,8 @@ def acompanhamento_lista(request):
         qs = qs.filter(curso_id=filtros["curso_id"])
     if filtros["aluno_id"]:
         qs = qs.filter(aluno_id=filtros["aluno_id"])
+    if filtros["nome_aluno"]:
+        qs = qs.filter(aluno__nome__icontains=filtros["nome_aluno"])
     if filtros["categoria"]:
         qs = qs.filter(categoria=filtros["categoria"])
     if filtros["situacao"] == "arquivados":

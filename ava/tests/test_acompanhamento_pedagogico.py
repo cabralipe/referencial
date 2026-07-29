@@ -145,6 +145,19 @@ class AcompanhamentoPedagogicoTests(TestCase):
         self.assertContains(response, self.documento_a.titulo)
         self.assertNotContains(response, self.documento_b.titulo)
 
+    def test_filtro_por_nome_do_aluno_aceita_busca_parcial(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse("ava:gestao_acompanhamento"),
+            {"nome_aluno": "Aluno A"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.documento_a.titulo)
+        self.assertNotContains(response, self.documento_b.titulo)
+        self.assertEqual(response.context["filtros"]["nome_aluno"], "Aluno A")
+
     def test_professor_nao_baixa_documento_de_outra_escola(self):
         self.client.force_login(self.professor_a)
 
