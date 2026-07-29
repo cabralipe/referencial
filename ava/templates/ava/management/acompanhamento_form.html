@@ -1,0 +1,92 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ titulo_pagina }} | Acompanhamento pedagógico{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container" style="max-width: 920px;">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <a class="text-decoration-none small fw-semibold" href="{% url 'ava:gestao_acompanhamento' %}">
+                    <i class="bi bi-arrow-left me-1"></i>Voltar ao acompanhamento
+                </a>
+                <h1 class="h2 fw-bold mt-2 mb-1">{{ titulo_pagina }}</h1>
+                <p class="text-muted mb-0">{{ cliente_atual.nome }} · armazenamento privado</p>
+            </div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+                <i class="bi bi-shield-lock-fill me-1"></i>Restrito
+            </span>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="ava-surface p-4 p-lg-5">
+            {% csrf_token %}
+            <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.escola.id_for_label }}">{{ form.escola.label }}</label>
+                    {{ form.escola }}
+                    {% for error in form.escola.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.curso.id_for_label }}">Turma/curso</label>
+                    {{ form.curso }}
+                    <div class="form-text">Deixe vazio para um documento geral da escola.</div>
+                    {% for error in form.curso.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.aluno.id_for_label }}">{{ form.aluno.label }}</label>
+                    {{ form.aluno }}
+                    <div class="form-text">Opcional para frequência consolidada e registros coletivos.</div>
+                    {% for error in form.aluno.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.categoria.id_for_label }}">{{ form.categoria.label }}</label>
+                    {{ form.categoria }}
+                    {% for error in form.categoria.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }}</label>
+                    {{ form.titulo }}
+                    {% for error in form.titulo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.periodo_referencia.id_for_label }}">{{ form.periodo_referencia.label }}</label>
+                    {{ form.periodo_referencia }}
+                    {% for error in form.periodo_referencia.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.arquivo.id_for_label }}">{{ form.arquivo.label }}</label>
+                    {{ form.arquivo }}
+                    <div class="form-text">{{ form.arquivo.help_text }}</div>
+                    {% if documento %}<div class="small mt-1">Atual: <strong>{{ documento.nome_original }}</strong></div>{% endif %}
+                    {% for error in form.arquivo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    {% for error in form.descricao.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <div class="alert alert-info d-flex gap-2 mt-4 mb-0">
+                <i class="bi bi-info-circle-fill"></i>
+                <div class="small">
+                    Este arquivo não será publicado no curso. Somente professores autorizados da escola e administradores poderão acessá-lo.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <a href="{% url 'ava:gestao_acompanhamento' %}" class="btn btn-outline-secondary rounded-pill px-4">Cancelar</a>
+                <button class="btn btn-primary px-4" type="submit">
+                    <i class="bi bi-check2-circle me-1"></i>{{ texto_botao }}
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

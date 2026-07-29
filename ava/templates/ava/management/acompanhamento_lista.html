@@ -1,0 +1,185 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Acompanhamento pedagógico | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="ava-surface overflow-hidden mb-4">
+            <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div>
+                        <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Área restrita
+                        </span>
+                        <h1 class="display-6 fw-bold text-white mb-2">Acompanhamento pedagógico</h1>
+                        <p class="mb-0 text-white-50">
+                            Documentação interna de alunos e práticas pedagógicas. Nenhum item desta área é exibido aos cursistas.
+                        </p>
+                    </div>
+                    <a href="{% url 'ava:gestao_acompanhamento_novo' %}?municipio={{ cliente_atual.id }}"
+                        class="btn btn-light rounded-pill fw-bold px-4">
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>Adicionar documento
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="ava-surface p-4 mb-4">
+            <form method="get" class="row g-3 align-items-end">
+                {% if pode_gerir_multiplos_avas %}
+                <div class="col-md-4 col-lg-3">
+                    <label class="form-label fw-semibold" for="municipio">Município / AVA</label>
+                    <select class="form-select" id="municipio" name="municipio">
+                        {% for municipio in municipios_ava %}
+                        <option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>{{ municipio.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-8 col-lg-3">
+                    <label class="form-label fw-semibold" for="q">Busca</label>
+                    <input class="form-control" id="q" name="q" value="{{ filtros.q }}" placeholder="Título, arquivo ou aluno">
+                </div>
+                <div class="col-md-4 col-lg-2">
+                    <label class="form-label fw-semibold" for="escola">Escola</label>
+                    <select class="form-select" id="escola" name="escola">
+                        <option value="">Todas</option>
+                        {% for escola in escolas %}
+                        <option value="{{ escola.id }}" {% if filtros.escola_id == escola.id %}selected{% endif %}>{{ escola.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 col-lg-2">
+                    <label class="form-label fw-semibold" for="curso">Turma/curso</label>
+                    <select class="form-select" id="curso" name="curso">
+                        <option value="">Todos</option>
+                        {% for curso in cursos %}
+                        <option value="{{ curso.id }}" {% if filtros.curso_id == curso.id %}selected{% endif %}>{{ curso.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 col-lg-2">
+                    <label class="form-label fw-semibold" for="aluno">Aluno</label>
+                    <select class="form-select" id="aluno" name="aluno">
+                        <option value="">Todos</option>
+                        {% for aluno in alunos %}
+                        <option value="{{ aluno.id }}" {% if filtros.aluno_id == aluno.id %}selected{% endif %}>{{ aluno.nome|default:aluno.email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5 col-lg-3">
+                    <label class="form-label fw-semibold" for="categoria">Categoria</label>
+                    <select class="form-select" id="categoria" name="categoria">
+                        <option value="">Todas</option>
+                        {% for value, label in categoria_choices %}
+                        <option value="{{ value }}" {% if filtros.categoria == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 col-lg-3">
+                    <label class="form-label fw-semibold" for="situacao">Situação</label>
+                    <select class="form-select" id="situacao" name="situacao">
+                        <option value="ativos" {% if filtros.situacao == "ativos" %}selected{% endif %}>Ativos</option>
+                        <option value="arquivados" {% if filtros.situacao == "arquivados" %}selected{% endif %}>Arquivados</option>
+                        <option value="todos" {% if filtros.situacao == "todos" %}selected{% endif %}>Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-lg-auto d-flex gap-2">
+                    <button class="btn btn-primary px-4" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                    <a class="btn btn-outline-secondary rounded-pill" href="{% url 'ava:gestao_acompanhamento' %}">Limpar</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="ava-surface overflow-hidden">
+            <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Documentos registrados</h2>
+                    <p class="text-muted small mb-0">{{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}</p>
+                </div>
+                <i class="bi bi-folder2-open fs-3 text-primary"></i>
+            </div>
+
+            {% if page_obj.object_list %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Documento</th>
+                            <th>Vínculo</th>
+                            <th>Referência</th>
+                            <th>Incluído por</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for documento in page_obj %}
+                        <tr class="{% if documento.arquivado %}table-secondary{% endif %}">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-start gap-3">
+                                    <span class="rounded-3 bg-primary-subtle text-primary p-2"><i class="bi bi-file-earmark-text fs-5"></i></span>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ documento.titulo }}</div>
+                                        <div class="small text-muted">{{ documento.get_categoria_display }} · {{ documento.nome_original }} · {{ documento.tamanho_bytes|filesizeformat }}</div>
+                                        {% if documento.arquivado %}<span class="badge text-bg-secondary mt-1">Arquivado</span>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small fw-semibold">{{ documento.escola.nome }}</div>
+                                <div class="small text-muted">
+                                    {{ documento.curso.titulo|default:"Documento geral" }}
+                                    {% if documento.aluno %}<br>{{ documento.aluno.nome|default:documento.aluno.email }}{% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small">{{ documento.periodo_referencia|date:"d/m/Y"|default:"—" }}</div>
+                                <div class="small text-muted">Enviado em {{ documento.created_at|date:"d/m/Y H:i" }}</div>
+                            </td>
+                            <td class="small">{{ documento.created_by.nome|default:documento.created_by.email }}</td>
+                            <td class="text-end pe-4 text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{% url 'ava:gestao_acompanhamento_arquivo' documento.id %}" target="_blank" rel="noopener" title="Visualizar"><i class="bi bi-eye"></i></a>
+                                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{% url 'ava:gestao_acompanhamento_arquivo' documento.id %}?download=1" title="Baixar"><i class="bi bi-download"></i></a>
+                                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{% url 'ava:gestao_acompanhamento_editar' documento.id %}" title="Editar ou substituir"><i class="bi bi-pencil"></i></a>
+                                <form method="post" class="d-inline" action="{% url 'ava:gestao_acompanhamento_arquivar' documento.id %}">
+                                    {% csrf_token %}
+                                    {% if documento.arquivado %}
+                                    <input type="hidden" name="acao" value="restaurar">
+                                    <button class="btn btn-sm btn-outline-success rounded-pill" type="submit" title="Restaurar"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill" type="submit" title="Arquivar" onclick="return confirm('Arquivar este documento?')"><i class="bi bi-archive"></i></button>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 px-3">
+                <i class="bi bi-folder2 text-muted display-5"></i>
+                <h3 class="h5 mt-3">Nenhum documento encontrado</h3>
+                <p class="text-muted">Adicione o primeiro registro ou ajuste os filtros da consulta.</p>
+                <a href="{% url 'ava:gestao_acompanhamento_novo' %}?municipio={{ cliente_atual.id }}" class="btn btn-primary">Adicionar documento</a>
+            </div>
+            {% endif %}
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="p-4 border-top" aria-label="Paginação">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

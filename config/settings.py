@@ -316,6 +316,16 @@ MEDIA_ROOT = Path(
     env("MEDIA_ROOT_PATH")
     or ("/opt/render/project/src/media" if os.getenv("RENDER") else BASE_DIR / "media")
 ).resolve()
+PRIVATE_MEDIA_ROOT = Path(
+    env(
+        "PRIVATE_MEDIA_ROOT_PATH",
+        default=(
+            "/opt/render/project/src/private_media"
+            if os.getenv("RENDER")
+            else BASE_DIR / "private_media"
+        ),
+    )
+).resolve()
 
 MEDIA_BACKEND = env("MEDIA_BACKEND")
 IS_TEST_ENV = bool(os.getenv("PYTEST_CURRENT_TEST")) or any("pytest" in arg for arg in os.sys.argv)
@@ -323,6 +333,12 @@ IS_TEST_ENV = bool(os.getenv("PYTEST_CURRENT_TEST")) or any("pytest" in arg for 
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "private": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": PRIVATE_MEDIA_ROOT,
+        },
     },
     "staticfiles": {
         "BACKEND": (
@@ -339,6 +355,15 @@ if MEDIA_BACKEND == "s3":
         raise ImproperlyConfigured("Defina AWS_STORAGE_BUCKET_NAME para usar MEDIA_BACKEND=s3.")
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    }
+    STORAGES["private"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "location": "ava-private",
+            "default_acl": "private",
+            "querystring_auth": True,
+            "file_overwrite": False,
+        },
     }
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")

@@ -14,6 +14,7 @@ from ava.models.activity import (
 from ava.models.enrollment import MatriculaCurso, MatriculaTrilha, AutorizacaoCurso
 from ava.models.progress import ProgressoAula, ProgressoConteudo, ProgressoModulo
 from ava.models.certificate import AssinaturaCertificado, ConfigCertificado, Certificado
+from ava.models.followup import DocumentoAcompanhamento
 
 __all__ = [
     "TrilhaFormativa",
@@ -39,4 +40,5 @@ __all__ = [
     "ConfigCertificado",
     "AssinaturaCertificado",
     "Certificado",
+    "DocumentoAcompanhamento",
 ]

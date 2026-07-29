@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from datetime import date
 from functools import wraps
+import mimetypes
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.db.models import Avg, Count, Max, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from ava.forms import AtividadeTentativaCorrecaoForm
+from ava.forms import AtividadeTentativaCorrecaoForm, DocumentoAcompanhamentoForm
 from ava.models import (
     Atividade,
     AtividadeForumAnexo,
@@ -22,6 +24,7 @@ from ava.models import (
     Aula,
     Curso,
     CursoModulo,
+    DocumentoAcompanhamento,
     MatriculaCurso,
     QuizQuestao,
     QuizRespostaItem,
@@ -36,6 +39,12 @@ ALLOWED_AVA_MANAGEMENT_ROLES = {
     Usuario.Role.ADMIN_CLIENTE,
     Usuario.Role.ARTICULADOR,
     Usuario.Role.REVISOR,
+    Usuario.Role.SUPER_ADMIN,
+}
+
+ALLOWED_FOLLOWUP_ROLES = {
+    Usuario.Role.ADMIN_CLIENTE,
+    Usuario.Role.PROFESSOR,
     Usuario.Role.SUPER_ADMIN,
 }
 
@@ -89,6 +98,19 @@ def ava_management_required(view_func):
     return _wrapped
 
 
+def acompanhamento_required(view_func):
+    @login_required
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if getattr(request.user, "role", None) not in ALLOWED_FOLLOWUP_ROLES:
+            raise PermissionDenied(
+                "Você não possui permissão para acessar o acompanhamento pedagógico."
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
 def _is_super_admin(user) -> bool:
     return getattr(user, "role", None) == Usuario.Role.SUPER_ADMIN
 
@@ -102,6 +124,34 @@ def _ava_cliente_ids(user, cliente_id=None) -> list[int]:
 
 def _raw_queryset(model):
     return getattr(model, "raw_objects", model._default_manager).all()
+
+
+def _acompanhamento_cliente(request):
+    cliente_id = _parse_int(request.POST.get("municipio") or request.GET.get("municipio"))
+    permitidos = request.user.get_ava_clientes_queryset()
+    if cliente_id:
+        return get_object_or_404(permitidos, pk=cliente_id)
+    return permitidos.first()
+
+
+def _acompanhamento_queryset(user):
+    qs = (
+        _raw_queryset(DocumentoAcompanhamento)
+        .filter(is_deleted=False, cliente_id__in=_ava_cliente_ids(user))
+        .select_related(
+            "cliente",
+            "escola",
+            "curso",
+            "aluno",
+            "created_by",
+            "arquivado_por",
+        )
+    )
+    if user.role == Usuario.Role.PROFESSOR:
+        if not user.escola_id:
+            return qs.none()
+        qs = qs.filter(escola_id=user.escola_id)
+    return qs
 
 
 def _options_queryset_for_user(user, cliente_id=None):
@@ -436,3 +486,225 @@ def tentativa_detalhe(request, tentativa_id):
             "forum_messages": forum_messages,
         },
     )
+
+
+@acompanhamento_required
+def acompanhamento_lista(request):
+    cliente = _acompanhamento_cliente(request)
+    if cliente is None:
+        raise PermissionDenied("Nenhum município está disponível para este usuário.")
+
+    qs = _acompanhamento_queryset(request.user).filter(cliente=cliente)
+    filtros = {
+        "q": request.GET.get("q", "").strip(),
+        "escola_id": _parse_int(request.GET.get("escola")),
+        "curso_id": _parse_int(request.GET.get("curso")),
+        "aluno_id": _parse_int(request.GET.get("aluno")),
+        "categoria": request.GET.get("categoria", "").strip(),
+        "situacao": request.GET.get("situacao", "ativos").strip(),
+    }
+    if filtros["q"]:
+        termo = filtros["q"]
+        qs = qs.filter(
+            Q(titulo__icontains=termo)
+            | Q(descricao__icontains=termo)
+            | Q(nome_original__icontains=termo)
+            | Q(aluno__nome__icontains=termo)
+            | Q(aluno__email__icontains=termo)
+        )
+    if filtros["escola_id"]:
+        qs = qs.filter(escola_id=filtros["escola_id"])
+    if filtros["curso_id"]:
+        qs = qs.filter(curso_id=filtros["curso_id"])
+    if filtros["aluno_id"]:
+        qs = qs.filter(aluno_id=filtros["aluno_id"])
+    if filtros["categoria"]:
+        qs = qs.filter(categoria=filtros["categoria"])
+    if filtros["situacao"] == "arquivados":
+        qs = qs.filter(arquivado=True)
+    elif filtros["situacao"] == "todos":
+        pass
+    else:
+        filtros["situacao"] = "ativos"
+        qs = qs.filter(arquivado=False)
+
+    escolas = Escola.raw_objects.filter(
+        cliente=cliente,
+        is_deleted=False,
+    ).order_by("nome")
+    if request.user.role == Usuario.Role.PROFESSOR:
+        escolas = escolas.filter(pk=request.user.escola_id)
+    cursos = (
+        _raw_queryset(Curso)
+        .filter(cliente=cliente, is_deleted=False)
+        .order_by("titulo")
+    )
+    alunos = (
+        get_user_model()
+        .objects.filter(
+            cliente=cliente,
+            cursos_matriculados__is_deleted=False,
+        )
+        .distinct()
+        .order_by("nome", "email")
+    )
+    if request.user.role == Usuario.Role.PROFESSOR:
+        cursos = cursos.filter(
+            matriculas__aluno__escola_id=request.user.escola_id,
+            matriculas__is_deleted=False,
+        ).distinct()
+        alunos = alunos.filter(escola_id=request.user.escola_id)
+
+    paginator = Paginator(qs.order_by("-created_at", "-id"), 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+
+    return render(
+        request,
+        "ava/management/acompanhamento_lista.html",
+        {
+            "cliente_atual": cliente,
+            "municipios_ava": request.user.get_ava_clientes_queryset(),
+            "pode_gerir_multiplos_avas": request.user.get_ava_clientes_queryset().count() > 1,
+            "filtros": filtros,
+            "escolas": escolas,
+            "cursos": cursos,
+            "alunos": alunos,
+            "categoria_choices": DocumentoAcompanhamento.Categoria.choices,
+            "page_obj": page_obj,
+            "querystring": query_params.urlencode(),
+        },
+    )
+
+
+@acompanhamento_required
+def acompanhamento_novo(request):
+    cliente = _acompanhamento_cliente(request)
+    if cliente is None:
+        raise PermissionDenied("Nenhum município está disponível para este usuário.")
+
+    instance = DocumentoAcompanhamento(
+        cliente=cliente,
+        created_by=request.user,
+    )
+    if request.user.role == Usuario.Role.PROFESSOR:
+        instance.escola_id = request.user.escola_id
+
+    form = DocumentoAcompanhamentoForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=instance,
+        user=request.user,
+        cliente=cliente,
+    )
+    if request.method == "POST" and form.is_valid():
+        documento = form.save(commit=False)
+        documento.cliente = cliente
+        documento.created_by = request.user
+        documento.full_clean()
+        documento.save()
+        messages.success(request, "Documento registrado com sucesso.")
+        return redirect("ava:gestao_acompanhamento")
+
+    return render(
+        request,
+        "ava/management/acompanhamento_form.html",
+        {
+            "form": form,
+            "cliente_atual": cliente,
+            "titulo_pagina": "Adicionar documento",
+            "texto_botao": "Salvar documento",
+        },
+    )
+
+
+@acompanhamento_required
+def acompanhamento_editar(request, documento_id):
+    documento = get_object_or_404(
+        _acompanhamento_queryset(request.user),
+        pk=documento_id,
+    )
+    old_name = documento.arquivo.name
+    old_storage = documento.arquivo.storage
+    form = DocumentoAcompanhamentoForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=documento,
+        user=request.user,
+        cliente=documento.cliente,
+    )
+    if request.method == "POST" and form.is_valid():
+        atualizado = form.save(commit=False)
+        atualizado.full_clean()
+        atualizado.save()
+        new_name = atualizado.arquivo.name
+        if request.FILES.get("arquivo") and old_name and old_name != new_name:
+            old_storage.delete(old_name)
+        messages.success(request, "Documento atualizado com sucesso.")
+        return redirect("ava:gestao_acompanhamento")
+
+    return render(
+        request,
+        "ava/management/acompanhamento_form.html",
+        {
+            "form": form,
+            "documento": documento,
+            "cliente_atual": documento.cliente,
+            "titulo_pagina": "Editar documento",
+            "texto_botao": "Salvar alterações",
+        },
+    )
+
+
+@acompanhamento_required
+def acompanhamento_arquivo(request, documento_id):
+    documento = get_object_or_404(
+        _acompanhamento_queryset(request.user),
+        pk=documento_id,
+    )
+    try:
+        arquivo = documento.arquivo.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("Arquivo não encontrado.") from exc
+
+    content_type = (
+        mimetypes.guess_type(documento.nome_original or documento.arquivo.name)[0]
+        or "application/octet-stream"
+    )
+    response = FileResponse(
+        arquivo,
+        as_attachment=request.GET.get("download") == "1",
+        filename=documento.nome_original or documento.arquivo.name.rsplit("/", 1)[-1],
+        content_type=content_type,
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@acompanhamento_required
+def acompanhamento_arquivar(request, documento_id):
+    if request.method != "POST":
+        raise Http404()
+    documento = get_object_or_404(
+        _acompanhamento_queryset(request.user),
+        pk=documento_id,
+    )
+    restaurar = request.POST.get("acao") == "restaurar"
+    documento.arquivado = not restaurar
+    documento.arquivado_em = None if restaurar else timezone.now()
+    documento.arquivado_por = None if restaurar else request.user
+    documento.save(
+        update_fields=[
+            "arquivado",
+            "arquivado_em",
+            "arquivado_por",
+            "updated_at",
+        ]
+    )
+    messages.success(
+        request,
+        "Documento restaurado com sucesso." if restaurar else "Documento arquivado com sucesso.",
+    )
+    return redirect("ava:gestao_acompanhamento")
