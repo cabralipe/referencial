@@ -882,14 +882,47 @@ class CertificadoAdmin(AVAModelAdmin):
             raise Http404("Certificado sem PDF gerado.")
         return FileResponse(certificado.arquivo_pdf.open("rb"), as_attachment=True, filename=_certificado_nome_arquivo(certificado))
 
+    def _garantir_pdf(self, certificado):
+        """Garante que o certificado tenha PDF, gerando na hora se necessario.
+
+        A geracao normal acontece no worker Celery apos a emissao em lote. Quando
+        a fila esta indisponivel o PDF nunca chega a ser criado, entao aqui fazemos
+        um fallback sincrono no proprio download. Retorna True quando ha um PDF
+        disponivel (existente ou recem gerado) e False quando nao foi possivel
+        gerar (por exemplo, certificado sem configuracao).
+        """
+        if certificado.arquivo_pdf:
+            return True
+        config = certificado.config
+        if config is None:
+            logger.warning(
+                "Certificado %s sem configuracao; PDF nao pode ser gerado no download.",
+                certificado.pk,
+            )
+            return False
+        try:
+            CertificacaoService.gerar_pdf(certificado, config)
+            certificado.save(update_fields=["arquivo_pdf"])
+        except Exception:
+            logger.exception(
+                "Falha ao gerar PDF do certificado %s durante o download em ZIP.",
+                certificado.pk,
+            )
+            return False
+        return bool(certificado.arquivo_pdf)
+
     def _resposta_zip(self, request, queryset, *, nome_arquivo):
-        certificados = queryset.select_related("aluno", "matricula_curso__curso").iterator(chunk_size=200)
+        certificados = queryset.select_related(
+            "aluno", "config", "matricula_curso__curso"
+        ).iterator(chunk_size=200)
         buffer = SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")
         total = 0
+        sem_pdf = 0
         nomes_usados = set()
         with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             for certificado in certificados:
-                if not certificado.arquivo_pdf:
+                if not self._garantir_pdf(certificado):
+                    sem_pdf += 1
                     continue
                 nome_pdf = _certificado_nome_arquivo(certificado)
                 nome_base, extensao = nome_pdf.rsplit(".", 1)
@@ -907,8 +940,22 @@ class CertificadoAdmin(AVAModelAdmin):
                 total += 1
         if not total:
             buffer.close()
-            self.message_user(request, "Nenhum certificado possui PDF gerado.", level=messages.WARNING)
+            if sem_pdf:
+                self.message_user(
+                    request,
+                    f"Nao foi possivel gerar o PDF de {sem_pdf} certificado(s). "
+                    "Verifique se os cursos possuem configuracao de certificado e consulte os logs.",
+                    level=messages.ERROR,
+                )
+            else:
+                self.message_user(request, "Nenhum certificado possui PDF gerado.", level=messages.WARNING)
             return None
+        if sem_pdf:
+            self.message_user(
+                request,
+                f"{sem_pdf} certificado(s) foram ignorados por nao ter PDF gerado.",
+                level=messages.WARNING,
+            )
         buffer.seek(0)
         return FileResponse(buffer, as_attachment=True, filename=nome_arquivo, content_type="application/zip")
 
@@ -920,7 +967,10 @@ class CertificadoAdmin(AVAModelAdmin):
     def baixar_todos_view(self, request):
         if not self.has_view_permission(request):
             raise PermissionDenied
-        queryset = self.get_queryset(request).exclude(arquivo_pdf="").exclude(arquivo_pdf__isnull=True)
+        # Nao filtramos por arquivo_pdf: os que ainda nao tiverem PDF sao gerados
+        # sob demanda dentro de _resposta_zip (fallback quando a fila Celery nao
+        # processou a geracao apos a emissao em lote).
+        queryset = self.get_queryset(request)
         response = self._resposta_zip(request, queryset, nome_arquivo="todos-os-certificados.zip")
         if response is not None:
             return response
