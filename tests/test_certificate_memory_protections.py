@@ -6,7 +6,7 @@ from django.contrib.admin.sites import AdminSite
 from django.core.files.base import ContentFile
 from django.test import RequestFactory
 
-from ava.admin import CertificadoAdmin
+from ava.admin import CertificadoAdmin, ConfigCertificadoAdminForm
 from ava.models import Certificado, ConfigCertificado, Curso, MatriculaCurso
 from ava.services.certificate_service import CertificacaoService
 from tasks.certificates import build_certificate_pdf
@@ -108,6 +108,51 @@ def test_certificate_does_not_render_back_page_by_default(certificate_context):
 
     assert html.count('class="certificate ') == 1
     assert "certificate-back" not in html
+
+
+@pytest.mark.django_db
+def test_certificate_admin_form_exposes_variable_picker(certificate_context):
+    _, config = certificate_context
+
+    form = ConfigCertificadoAdminForm(instance=config)
+
+    for field_name in ("titulo", "subtitulo", "template_html", "verso_titulo", "verso_template_html"):
+        attrs = form.fields[field_name].widget.attrs
+        assert attrs["data-certificate-variable-picker"] == "1"
+        assert '["aluno_nome", "Nome do cursista"]' in attrs["data-certificate-variables"]
+    assert "ava/admin/certificate_variables.js" in str(form.media)
+
+
+@pytest.mark.django_db
+def test_batch_emission_does_not_return_500_when_queue_is_unavailable(
+    certificate_context,
+    usuario,
+    client,
+    monkeypatch,
+):
+    matricula, config = certificate_context
+    usuario.is_staff = True
+    usuario.save(update_fields=["is_staff"])
+    client.force_login(usuario)
+
+    def unavailable_queue(*args, **kwargs):
+        raise ConnectionError("Redis indisponivel")
+
+    monkeypatch.setattr("ava.admin.build_certificate_pdf.delay", unavailable_queue)
+
+    response = client.post(
+        "/admin/ava/certificado/emitir/",
+        {
+            "config": config.pk,
+            "campos_variaveis": ["aluno_nome", "curso_nome"],
+            "liberar_agora": "on",
+            "confirmar": "1",
+        },
+    )
+
+    assert response.status_code == 302
+    certificado = Certificado.objects.get(matricula_curso=matricula)
+    assert not certificado.arquivo_pdf
 
 
 @pytest.mark.django_db

@@ -1,0 +1,16 @@
+.certificate-variable-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.certificate-variable-picker .certificate-variable-select {
+    min-width: min(100%, 320px);
+    max-width: 100%;
+}
+
+.certificate-variable-picker .certificate-variable-button {
+    white-space: nowrap;
+}

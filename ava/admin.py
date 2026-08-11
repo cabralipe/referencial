@@ -1,3 +1,5 @@
+import json
+import logging
 import zipfile
 from tempfile import SpooledTemporaryFile
 
@@ -42,6 +44,9 @@ from .models import (
     QuizQuestao,
     TrilhaFormativa,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 ADMIN_ROLES = {"admin_cliente", "super_admin"}
@@ -331,8 +336,18 @@ class ConfigCertificadoAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        variaveis_json = json.dumps(list(CERTIFICATE_VARIABLES), ensure_ascii=False)
+        for field_name in ("titulo", "subtitulo", "template_html", "verso_titulo", "verso_template_html"):
+            field = self.fields.get(field_name)
+            if field:
+                field.widget.attrs["data-certificate-variable-picker"] = "1"
+                field.widget.attrs["data-certificate-variables"] = variaveis_json
         if self.instance and self.instance.pk:
             self.fields["campos_variaveis"].initial = self.instance.campos_variaveis or DEFAULT_CERTIFICATE_VARIABLES
+
+    class Media:
+        css = {"all": ("ava/admin/certificate_variables.css",)}
+        js = ("ava/admin/certificate_variables.js",)
 
     def clean_campos_variaveis(self):
         return list(self.cleaned_data.get("campos_variaveis") or DEFAULT_CERTIFICATE_VARIABLES)
@@ -937,28 +952,52 @@ class CertificadoAdmin(AVAModelAdmin):
                 else:
                     liberar_em = timezone.now() if form.cleaned_data.get("liberar_agora") else form.cleaned_data.get("liberar_em")
                     campos = form.cleaned_data.get("campos_variaveis") or form.cleaned_data["config"].campos_variaveis
-                    for matricula in candidatos:
-                        certificado, _, _ = CertificacaoService.emitir_para_matricula(
-                            matricula,
-                            form.cleaned_data["config"],
-                            emitido_por=request.user,
-                            campos=campos,
-                            liberado_em=liberar_em,
-                            aprovar_pendente=form.cleaned_data.get("aprovar_pendentes"),
-                            gerar_pdf=False,
-                        )
-                        if certificado:
-                            emitidos.append(certificado)
-                            transaction.on_commit(
-                                lambda certificado_id=certificado.pk, campos_pdf=list(campos): (
-                                    build_certificate_pdf.delay(certificado_id, campos_pdf)
+                    try:
+                        with transaction.atomic():
+                            for matricula in candidatos:
+                                certificado, _, _ = CertificacaoService.emitir_para_matricula(
+                                    matricula,
+                                    form.cleaned_data["config"],
+                                    emitido_por=request.user,
+                                    campos=campos,
+                                    liberado_em=liberar_em,
+                                    aprovar_pendente=form.cleaned_data.get("aprovar_pendentes"),
+                                    gerar_pdf=False,
                                 )
+                                if certificado:
+                                    emitidos.append(certificado)
+                    except Exception:
+                        logger.exception("Falha ao preparar certificados no admin do AVA")
+                        messages.error(
+                            request,
+                            "Nao foi possivel preparar os certificados. Nenhum registro deste lote foi salvo. "
+                            "Consulte os logs do servico web para o detalhe tecnico.",
+                        )
+                    else:
+                        enfileirados = 0
+                        for certificado in emitidos:
+                            try:
+                                build_certificate_pdf.delay(certificado.pk, list(campos))
+                            except Exception:
+                                logger.exception(
+                                    "Falha ao enviar o certificado %s para a fila de PDFs",
+                                    certificado.pk,
+                                )
+                                break
+                            enfileirados += 1
+
+                        if enfileirados == len(emitidos):
+                            messages.success(
+                                request,
+                                f"{len(emitidos)} certificado(s) preparado(s). Os PDFs serao gerados em segundo plano.",
                             )
-                    messages.success(
-                        request,
-                        f"{len(emitidos)} certificado(s) preparado(s). Os PDFs serao gerados em segundo plano.",
-                    )
-                    return redirect("admin:ava_certificado_changelist")
+                        else:
+                            messages.error(
+                                request,
+                                f"{len(emitidos)} certificado(s) foram preparados, mas somente {enfileirados} "
+                                "entraram na fila de PDFs. Verifique o Redis e o worker Celery antes de tentar novamente.",
+                            )
+                        return redirect("admin:ava_certificado_changelist")
 
         context = {
             **self.admin_site.each_context(request),
