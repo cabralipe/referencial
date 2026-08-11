@@ -371,13 +371,26 @@ class CertificacaoService:
         if not elegibilidade.approved and not aprovar_pendente:
             return None, False, elegibilidade
 
-        certificado, created = Certificado.objects.get_or_create(
-            matricula_curso=matricula,
-            defaults={
-                "cliente_id": matricula.cliente_id,
-                "aluno": matricula.aluno,
-            },
+        # A constraint unica do banco (ava_certificado_matricula_curso_id_key)
+        # cobre a coluna matricula_curso_id independentemente do soft delete e do
+        # escopo por cliente. Por isso a busca precisa passar por raw_objects, senao
+        # um certificado previamente removido (is_deleted=True) ou de outro cliente
+        # fica invisivel para o get() e o create() estoura IntegrityError.
+        certificado = (
+            Certificado.raw_objects.filter(matricula_curso=matricula).first()
         )
+        created = certificado is None
+        if created:
+            certificado = Certificado(
+                matricula_curso=matricula,
+                cliente_id=matricula.cliente_id,
+                aluno=matricula.aluno,
+            )
+        else:
+            # Reaproveita o registro existente, reativando-o se estava removido e
+            # garantindo o cliente correto para a matricula atual.
+            certificado.is_deleted = False
+            certificado.cliente_id = matricula.cliente_id
         certificado.config = config
         certificado.aluno = matricula.aluno
         certificado.emitido_por = emitido_por
@@ -388,8 +401,11 @@ class CertificacaoService:
             if config.carga_horaria_impressa
             else matricula.curso.carga_horaria
         )
-        certificado.dados_impressos = CertificacaoService.montar_variaveis(matricula, certificado, config)
+        # Persiste a linha antes de montar o snapshot: um registro novo so ganha
+        # codigo_validacao e data_emissao apos o save, e montar_variaveis depende
+        # de ambos.
         certificado.save()
+        certificado.dados_impressos = CertificacaoService.montar_variaveis(matricula, certificado, config)
         update_fields = [
             "config",
             "aluno",
