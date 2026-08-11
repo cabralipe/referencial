@@ -1,5 +1,12 @@
-import pytest
+import io
+import zipfile
 
+import pytest
+from django.contrib.admin.sites import AdminSite
+from django.core.files.base import ContentFile
+from django.test import RequestFactory
+
+from ava.admin import CertificadoAdmin
 from ava.models import Certificado, ConfigCertificado, Curso, MatriculaCurso
 from ava.services.certificate_service import CertificacaoService
 from tasks.certificates import build_certificate_pdf
@@ -76,3 +83,56 @@ def test_certificate_task_generates_and_persists_pdf(certificate_context, monkey
         "campos": ["aluno_nome", "curso_nome"],
     }
     assert certificado.arquivo_pdf.name == "ava/certificados/pdfs/protegido.pdf"
+
+
+@pytest.mark.django_db
+def test_certificate_renders_optional_back_page(certificate_context):
+    matricula, config = certificate_context
+    config.verso_ativo = True
+    config.verso_titulo = "Conteudo de {{curso_nome}}"
+    config.verso_template_html = "<p>Cursista: {{aluno_nome}}</p>"
+
+    html = CertificacaoService.renderizar_html(None, matricula, config)
+
+    assert html.count('class="certificate ') == 2
+    assert 'class="certificate certificate-back' in html
+    assert "Conteudo de Curso com certificado" in html
+    assert "Cursista: Admin Teste" in html
+
+
+@pytest.mark.django_db
+def test_certificate_does_not_render_back_page_by_default(certificate_context):
+    matricula, config = certificate_context
+
+    html = CertificacaoService.renderizar_html(None, matricula, config)
+
+    assert html.count('class="certificate ') == 1
+    assert "certificate-back" not in html
+
+
+@pytest.mark.django_db
+def test_admin_downloads_generated_certificates_with_student_name(certificate_context, usuario, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    matricula, config = certificate_context
+    certificado = Certificado.objects.create(
+        cliente=matricula.cliente,
+        matricula_curso=matricula,
+        config=config,
+        aluno=matricula.aluno,
+        dados_impressos={"aluno_nome": "Admin Teste", "curso_nome": "Curso com certificado"},
+    )
+    certificado.arquivo_pdf.save("certificado.pdf", ContentFile(b"pdf-do-certificado"))
+    request = RequestFactory().get("/admin/ava/certificado/baixar-todos/")
+    request.user = usuario
+    model_admin = CertificadoAdmin(Certificado, AdminSite())
+
+    response = model_admin._resposta_zip(
+        request,
+        Certificado.objects.filter(pk=certificado.pk),
+        nome_arquivo="todos-os-certificados.zip",
+    )
+    payload = b"".join(response.streaming_content)
+
+    with zipfile.ZipFile(io.BytesIO(payload)) as arquivo_zip:
+        assert arquivo_zip.namelist() == ["admin-teste-curso-com-certificado.pdf"]
+        assert arquivo_zip.read(arquivo_zip.namelist()[0]) == b"pdf-do-certificado"

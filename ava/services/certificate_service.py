@@ -180,8 +180,28 @@ class CertificacaoService:
             if fundo_url
             else ""
         )
+        verso_fundo_url = _file_uri(config.verso_fundo) if config.verso_ativo else ""
+        verso_background_css = (
+            f"background-image: url('{verso_fundo_url}'); background-size: cover; background-position: center;"
+            if verso_fundo_url
+            else ""
+        )
         tema_class = f"theme-{tema}"
         titulo = conditional_escape(_render_string(config.titulo, variaveis) or "Certificado")
+        verso_titulo = conditional_escape(_render_string(config.verso_titulo, variaveis))
+        verso_corpo = _render_string(config.verso_template_html, variaveis)
+        verso_html = ""
+        if config.verso_ativo:
+            verso_html = f"""
+            <main class="certificate certificate-back {tema_class}" style="{verso_background_css}">
+                <div class="border"></div>
+                <section class="back-content">
+                    {f'<h1>{verso_titulo}</h1>' if verso_titulo else ''}
+                    <div class="back-body">{verso_corpo}</div>
+                </section>
+                <div class="validation">Codigo de validacao: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
+            </main>
+            """
 
         return f"""
         <!doctype html>
@@ -197,7 +217,10 @@ class CertificacaoService:
                     height: 210mm;
                     position: relative;
                     overflow: hidden;
-                    {background_css}
+                }}
+                .certificate + .certificate {{
+                    break-before: page;
+                    page-break-before: always;
                 }}
                 .certificate:not([style*="background-image"]).theme-classico {{
                     background: linear-gradient(135deg, #f8fafc 0%, #ffffff 54%, #e0f2fe 100%);
@@ -282,6 +305,25 @@ class CertificacaoService:
                     font-size: 9px;
                     color: rgba(31, 41, 55, 0.66);
                 }}
+                .back-content {{
+                    position: absolute;
+                    inset: 20mm;
+                    padding: 12mm;
+                    overflow: hidden;
+                }}
+                .back-content h1 {{
+                    margin-bottom: 10mm;
+                    text-align: center;
+                }}
+                .back-body {{
+                    font-size: {int(config.texto_tamanho or 18)}px;
+                    line-height: 1.55;
+                }}
+                .back-body table {{ width: 100%; border-collapse: collapse; }}
+                .back-body th, .back-body td {{
+                    border: 1px solid rgba(31, 41, 55, 0.25);
+                    padding: 2.5mm;
+                }}
             </style>
         </head>
         <body>
@@ -295,6 +337,7 @@ class CertificacaoService:
                 {signature_html}
                 <div class="validation">Codigo de validacao: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
             </main>
+            {verso_html}
         </body>
         </html>
         """

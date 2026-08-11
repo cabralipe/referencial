@@ -1,5 +1,5 @@
-import io
 import zipfile
+from tempfile import SpooledTemporaryFile
 
 from django import forms
 from django.contrib import admin, messages
@@ -830,6 +830,11 @@ class CertificadoAdmin(AVAModelAdmin):
                 name="ava_certificado_emitir_lote",
             ),
             path(
+                "baixar-todos/",
+                self.admin_site.admin_view(self.baixar_todos_view),
+                name="ava_certificado_baixar_todos",
+            ),
+            path(
                 "<int:object_id>/baixar/",
                 self.admin_site.admin_view(self.baixar_pdf_view),
                 name="ava_certificado_baixar_pdf",
@@ -855,34 +860,56 @@ class CertificadoAdmin(AVAModelAdmin):
     pdf_link.short_description = "PDF"
 
     def baixar_pdf_view(self, request, object_id):
+        if not self.has_view_permission(request):
+            raise PermissionDenied
         certificado = get_object_or_404(self.get_queryset(request), pk=object_id)
         if not certificado.arquivo_pdf:
             raise Http404("Certificado sem PDF gerado.")
         return FileResponse(certificado.arquivo_pdf.open("rb"), as_attachment=True, filename=_certificado_nome_arquivo(certificado))
 
-    def baixar_certificados_zip(self, request, queryset):
-        certificados = list(queryset.select_related("aluno", "matricula_curso__curso"))
-        buffer = io.BytesIO()
+    def _resposta_zip(self, request, queryset, *, nome_arquivo):
+        certificados = queryset.select_related("aluno", "matricula_curso__curso").iterator(chunk_size=200)
+        buffer = SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")
         total = 0
+        nomes_usados = set()
         with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             for certificado in certificados:
                 if not certificado.arquivo_pdf:
                     continue
+                nome_pdf = _certificado_nome_arquivo(certificado)
+                nome_base, extensao = nome_pdf.rsplit(".", 1)
+                nome_unico = nome_pdf
+                contador = 2
+                while nome_unico.casefold() in nomes_usados:
+                    nome_unico = f"{nome_base}-{contador}.{extensao}"
+                    contador += 1
+                nomes_usados.add(nome_unico.casefold())
                 certificado.arquivo_pdf.open("rb")
                 try:
-                    zip_file.writestr(_certificado_nome_arquivo(certificado), certificado.arquivo_pdf.read())
+                    zip_file.writestr(nome_unico, certificado.arquivo_pdf.read())
                 finally:
                     certificado.arquivo_pdf.close()
                 total += 1
         if not total:
-            self.message_user(request, "Nenhum certificado selecionado possui PDF gerado.", level=messages.WARNING)
+            buffer.close()
+            self.message_user(request, "Nenhum certificado possui PDF gerado.", level=messages.WARNING)
             return None
         buffer.seek(0)
-        response = HttpResponse(buffer.getvalue(), content_type="application/zip")
-        response["Content-Disposition"] = 'attachment; filename="certificados-ava.zip"'
-        return response
+        return FileResponse(buffer, as_attachment=True, filename=nome_arquivo, content_type="application/zip")
+
+    def baixar_certificados_zip(self, request, queryset):
+        return self._resposta_zip(request, queryset, nome_arquivo="certificados-selecionados.zip")
 
     baixar_certificados_zip.short_description = "Baixar certificados selecionados em ZIP"
+
+    def baixar_todos_view(self, request):
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        queryset = self.get_queryset(request).exclude(arquivo_pdf="").exclude(arquivo_pdf__isnull=True)
+        response = self._resposta_zip(request, queryset, nome_arquivo="todos-os-certificados.zip")
+        if response is not None:
+            return response
+        return redirect("admin:ava_certificado_changelist")
 
     def emitir_view(self, request):
         form = CertificadoBatchEmitForm(request.POST or None, request=request)
@@ -957,6 +984,13 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
     fieldsets = (
         (None, {"fields": ("cliente", "curso", "trilha", "titulo", "subtitulo", "template_html", "campos_variaveis")}),
         ("Fundo e tema", {"fields": ("fundo", "tema_padrao", "cor_texto")}),
+        (
+            "Verso (segunda pagina)",
+            {
+                "fields": ("verso_ativo", "verso_titulo", "verso_template_html", "verso_fundo"),
+                "description": "Ative para acrescentar uma segunda pagina ao PDF. O conteudo aceita HTML e variaveis do certificado.",
+            },
+        ),
         (
             "Posicao do texto",
             {"fields": ("texto_x", "texto_y", "texto_largura", "titulo_tamanho", "texto_tamanho")},

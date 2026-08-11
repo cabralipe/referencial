@@ -93,6 +93,32 @@ class ConfigCertificado(TenantModel):
         blank=True,
         help_text="Imagem de fundo opcional. Se nao enviada, o tema padrao sera usado.",
     )
+    verso_ativo = models.BooleanField(
+        "Incluir verso (segunda pagina)",
+        default=False,
+        help_text="Quando ativo, o PDF tera uma segunda pagina configuravel.",
+    )
+    verso_titulo = models.CharField(
+        "Titulo do verso",
+        max_length=180,
+        blank=True,
+        default="Conteudo programatico",
+    )
+    verso_template_html = models.TextField(
+        "Conteudo do verso (HTML)",
+        blank=True,
+        help_text=(
+            "Aceita HTML e as mesmas variaveis da frente, como {{aluno_nome}}, "
+            "{{curso_nome}}, {{carga_horaria}} e {{codigo_validacao}}."
+        ),
+    )
+    verso_fundo = models.ImageField(
+        "Fundo do verso",
+        upload_to=certificado_fundo_upload_path,
+        null=True,
+        blank=True,
+        help_text="Imagem de fundo opcional para a segunda pagina.",
+    )
     tema_padrao = models.CharField(
         "Tema padrao",
         max_length=30,

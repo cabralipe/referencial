@@ -2,6 +2,9 @@
 
 {% block object-tools-items %}
     <li>
+        <a href="{% url 'admin:ava_certificado_baixar_todos' %}">Baixar todos em ZIP</a>
+    </li>
+    <li>
         <a href="{% url 'admin:ava_certificado_emitir_lote' %}" class="addlink">Elaborar certificados</a>
     </li>
     {{ block.super }}
