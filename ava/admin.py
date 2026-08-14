@@ -1071,12 +1071,32 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
     list_filter = ("cliente", "tema_padrao")
     search_fields = ("curso__titulo", "trilha__nome", "titulo")
     fieldsets = (
-        (None, {"fields": ("cliente", "curso", "trilha", "titulo", "subtitulo", "template_html", "campos_variaveis")}),
+        (
+            None,
+            {
+                "fields": (
+                    "cliente",
+                    "curso",
+                    "trilha",
+                    "titulo",
+                    "subtitulo",
+                    "subtitulo_alinhamento",
+                    "template_html",
+                    "campos_variaveis",
+                )
+            },
+        ),
         ("Fundo e tema", {"fields": ("fundo", "tema_padrao", "cor_texto")}),
         (
             "Verso (segunda pagina)",
             {
-                "fields": ("verso_ativo", "verso_titulo", "verso_template_html", "verso_fundo"),
+                "fields": (
+                    "verso_ativo",
+                    "verso_titulo",
+                    "verso_template_html",
+                    "verso_alinhamento",
+                    "verso_fundo",
+                ),
                 "description": "Ative para acrescentar uma segunda pagina ao PDF. O conteudo aceita HTML e variaveis do certificado.",
             },
         ),

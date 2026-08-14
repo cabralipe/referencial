@@ -34,6 +34,11 @@ def _safe_color(value):
     return "#1f2937"
 
 
+def _safe_alignment(value, default="left"):
+    allowed = {"left", "center", "right", "justify"}
+    return value if value in allowed else default
+
+
 def _file_uri(file_field):
     if not file_field:
         return ""
@@ -112,6 +117,8 @@ class CertificacaoService:
         texto_y = _safe_percent(config.texto_y, 42)
         texto_largura = _safe_percent(config.texto_largura, 72)
         cor_texto = _safe_color(config.cor_texto)
+        subtitulo_alinhamento = _safe_alignment(config.subtitulo_alinhamento, "center")
+        verso_alinhamento = _safe_alignment(config.verso_alinhamento, "left")
 
         assinaturas = list(config.assinaturas.order_by("ordem", "id"))
         total_assinaturas = max(int(config.quantidade_assinaturas or 0), len(assinaturas), 0)
@@ -254,6 +261,7 @@ class CertificacaoService:
                     font-size: {int(config.texto_tamanho or 18)}px;
                     line-height: 1.55;
                     margin-bottom: 7mm;
+                    text-align: {subtitulo_alinhamento};
                 }}
                 .fields {{
                     display: grid;
@@ -318,6 +326,7 @@ class CertificacaoService:
                 .back-body {{
                     font-size: {int(config.texto_tamanho or 18)}px;
                     line-height: 1.55;
+                    text-align: {verso_alinhamento};
                 }}
                 .back-body table {{ width: 100%; border-collapse: collapse; }}
                 .back-body th, .back-body td {{

@@ -54,6 +54,12 @@ class ConfigCertificado(TenantModel):
         MODERNO = "moderno", "Moderno"
         INSTITUCIONAL = "institucional", "Institucional"
 
+    class Alinhamento(models.TextChoices):
+        ESQUERDA = "left", "Alinhado a esquerda"
+        CENTRO = "center", "Centralizado"
+        DIREITA = "right", "Alinhado a direita"
+        JUSTIFICADO = "justify", "Justificado"
+
     curso = models.OneToOneField(Curso, on_delete=models.CASCADE, related_name="config_certificado", null=True, blank=True)
     trilha = models.OneToOneField(
         TrilhaFormativa,
@@ -64,11 +70,16 @@ class ConfigCertificado(TenantModel):
     )
 
     titulo = models.CharField("Titulo impresso", max_length=180, default="Certificado")
-    subtitulo = models.CharField(
+    subtitulo = models.TextField(
         "Subtitulo impresso",
-        max_length=255,
         blank=True,
         default="Certificamos que {{aluno_nome}} concluiu {{curso_nome}}.",
+    )
+    subtitulo_alinhamento = models.CharField(
+        "Alinhamento do subtitulo",
+        max_length=10,
+        choices=Alinhamento.choices,
+        default=Alinhamento.CENTRO,
     )
     template_html = models.TextField(
         "Template HTML",
@@ -111,6 +122,12 @@ class ConfigCertificado(TenantModel):
             "Aceita HTML e as mesmas variaveis da frente, como {{aluno_nome}}, "
             "{{curso_nome}}, {{carga_horaria}} e {{codigo_validacao}}."
         ),
+    )
+    verso_alinhamento = models.CharField(
+        "Alinhamento do conteudo do verso",
+        max_length=10,
+        choices=Alinhamento.choices,
+        default=Alinhamento.ESQUERDA,
     )
     verso_fundo = models.ImageField(
         "Fundo do verso",
