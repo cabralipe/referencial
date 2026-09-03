@@ -40,7 +40,7 @@ def test_certificate_can_be_prepared_without_rendering_pdf(certificate_context, 
     matricula, config = certificate_context
 
     def fail_if_called(*args, **kwargs):
-        pytest.fail("PDF nao deve ser gerado no processo web")
+        pytest.fail("PDF não deve ser gerado no processo web")
 
     monkeypatch.setattr(CertificacaoService, "gerar_pdf", fail_if_called)
 
@@ -89,14 +89,14 @@ def test_certificate_task_generates_and_persists_pdf(certificate_context, monkey
 def test_certificate_renders_optional_back_page(certificate_context):
     matricula, config = certificate_context
     config.verso_ativo = True
-    config.verso_titulo = "Conteudo de {{curso_nome}}"
+    config.verso_titulo = "Conteúdo de {{curso_nome}}"
     config.verso_template_html = "<p>Cursista: {{aluno_nome}}</p>"
 
     html = CertificacaoService.renderizar_html(None, matricula, config)
 
     assert html.count('class="certificate ') == 2
     assert 'class="certificate certificate-back' in html
-    assert "Conteudo de Curso com certificado" in html
+    assert "Conteúdo de Curso com certificado" in html
     assert "Cursista: Admin Teste" in html
 
 
@@ -108,6 +108,43 @@ def test_certificate_does_not_render_back_page_by_default(certificate_context):
 
     assert html.count('class="certificate ') == 1
     assert "certificate-back" not in html
+
+
+@pytest.mark.django_db
+def test_certificate_renders_system_labels_with_correct_accents(certificate_context):
+    matricula, config = certificate_context
+    config.verso_ativo = True
+    config.campos_variaveis = [
+        "aluno_role",
+        "aluno_eixos",
+        "carga_horaria",
+        "data_emissao",
+        "codigo_validacao",
+    ]
+
+    html = CertificacaoService.renderizar_html(None, matricula, config)
+
+    for text in (
+        "Tipo de usuário",
+        "Eixos do usuário",
+        "Carga horária",
+        "Data de emissão",
+        "Código de validação",
+        "Conteúdo programático",
+    ):
+        assert text in html
+
+
+@pytest.mark.django_db
+def test_certificate_preserves_accents_from_dynamic_data(certificate_context):
+    matricula, config = certificate_context
+    matricula.aluno.nome = "João da Conceição"
+    matricula.curso.titulo = "Formação em Educação Inclusiva"
+
+    variaveis = CertificacaoService.montar_variaveis(matricula, config=config)
+
+    assert variaveis["aluno_nome"] == "João da Conceição"
+    assert variaveis["curso_nome"] == "Formação em Educação Inclusiva"
 
 
 @pytest.mark.django_db

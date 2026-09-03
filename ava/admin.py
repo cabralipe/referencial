@@ -53,7 +53,7 @@ ADMIN_ROLES = {"admin_cliente", "super_admin"}
 
 EIXO_RESTRICAO_ROLE_CHOICES = (
     (Usuario.Role.DIRETOR, "Diretor"),
-    (Usuario.Role.COORDENADOR_PEDAGOGICO, "Coordenador Pedagogico"),
+    (Usuario.Role.COORDENADOR_PEDAGOGICO, "Coordenador Pedagógico"),
     (Usuario.Role.PROFESSOR, "Professor"),
     (Usuario.Role.ARTICULADOR, "Redator"),
     (Usuario.Role.REVISOR, "Revisor"),
@@ -357,15 +357,15 @@ class ConfigCertificadoAdminForm(forms.ModelForm):
         curso = cleaned_data.get("curso")
         trilha = cleaned_data.get("trilha")
         if not curso and not trilha:
-            raise forms.ValidationError("Informe um curso ou uma trilha para a configuracao do certificado.")
+            raise forms.ValidationError("Informe um curso ou uma trilha para a configuração do certificado.")
         if curso and trilha:
-            raise forms.ValidationError("Use uma configuracao separada para curso e trilha.")
+            raise forms.ValidationError("Use uma configuração separada para curso e trilha.")
         return cleaned_data
 
 
 class CertificadoBatchEmitForm(forms.Form):
     config = forms.ModelChoiceField(
-        label="Modelo/configuracao",
+        label="Modelo/configuração",
         queryset=ConfigCertificado.objects.none(),
         required=True,
     )
@@ -373,7 +373,7 @@ class CertificadoBatchEmitForm(forms.Form):
         label="Curso",
         queryset=Curso.objects.none(),
         required=False,
-        help_text="Opcional quando o modelo ja estiver vinculado a um curso.",
+        help_text="Opcional quando o modelo já estiver vinculado a um curso.",
     )
     aluno = forms.ModelChoiceField(
         label="Cursista individual",
@@ -385,12 +385,12 @@ class CertificadoBatchEmitForm(forms.Form):
         queryset=Eixo.objects.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        help_text="Filtra por eixo do curso ou eixo vinculado ao usuario.",
+        help_text="Filtra por eixo do curso ou eixo vinculado ao usuário.",
     )
     escola = forms.ModelChoiceField(label="Escola", queryset=Escola.objects.none(), required=False)
     gt = forms.ModelChoiceField(label="GT", queryset=GT.objects.none(), required=False)
     tipos_usuario = forms.MultipleChoiceField(
-        label="Tipos de usuarios",
+        label="Tipos de usuários",
         choices=Usuario.Role.choices,
         required=False,
         widget=forms.CheckboxSelectMultiple,
@@ -408,15 +408,15 @@ class CertificadoBatchEmitForm(forms.Form):
     )
     liberar_agora = forms.BooleanField(label="Liberar no AVA agora", required=False, initial=True)
     liberar_em = forms.DateTimeField(
-        label="Programar liberacao para",
+        label="Programar liberação para",
         required=False,
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
-        help_text="Use este campo quando nao marcar liberacao imediata.",
+        help_text="Use este campo quando não marcar liberação imediata.",
     )
     aprovar_pendentes = forms.BooleanField(
-        label="Emitir tambem para cursistas sem conclusao",
+        label="Emitir também para cursistas sem conclusão",
         required=False,
-        help_text="A tela de confirmacao mostra quem ainda nao concluiu antes de emitir.",
+        help_text="A tela de confirmação mostra quem ainda não concluiu antes de emitir.",
     )
 
     def __init__(self, *args, request=None, **kwargs):
@@ -459,10 +459,10 @@ class CertificadoBatchEmitForm(forms.Form):
         if config and config.curso_id:
             cleaned_data["curso"] = config.curso
         elif not curso:
-            raise forms.ValidationError("Selecione um curso ou uma configuracao vinculada a curso.")
+            raise forms.ValidationError("Selecione um curso ou uma configuração vinculada a curso.")
 
         if not cleaned_data.get("liberar_agora") and not cleaned_data.get("liberar_em"):
-            raise forms.ValidationError("Informe uma data para programar a liberacao ou marque liberar agora.")
+            raise forms.ValidationError("Informe uma data para programar a liberação ou marque liberar agora.")
         return cleaned_data
 
 
@@ -896,7 +896,7 @@ class CertificadoAdmin(AVAModelAdmin):
         config = certificado.config
         if config is None:
             logger.warning(
-                "Certificado %s sem configuracao; PDF nao pode ser gerado no download.",
+                "Certificado %s sem configuração; PDF não pode ser gerado no download.",
                 certificado.pk,
             )
             return False
@@ -943,8 +943,8 @@ class CertificadoAdmin(AVAModelAdmin):
             if sem_pdf:
                 self.message_user(
                     request,
-                    f"Nao foi possivel gerar o PDF de {sem_pdf} certificado(s). "
-                    "Verifique se os cursos possuem configuracao de certificado e consulte os logs.",
+                    f"Não foi possível gerar o PDF de {sem_pdf} certificado(s). "
+                    "Verifique se os cursos possuem configuração de certificado e consulte os logs.",
                     level=messages.ERROR,
                 )
             else:
@@ -953,7 +953,7 @@ class CertificadoAdmin(AVAModelAdmin):
         if sem_pdf:
             self.message_user(
                 request,
-                f"{sem_pdf} certificado(s) foram ignorados por nao ter PDF gerado.",
+                f"{sem_pdf} certificado(s) foram ignorados por não ter PDF gerado.",
                 level=messages.WARNING,
             )
         buffer.seek(0)
@@ -997,7 +997,7 @@ class CertificadoAdmin(AVAModelAdmin):
                 if pendentes and not form.cleaned_data.get("aprovar_pendentes"):
                     messages.warning(
                         request,
-                        "Ha cursistas sem conclusao. Marque a aprovacao de pendentes para confirmar a emissao mesmo assim.",
+                        "Há cursistas sem conclusão. Marque a aprovação de pendentes para confirmar a emissão mesmo assim.",
                     )
                 else:
                     liberar_em = timezone.now() if form.cleaned_data.get("liberar_agora") else form.cleaned_data.get("liberar_em")
@@ -1020,8 +1020,8 @@ class CertificadoAdmin(AVAModelAdmin):
                         logger.exception("Falha ao preparar certificados no admin do AVA")
                         messages.error(
                             request,
-                            "Nao foi possivel preparar os certificados. Nenhum registro deste lote foi salvo. "
-                            "Consulte os logs do servico web para o detalhe tecnico.",
+                            "Não foi possível preparar os certificados. Nenhum registro deste lote foi salvo. "
+                            "Consulte os logs do serviço web para o detalhe técnico.",
                         )
                     else:
                         enfileirados = 0
@@ -1039,7 +1039,7 @@ class CertificadoAdmin(AVAModelAdmin):
                         if enfileirados == len(emitidos):
                             messages.success(
                                 request,
-                                f"{len(emitidos)} certificado(s) preparado(s). Os PDFs serao gerados em segundo plano.",
+                                f"{len(emitidos)} certificado(s) preparado(s). Os PDFs serão gerados em segundo plano.",
                             )
                         else:
                             messages.error(
@@ -1088,7 +1088,7 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
         ),
         ("Fundo e tema", {"fields": ("fundo", "tema_padrao", "cor_texto")}),
         (
-            "Verso (segunda pagina)",
+            "Verso (segunda página)",
             {
                 "fields": (
                     "verso_ativo",
@@ -1097,14 +1097,14 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
                     "verso_alinhamento",
                     "verso_fundo",
                 ),
-                "description": "Ative para acrescentar uma segunda pagina ao PDF. O conteudo aceita HTML e variaveis do certificado.",
+                "description": "Ative para acrescentar uma segunda página ao PDF. O conteúdo aceita HTML e variáveis do certificado.",
             },
         ),
         (
-            "Posicao do texto",
+            "Posição do texto",
             {"fields": ("texto_x", "texto_y", "texto_largura", "titulo_tamanho", "texto_tamanho")},
         ),
-        ("Carga horaria e assinaturas", {"fields": ("carga_horaria_impressa", "quantidade_assinaturas", "assinatura_digital_url")}),
+        ("Carga horária e assinaturas", {"fields": ("carga_horaria_impressa", "quantidade_assinaturas", "assinatura_digital_url")}),
     )
 
     def get_urls(self):
@@ -1143,9 +1143,9 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
         if not obj.pk:
             return "-"
         url = reverse("admin:ava_configcertificado_preview", args=[obj.pk])
-        return format_html('<a class="button" target="_blank" href="{}">Preview</a>', url)
+        return format_html('<a class="button" target="_blank" href="{}">Prévia</a>', url)
 
-    preview_link.short_description = "Preview"
+    preview_link.short_description = "Prévia"
 
     def preview_view(self, request, object_id):
         config = get_object_or_404(self.get_queryset(request), pk=object_id)
@@ -1159,6 +1159,6 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
                 .first()
             )
         if not matricula:
-            return HttpResponse("Cadastre ao menos uma matricula no curso para visualizar o preview.", status=404)
+            return HttpResponse("Cadastre ao menos uma matrícula no curso para visualizar a prévia.", status=404)
         html = CertificacaoService.renderizar_html(None, matricula, config)
         return HttpResponse(html)

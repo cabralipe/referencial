@@ -1,4 +1,4 @@
-"""Tarefas de geracao de certificados fora do processo web."""
+"""Tarefas de geração de certificados fora do processo web."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def build_certificate_pdf(certificado_id: int, campos: list[str] | None = None) 
         "aluno",
     ).get(pk=certificado_id, is_deleted=False)
     if not certificado.config_id:
-        raise ValueError(f"Certificado {certificado_id} sem configuracao de emissao.")
+        raise ValueError(f"Certificado {certificado_id} sem configuração de emissão.")
 
     CertificacaoService.gerar_pdf(certificado, certificado.config, campos=campos)
     certificado.save(update_fields=["arquivo_pdf"])

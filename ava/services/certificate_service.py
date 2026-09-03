@@ -65,9 +65,9 @@ class CertificacaoService:
         reasons = []
 
         if not curso.permite_certificado:
-            reasons.append("Curso nao emite certificado")
+            reasons.append("Curso não emite certificado")
         if matricula.status != MatriculaCurso.Status.CONCLUIDA:
-            reasons.append("Matricula ainda nao esta concluida")
+            reasons.append("Matrícula ainda não está concluída")
         if int(matricula.progresso_percentual or 0) < int(curso.progresso_minimo or 0):
             reasons.append(f"Progresso {matricula.progresso_percentual}% abaixo de {curso.progresso_minimo}%")
         if Decimal(matricula.nota_final_obtida or 0) < Decimal(curso.nota_minima or 0):
@@ -206,7 +206,7 @@ class CertificacaoService:
                     {f'<h1>{verso_titulo}</h1>' if verso_titulo else ''}
                     <div class="back-body">{verso_corpo}</div>
                 </section>
-                <div class="validation">Codigo de validacao: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
+                <div class="validation">Código de validação: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
             </main>
             """
 
@@ -344,7 +344,7 @@ class CertificacaoService:
                     <div class="fields">{corpo}</div>
                 </section>
                 {signature_html}
-                <div class="validation">Codigo de validacao: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
+                <div class="validation">Código de validação: {conditional_escape(variaveis.get("codigo_validacao") or "PREVIEW")}</div>
             </main>
             {verso_html}
         </body>
@@ -356,7 +356,7 @@ class CertificacaoService:
         try:
             from weasyprint import HTML
         except ImportError as exc:
-            raise RuntimeError("WeasyPrint nao esta instalado; nao foi possivel gerar o PDF.") from exc
+            raise RuntimeError("WeasyPrint não está instalado; não foi possível gerar o PDF.") from exc
 
         html = CertificacaoService.renderizar_html(certificado, certificado.matricula_curso, config, campos=campos)
         with NamedTemporaryFile(suffix=".pdf") as tmp:
@@ -435,7 +435,7 @@ class CertificacaoService:
         try:
             config = ConfigCertificado.objects.get(curso=matricula.curso)
         except ConfigCertificado.DoesNotExist:
-            return False, "Configuracao de certificado nao encontrada para este curso"
+            return False, "Configuração de certificado não encontrada para este curso"
 
         certificado, _, elegibilidade = CertificacaoService.emitir_para_matricula(
             matricula,
@@ -450,15 +450,15 @@ class CertificacaoService:
 
 DEFAULT_CERTIFICATE_VARIABLES_LABELS = {
     "aluno_email": "E-mail",
-    "aluno_role": "Tipo de usuario",
+    "aluno_role": "Tipo de usuário",
     "aluno_tipo_cadastro": "Tipo de cadastro",
     "aluno_escola": "Escola",
     "aluno_gt": "GTs",
-    "aluno_eixos": "Eixos do usuario",
+    "aluno_eixos": "Eixos do usuário",
     "curso_eixos": "Eixos do curso",
-    "carga_horaria": "Carga horaria",
+    "carga_horaria": "Carga horária",
     "nota_final": "Nota final",
     "progresso_percentual": "Progresso",
-    "data_emissao": "Data de emissao",
-    "codigo_validacao": "Codigo de validacao",
+    "data_emissao": "Data de emissão",
+    "codigo_validacao": "Código de validação",
 }
