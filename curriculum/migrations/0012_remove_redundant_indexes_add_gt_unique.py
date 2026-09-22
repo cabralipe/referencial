@@ -3,6 +3,35 @@
 from django.db import migrations
 
 
+def _drop_index_if_exists(*index_names: str):
+    """Remove o índice pelo nome atual, qualquer que seja ele.
+
+    A migração 0002 renomeia índices apenas no *state* quando o banco é SQLite
+    (``ALTER INDEX`` não existe lá). Por isso, em SQLite o índice físico ainda
+    carrega o nome antigo e um ``RemoveIndex`` direto quebra com
+    ``no such index``. Tentamos os dois nomes em ambos os bancos.
+    """
+
+    def forwards(apps, schema_editor):
+        for name in index_names:
+            schema_editor.execute(f'DROP INDEX IF EXISTS "{name}";')
+
+    def backwards(apps, schema_editor):
+        # A recriação do índice é feita pelo state_operations reverso.
+        return None
+
+    return migrations.RunPython(forwards, backwards)
+
+
+def safe_remove_index(model_name: str, name: str, legacy_name: str):
+    return migrations.SeparateDatabaseAndState(
+        database_operations=[_drop_index_if_exists(name, legacy_name)],
+        state_operations=[
+            migrations.RemoveIndex(model_name=model_name, name=name),
+        ],
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,13 +40,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='resposta',
-            name='curriculum__cliente_cd9187_idx',
+        safe_remove_index(
+            'resposta',
+            'curriculum__cliente_cd9187_idx',
+            'curr_res_client_8be6f8_idx',
         ),
-        migrations.RemoveIndex(
-            model_name='textounico',
-            name='curriculum__cliente_46cd17_idx',
+        safe_remove_index(
+            'textounico',
+            'curriculum__cliente_46cd17_idx',
+            'curr_text_cliente_3baf05_idx',
         ),
         migrations.AlterUniqueTogether(
             name='gt',
