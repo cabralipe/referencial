@@ -15,6 +15,19 @@ from ava.models.enrollment import MatriculaCurso, MatriculaTrilha, AutorizacaoCu
 from ava.models.progress import ProgressoAula, ProgressoConteudo, ProgressoModulo
 from ava.models.certificate import AssinaturaCertificado, ConfigCertificado, Certificado
 from ava.models.followup import DocumentoAcompanhamento
+from ava.models.diario import (
+    DiarioBordo,
+    DiarioBordoMidia,
+    DiarioBordoParticipante,
+    OrigemAula,
+)
+from ava.models.planilha import (
+    ColunaPlanilha,
+    ImportacaoPlanilha,
+    ModeloPlanilha,
+    RegistroPlanilha,
+    ValorRegistroPlanilha,
+)
 
 __all__ = [
     "TrilhaFormativa",
@@ -41,4 +54,13 @@ __all__ = [
     "AssinaturaCertificado",
     "Certificado",
     "DocumentoAcompanhamento",
+    "DiarioBordo",
+    "DiarioBordoParticipante",
+    "DiarioBordoMidia",
+    "OrigemAula",
+    "ModeloPlanilha",
+    "ColunaPlanilha",
+    "RegistroPlanilha",
+    "ValorRegistroPlanilha",
+    "ImportacaoPlanilha",
 ]
