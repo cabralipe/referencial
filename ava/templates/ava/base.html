@@ -211,6 +211,16 @@
                         <a class="nav-link ava-nav-link" href="{% url 'ava:gestao_acompanhamento' %}">Acompanhamento</a>
                     </li>
                     {% endif %}
+                    {% if user.role == 'professor' or user.role == 'coordenador_pedagogico' or user.role == 'diretor' or user.role == 'admin_cliente' or user.role == 'super_admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:diario_lista' %}">Diário de bordo</a>
+                    </li>
+                    {% endif %}
+                    {% if user.role == 'admin_cliente' or user.role == 'super_admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:planilha_modelo_lista' %}">Planilhas</a>
+                    </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
                 <div class="d-flex align-items-center gap-2">

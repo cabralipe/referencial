@@ -1,0 +1,158 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Mapear colunas | {{ modelo.nome }}{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container-fluid px-lg-5">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_modelo_lista' %}">Modelos de planilha</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_registros' modelo.id %}">{{ modelo.nome }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Mapear e validar</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="ava-surface p-4 mb-4">
+            <h1 class="h4 fw-bold mb-1">{{ importacao.nome_original }}</h1>
+            <p class="text-muted small mb-0">
+                {{ importacao.get_modo_display }} ·
+                {{ total_linhas }} linha{{ total_linhas|pluralize }} de dados ·
+                enviado por {{ importacao.created_by.nome|default:importacao.created_by.email }}
+            </p>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="ava-surface p-4 mb-4">
+                <h2 class="h5 fw-bold mb-1">Etapa 2 — Mapeamento das colunas</h2>
+                <p class="text-muted small">
+                    Cada cabeçalho da planilha aponta para uma coluna configurada. Deixe em
+                    "Ignorar esta coluna" o que não deve ser importado.
+                </p>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="row g-3">
+                    {% for cabecalho, campo in form.campos_de_mapeamento %}
+                    <div class="col-md-6 col-xl-4">
+                        <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ cabecalho }}</label>
+                        {{ campo }}
+                        {% if campo.errors %}<div class="text-danger small mt-1">{{ campo.errors|join:" " }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if importacao.modo == 'atualizar' %}
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6 col-xl-4">
+                        <label class="form-label fw-semibold" for="{{ form.coluna_chave.id_for_label }}">{{ form.coluna_chave.label }}</label>
+                        {{ form.coluna_chave }}
+                        <div class="form-text">Identifica os registros já existentes que serão atualizados.</div>
+                        {% if form.coluna_chave.errors %}<div class="text-danger small mt-1">{{ form.coluna_chave.errors|join:" " }}</div>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="ava-surface overflow-hidden mb-4">
+                <div class="p-4 border-bottom">
+                    <h2 class="h5 fw-bold mb-1">Etapa 3 — Pré-visualização</h2>
+                    <p class="text-muted small mb-0">Primeiras {{ preview|length }} linha(s) do arquivo, como foram lidas.</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <caption class="visually-hidden">Pré-visualização das primeiras linhas do arquivo</caption>
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Linha</th>
+                                {% for cabecalho in leitura.cabecalhos %}
+                                <th scope="col">{{ cabecalho }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linha in preview %}
+                            <tr>
+                                <th scope="row" class="small">{{ linha.numero }}</th>
+                                {% for celula in linha.celulas %}
+                                <td class="small">{{ celula }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if validacao %}
+            <div class="ava-surface p-4 mb-4">
+                <h2 class="h5 fw-bold mb-1">Etapa 4 — Validação</h2>
+                {% if validacao.valida %}
+                <div class="alert alert-success" role="status">
+                    <i class="bi bi-check-circle-fill me-1"></i>
+                    {{ validacao.linhas_validas|length }} linha(s) prontas para gravar. Confirme abaixo.
+                </div>
+                {% else %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    {{ validacao.erros|length }} erro(s) encontrados. <strong>Nada foi gravado.</strong>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <caption class="visually-hidden">Erros encontrados por linha e coluna</caption>
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Linha</th>
+                                <th scope="col">Coluna</th>
+                                <th scope="col">Problema</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for erro in validacao.erros %}
+                            <tr>
+                                <th scope="row" class="small">{{ erro.linha }}</th>
+                                <td class="small">{{ erro.coluna }}</td>
+                                <td class="small text-danger">{{ erro.mensagem }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <button class="btn btn-outline-primary px-4" type="submit" name="acao" value="validar">
+                    Validar planilha
+                </button>
+                <button class="btn btn-success px-4" type="submit" name="acao" value="confirmar"
+                    {% if not validacao or not validacao.valida %}disabled{% endif %}>
+                    Confirmar e gravar
+                </button>
+                <a class="btn btn-outline-secondary" href="{% url 'ava:planilha_registros' modelo.id %}">Voltar</a>
+            </div>
+        </form>
+
+        <form method="post" action="{% url 'ava:planilha_importar_cancelar' importacao.id %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger btn-sm" type="submit">Cancelar esta importação</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

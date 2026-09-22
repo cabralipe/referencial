@@ -1,0 +1,97 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Importar dados | {{ modelo.nome }}{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_modelo_lista' %}">Modelos de planilha</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_registros' modelo.id %}">{{ modelo.nome }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Importar</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="ava-surface p-4 p-lg-5">
+                    <h1 class="h4 fw-bold mb-1">Importar dados</h1>
+                    <p class="text-muted">Etapa 1 de 4 — envie o arquivo. Nada é gravado antes da sua confirmação.</p>
+
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ form.arquivo.id_for_label }}">Arquivo da planilha</label>
+                            {{ form.arquivo }}
+                            <div class="form-text">{{ form.arquivo.help_text }}</div>
+                            {% if form.arquivo.errors %}<div class="text-danger small mt-1">{{ form.arquivo.errors|join:" " }}</div>{% endif %}
+                        </div>
+
+                        <fieldset class="mb-4">
+                            <legend class="form-label fw-semibold">Como tratar as linhas</legend>
+                            {% for opcao in form.modo %}
+                            <div class="form-check">
+                                {{ opcao.tag }}
+                                <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                            {% if form.modo.errors %}<div class="text-danger small mt-1">{{ form.modo.errors|join:" " }}</div>{% endif %}
+                        </fieldset>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary px-4" type="submit">Ler cabeçalhos</button>
+                            <a class="btn btn-outline-secondary" href="{% url 'ava:planilha_registros' modelo.id %}">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="ava-surface p-4 h-100">
+                    <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Colunas esperadas</h2>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for coluna in colunas %}
+                        <li class="list-group-item px-0">
+                            <span class="fw-semibold">{{ coluna.titulo }}</span>
+                            <span class="badge text-bg-light text-dark ms-1">{{ coluna.get_tipo_display }}</span>
+                            {% if coluna.obrigatorio %}<span class="badge text-bg-danger ms-1">Obrigatório</span>{% endif %}
+                            {% if coluna.ajuda %}<div class="small text-muted">{{ coluna.ajuda }}</div>{% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item px-0 text-muted small">Este modelo ainda não tem colunas configuradas.</li>
+                        {% endfor %}
+                    </ul>
+                    <a class="btn btn-outline-secondary btn-sm w-100" href="{% url 'ava:planilha_modelo_em_branco' modelo.id %}">
+                        <i class="bi bi-download me-1"></i>Baixar planilha modelo
+                    </a>
+
+                    <h3 class="h6 fw-bold text-uppercase text-muted mt-4 mb-2">Formatos disponíveis</h3>
+                    <p class="small mb-0">
+                        {% for extensao, disponivel in formatos.items %}
+                        <span class="badge {% if disponivel %}text-bg-success{% else %}text-bg-secondary{% endif %} me-1">
+                            {{ extensao|upper }}{% if not disponivel %} (indisponível){% endif %}
+                        </span>
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

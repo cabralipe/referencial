@@ -1,0 +1,192 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ diario.titulo }} | Diário de bordo{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:diario_lista' %}">Diário de bordo</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ diario.titulo }}</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="ava-surface p-4 p-lg-5 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+                <div>
+                    <h1 class="h4 fw-bold mb-1">{{ diario.titulo }}</h1>
+                    <p class="text-muted mb-0">
+                        {{ diario.data_aula|date:"d/m/Y" }} ·
+                        {{ diario.escola.nome }} ·
+                        {{ diario.professor.nome|default:diario.professor.email }}
+                    </p>
+                </div>
+                <div class="text-lg-end">
+                    <span class="badge rounded-pill
+                        {% if diario.origem == 'no_sistema' %}text-bg-primary
+                        {% elif diario.origem == 'hibrida' %}text-bg-info
+                        {% else %}text-bg-warning{% endif %}">
+                        {{ diario.get_origem_display }}
+                    </span>
+                    <span class="badge rounded-pill
+                        {% if diario.status == 'rascunho' %}text-bg-secondary
+                        {% elif diario.status == 'enviado' %}text-bg-primary
+                        {% elif diario.status == 'revisado' %}text-bg-success
+                        {% else %}text-bg-dark{% endif %}">
+                        {{ diario.get_status_display }}
+                    </span>
+                </div>
+            </div>
+
+            <dl class="row mb-0">
+                {% if diario.curso %}
+                <dt class="col-sm-3">Curso/turma</dt>
+                <dd class="col-sm-9">{{ diario.curso.titulo }}</dd>
+                {% endif %}
+                {% if diario.modulo %}
+                <dt class="col-sm-3">Módulo</dt>
+                <dd class="col-sm-9">{{ diario.modulo.titulo }}</dd>
+                {% endif %}
+                {% if diario.aula %}
+                <dt class="col-sm-3">Aula vinculada</dt>
+                <dd class="col-sm-9">{{ diario.aula.titulo }}</dd>
+                {% endif %}
+                {% if diario.tipo_atividade %}
+                <dt class="col-sm-3">Tipo de atividade</dt>
+                <dd class="col-sm-9">{{ diario.get_tipo_atividade_display }}</dd>
+                {% endif %}
+                {% if diario.local_realizacao %}
+                <dt class="col-sm-3">Local</dt>
+                <dd class="col-sm-9">{{ diario.local_realizacao }}{% if diario.instituicao_parceira %} · {{ diario.instituicao_parceira }}{% endif %}</dd>
+                {% endif %}
+                {% if diario.grupo_participante %}
+                <dt class="col-sm-3">Grupo participante</dt>
+                <dd class="col-sm-9">{{ diario.grupo_participante }}</dd>
+                {% endif %}
+                {% if diario.responsavel_externo %}
+                <dt class="col-sm-3">Responsável</dt>
+                <dd class="col-sm-9">{{ diario.responsavel_externo }}</dd>
+                {% endif %}
+                <dt class="col-sm-3">Frequência</dt>
+                <dd class="col-sm-9">
+                    {{ diario.participantes_presentes }} presente{{ diario.participantes_presentes|pluralize }}
+                    {% if diario.participantes_previstos %} de {{ diario.participantes_previstos }} previstos{% endif %}
+                    {% if diario.frequencia_nominal %} (lista nominal){% endif %}
+                </dd>
+                <dt class="col-sm-3">Conteúdo trabalhado</dt>
+                <dd class="col-sm-9">{{ diario.conteudo_trabalhado|linebreaksbr }}</dd>
+                {% if diario.metodologia %}
+                <dt class="col-sm-3">Metodologia</dt>
+                <dd class="col-sm-9">{{ diario.metodologia|linebreaksbr }}</dd>
+                {% endif %}
+                {% if diario.observacoes %}
+                <dt class="col-sm-3">Observações</dt>
+                <dd class="col-sm-9">{{ diario.observacoes|linebreaksbr }}</dd>
+                {% endif %}
+                <dt class="col-sm-3">Criado em</dt>
+                <dd class="col-sm-9">{{ diario.created_at|date:"d/m/Y H:i" }} · atualizado em {{ diario.updated_at|date:"d/m/Y H:i" }}</dd>
+                {% if diario.revisado_por %}
+                <dt class="col-sm-3">Revisão</dt>
+                <dd class="col-sm-9">
+                    {{ diario.revisado_por.nome|default:diario.revisado_por.email }} em {{ diario.revisado_em|date:"d/m/Y H:i" }}
+                    {% if diario.parecer_revisao %}<br>{{ diario.parecer_revisao|linebreaksbr }}{% endif %}
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="ava-surface p-4 h-100">
+                    <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Lista nominal</h2>
+                    {% if participantes %}
+                    <ul class="list-group list-group-flush">
+                        {% for participante in participantes %}
+                        <li class="list-group-item px-0">
+                            {{ participante.nome }}
+                            {% if participante.identificacao %}<span class="text-muted small"> · {{ participante.identificacao }}</span>{% endif %}
+                            {% if not participante.presente %}<span class="badge text-bg-warning ms-2">Ausente</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted small mb-0">Frequência registrada apenas por quantidade.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="ava-surface p-4 h-100">
+                    <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Fotografias e comprovantes</h2>
+                    {% if midias %}
+                    <ul class="list-unstyled mb-0">
+                        {% for midia in midias %}
+                        <li class="mb-2">
+                            <a href="{% url 'ava:diario_midia_arquivo' diario.id midia.id %}" target="_blank" rel="noopener">
+                                <i class="bi {% if midia.tipo == 'foto' %}bi-image{% else %}bi-file-earmark-text{% endif %} me-1"></i>
+                                {{ midia.legenda|default:midia.nome_original }}
+                            </a>
+                            <span class="text-muted small">({{ midia.tamanho_bytes|filesizeformat }})</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted small mb-0">Nenhum arquivo anexado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="ava-surface p-4">
+            <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Ações</h2>
+            <div class="d-flex flex-wrap gap-2">
+                {% if editavel %}
+                <a class="btn btn-outline-secondary" href="{% url 'ava:diario_editar' diario.id %}">Editar rascunho</a>
+                {% endif %}
+                {% if diario.status == 'rascunho' %}
+                <form method="post" action="{% url 'ava:diario_enviar' diario.id %}">
+                    {% csrf_token %}
+                    <button class="btn btn-primary px-4" type="submit">Enviar registro</button>
+                </form>
+                {% endif %}
+                <a class="btn btn-outline-secondary" href="{% url 'ava:diario_lista' %}">Voltar à lista</a>
+            </div>
+
+            {% if pode_revisar and diario.status != 'rascunho' %}
+            <hr class="my-4">
+            <form method="post" action="{% url 'ava:diario_revisar' diario.id %}" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ revisao_form.parecer.id_for_label }}">{{ revisao_form.parecer.label }}</label>
+                    {{ revisao_form.parecer }}
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ revisao_form.bloquear }}
+                        <label class="form-check-label" for="{{ revisao_form.bloquear.id_for_label }}">{{ revisao_form.bloquear.label }}</label>
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-success" type="submit">Registrar revisão</button>
+                </div>
+            </form>
+            <form method="post" action="{% url 'ava:diario_reabrir' diario.id %}" class="mt-2">
+                {% csrf_token %}
+                <button class="btn btn-outline-warning" type="submit">Reabrir como rascunho</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
