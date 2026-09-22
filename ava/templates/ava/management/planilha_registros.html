@@ -1,0 +1,184 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ modelo.nome }} | Planilha{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container-fluid px-lg-5">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_modelo_lista' %}">Modelos de planilha</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ modelo.nome }}</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="ava-surface p-4 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+                <div>
+                    <h1 class="h4 fw-bold mb-1">{{ modelo.nome }} <span class="text-muted small">v{{ modelo.versao }}</span></h1>
+                    <p class="text-muted small mb-0">
+                        {{ modelo.escola.nome|default:"Todo o município" }} ·
+                        {{ modelo.curso.titulo|default:"Qualquer curso/turma" }} ·
+                        {{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if pode_importar %}
+                    <a class="btn btn-primary rounded-pill px-4" href="{% url 'ava:planilha_importar' modelo.id %}">
+                        <i class="bi bi-upload me-1"></i>Importar dados
+                    </a>
+                    {% endif %}
+                    <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:planilha_exportar' modelo.id 'xlsx' %}">
+                        <i class="bi bi-file-earmark-excel me-1"></i>XLSX
+                    </a>
+                    <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:planilha_exportar' modelo.id 'csv' %}">
+                        <i class="bi bi-filetype-csv me-1"></i>CSV
+                    </a>
+                    <a class="btn btn-outline-secondary rounded-pill" href="{% url 'ava:planilha_modelo_em_branco' modelo.id %}">
+                        <i class="bi bi-download me-1"></i>Planilha modelo
+                    </a>
+                </div>
+            </div>
+
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold" for="q">Buscar nos registros</label>
+                    <input class="form-control" id="q" name="q" value="{{ busca }}" placeholder="Qualquer valor de texto">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold" for="ordenar">Ordenar por</label>
+                    <select class="form-select" id="ordenar" name="ordenar">
+                        <option value="">Mais recentes</option>
+                        {% for coluna in colunas %}
+                        <option value="{{ coluna.chave }}" {% if coluna_ordem == coluna.chave %}selected{% endif %}>{{ coluna.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold" for="direcao">Direção</label>
+                    <select class="form-select" id="direcao" name="direcao">
+                        <option value="asc" {% if direcao == 'asc' %}selected{% endif %}>Crescente</option>
+                        <option value="desc" {% if direcao == 'desc' %}selected{% endif %}>Decrescente</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button class="btn btn-primary w-100" type="submit">Aplicar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="ava-surface overflow-hidden mb-4">
+            {% if linhas %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <caption class="visually-hidden">Registros importados para {{ modelo.nome }}</caption>
+                    <thead class="table-light">
+                        <tr>
+                            {% for coluna in colunas %}
+                            <th scope="col">{{ coluna.titulo }}</th>
+                            {% endfor %}
+                            <th scope="col">Origem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in linhas %}
+                        <tr>
+                            {% for celula in linha.celulas %}
+                            <td class="small">{{ celula }}</td>
+                            {% endfor %}
+                            <td class="small text-muted">
+                                {% if linha.registro.importacao %}
+                                Importação #{{ linha.registro.importacao_id }} · linha {{ linha.registro.linha_origem }}
+                                {% else %}
+                                Manual
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 px-3">
+                <i class="bi bi-table text-muted display-5"></i>
+                <h2 class="h5 mt-3">Nenhum registro ainda</h2>
+                <p class="text-muted">Importe uma planilha para começar a preencher este modelo.</p>
+                {% if pode_importar %}
+                <a class="btn btn-primary" href="{% url 'ava:planilha_importar' modelo.id %}">Importar dados</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="p-4 border-top" aria-label="Paginação">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+
+        {% if importacoes %}
+        <div class="ava-surface p-4">
+            <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Histórico de importações</h2>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <caption class="visually-hidden">Últimas importações deste modelo</caption>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Arquivo</th>
+                            <th scope="col">Modo</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Resultado</th>
+                            <th scope="col">Responsável</th>
+                            <th scope="col">Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for importacao in importacoes %}
+                        <tr>
+                            <td class="small">{{ importacao.nome_original }}</td>
+                            <td class="small">{{ importacao.get_modo_display }}</td>
+                            <td>
+                                <span class="badge rounded-pill
+                                    {% if importacao.status == 'concluida' %}text-bg-success
+                                    {% elif importacao.status == 'erro' %}text-bg-danger
+                                    {% elif importacao.status == 'cancelada' %}text-bg-secondary
+                                    {% else %}text-bg-primary{% endif %}">
+                                    {{ importacao.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="small">
+                                {{ importacao.total_criados }} criados ·
+                                {{ importacao.total_atualizados }} atualizados
+                                {% if importacao.erros %}<br><span class="text-danger">{{ importacao.erros|length }} erro(s)</span>{% endif %}
+                            </td>
+                            <td class="small">{{ importacao.created_by.nome|default:importacao.created_by.email }}</td>
+                            <td class="small">{{ importacao.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

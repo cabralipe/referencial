@@ -1,0 +1,133 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Modelos de planilha | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="ava-surface overflow-hidden mb-4">
+            <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div>
+                        <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                            <i class="bi bi-gear-fill me-1"></i> Configuração
+                        </span>
+                        <h1 class="display-6 fw-bold text-white mb-2">Modelos de planilha</h1>
+                        <p class="mb-0 text-white-50">
+                            Monte a estrutura da planilha pela interface. Nenhuma coluna é fixa no código.
+                        </p>
+                    </div>
+                    <a href="{% url 'ava:planilha_modelo_nova' %}?municipio={{ cliente_atual.id }}"
+                        class="btn btn-light rounded-pill fw-bold px-4">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Novo modelo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="alert alert-light border small" role="note">
+            <strong>Formatos de importação habilitados neste servidor:</strong>
+            {% for extensao, disponivel in formatos.items %}
+            <span class="badge {% if disponivel %}text-bg-success{% else %}text-bg-secondary{% endif %} me-1">
+                {{ extensao|upper }}{% if not disponivel %} (indisponível){% endif %}
+            </span>
+            {% endfor %}
+        </div>
+
+        {% if pode_gerir_multiplos_avas %}
+        <form method="get" class="ava-surface p-4 mb-4 row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold" for="municipio">Município / AVA</label>
+                <select class="form-select" id="municipio" name="municipio">
+                    {% for municipio in municipios_ava %}
+                    <option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>{{ municipio.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary px-4" type="submit">Trocar município</button>
+            </div>
+        </form>
+        {% endif %}
+
+        <div class="ava-surface overflow-hidden">
+            {% if page_obj.object_list %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <caption class="visually-hidden">Modelos de planilha configurados</caption>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="ps-4">Modelo</th>
+                            <th scope="col">Escopo</th>
+                            <th scope="col">Colunas</th>
+                            <th scope="col">Situação</th>
+                            <th scope="col" class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for modelo in page_obj %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ modelo.nome }}</div>
+                                <div class="small text-muted">v{{ modelo.versao }} · {{ modelo.slug }}</div>
+                                {% if modelo.descricao %}<div class="small text-muted">{{ modelo.descricao|truncatechars:90 }}</div>{% endif %}
+                            </td>
+                            <td class="small">
+                                {{ modelo.escola.nome|default:"Todo o município" }}<br>
+                                <span class="text-muted">{{ modelo.curso.titulo|default:"Qualquer curso/turma" }}</span>
+                            </td>
+                            <td class="small">{{ modelo.colunas_ativas.count }} coluna{{ modelo.colunas_ativas.count|pluralize }}</td>
+                            <td>
+                                <span class="badge rounded-pill {% if modelo.ativo %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                                    {% if modelo.ativo %}Ativo{% else %}Inativo{% endif %}
+                                </span>
+                                {% if modelo.permite_professor %}
+                                <div class="small text-muted mt-1">Professores podem preencher</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary rounded-pill"
+                                    href="{% url 'ava:planilha_registros' modelo.id %}" title="Ver dados">
+                                    <i class="bi bi-table"></i><span class="visually-hidden">Ver dados</span>
+                                </a>
+                                <a class="btn btn-sm btn-outline-secondary rounded-pill"
+                                    href="{% url 'ava:planilha_modelo_editar' modelo.id %}" title="Editar modelo">
+                                    <i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span>
+                                </a>
+                                <form method="post" class="d-inline" action="{% url 'ava:planilha_modelo_alternar' modelo.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm rounded-pill {% if modelo.ativo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                        type="submit" title="{% if modelo.ativo %}Desativar{% else %}Ativar{% endif %}">
+                                        <i class="bi {% if modelo.ativo %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                                        <span class="visually-hidden">{% if modelo.ativo %}Desativar{% else %}Ativar{% endif %}</span>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 px-3">
+                <i class="bi bi-grid-3x3-gap text-muted display-5"></i>
+                <h2 class="h5 mt-3">Nenhum modelo configurado</h2>
+                <p class="text-muted">Crie o primeiro modelo de planilha para este município.</p>
+                <a href="{% url 'ava:planilha_modelo_nova' %}?municipio={{ cliente_atual.id }}" class="btn btn-primary">Novo modelo</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

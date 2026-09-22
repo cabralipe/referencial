@@ -38,10 +38,17 @@ from .models import (
     Curso,
     CursoCategoria,
     CursoModulo,
+    ColunaPlanilha,
+    DiarioBordo,
+    DiarioBordoMidia,
+    DiarioBordoParticipante,
+    ImportacaoPlanilha,
     MatriculaCurso,
     MatriculaTrilha,
+    ModeloPlanilha,
     QuizAlternativa,
     QuizQuestao,
+    RegistroPlanilha,
     TrilhaFormativa,
 )
 
@@ -1162,3 +1169,96 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
             return HttpResponse("Cadastre ao menos uma matrícula no curso para visualizar a prévia.", status=404)
         html = CertificacaoService.renderizar_html(None, matricula, config)
         return HttpResponse(html)
+
+
+# ----------------------------------------------------------------------
+# Diário de Bordo e planilhas configuráveis
+# ----------------------------------------------------------------------
+
+
+class DiarioBordoParticipanteInline(AVATabularInline):
+    model = DiarioBordoParticipante
+    fields = ("nome", "identificacao", "presente", "justificativa")
+    exclude = ("cliente",)
+
+
+class DiarioBordoMidiaInline(AVATabularInline):
+    model = DiarioBordoMidia
+    fields = ("tipo", "arquivo", "legenda", "consentimento_registrado", "ordem")
+    exclude = ("cliente",)
+
+
+@admin.register(DiarioBordo)
+class DiarioBordoAdmin(AVAModelAdmin):
+    list_display = (
+        "data_aula",
+        "titulo",
+        "origem",
+        "escola",
+        "professor",
+        "participantes_presentes",
+        "status",
+    )
+    list_filter = ("origem", "status", "escola", "tipo_atividade")
+    search_fields = ("titulo", "conteudo_trabalhado", "local_realizacao")
+    date_hierarchy = "data_aula"
+    autocomplete_fields = ()
+    inlines = [DiarioBordoParticipanteInline, DiarioBordoMidiaInline]
+    readonly_fields = ("enviado_em", "revisado_em", "created_at", "updated_at")
+
+
+class ColunaPlanilhaInline(AVATabularInline):
+    model = ColunaPlanilha
+    fields = (
+        "ordem",
+        "titulo",
+        "chave",
+        "tipo",
+        "obrigatorio",
+        "visivel",
+        "valor_padrao",
+        "opcoes",
+        "validacoes",
+    )
+    exclude = ("cliente",)
+    extra = 1
+
+
+@admin.register(ModeloPlanilha)
+class ModeloPlanilhaAdmin(AVAModelAdmin):
+    list_display = ("nome", "versao", "escola", "curso", "ativo", "permite_professor")
+    list_filter = ("ativo", "permite_professor", "escola")
+    search_fields = ("nome", "slug", "descricao")
+    inlines = [ColunaPlanilhaInline]
+
+
+@admin.register(RegistroPlanilha)
+class RegistroPlanilhaAdmin(AVAModelAdmin):
+    list_display = ("id", "modelo", "escola", "chave_externa", "created_at")
+    list_filter = ("modelo",)
+    search_fields = ("chave_externa",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ImportacaoPlanilha)
+class ImportacaoPlanilhaAdmin(AVAModelAdmin):
+    list_display = (
+        "nome_original",
+        "modelo",
+        "modo",
+        "status",
+        "total_criados",
+        "total_atualizados",
+        "created_at",
+    )
+    list_filter = ("status", "modo", "modelo")
+    readonly_fields = (
+        "cabecalhos",
+        "erros",
+        "total_linhas",
+        "total_criados",
+        "total_atualizados",
+        "concluida_em",
+        "created_at",
+        "updated_at",
+    )

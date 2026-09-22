@@ -1,0 +1,154 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ titulo_pagina }} | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:planilha_modelo_lista' %}">Modelos de planilha</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ titulo_pagina }}</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+
+            <div class="ava-surface p-4 p-lg-5 mb-4">
+                <h1 class="h4 fw-bold mb-4">{{ titulo_pagina }}</h1>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:" " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="{{ form.slug.id_for_label }}">{{ form.slug.label }}</label>
+                        {{ form.slug }}
+                        {% if form.slug.errors %}<div class="text-danger small mt-1">{{ form.slug.errors|join:" " }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold" for="{{ form.versao.id_for_label }}">{{ form.versao.label }}</label>
+                        {{ form.versao }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                        {{ form.descricao }}
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold" for="{{ form.escola.id_for_label }}">Escola vinculada</label>
+                        {{ form.escola }}
+                        <div class="form-text">{{ form.escola.help_text }}</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold" for="{{ form.curso.id_for_label }}">Curso/turma vinculada</label>
+                        {{ form.curso }}
+                        <div class="form-text">{{ form.curso.help_text }}</div>
+                    </div>
+                    <div class="col-md-2 d-flex flex-column justify-content-end">
+                        <div class="form-check">
+                            {{ form.ativo }}
+                            <label class="form-check-label" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.permite_professor }}
+                            <label class="form-check-label" for="{{ form.permite_professor.id_for_label }}">{{ form.permite_professor.label }}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ava-surface p-4 p-lg-5 mb-4">
+                <h2 class="h5 fw-bold mb-1">Colunas configuráveis</h2>
+                <p class="text-muted small">
+                    Defina ordem, tipo, obrigatoriedade, valor padrão, opções e regras de validação.
+                    As regras usam JSON, por exemplo <code>{"min": 0, "max": 100}</code> ou <code>{"max_length": 120}</code>.
+                </p>
+
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                <div class="alert alert-danger" role="alert">{{ formset.non_form_errors }}</div>
+                {% endif %}
+
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <caption class="visually-hidden">Colunas configuradas para este modelo</caption>
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" style="min-width: 160px;">Título</th>
+                                <th scope="col" style="min-width: 140px;">Identificador</th>
+                                <th scope="col" style="min-width: 150px;">Tipo</th>
+                                <th scope="col" style="width: 90px;">Ordem</th>
+                                <th scope="col" style="width: 110px;">Obrigatório</th>
+                                <th scope="col" style="width: 90px;">Visível</th>
+                                <th scope="col" style="min-width: 200px;">Opções / validações</th>
+                                <th scope="col" style="width: 90px;">Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for coluna_form in formset %}
+                            <tr>
+                                {{ coluna_form.id }}
+                                <td>
+                                    {{ coluna_form.titulo }}
+                                    {% if coluna_form.titulo.errors %}<div class="text-danger small">{{ coluna_form.titulo.errors|join:" " }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {{ coluna_form.chave }}
+                                    {% if coluna_form.chave.errors %}<div class="text-danger small">{{ coluna_form.chave.errors|join:" " }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {{ coluna_form.tipo }}
+                                    {% if coluna_form.tipo.errors %}<div class="text-danger small">{{ coluna_form.tipo.errors|join:" " }}</div>{% endif %}
+                                </td>
+                                <td>{{ coluna_form.ordem }}</td>
+                                <td class="text-center">{{ coluna_form.obrigatorio }}</td>
+                                <td class="text-center">{{ coluna_form.visivel }}</td>
+                                <td>
+                                    {{ coluna_form.opcoes_texto }}
+                                    {% if coluna_form.opcoes_texto.errors %}<div class="text-danger small">{{ coluna_form.opcoes_texto.errors|join:" " }}</div>{% endif %}
+                                    <div class="mt-2">{{ coluna_form.validacoes }}</div>
+                                    {% if coluna_form.validacoes.errors %}<div class="text-danger small">{{ coluna_form.validacoes.errors|join:" " }}</div>{% endif %}
+                                    <div class="mt-2">{{ coluna_form.valor_padrao }}</div>
+                                    <div class="form-text">Valor padrão (opcional)</div>
+                                </td>
+                                <td class="text-center">
+                                    {% if coluna_form.instance.pk %}{{ coluna_form.DELETE }}{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary px-4">Salvar modelo</button>
+                <a class="btn btn-outline-secondary" href="{% url 'ava:planilha_modelo_lista' %}">Voltar</a>
+                {% if modelo %}
+                <a class="btn btn-outline-primary" href="{% url 'ava:planilha_registros' modelo.id %}">Ver dados</a>
+                <a class="btn btn-outline-success" href="{% url 'ava:planilha_modelo_em_branco' modelo.id %}">Baixar planilha modelo</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

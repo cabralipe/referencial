@@ -1,0 +1,367 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ titulo_pagina }} | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:diario_lista' %}">Diário de bordo</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ titulo_pagina }}</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div aria-live="polite">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if diario and not editavel %}
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-lock-fill me-1"></i>
+            Este registro está com status <strong>{{ diario.get_status_display }}</strong> e não pode mais ser alterado.
+        </div>
+        {% endif %}
+
+        <div class="ava-surface p-4 p-lg-5 mb-4">
+            <h1 class="h4 fw-bold mb-4">{{ titulo_pagina }}</h1>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <fieldset class="mb-4" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">1. Origem da aula</legend>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.origem.id_for_label }}">{{ form.origem.label }}</label>
+                            {{ form.origem }}
+                            {% if form.origem.errors %}<div class="text-danger small mt-1">{{ form.origem.errors|join:" " }}</div>{% endif %}
+                            <div class="form-text">Os campos abaixo mudam conforme a origem escolhida.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="{{ form.data_aula.id_for_label }}">{{ form.data_aula.label }}</label>
+                            {{ form.data_aula }}
+                            {% if form.data_aula.errors %}<div class="text-danger small mt-1">{{ form.data_aula.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="{{ form.escola.id_for_label }}">{{ form.escola.label }}</label>
+                            {{ form.escola }}
+                            {% if form.escola.errors %}<div class="text-danger small mt-1">{{ form.escola.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.professor.id_for_label }}">{{ form.professor.label }}</label>
+                            {{ form.professor }}
+                            {% if form.professor.errors %}<div class="text-danger small mt-1">{{ form.professor.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }}</label>
+                            {{ form.titulo }}
+                            {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors|join:" " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4 d-none" id="grupo-sistema" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">2. Aula cadastrada no sistema</legend>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.curso.id_for_label }}">{{ form.curso.label }}</label>
+                            {{ form.curso }}
+                            <div class="form-text">{{ form.curso.help_text }}</div>
+                            {% if form.curso.errors %}<div class="text-danger small mt-1">{{ form.curso.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.modulo.id_for_label }}">{{ form.modulo.label }}</label>
+                            {{ form.modulo }}
+                            {% if form.modulo.errors %}<div class="text-danger small mt-1">{{ form.modulo.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.aula.id_for_label }}">{{ form.aula.label }}</label>
+                            {{ form.aula }}
+                            <div class="form-text">{{ form.aula.help_text }}</div>
+                            {% if form.aula.errors %}<div class="text-danger small mt-1">{{ form.aula.errors|join:" " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4 d-none" id="grupo-externo" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">2. Atividade presencial ou externa</legend>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.tipo_atividade.id_for_label }}">{{ form.tipo_atividade.label }}</label>
+                            {{ form.tipo_atividade }}
+                            {% if form.tipo_atividade.errors %}<div class="text-danger small mt-1">{{ form.tipo_atividade.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.local_realizacao.id_for_label }}">{{ form.local_realizacao.label }}</label>
+                            {{ form.local_realizacao }}
+                            {% if form.local_realizacao.errors %}<div class="text-danger small mt-1">{{ form.local_realizacao.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.instituicao_parceira.id_for_label }}">{{ form.instituicao_parceira.label }}</label>
+                            {{ form.instituicao_parceira }}
+                            {% if form.instituicao_parceira.errors %}<div class="text-danger small mt-1">{{ form.instituicao_parceira.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.grupo_participante.id_for_label }}">{{ form.grupo_participante.label }}</label>
+                            {{ form.grupo_participante }}
+                            <div class="form-text">{{ form.grupo_participante.help_text }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.responsavel_externo.id_for_label }}">{{ form.responsavel_externo.label }}</label>
+                            {{ form.responsavel_externo }}
+                            <div class="form-text">{{ form.responsavel_externo.help_text }}</div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">3. O que foi realizado</legend>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.conteudo_trabalhado.id_for_label }}">{{ form.conteudo_trabalhado.label }}</label>
+                            {{ form.conteudo_trabalhado }}
+                            {% if form.conteudo_trabalhado.errors %}<div class="text-danger small mt-1">{{ form.conteudo_trabalhado.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.metodologia.id_for_label }}">{{ form.metodologia.label }}</label>
+                            {{ form.metodologia }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                            {{ form.observacoes }}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">4. Frequência</legend>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                {{ form.frequencia_nominal }}
+                                <label class="form-check-label fw-semibold" for="{{ form.frequencia_nominal.id_for_label }}">
+                                    {{ form.frequencia_nominal.label }}
+                                </label>
+                            </div>
+                            <div class="form-text">{{ form.frequencia_nominal.help_text }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.participantes_previstos.id_for_label }}">{{ form.participantes_previstos.label }}</label>
+                            {{ form.participantes_previstos }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.participantes_presentes.id_for_label }}">{{ form.participantes_presentes.label }}</label>
+                            {{ form.participantes_presentes }}
+                            <div class="form-text">{{ form.participantes_presentes.help_text }}</div>
+                            {% if form.participantes_presentes.errors %}<div class="text-danger small mt-1">{{ form.participantes_presentes.errors|join:" " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="d-flex flex-wrap gap-2">
+                    {% if not diario or editavel %}
+                    <button type="submit" class="btn btn-primary px-4">{{ texto_botao }}</button>
+                    {% endif %}
+                    <a class="btn btn-outline-secondary" href="{% url 'ava:diario_lista' %}">Voltar</a>
+                    {% if diario %}
+                    <a class="btn btn-outline-primary" href="{% url 'ava:diario_detalhe' diario.id %}">Ver registro completo</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        {% if diario %}
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="ava-surface p-4 h-100">
+                    <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Lista nominal de presença</h2>
+                    {% if participantes %}
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for participante in participantes %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>
+                                <span class="fw-semibold">{{ participante.nome }}</span>
+                                {% if participante.identificacao %}<span class="text-muted small"> · {{ participante.identificacao }}</span>{% endif %}
+                                {% if not participante.presente %}
+                                <span class="badge text-bg-warning ms-2">Ausente</span>
+                                {% endif %}
+                            </span>
+                            {% if editavel %}
+                            <form method="post" action="{% url 'ava:diario_participante_remover' diario.id participante.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger rounded-pill" type="submit"
+                                    title="Remover participante">
+                                    <i class="bi bi-x-lg"></i><span class="visually-hidden">Remover {{ participante.nome }}</span>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted small">Nenhum participante registrado ainda.</p>
+                    {% endif %}
+
+                    {% if editavel %}
+                    <form method="post" action="{% url 'ava:diario_participante_adicionar' diario.id %}" class="row g-2">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold" for="{{ participante_form.nome.id_for_label }}">Nome</label>
+                            {{ participante_form.nome }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold" for="{{ participante_form.identificacao.id_for_label }}">Identificação</label>
+                            {{ participante_form.identificacao }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-outline-primary w-100" type="submit">Adicionar</button>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ participante_form.presente }}
+                                <label class="form-check-label small" for="{{ participante_form.presente.id_for_label }}">Presente</label>
+                            </div>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="ava-surface p-4 h-100">
+                    <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Fotografias e comprovantes</h2>
+                    {% if midias %}
+                    <div class="row g-2 mb-3">
+                        {% for midia in midias %}
+                        <div class="col-6 col-md-4">
+                            <div class="border rounded-3 p-2 h-100 d-flex flex-column">
+                                <a href="{% url 'ava:diario_midia_arquivo' diario.id midia.id %}" target="_blank" rel="noopener"
+                                    class="small text-truncate" title="{{ midia.nome_original }}">
+                                    <i class="bi {% if midia.tipo == 'foto' %}bi-image{% else %}bi-file-earmark-text{% endif %} me-1"></i>
+                                    {{ midia.legenda|default:midia.nome_original }}
+                                </a>
+                                <div class="small text-muted">{{ midia.tamanho_bytes|filesizeformat }}</div>
+                                {% if editavel %}
+                                <form method="post" action="{% url 'ava:diario_midia_remover' diario.id midia.id %}" class="mt-auto pt-2">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger w-100 rounded-pill" type="submit">Remover</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small">Nenhum arquivo anexado ainda.</p>
+                    {% endif %}
+
+                    {% if editavel %}
+                    <form method="post" action="{% url 'ava:diario_midia_adicionar' diario.id %}" enctype="multipart/form-data" class="row g-2">
+                        {% csrf_token %}
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold" for="{{ midia_form.tipo.id_for_label }}">Tipo</label>
+                            {{ midia_form.tipo }}
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold" for="{{ midia_form.arquivo.id_for_label }}">Arquivo</label>
+                            {{ midia_form.arquivo }}
+                            <div class="form-text">{{ midia_form.arquivo.help_text }}</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold" for="{{ midia_form.legenda.id_for_label }}">Legenda</label>
+                            {{ midia_form.legenda }}
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ midia_form.consentimento_registrado }}
+                                <label class="form-check-label small" for="{{ midia_form.consentimento_registrado.id_for_label }}">
+                                    {{ midia_form.consentimento_registrado.help_text }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-outline-primary" type="submit">Anexar arquivo</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<script>
+(function () {
+    "use strict";
+    var origem = document.getElementById("id_origem");
+    var grupoSistema = document.getElementById("grupo-sistema");
+    var grupoExterno = document.getElementById("grupo-externo");
+    if (!origem) { return; }
+
+    var COM_SISTEMA = ["no_sistema", "hibrida"];
+    var COM_EXTERNO = ["presencial_externa", "atividade_externa", "hibrida"];
+
+    function alternar() {
+        var valor = origem.value;
+        if (grupoSistema) {
+            grupoSistema.classList.toggle("d-none", COM_SISTEMA.indexOf(valor) === -1);
+        }
+        if (grupoExterno) {
+            grupoExterno.classList.toggle("d-none", COM_EXTERNO.indexOf(valor) === -1);
+        }
+    }
+
+    origem.addEventListener("change", alternar);
+    alternar();
+
+    // Selects encadeados: curso -> modulo -> aula.
+    var curso = document.getElementById("id_curso");
+    var modulo = document.getElementById("id_modulo");
+    var aula = document.getElementById("id_aula");
+    var endpoint = "{% url 'ava:diario_aulas_json' %}";
+
+    function preencher(select, itens, selecionado) {
+        if (!select) { return; }
+        select.innerHTML = '<option value="">—</option>';
+        itens.forEach(function (item) {
+            var option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = item.titulo;
+            if (String(item.id) === String(selecionado)) { option.selected = true; }
+            select.appendChild(option);
+        });
+    }
+
+    function carregar() {
+        if (!curso || !curso.value) { return; }
+        var url = endpoint + "?municipio={{ cliente_atual.id }}&curso=" + encodeURIComponent(curso.value);
+        if (modulo && modulo.value) { url += "&modulo=" + encodeURIComponent(modulo.value); }
+        fetch(url, { credentials: "same-origin" })
+            .then(function (resposta) { return resposta.ok ? resposta.json() : null; })
+            .then(function (dados) {
+                if (!dados) { return; }
+                preencher(modulo, dados.modulos, modulo ? modulo.value : "");
+                preencher(aula, dados.aulas, aula ? aula.value : "");
+            })
+            .catch(function () { /* mantém as opções atuais */ });
+    }
+
+    if (curso) { curso.addEventListener("change", function () { if (modulo) { modulo.value = ""; } carregar(); }); }
+    if (modulo) { modulo.addEventListener("change", carregar); }
+})();
+</script>
+{% endblock %}

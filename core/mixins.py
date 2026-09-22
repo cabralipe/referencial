@@ -24,6 +24,14 @@ class ClientScopedManager(models.Manager):
 
     def with_deleted(self):
         qs = super().get_queryset()
+        # Em um manager de relacionamento reverso (``obj.filhos``), o filtro da
+        # relação vive em ``core_filters``. ``super().get_queryset()`` devolve a
+        # tabela inteira, então é preciso reaplicá-lo — sem isso, uma consulta
+        # como ``obj.filhos.filter(is_deleted=False)`` enxergaria registros de
+        # outros pais.
+        core_filters = getattr(self, "core_filters", None)
+        if core_filters:
+            qs = qs.filter(**core_filters)
         if self._has_cliente_field():
             cliente_id = get_current_cliente_id()
             if cliente_id is not None:
