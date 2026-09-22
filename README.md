@@ -123,6 +123,21 @@ plugins/           # providers default
 tests/             # suíte pytest (API, permissões, síntese, exportações)
 ```
 
+## Ambiente do Professor (AVA)
+
+- **Diário de Bordo** (`/ava/gestao/diario/`): registro de cada encontro com
+  origem da aula (no sistema, presencial externa, atividade externa ou híbrida),
+  frequência quantitativa ou nominal, fotografias e comprovantes em storage
+  privado, fluxo rascunho → enviado → revisado/bloqueado e exportação XLSX/CSV.
+- **Planilhas configuráveis** (`/ava/gestao/planilhas/`): o administrador monta
+  modelos de planilha pela interface (colunas, tipos, obrigatoriedade, opções,
+  validações) sem alterar código; a importação passa por upload, mapeamento,
+  pré-visualização, validação por linha/coluna e confirmação, e os dados ficam
+  consultáveis, filtráveis e exportáveis.
+
+Documentação completa em
+[`docs/diario_de_bordo_e_planilha_configuravel.md`](docs/diario_de_bordo_e_planilha_configuravel.md).
+
 ## Notas
 
 - `AUTH_USER_MODEL = core.Usuario` com suporte a multi-cliente (`cliente_id`) e perfis (`role`).

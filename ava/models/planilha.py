@@ -106,6 +106,10 @@ class ModeloPlanilha(TenantModel):
         return f"{self.nome} (v{self.versao})"
 
     def clean(self):
+        # O slug é derivado aqui (e não só no save) para que um full_clean()
+        # anterior à gravação já enxergue o valor gerado.
+        if not self.slug and self.nome:
+            self.slug = slugify(self.nome)[:160]
         super().clean()
         errors: dict[str, str] = {}
         if self.escola_id and self.cliente_id and self.escola.cliente_id != self.cliente_id:
@@ -195,6 +199,10 @@ class ColunaPlanilha(TenantModel):
         super().save(*args, **kwargs)
 
     def clean(self):
+        if not self.chave and self.titulo:
+            self.chave = slugify(self.titulo)[:80]
+        if not self.cliente_id and self.modelo_id:
+            self.cliente_id = self.modelo.cliente_id
         super().clean()
         errors: dict[str, str] = {}
         if self.tipo == self.Tipo.SELECAO and not self.opcoes_normalizadas():

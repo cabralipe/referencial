@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -663,6 +664,36 @@ def planilha_modelo_lista(request):
     )
 
 
+@transaction.atomic
+def _persistir_modelo(form, formset, usuario, cliente, criando: bool) -> ModeloPlanilha:
+    """Grava modelo e colunas juntos: ou tudo é válido, ou nada é gravado."""
+
+    salvo = form.save(commit=False)
+    salvo.cliente = cliente
+    if criando:
+        salvo.created_by = usuario
+    salvo.updated_by = usuario
+    salvo.full_clean()
+    salvo.save()
+
+    formset.instance = salvo
+    for coluna in formset.save(commit=False):
+        coluna.modelo = salvo
+        coluna.cliente_id = salvo.cliente_id
+        coluna.full_clean()
+        coluna.save()
+    for removida in formset.deleted_objects:
+        removida.delete()
+
+    AVAAuditService.registrar_planilha(
+        salvo,
+        usuario,
+        acao="modelo_criado" if criando else "modelo_atualizado",
+        diff={"nome": salvo.nome, "versao": salvo.versao},
+    )
+    return salvo
+
+
 @planilha_admin_required
 def planilha_modelo_form(request, modelo_id=None):
     cliente = _cliente_atual(request)
@@ -682,33 +713,16 @@ def planilha_modelo_form(request, modelo_id=None):
     formset = ColunaPlanilhaFormSet(request.POST or None, instance=modelo)
 
     if request.method == "POST" and form.is_valid() and formset.is_valid():
-        salvo = form.save(commit=False)
-        salvo.cliente = cliente
-        if criando:
-            salvo.created_by = request.user
-        salvo.updated_by = request.user
-        salvo.full_clean()
-        salvo.save()
-
-        formset.instance = salvo
-        colunas = formset.save(commit=False)
-        for coluna in colunas:
-            coluna.modelo = salvo
-            coluna.cliente_id = salvo.cliente_id
-            coluna.full_clean()
-            coluna.save()
-        for removida in formset.deleted_objects:
-            removida.delete()
-
-        AVAAuditService.registrar_planilha(
-            salvo,
-            request.user,
-            acao="modelo_criado" if criando else "modelo_atualizado",
-            diff={"nome": salvo.nome, "versao": salvo.versao},
-        )
-        messages.success(request, "Modelo de planilha salvo com sucesso.")
-        return redirect("ava:planilha_modelo_editar", modelo_id=salvo.id)
-    if request.method == "POST":
+        try:
+            salvo = _persistir_modelo(form, formset, request.user, cliente, criando)
+        except ValidationError as exc:
+            for campo, erros in exc.message_dict.items():
+                form.add_error(campo if campo in form.fields else None, erros)
+            messages.error(request, "Revise os campos destacados para salvar o modelo.")
+        else:
+            messages.success(request, "Modelo de planilha salvo com sucesso.")
+            return redirect("ava:planilha_modelo_editar", modelo_id=salvo.id)
+    elif request.method == "POST":
         messages.error(request, "Revise os campos destacados para salvar o modelo.")
 
     return render(
