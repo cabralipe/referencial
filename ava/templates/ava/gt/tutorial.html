@@ -1,0 +1,203 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Tutorial guiado dos GTs | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="ava-surface overflow-hidden mb-4">
+            <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+                <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                    <i class="bi bi-compass me-1" aria-hidden="true"></i> Tutorial guiado
+                </span>
+                <h1 class="h3 fw-bold text-white mb-2">Como montar os GTs do início ao fim</h1>
+                <p class="mb-0 text-white-50">
+                    Dez passos na ordem certa. Cada passo diz o que fazer, mostra um exemplo
+                    pronto e leva você direto à página — o estado é calculado com os dados
+                    reais do município.
+                </p>
+            </div>
+
+            <div class="p-4 p-lg-5">
+                <form method="get" class="row g-3 align-items-end mb-4">
+                    {% if pode_gerir_multiplos_avas %}
+                    <div class="col-md-6 col-lg-4">
+                        <label class="form-label fw-semibold" for="municipio">Município / AVA</label>
+                        <select class="form-select" id="municipio" name="municipio">
+                            {% for municipio in municipios_ava %}
+                            <option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>
+                                {{ municipio.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6 col-lg-4">
+                        <label class="form-label fw-semibold" for="ciclo">Ciclo acompanhado</label>
+                        <select class="form-select" id="ciclo" name="ciclo">
+                            {% for item in ciclos %}
+                            <option value="{{ item.id }}" {% if ciclo_atual and item.id == ciclo_atual.id %}selected{% endif %}>
+                                {{ item.nome }}
+                            </option>
+                            {% empty %}
+                            <option value="">Nenhum ciclo cadastrado</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-lg-auto">
+                        <button type="submit" class="btn btn-primary px-4">Atualizar roteiro</button>
+                    </div>
+                </form>
+
+                <div class="row g-3 align-items-center">
+                    <div class="col-12 col-md-8">
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Progresso do roteiro</span>
+                            <span>{{ progresso.concluidos }} de {{ progresso.total }} passos</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="Progresso do tutorial"
+                            aria-valuenow="{{ progresso.percentual }}" aria-valuemin="0" aria-valuemax="100"
+                            style="height:.6rem;">
+                            <div class="progress-bar" style="width: {{ progresso.percentual }}%"></div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        {% if progresso.proximo %}
+                        <p class="mb-0 small" aria-live="polite">
+                            <i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>
+                            Próximo passo: <strong>{{ progresso.proximo.numero }}. {{ progresso.proximo.titulo }}</strong>
+                        </p>
+                        {% else %}
+                        <p class="mb-0 small">
+                            <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+                            Todos os passos deste ciclo já têm registro no sistema.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exemplo de demonstração -->
+        <div class="ava-surface p-4 mb-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-lg-8">
+                    <h2 class="h5 mb-1">Praticar com um exemplo</h2>
+                    <p class="text-muted mb-0">
+                        O tutorial pode criar um <strong>{{ nome_ciclo_exemplo }}</strong> com dois objetivos
+                        de demonstração (código <code>DEMO-</code>), as salas correspondentes, você como
+                        coordenação e uma reunião com a lista de presença pronta. Assim você percorre o
+                        fluxo inteiro — diagnóstico, metas, frequência, ata e DOCX — sem encostar nos
+                        dados oficiais. Dá para remover depois com um clique.
+                    </p>
+                </div>
+                <div class="col-12 col-lg-4 d-flex flex-column gap-2">
+                    {% if ciclo_exemplo %}
+                    <a class="btn btn-primary"
+                        href="{% url 'ava:gt_salas' %}?municipio={{ cliente_atual.id }}&ciclo={{ ciclo_exemplo.id }}">
+                        Abrir as salas do exemplo
+                    </a>
+                    <form method="post" action="{% url 'ava:gt_tutorial_exemplo_remover' %}"
+                        onsubmit="return confirm('Remover o exemplo de demonstração? As salas e os objetivos DEMO- saem da lista.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        <button type="submit" class="btn btn-outline-danger w-100">Remover o exemplo</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'ava:gt_tutorial_exemplo_criar' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-magic me-1" aria-hidden="true"></i>Criar exemplo de demonstração
+                        </button>
+                    </form>
+                    <p class="form-text mb-0">
+                        Nada é alterado nos objetivos oficiais: o exemplo usa códigos próprios.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Passos -->
+        <ol class="list-unstyled mb-0">
+            {% for passo in passos %}
+            <li class="ava-surface p-4 mb-3">
+                <div class="d-flex flex-column flex-lg-row gap-3">
+                    <div class="flex-shrink-0 text-center" style="min-width: 4rem;">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold
+                            {% if passo.concluido %}text-bg-success{% else %}text-bg-light border{% endif %}"
+                            style="width:3rem;height:3rem;">
+                            {{ passo.numero }}
+                        </span>
+                        <span class="d-block small mt-2">
+                            {% if passo.concluido %}
+                            <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>Feito
+                            {% else %}
+                            <i class="bi bi-circle me-1" aria-hidden="true"></i>Pendente
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="flex-grow-1">
+                        <h2 class="h5 mb-1">{{ passo.titulo }}</h2>
+                        <p class="small text-muted mb-2">
+                            <i class="bi bi-person-badge me-1" aria-hidden="true"></i>{{ passo.quem_faz }}
+                        </p>
+                        <p class="mb-3">{{ passo.objetivo }}</p>
+
+                        <h3 class="h6">Como fazer</h3>
+                        <ol class="mb-3">
+                            {% for item in passo.como_fazer %}<li>{{ item }}</li>{% endfor %}
+                        </ol>
+
+                        {% if passo.exemplo %}
+                        <div class="alert alert-light border small mb-3">
+                            <span class="fw-semibold d-block">Exemplo para copiar:</span>
+                            <code>{{ passo.exemplo }}</code>
+                        </div>
+                        {% endif %}
+
+                        <p class="small mb-3" aria-live="polite">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            Situação agora: {{ passo.situacao }}
+                        </p>
+
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            {% if passo.bloqueado_por %}
+                            <span class="badge text-bg-light text-dark border">
+                                <i class="bi bi-lock me-1" aria-hidden="true"></i>{{ passo.bloqueado_por }}
+                            </span>
+                            {% elif passo.url %}
+                            <a class="btn btn-primary btn-sm px-3" href="{{ passo.url }}">
+                                {{ passo.rotulo_acao }}
+                                <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+
+        <div class="ava-surface p-4 mt-3">
+            <h2 class="h6 mb-2">Depois do roteiro</h2>
+            <ul class="mb-0 small">
+                <li>
+                    <a href="{% url 'ava:gt_acompanhamento' %}?municipio={{ cliente_atual.id }}{% if ciclo_atual %}&ciclo={{ ciclo_atual.id }}{% endif %}">
+                        Acompanhamento institucional
+                    </a> mostra o panorama de todos os GTs do ciclo.
+                </li>
+                <li>
+                    A trilha de auditoria registra quem alterou presença, conteúdo e documentos —
+                    consultável no Django Admin em <code>Auditoria</code>.
+                </li>
+                <li>
+                    A documentação completa está em <code>docs/salas_gt_referencial.md</code>.
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+{% endblock %}

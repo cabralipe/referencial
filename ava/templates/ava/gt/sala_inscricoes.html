@@ -1,0 +1,187 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivo {{ sala.objetivo.codigo }} · inscrições | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+                <article class="ava-surface p-4 mb-4">
+                    <h2 class="h5 mb-3">Participantes e pedidos</h2>
+                    {% if inscricoes %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <caption class="visually-hidden">Inscrições da sala</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Participante</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col">Papel</th>
+                                    <th scope="col">Pedido</th>
+                                    <th scope="col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inscricao in inscricoes %}
+                                <tr>
+                                    <th scope="row" class="fw-normal">
+                                        {{ inscricao.usuario.nome|default:inscricao.usuario.email }}
+                                        <span class="d-block text-muted small">{{ inscricao.usuario.get_role_display }}</span>
+                                    </th>
+                                    <td>
+                                        <i class="bi bi-circle-fill me-1 small" aria-hidden="true"></i>
+                                        {{ inscricao.get_estado_display }}
+                                        {% if inscricao.ordem_espera %}
+                                        <span class="d-block text-muted small">posição {{ inscricao.ordem_espera }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ inscricao.get_papel_display }}</td>
+                                    <td class="small text-muted">
+                                        {{ inscricao.solicitada_em|date:"d/m/Y H:i" }}
+                                        {% if inscricao.decidida_por %}
+                                        <span class="d-block">
+                                            decidido por {{ inscricao.decidida_por.nome|default:inscricao.decidida_por.email }}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% if inscricao.estado == 'solicitada' or inscricao.estado == 'lista_espera' %}
+                                            <form method="post"
+                                                action="{% url 'ava:gt_inscricao_acao' sala_id=sala.id inscricao_id=inscricao.id acao='aprovar' %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm">Confirmar</button>
+                                            </form>
+                                            {% endif %}
+                                            {% if inscricao.estado != 'cancelada' and inscricao.estado != 'recusada' %}
+                                            <button class="btn btn-outline-secondary btn-sm" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#gestao-{{ inscricao.id }}"
+                                                aria-expanded="false" aria-controls="gestao-{{ inscricao.id }}">
+                                                Gerenciar
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="gestao-{{ inscricao.id }}">
+                                    <td colspan="5">
+                                        <div class="row g-3">
+                                            <div class="col-12 col-md-4">
+                                                <form method="post"
+                                                    action="{% url 'ava:gt_inscricao_acao' sala_id=sala.id inscricao_id=inscricao.id acao='papel' %}">
+                                                    {% csrf_token %}
+                                                    <label class="form-label small fw-semibold"
+                                                        for="papel_{{ inscricao.id }}">Papel na sala</label>
+                                                    <select class="form-select form-select-sm mb-2"
+                                                        id="papel_{{ inscricao.id }}" name="papel">
+                                                        {% for value, label in papel_choices %}
+                                                        <option value="{{ value }}"
+                                                            {% if inscricao.papel == value %}selected{% endif %}>{{ label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm">Salvar papel</button>
+                                                    <p class="form-text mb-0">
+                                                        Coordenação é definida apenas pela administração do Referencial.
+                                                    </p>
+                                                </form>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <form method="post"
+                                                    action="{% url 'ava:gt_inscricao_acao' sala_id=sala.id inscricao_id=inscricao.id acao='recusar' %}">
+                                                    {% csrf_token %}
+                                                    <label class="form-label small fw-semibold"
+                                                        for="justificativa_{{ inscricao.id }}">Justificativa</label>
+                                                    <textarea class="form-control form-control-sm mb-2" rows="2"
+                                                        id="justificativa_{{ inscricao.id }}" name="justificativa"></textarea>
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Recusar pedido</button>
+                                                </form>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <form method="post" class="mb-3"
+                                                    action="{% url 'ava:gt_inscricao_acao' sala_id=sala.id inscricao_id=inscricao.id acao='mover' %}">
+                                                    {% csrf_token %}
+                                                    <label class="form-label small fw-semibold"
+                                                        for="destino_{{ inscricao.id }}">Mover para</label>
+                                                    <select class="form-select form-select-sm mb-2"
+                                                        id="destino_{{ inscricao.id }}" name="destino">
+                                                        {% for outra in salas_do_ciclo %}
+                                                        <option value="{{ outra.id }}">
+                                                            Objetivo {{ outra.objetivo.codigo }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm">Mover</button>
+                                                </form>
+                                                <form method="post"
+                                                    action="{% url 'ava:gt_inscricao_acao' sala_id=sala.id inscricao_id=inscricao.id acao='remover' %}"
+                                                    onsubmit="return confirm('Remover esta pessoa da sala? A vaga será liberada.');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Remover da sala
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma inscrição registrada nesta sala.</p>
+                    {% endif %}
+                </article>
+            </div>
+
+            <aside class="col-12 col-lg-4">
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Ocupação</h2>
+                    <p class="small mb-1">
+                        Confirmados: <strong>{{ sala.vagas_ocupadas }}</strong>
+                        {% if sala.capacidade %} de {{ sala.capacidade }}{% else %} (sem limite){% endif %}
+                    </p>
+                    <p class="small mb-1">
+                        Lista de espera: {{ por_estado.lista_espera|length }} ·
+                        Pedidos pendentes: {{ por_estado.solicitada|length }}
+                    </p>
+                    <p class="small text-muted">
+                        {% if sala.aceita_inscricao %}Inscrições abertas{% else %}Inscrições fechadas{% endif %}
+                        {% if sala.aceita_lista_espera %} · lista de espera habilitada{% endif %}
+                    </p>
+                    {% if por_estado.lista_espera %}
+                    <form method="post" action="{% url 'ava:gt_lista_espera_promover' sala_id=sala.id %}">
+                        {% csrf_token %}
+                        <label class="form-label small fw-semibold" for="quantidade">Promover da lista de espera</label>
+                        <input class="form-control form-control-sm mb-2" type="number" min="1" id="quantidade"
+                            name="quantidade" value="1">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">Promover em ordem</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Inscrever participante</h2>
+                    <form method="post" action="{% url 'ava:gt_inscricao_manual' sala_id=sala.id %}">
+                        {% csrf_token %}
+                        {% for campo in inscricao_form %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Inscrever</button>
+                        <p class="form-text mb-0">
+                            A inscrição pela gestão é confirmada direto e respeita o limite de vagas.
+                        </p>
+                    </form>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

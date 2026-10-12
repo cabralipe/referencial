@@ -14,6 +14,7 @@ class Comentario(TenantModel):
         TEXTO_UNICO = "texto_unico", "Texto Único"
         QUADRO = "quadro", "Quadro"
         PPP = "ppp", "PPP"
+        TRABALHO_GT = "trabalho_gt", "Trabalho do GT"
 
     alvo_tipo = models.CharField(max_length=20, choices=AlvoTipo.choices)
     alvo_id = models.CharField(max_length=36)

@@ -1,0 +1,30 @@
+{% comment %}
+Renderiza os campos de um formulário com rótulo explícito, ajuda e mensagens de
+validação junto ao campo. Checkboxes usam o layout de form-check do Bootstrap.
+{% endcomment %}
+{% if form.non_field_errors %}
+<div class="alert alert-danger" role="alert">
+    {% for erro in form.non_field_errors %}<p class="mb-0">{{ erro }}</p>{% endfor %}
+</div>
+{% endif %}
+<div class="row g-3">
+    {% for campo in form %}
+    <div class="{% if campo.field.widget.input_type == 'checkbox' %}col-12{% else %}col-12 col-md-6{% endif %}">
+        {% if campo.field.widget.input_type == 'checkbox' %}
+        <div class="form-check">
+            {{ campo }}
+            <label class="form-check-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        </div>
+        {% else %}
+        <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% endif %}
+        {% if campo.help_text %}
+        <p class="form-text" id="ajuda_{{ campo.html_name }}">{{ campo.help_text }}</p>
+        {% endif %}
+        {% for erro in campo.errors %}
+        <p class="text-danger small mb-0" role="alert">{{ erro }}</p>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>

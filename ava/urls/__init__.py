@@ -8,4 +8,5 @@ urlpatterns = [
     path("", include("ava.urls.public")),
     path("aluno/", include("ava.urls.student")),
     path("gestao/", include("ava.urls.management")),
+    path("gts/", include("ava.urls.gt")),
 ]

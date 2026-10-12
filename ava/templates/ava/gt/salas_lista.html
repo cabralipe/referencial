@@ -1,0 +1,228 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Salas dos Grupos de Trabalho | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="ava-surface overflow-hidden mb-4">
+            <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div>
+                        <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                            <i class="bi bi-diagram-3-fill me-1" aria-hidden="true"></i> Grupos de Trabalho do Referencial
+                        </span>
+                        <h1 class="display-6 fw-bold text-white mb-2">Salas dos GTs</h1>
+                        <p class="mb-0 text-white-50">
+                            Uma sala por objetivo do Referencial: inscrição, diagnóstico, metas,
+                            estratégias, reuniões, frequência, ata e documentos.
+                        </p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if tem_visao_global %}
+                        <a href="{% url 'ava:gt_acompanhamento' %}{% if ciclo_atual %}?ciclo={{ ciclo_atual.id }}{% endif %}"
+                            class="btn btn-outline-light rounded-pill px-3">
+                            <i class="bi bi-clipboard-data me-1" aria-hidden="true"></i>Acompanhamento
+                        </a>
+                        {% endif %}
+                        {% if e_admin_referencial %}
+                        <a href="{% url 'ava:gt_tutorial' %}{% if ciclo_atual %}?ciclo={{ ciclo_atual.id }}{% endif %}"
+                            class="btn btn-outline-light rounded-pill px-3">
+                            <i class="bi bi-compass me-1" aria-hidden="true"></i>Tutorial guiado
+                        </a>
+                        <a href="{% url 'ava:gt_admin' %}{% if ciclo_atual %}?ciclo={{ ciclo_atual.id }}{% endif %}"
+                            class="btn btn-light rounded-pill fw-bold px-3">
+                            <i class="bi bi-gear-fill me-1" aria-hidden="true"></i>Administrar
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ava-surface p-4 mb-4">
+            <form method="get" class="row g-3 align-items-end" role="search">
+                {% if pode_gerir_multiplos_avas %}
+                <div class="col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="municipio">Município / AVA</label>
+                    <select class="form-select" id="municipio" name="municipio">
+                        {% for municipio in municipios_ava %}
+                        <option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>{{ municipio.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="ciclo">Ciclo</label>
+                    <select class="form-select" id="ciclo" name="ciclo">
+                        {% for item in ciclos %}
+                        <option value="{{ item.id }}" {% if ciclo_atual and item.id == ciclo_atual.id %}selected{% endif %}>
+                            {{ item.nome }}{% if not item.ativo %} (encerrado){% endif %}
+                        </option>
+                        {% empty %}
+                        <option value="">Nenhum ciclo cadastrado</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="q">Buscar objetivo ou GT</label>
+                    <input class="form-control" id="q" name="q" value="{{ filtros.q }}"
+                        placeholder="Número, título ou texto do objetivo">
+                </div>
+                <div class="col-md-6 col-lg-2">
+                    <label class="form-label fw-semibold" for="situacao">Situação</label>
+                    <select class="form-select" id="situacao" name="situacao">
+                        <option value="">Todas</option>
+                        {% for value, label in situacao_choices %}
+                        <option value="{{ value }}" {% if filtros.situacao == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-lg-auto">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="minhas" name="minhas" value="1"
+                            {% if filtros.minhas %}checked{% endif %}>
+                        <label class="form-check-label" for="minhas">Somente minhas salas</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-funnel me-1" aria-hidden="true"></i>Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <p class="text-muted small" aria-live="polite">
+            {{ total_salas }} sala(s) exibida(s) · {{ total_objetivos }} objetivo(s) ativo(s) cadastrado(s).
+        </p>
+
+        {% if not ciclo_atual %}
+        <div class="ava-surface p-4 p-lg-5 text-center">
+            <h2 class="h5">Nenhum ciclo do Referencial cadastrado</h2>
+            <p class="text-muted mb-3">
+                As salas são criadas a partir dos objetivos oficiais em um ciclo de trabalho.
+            </p>
+            {% if e_admin_referencial %}
+            <a href="{% url 'ava:gt_ciclo_novo' %}?municipio={{ cliente_atual.id }}" class="btn btn-primary px-4">
+                Cadastrar o primeiro ciclo
+            </a>
+            {% else %}
+            <p class="mb-0">Procure a administração do Referencial para abrir o ciclo.</p>
+            {% endif %}
+        </div>
+        {% elif not cartoes %}
+        <div class="ava-surface p-4 p-lg-5 text-center">
+            <h2 class="h5">Nenhuma sala encontrada</h2>
+            <p class="text-muted mb-3">
+                Ajuste os filtros{% if e_admin_referencial %} ou gere as salas do ciclo a partir dos objetivos cadastrados{% endif %}.
+            </p>
+            {% if e_admin_referencial %}
+            <a href="{% url 'ava:gt_admin' %}?ciclo={{ ciclo_atual.id }}" class="btn btn-primary px-4">
+                Abrir administração do ciclo
+            </a>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="row g-3 g-lg-4">
+            {% for cartao in cartoes %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <article class="ava-surface h-100 p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <span class="ava-chip px-3 py-1">Objetivo {{ cartao.sala.objetivo.codigo }}</span>
+                        <span class="badge rounded-pill text-bg-light text-dark border">
+                            <i class="bi bi-flag me-1" aria-hidden="true"></i>{{ cartao.sala.get_situacao_display }}
+                        </span>
+                    </div>
+                    <h2 class="h6 fw-bold mb-1">{{ cartao.sala.objetivo.titulo }}</h2>
+                    <p class="text-muted small mb-3">{{ cartao.sala.gt.nome }}</p>
+
+                    <dl class="row small mb-3">
+                        <dt class="col-6 fw-semibold">Vagas</dt>
+                        <dd class="col-6 mb-1">
+                            {% if cartao.sala.capacidade %}
+                            {{ cartao.sala.vagas_ocupadas }} de {{ cartao.sala.capacidade }}
+                            {% if cartao.sala.lotada %}<span class="text-danger">· lotada</span>{% endif %}
+                            {% else %}
+                            {{ cartao.sala.vagas_ocupadas }} · sem limite
+                            {% endif %}
+                        </dd>
+                        <dt class="col-6 fw-semibold">Inscrições</dt>
+                        <dd class="col-6 mb-1">
+                            {% if cartao.sala.aceita_inscricao %}
+                            <i class="bi bi-unlock me-1" aria-hidden="true"></i>Abertas
+                            {% else %}
+                            <i class="bi bi-lock me-1" aria-hidden="true"></i>Fechadas
+                            {% endif %}
+                        </dd>
+                        <dt class="col-6 fw-semibold">Lista de espera</dt>
+                        <dd class="col-6 mb-1">{{ cartao.lista_espera }} pessoa(s)</dd>
+                        <dt class="col-6 fw-semibold">Coordenação</dt>
+                        <dd class="col-6 mb-1">{{ cartao.coordenacao|default:"A definir" }}</dd>
+                        <dt class="col-6 fw-semibold">Conteúdo</dt>
+                        <dd class="col-6 mb-0">{{ cartao.progresso.estado_display }}</dd>
+                    </dl>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Progresso do GT</span>
+                            <span>{{ cartao.progresso.percentual }}%</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="Progresso do GT"
+                            aria-valuenow="{{ cartao.progresso.percentual }}" aria-valuemin="0" aria-valuemax="100"
+                            style="height: .5rem;">
+                            <div class="progress-bar" style="width: {{ cartao.progresso.percentual }}%"></div>
+                        </div>
+                        <p class="small text-muted mt-2 mb-0">
+                            {{ cartao.progresso.metas }} meta(s) · {{ cartao.progresso.estrategias }} estratégia(s) ·
+                            diagnóstico {% if cartao.progresso.diagnostico %}registrado{% else %}pendente{% endif %}
+                        </p>
+                    </div>
+
+                    {% if cartao.inscricao %}
+                    <p class="small mb-3">
+                        <i class="bi bi-person-check me-1" aria-hidden="true"></i>
+                        Sua inscrição: <strong>{{ cartao.inscricao.get_estado_display }}</strong>
+                        {% if cartao.inscricao.estado == 'lista_espera' and cartao.inscricao.ordem_espera %}
+                        (posição {{ cartao.inscricao.ordem_espera }})
+                        {% endif %}
+                        {% if cartao.inscricao.estado == 'confirmada' %}
+                        · {{ cartao.inscricao.get_papel_display }}
+                        {% endif %}
+                    </p>
+                    {% endif %}
+
+                    <div class="mt-auto d-flex flex-wrap gap-2">
+                        {% if cartao.acesso.pode_ver %}
+                        <a href="{% url 'ava:gt_sala' sala_id=cartao.sala.id %}" class="btn btn-primary btn-sm px-3">
+                            Abrir sala
+                        </a>
+                        {% elif cartao.trabalho and cartao.trabalho.consolidavel %}
+                        <a href="{% url 'ava:gt_sala' sala_id=cartao.sala.id %}" class="btn btn-outline-primary btn-sm px-3">
+                            Ver versão publicada
+                        </a>
+                        {% endif %}
+
+                        {% if cartao.pode_solicitar %}
+                        <form method="post" action="{% url 'ava:gt_inscricao_solicitar' sala_id=cartao.sala.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-outline-primary btn-sm px-3">
+                                {% if cartao.sala.lotada %}Entrar na lista de espera{% else %}Solicitar inscrição{% endif %}
+                            </button>
+                        </form>
+                        {% elif cartao.pode_cancelar %}
+                        <form method="post" action="{% url 'ava:gt_inscricao_desistir' sala_id=cartao.sala.id %}"
+                            onsubmit="return confirm('Cancelar sua inscrição nesta sala?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm px-3">Cancelar inscrição</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivo {{ sala.objetivo.codigo }} · reuniões | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="row g-4">
+            <div class="col-12 {% if reuniao_form %}col-lg-8{% endif %}">
+                <article class="ava-surface p-4">
+                    <h2 class="h5 mb-3">Reuniões do GT ({{ total_reunioes }})</h2>
+                    {% if page_obj.object_list %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <caption class="visually-hidden">Reuniões da sala com situação da frequência</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Data e hora</th>
+                                    <th scope="col">Reunião</th>
+                                    <th scope="col">Modalidade</th>
+                                    <th scope="col">Situação</th>
+                                    <th scope="col">Presentes</th>
+                                    <th scope="col">Frequência</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reuniao in page_obj.object_list %}
+                                <tr>
+                                    <td>{{ reuniao.data_hora|date:"d/m/Y H:i" }}</td>
+                                    <th scope="row" class="fw-normal">
+                                        <a href="{% url 'ava:gt_reuniao' reuniao_id=reuniao.id %}">{{ reuniao.titulo }}</a>
+                                        <span class="d-block text-muted small">
+                                            registro: {{ reuniao.responsavel_registro.nome|default:reuniao.responsavel_registro.email }}
+                                        </span>
+                                    </th>
+                                    <td>
+                                        {{ reuniao.get_modalidade_display }}
+                                        {% if reuniao.local %}<span class="d-block text-muted small">{{ reuniao.local }}</span>{% endif %}
+                                    </td>
+                                    <td>{{ reuniao.get_situacao_display }}</td>
+                                    <td>{{ reuniao.total_presentes }}</td>
+                                    <td>
+                                        {% if reuniao.frequencia_validada %}
+                                        <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Validada
+                                        <span class="d-block text-muted small">
+                                            {{ reuniao.frequencia_validada_em|date:"d/m/Y H:i" }}
+                                        </span>
+                                        {% else %}
+                                        <i class="bi bi-pencil me-1" aria-hidden="true"></i>Em aberto
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Paginação das reuniões" class="mt-3">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                            </li>
+                            {% endif %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Nenhuma reunião registrada. A frequência é sempre vinculada a uma reunião e aos
+                        membros confirmados do GT.
+                    </p>
+                    {% endif %}
+                </article>
+            </div>
+
+            {% if reuniao_form %}
+            <aside class="col-12 col-lg-4">
+                <div class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Nova reunião</h2>
+                    <form method="post" action="{% url 'ava:gt_reuniao_nova' sala_id=sala.id %}">
+                        {% csrf_token %}
+                        {% for campo in reuniao_form %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% if campo.help_text %}<p class="form-text">{{ campo.help_text }}</p>{% endif %}
+                            {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-100">Criar reunião</button>
+                        <p class="form-text mb-0">
+                            A lista de presença é montada com os membros confirmados, todos como ausentes,
+                            até alguém registrar o que ocorreu.
+                        </p>
+                    </form>
+                </div>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

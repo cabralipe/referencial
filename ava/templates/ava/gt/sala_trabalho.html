@@ -1,0 +1,539 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivo {{ sala.objetivo.codigo }} · diagnóstico e quadro | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="ava-surface p-4 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Situação do conteúdo: {{ trabalho.get_estado_display }}</h2>
+                    <p class="small text-muted mb-0">
+                        Versão interna v{{ trabalho.version }}
+                        {% if trabalho.aprovado_em %}· aprovado em {{ trabalho.aprovado_em|date:"d/m/Y H:i" }}{% endif %}
+                        {% if trabalho.publicado_em %}· publicado em {{ trabalho.publicado_em|date:"d/m/Y H:i" }}{% endif %}
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if acesso.pode_submeter_revisao and trabalho.editavel %}
+                    <form method="post" action="{% url 'ava:gt_trabalho_transicao' sala_id=sala.id acao='submeter' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm px-3">Enviar para revisão</button>
+                    </form>
+                    {% endif %}
+                    {% if acesso.pode_aprovar_conteudo and trabalho.estado == 'em_revisao' %}
+                    <form method="post" action="{% url 'ava:gt_trabalho_transicao' sala_id=sala.id acao='aprovar' %}"
+                        onsubmit="return confirm('Aprovar o conteúdo? A versão atual será congelada.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-sm px-3">Aprovar conteúdo</button>
+                    </form>
+                    {% endif %}
+                    {% if acesso.pode_publicar_conteudo and trabalho.estado == 'aprovado' %}
+                    <form method="post" action="{% url 'ava:gt_trabalho_transicao' sala_id=sala.id acao='publicar' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-sm px-3">Publicar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if trabalho.parecer_revisao %}
+            <div class="alert alert-warning mt-3 mb-0" role="note">
+                <strong>Parecer da coordenação:</strong> {{ trabalho.parecer_revisao|linebreaksbr }}
+            </div>
+            {% endif %}
+
+            {% if pendencias %}
+            <div class="alert alert-info mt-3 mb-0">
+                <p class="fw-semibold mb-1">Pendências para aprovação:</p>
+                <ul class="mb-0">
+                    {% for pendencia in pendencias %}<li>{{ pendencia }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if acesso.pode_solicitar_ajustes and trabalho.estado == 'em_revisao' %}
+            <form class="mt-3" method="post" action="{% url 'ava:gt_trabalho_transicao' sala_id=sala.id acao='ajustes' %}">
+                {% csrf_token %}
+                <label class="form-label fw-semibold" for="{{ parecer_form.parecer.id_for_label }}">
+                    {{ parecer_form.parecer.label }}
+                </label>
+                {{ parecer_form.parecer }}
+                <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Solicitar ajustes ao GT</button>
+            </form>
+            {% endif %}
+
+            {% if acesso.pode_reabrir_conteudo and not trabalho.editavel %}
+            <form class="mt-3" method="post" action="{% url 'ava:gt_trabalho_transicao' sala_id=sala.id acao='reabrir' %}">
+                {% csrf_token %}
+                <label class="form-label fw-semibold" for="{{ justificativa_form.justificativa.id_for_label }}">
+                    Justificativa para reabrir o conteúdo
+                </label>
+                {{ justificativa_form.justificativa }}
+                <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Reabrir para ajustes</button>
+            </form>
+            {% endif %}
+        </div>
+
+        {% if not mostra_conteudo %}
+        <div class="ava-surface p-4 p-lg-5 text-center">
+            <h2 class="h5">Conteúdo ainda não publicado</h2>
+            <p class="text-muted mb-0">
+                Rascunhos ficam visíveis apenas aos integrantes do GT e ao acompanhamento institucional.
+            </p>
+        </div>
+        {% else %}
+
+        <!-- Diagnóstico -->
+        <article class="ava-surface p-4 mb-4">
+            <h2 class="h5 mb-3">Diagnóstico</h2>
+            {% if editavel %}
+            <form method="post" action="{% url 'ava:gt_trabalho_diagnostico' sala_id=sala.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ trabalho.version }}">
+                <div class="form-check mb-3">
+                    {{ diagnostico_form.diagnostico_nao_aplicavel }}
+                    <label class="form-check-label" for="{{ diagnostico_form.diagnostico_nao_aplicavel.id_for_label }}">
+                        {{ diagnostico_form.diagnostico_nao_aplicavel.label }}
+                    </label>
+                    <p class="form-text mb-0">{{ diagnostico_form.diagnostico_nao_aplicavel.help_text }}</p>
+                </div>
+                {% for campo in diagnostico_form %}
+                {% if campo.name != 'diagnostico_nao_aplicavel' %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                    {{ campo }}
+                    {% if campo.help_text %}<p class="form-text">{{ campo.help_text }}</p>{% endif %}
+                    {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-primary px-4">Salvar diagnóstico</button>
+            </form>
+            {% else %}
+            {% if trabalho.diagnostico_nao_aplicavel %}
+            <p class="mb-0">O GT registrou que o diagnóstico não se aplica a este objetivo.</p>
+            {% else %}
+            <dl class="mb-0">
+                <dt>Caracterização da situação atual</dt>
+                <dd>{{ trabalho.diagnostico_situacao|default:"Não informado."|linebreaksbr }}</dd>
+                <dt>Evidências e fontes</dt>
+                <dd>{{ trabalho.diagnostico_evidencias|default:"Não informado."|linebreaksbr }}</dd>
+                <dt>Desafios</dt>
+                <dd>{{ trabalho.diagnostico_desafios|default:"Não informado."|linebreaksbr }}</dd>
+                <dt>Potencialidades</dt>
+                <dd>{{ trabalho.diagnostico_potencialidades|default:"Não informado."|linebreaksbr }}</dd>
+                <dt>Público e território</dt>
+                <dd class="mb-0">{{ trabalho.diagnostico_publico|default:"Não informado."|linebreaksbr }}</dd>
+            </dl>
+            {% endif %}
+            {% if trabalho.diagnostico_atualizado_em %}
+            <p class="small text-muted mt-3 mb-0">
+                Última atualização em {{ trabalho.diagnostico_atualizado_em|date:"d/m/Y H:i" }}
+                {% if trabalho.diagnostico_atualizado_por %}
+                por {{ trabalho.diagnostico_atualizado_por.nome|default:trabalho.diagnostico_atualizado_por.email }}
+                {% endif %}
+            </p>
+            {% endif %}
+            {% endif %}
+        </article>
+
+        <!-- Quadro do objetivo -->
+        <article class="ava-surface p-4 mb-4">
+            <h2 class="h5 mb-3">Quadro de construção do objetivo</h2>
+            <div class="alert alert-light border">
+                <p class="small text-muted mb-1">Redação oficial (preservada):</p>
+                <p class="mb-0">{{ sala.objetivo.texto|default:"Redação oficial não cadastrada."|linebreaksbr }}</p>
+            </div>
+
+            {% if editavel %}
+            <form method="post" action="{% url 'ava:gt_trabalho_quadro' sala_id=sala.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ trabalho.version }}">
+                {% for campo in quadro_form %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                    {{ campo }}
+                    {% if campo.help_text %}<p class="form-text">{{ campo.help_text }}</p>{% endif %}
+                    {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary px-4">Salvar quadro</button>
+            </form>
+            {% else %}
+            <dl class="mb-0">
+                <dt>Proposta de redação do GT</dt>
+                <dd>{{ trabalho.objetivo_proposto|default:"Sem proposta de nova redação."|linebreaksbr }}</dd>
+                <dt>Observações</dt>
+                <dd>{{ trabalho.observacoes|default:"Sem observações."|linebreaksbr }}</dd>
+                <dt>Pendências</dt>
+                <dd class="mb-0">{{ trabalho.pendencias|default:"Sem pendências."|linebreaksbr }}</dd>
+            </dl>
+            {% endif %}
+        </article>
+
+        <!-- Metas -->
+        <article class="ava-surface p-4 mb-4">
+            <h2 class="h5 mb-3">Metas e resultados esperados ({{ metas|length }})</h2>
+            {% if metas %}
+            <div class="table-responsive mb-3">
+                <table class="table align-middle">
+                    <caption class="visually-hidden">Metas registradas pelo GT</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Meta</th>
+                            <th scope="col">Indicador/evidência</th>
+                            <th scope="col">Prazo</th>
+                            {% if editavel %}<th scope="col">Ações</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for meta in metas %}
+                        <tr>
+                            <th scope="row">{{ meta.ordem }}</th>
+                            <td>{{ meta.descricao|linebreaksbr }}</td>
+                            <td>{{ meta.indicador|default:"—"|linebreaksbr }}</td>
+                            <td>{{ meta.prazo|default:"—" }}</td>
+                            {% if editavel %}
+                            <td>
+                                <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#meta-{{ meta.id }}" aria-expanded="false"
+                                    aria-controls="meta-{{ meta.id }}">Editar</button>
+                                <form class="d-inline" method="post"
+                                    action="{% url 'ava:gt_meta_remover' sala_id=sala.id meta_id=meta.id %}"
+                                    onsubmit="return confirm('Remover esta meta? As estratégias vinculadas perdem o vínculo.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-2">Remover</button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% if editavel %}
+                        <tr class="collapse" id="meta-{{ meta.id }}">
+                            <td colspan="5">
+                                <form method="post" action="{% url 'ava:gt_meta_salvar' sala_id=sala.id %}" class="row g-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="meta_id" value="{{ meta.id }}">
+                                    <div class="col-md-2">
+                                        <label class="form-label small" for="ordem_meta_{{ meta.id }}">Ordem</label>
+                                        <input class="form-control" type="number" min="1" id="ordem_meta_{{ meta.id }}"
+                                            name="ordem" value="{{ meta.ordem }}">
+                                    </div>
+                                    <div class="col-md-10">
+                                        <label class="form-label small" for="descricao_meta_{{ meta.id }}">Meta</label>
+                                        <textarea class="form-control" rows="2" id="descricao_meta_{{ meta.id }}"
+                                            name="descricao" required>{{ meta.descricao }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small" for="indicador_meta_{{ meta.id }}">Indicador/evidência</label>
+                                        <textarea class="form-control" rows="2" id="indicador_meta_{{ meta.id }}"
+                                            name="indicador">{{ meta.indicador }}</textarea>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small" for="prazo_meta_{{ meta.id }}">Prazo/período</label>
+                                        <input class="form-control" id="prazo_meta_{{ meta.id }}" name="prazo"
+                                            value="{{ meta.prazo }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small" for="obs_meta_{{ meta.id }}">Observações</label>
+                                        <input class="form-control" id="obs_meta_{{ meta.id }}" name="observacoes"
+                                            value="{{ meta.observacoes }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary btn-sm">Salvar meta</button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhuma meta registrada. As metas sustentam as estratégias e a aprovação do objetivo.</p>
+            {% endif %}
+
+            {% if editavel %}
+            <details>
+                <summary class="fw-semibold mb-2">Adicionar meta</summary>
+                <form method="post" action="{% url 'ava:gt_meta_salvar' sala_id=sala.id %}" class="row g-2 mt-2">
+                    {% csrf_token %}
+                    {% for campo in meta_form %}
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                    </div>
+                    {% endfor %}
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm px-3">Adicionar meta</button>
+                    </div>
+                </form>
+            </details>
+            {% endif %}
+        </article>
+
+        <!-- Estratégias -->
+        <article class="ava-surface p-4 mb-4">
+            <h2 class="h5 mb-3">Estratégias e ações ({{ estrategias|length }})</h2>
+            {% if estrategias %}
+            <div class="table-responsive mb-3">
+                <table class="table align-middle">
+                    <caption class="visually-hidden">Estratégias registradas pelo GT</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Estratégia/ação</th>
+                            <th scope="col">Responsável</th>
+                            <th scope="col">Prazo</th>
+                            <th scope="col">Metas</th>
+                            {% if editavel %}<th scope="col">Ações</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for estrategia in estrategias %}
+                        <tr>
+                            <th scope="row">{{ estrategia.ordem }}</th>
+                            <td>{{ estrategia.descricao|linebreaksbr }}</td>
+                            <td>{{ estrategia.responsavel|default:"—" }}</td>
+                            <td>{{ estrategia.prazo|default:"—" }}</td>
+                            <td>
+                                {% for meta in estrategia.metas.all %}
+                                <span class="badge text-bg-light text-dark border">Meta {{ meta.ordem }}</span>
+                                {% empty %}
+                                <span class="text-muted">—</span>
+                                {% endfor %}
+                            </td>
+                            {% if editavel %}
+                            <td>
+                                <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#estrategia-{{ estrategia.id }}" aria-expanded="false"
+                                    aria-controls="estrategia-{{ estrategia.id }}">Editar</button>
+                                <form class="d-inline" method="post"
+                                    action="{% url 'ava:gt_estrategia_remover' sala_id=sala.id estrategia_id=estrategia.id %}"
+                                    onsubmit="return confirm('Remover esta estratégia?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-2">Remover</button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% if editavel %}
+                        <tr class="collapse" id="estrategia-{{ estrategia.id }}">
+                            <td colspan="6">
+                                <form method="post" action="{% url 'ava:gt_estrategia_salvar' sala_id=sala.id %}" class="row g-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="estrategia_id" value="{{ estrategia.id }}">
+                                    <div class="col-md-2">
+                                        <label class="form-label small" for="ordem_est_{{ estrategia.id }}">Ordem</label>
+                                        <input class="form-control" type="number" min="1" id="ordem_est_{{ estrategia.id }}"
+                                            name="ordem" value="{{ estrategia.ordem }}">
+                                    </div>
+                                    <div class="col-md-10">
+                                        <label class="form-label small" for="descricao_est_{{ estrategia.id }}">Estratégia/ação</label>
+                                        <textarea class="form-control" rows="2" id="descricao_est_{{ estrategia.id }}"
+                                            name="descricao" required>{{ estrategia.descricao }}</textarea>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small" for="responsavel_est_{{ estrategia.id }}">Responsável</label>
+                                        <input class="form-control" id="responsavel_est_{{ estrategia.id }}"
+                                            name="responsavel" value="{{ estrategia.responsavel }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small" for="prazo_est_{{ estrategia.id }}">Prazo/período</label>
+                                        <input class="form-control" id="prazo_est_{{ estrategia.id }}" name="prazo"
+                                            value="{{ estrategia.prazo }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small" for="recursos_est_{{ estrategia.id }}">Recursos/apoios</label>
+                                        <input class="form-control" id="recursos_est_{{ estrategia.id }}" name="recursos"
+                                            value="{{ estrategia.recursos }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small" for="indicador_est_{{ estrategia.id }}">Indicador/evidência</label>
+                                        <textarea class="form-control" rows="2" id="indicador_est_{{ estrategia.id }}"
+                                            name="indicador">{{ estrategia.indicador }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <fieldset>
+                                            <legend class="form-label small">Metas atendidas</legend>
+                                            {% for meta in metas %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="metas"
+                                                    value="{{ meta.id }}" id="meta_{{ estrategia.id }}_{{ meta.id }}"
+                                                    {% if meta in estrategia.metas.all %}checked{% endif %}>
+                                                <label class="form-check-label" for="meta_{{ estrategia.id }}_{{ meta.id }}">
+                                                    Meta {{ meta.ordem }} — {{ meta.descricao|truncatechars:60 }}
+                                                </label>
+                                            </div>
+                                            {% empty %}
+                                            <p class="small text-muted mb-0">Cadastre metas para vinculá-las.</p>
+                                            {% endfor %}
+                                        </fieldset>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary btn-sm">Salvar estratégia</button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhuma estratégia registrada.</p>
+            {% endif %}
+
+            {% if editavel %}
+            <details>
+                <summary class="fw-semibold mb-2">Adicionar estratégia</summary>
+                <form method="post" action="{% url 'ava:gt_estrategia_salvar' sala_id=sala.id %}" class="row g-2 mt-2">
+                    {% csrf_token %}
+                    {% for campo in estrategia_form %}
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                    </div>
+                    {% endfor %}
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm px-3">Adicionar estratégia</button>
+                    </div>
+                </form>
+            </details>
+            {% endif %}
+        </article>
+
+        <!-- Comentários e pedidos de ajuste -->
+        <article class="ava-surface p-4 mb-4">
+            <h2 class="h5 mb-3">
+                Comentários e pedidos de ajuste
+                {% if comentarios_abertos %}
+                <span class="badge text-bg-light text-dark border align-middle">
+                    {{ comentarios_abertos }} em aberto
+                </span>
+                {% endif %}
+            </h2>
+
+            {% if not comentarios_habilitados %}
+            <p class="text-muted mb-0">
+                Os comentários estão desabilitados para este município
+                (<code>ff.comments.enabled</code>).
+            </p>
+            {% else %}
+            {% if acesso.pode_ver %}
+            <form method="post" action="{% url 'ava:gt_comentario_criar' sala_id=sala.id %}" class="row g-2 mb-4">
+                {% csrf_token %}
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-semibold" for="campo_comentario">Trecho comentado</label>
+                    <select class="form-select" id="campo_comentario" name="campo">
+                        {% for chave, rotulo in campos_comentaveis %}
+                        <option value="{{ chave }}">{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-8">
+                    <label class="form-label fw-semibold" for="texto_comentario">Comentário</label>
+                    <textarea class="form-control" id="texto_comentario" name="texto" rows="2" required
+                        maxlength="4000" aria-describedby="ajuda_comentario"></textarea>
+                    <p class="form-text mb-0" id="ajuda_comentario">
+                        O comentário fica ancorado no campo e na versão atual do conteúdo
+                        (v{{ trabalho.version }}).
+                    </p>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-outline-primary btn-sm px-3">Comentar</button>
+                </div>
+            </form>
+            {% endif %}
+
+            {% if comentarios %}
+            <ul class="list-unstyled mb-0">
+                {% for comentario in comentarios %}
+                <li class="border-bottom py-3">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between gap-2">
+                        <div>
+                            <p class="small text-muted mb-1">
+                                <span class="badge text-bg-light text-dark border">
+                                    {{ comentario.anchor_json.campo_rotulo|default:"Observação geral do GT" }}
+                                </span>
+                                <span class="ms-1">
+                                    v{{ comentario.anchor_json.version|default:"?" }} ·
+                                    {{ comentario.autor.nome|default:comentario.autor.email }} ·
+                                    {{ comentario.created_at|date:"d/m/Y H:i" }}
+                                </span>
+                            </p>
+                            <p class="mb-0">{{ comentario.conteudo_html|striptags|linebreaksbr }}</p>
+                            {% if comentario.resolvido %}
+                            <p class="small text-muted mb-0">
+                                <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+                                Resolvido
+                                {% if comentario.resolvido_por %}
+                                por {{ comentario.resolvido_por.nome|default:comentario.resolvido_por.email }}
+                                {% endif %}
+                                {% if comentario.resolved_at %}em {{ comentario.resolved_at|date:"d/m/Y H:i" }}{% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                        {% if not comentario.resolvido and acesso.pode_ver %}
+                        <form method="post"
+                            action="{% url 'ava:gt_comentario_resolver' sala_id=sala.id comentario_id=comentario.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Marcar resolvido</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">
+                Nenhum comentário registrado. Use este espaço para pedidos de ajuste sobre um
+                trecho específico do quadro.
+            </p>
+            {% endif %}
+            {% endif %}
+        </article>
+
+        <!-- Histórico de versões -->
+        <article class="ava-surface p-4">
+            <h2 class="h5 mb-3">Versões registradas</h2>
+            {% if versoes %}
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <caption class="visually-hidden">Histórico de versões do conteúdo</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Versão</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Motivo</th>
+                            <th scope="col">Quem</th>
+                            <th scope="col">Quando</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for versao in versoes %}
+                        <tr>
+                            <th scope="row">v{{ versao.numero }}</th>
+                            <td>{{ versao.estado }}</td>
+                            <td>{{ versao.motivo|default:"—" }}</td>
+                            <td>{{ versao.criado_por.nome|default:versao.criado_por.email|default:"—" }}</td>
+                            <td>{{ versao.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">Nenhuma versão congelada ainda. O envio para revisão cria a primeira.</p>
+            {% endif %}
+        </article>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

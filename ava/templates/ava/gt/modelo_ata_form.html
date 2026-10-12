@@ -1,0 +1,80 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Modelo de ata dos GTs | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:gt_salas' %}">Salas dos GTs</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'ava:gt_admin' %}?municipio={{ cliente_atual.id }}">Administração</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Modelo de ata</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <div class="ava-surface p-4 p-lg-5">
+                    <h1 class="h4 mb-1">Modelo institucional de ata</h1>
+                    <p class="text-muted">
+                        O modelo é comum a todos os GTs e versionado: publicar uma nova versão
+                        <strong>não altera</strong> as atas já geradas, que guardam o retrato do modelo usado.
+                    </p>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        {% include "ava/gt/_form_campos.html" with form=form %}
+                        <button type="submit" class="btn btn-primary px-4 mt-4">Publicar nova versão</button>
+                    </form>
+                </div>
+            </div>
+
+            <aside class="col-12 col-lg-5">
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Modelo em uso</h2>
+                    {% if modelo_ativo %}
+                    <p class="small mb-2">
+                        <strong>{{ modelo_ativo.nome }}</strong> · versão {{ modelo_ativo.versao }}
+                        <span class="d-block text-muted">
+                            publicado em {{ modelo_ativo.created_at|date:"d/m/Y H:i" }}
+                        </span>
+                    </p>
+                    <ol class="small mb-0">
+                        {% for secao in modelo_ativo.secoes_efetivas %}
+                        <li>{{ secao.titulo }}</li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="small text-muted mb-2">
+                        Nenhum modelo publicado. As minutas usam as seções padrão do sistema:
+                    </p>
+                    <ol class="small mb-0">
+                        {% for secao in secoes_padrao %}<li>{{ secao.titulo }}</li>{% endfor %}
+                    </ol>
+                    {% endif %}
+                </div>
+
+                <div class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Versões publicadas</h2>
+                    {% if modelos %}
+                    <ul class="list-unstyled small mb-0">
+                        {% for modelo in modelos %}
+                        <li class="border-bottom py-1 d-flex justify-content-between">
+                            <span>{{ modelo.nome }} v{{ modelo.versao }}</span>
+                            <span class="text-muted">
+                                {{ modelo.created_at|date:"d/m/Y" }}{% if modelo.ativo %} · em uso{% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="small text-muted mb-0">Nenhuma versão publicada ainda.</p>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

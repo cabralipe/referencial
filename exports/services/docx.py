@@ -97,6 +97,17 @@ def _extract_segments(html: str) -> List[Tuple[str, str]]:
     return [(kind, texto) for kind, texto in parser.segments if texto]
 
 
+def html_para_paragrafos(html: Any) -> List[Tuple[str, str]]:
+    """Segmenta HTML em pares ``(tipo, texto)`` reaproveitáveis por outros geradores.
+
+    ``tipo`` é ``"block"`` para parágrafos e ``"list"`` para itens de lista.
+    """
+
+    if not html:
+        return []
+    return _extract_segments(str(html))
+
+
 def html_to_docx_bytes(context: Dict[str, Any]) -> bytes:
     if Document is None:
         raise RuntimeError("python-docx não está disponível no ambiente")

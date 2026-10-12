@@ -1,0 +1,139 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivo {{ sala.objetivo.codigo }} · documentos | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Documentos gerados</h2>
+                        {% if acesso.pode_exportar %}
+                        <form method="post" action="{% url 'ava:gt_documento_objetivo' sala_id=sala.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-sm px-3">
+                                <i class="bi bi-file-earmark-word me-1" aria-hidden="true"></i>
+                                Gerar documento do objetivo
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    {% if documentos %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <caption class="visually-hidden">Documentos DOCX gerados para esta sala</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Arquivo</th>
+                                    <th scope="col">Tipo</th>
+                                    <th scope="col">Gerado em</th>
+                                    <th scope="col">Download</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in documentos %}
+                                <tr>
+                                    <th scope="row" class="fw-normal">
+                                        {{ job.payload_json.nome_arquivo|default:"documento.docx" }}
+                                    </th>
+                                    <td>{{ job.get_alvo_tipo_display }}</td>
+                                    <td>{{ job.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <a class="btn btn-outline-primary btn-sm"
+                                            href="{% url 'ava:gt_documento_download' job_id=job.id %}">
+                                            Baixar DOCX
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="form-text mb-0">
+                        O download passa por verificação de permissão a cada acesso — o arquivo fica em
+                        armazenamento privado.
+                    </p>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Nenhum documento gerado ainda{% if not acesso.pode_exportar %} ou disponível ao seu perfil{% endif %}.
+                    </p>
+                    {% endif %}
+                </article>
+
+                <article class="ava-surface p-4">
+                    <h2 class="h5 mb-3">Atas das reuniões</h2>
+                    {% if atas %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <caption class="visually-hidden">Atas por reunião</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Reunião</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col">Modelo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ata in atas %}
+                                <tr>
+                                    <th scope="row" class="fw-normal">
+                                        <a href="{% url 'ava:gt_reuniao' reuniao_id=ata.reuniao_id %}">
+                                            {{ ata.reuniao.data_hora|date:"d/m/Y" }} · {{ ata.reuniao.titulo }}
+                                        </a>
+                                    </th>
+                                    <td>{{ ata.get_estado_display }}</td>
+                                    <td class="small text-muted">{{ ata.modelo_nome }} (v{{ ata.modelo_versao }})</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma ata registrada.</p>
+                    {% endif %}
+                </article>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <article class="ava-surface p-4">
+                    <h2 class="h5 mb-3">Histórico de versões do conteúdo</h2>
+                    {% if trabalho %}
+                    <p class="small text-muted">
+                        Estado atual: {{ trabalho.get_estado_display }} · versão interna v{{ trabalho.version }}
+                    </p>
+                    {% endif %}
+                    {% if versoes %}
+                    <ol class="list-unstyled mb-0">
+                        {% for versao in versoes %}
+                        <li class="border-bottom py-2">
+                            <strong>v{{ versao.numero }}</strong> · {{ versao.estado }}
+                            <span class="d-block small text-muted">
+                                {{ versao.created_at|date:"d/m/Y H:i" }}
+                                {% if versao.criado_por %}
+                                · {{ versao.criado_por.nome|default:versao.criado_por.email }}
+                                {% endif %}
+                            </span>
+                            {% if versao.motivo %}
+                            <span class="d-block small">{{ versao.motivo }}</span>
+                            {% endif %}
+                            <span class="d-block small text-muted">
+                                {{ versao.conteudo_json.metas|length }} meta(s) ·
+                                {{ versao.conteudo_json.estrategias|length }} estratégia(s)
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma versão congelada ainda.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

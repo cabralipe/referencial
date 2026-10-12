@@ -21,6 +21,20 @@ from ava.models.diario import (
     DiarioBordoParticipante,
     OrigemAula,
 )
+from ava.models.gt_sala import (
+    AtaReuniaoGT,
+    CicloReferencial,
+    EstrategiaGT,
+    InscricaoSalaGT,
+    MetaGT,
+    ModeloAtaGT,
+    ObjetivoReferencial,
+    PresencaReuniaoGT,
+    ReuniaoGT,
+    SalaGT,
+    TrabalhoGT,
+    VersaoTrabalhoGT,
+)
 from ava.models.planilha import (
     ColunaPlanilha,
     ImportacaoPlanilha,
@@ -63,4 +77,16 @@ __all__ = [
     "RegistroPlanilha",
     "ValorRegistroPlanilha",
     "ImportacaoPlanilha",
+    "CicloReferencial",
+    "ObjetivoReferencial",
+    "SalaGT",
+    "InscricaoSalaGT",
+    "TrabalhoGT",
+    "MetaGT",
+    "EstrategiaGT",
+    "VersaoTrabalhoGT",
+    "ReuniaoGT",
+    "PresencaReuniaoGT",
+    "ModeloAtaGT",
+    "AtaReuniaoGT",
 ]

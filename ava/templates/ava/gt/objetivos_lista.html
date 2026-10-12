@@ -1,0 +1,111 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivos do Referencial | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <nav aria-label="Trilha de navegação" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'ava:gt_salas' %}">Salas dos GTs</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'ava:gt_admin' %}?municipio={{ cliente_atual.id }}">Administração</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Objetivos</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <article class="ava-surface p-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                        <div>
+                            <h1 class="h4 mb-1">Objetivos do Referencial</h1>
+                            <p class="text-muted small mb-0" aria-live="polite">
+                                {{ total }} cadastrado(s) · {{ ativos }} ativo(s)
+                            </p>
+                        </div>
+                        <a href="{% url 'ava:gt_objetivo_novo' %}?municipio={{ cliente_atual.id }}"
+                            class="btn btn-primary btn-sm px-3">Novo objetivo</a>
+                    </div>
+
+                    {% if objetivos %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <caption class="visually-hidden">Objetivos oficiais cadastrados</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Ordem</th>
+                                    <th scope="col">Título</th>
+                                    <th scope="col">Situação</th>
+                                    <th scope="col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for objetivo in objetivos %}
+                                <tr>
+                                    <th scope="row">{{ objetivo.codigo }}</th>
+                                    <td>{{ objetivo.ordem }}</td>
+                                    <td>
+                                        {{ objetivo.titulo }}
+                                        {% if objetivo.texto %}
+                                        <span class="d-block text-muted small">{{ objetivo.texto|truncatechars:120 }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if objetivo.ativo %}
+                                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Ativo
+                                        {% else %}
+                                        <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Inativo
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'ava:gt_objetivo_editar' objetivo_id=objetivo.id %}?municipio={{ cliente_atual.id }}">
+                                            editar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Nenhum objetivo cadastrado. Importe a lista oficial ao lado — nada é inventado pelo
+                        sistema.
+                    </p>
+                    {% endif %}
+                </article>
+            </div>
+
+            <aside class="col-12 col-lg-5">
+                <div class="ava-surface p-4">
+                    <h2 class="h5 mb-3">Importar objetivos oficiais</h2>
+                    <p class="small text-muted">
+                        Aceita CSV (<code>codigo;titulo;texto;ordem</code>) ou JSON. O código é a chave
+                        estável: reimportar atualiza o texto sem duplicar registro.
+                    </p>
+                    <form method="post" action="{% url 'ava:gt_objetivos_importar' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        {% for campo in importacao_form %}
+                        <div class="mb-3">
+                            {% if campo.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check">
+                                {{ campo }}
+                                <label class="form-check-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            </div>
+                            {% else %}
+                            <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% endif %}
+                            {% if campo.help_text %}<p class="form-text">{{ campo.help_text }}</p>{% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-100">Importar</button>
+                    </form>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

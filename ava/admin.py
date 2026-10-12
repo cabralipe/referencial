@@ -26,6 +26,7 @@ from tasks.certificates import build_certificate_pdf
 
 from .models import (
     AssinaturaCertificado,
+    AtaReuniaoGT,
     Atividade,
     AtividadeForumAnexo,
     AtividadeForumMensagem,
@@ -38,18 +39,29 @@ from .models import (
     Curso,
     CursoCategoria,
     CursoModulo,
+    CicloReferencial,
     ColunaPlanilha,
     DiarioBordo,
     DiarioBordoMidia,
     DiarioBordoParticipante,
+    EstrategiaGT,
     ImportacaoPlanilha,
+    InscricaoSalaGT,
     MatriculaCurso,
     MatriculaTrilha,
+    MetaGT,
+    ModeloAtaGT,
     ModeloPlanilha,
+    ObjetivoReferencial,
+    PresencaReuniaoGT,
     QuizAlternativa,
     QuizQuestao,
     RegistroPlanilha,
+    ReuniaoGT,
+    SalaGT,
+    TrabalhoGT,
     TrilhaFormativa,
+    VersaoTrabalhoGT,
 )
 
 
@@ -1262,3 +1274,129 @@ class ImportacaoPlanilhaAdmin(AVAModelAdmin):
         "created_at",
         "updated_at",
     )
+
+
+# ----------------------------------------------------------------------
+# Salas de GT do Referencial
+# ----------------------------------------------------------------------
+
+
+@admin.register(CicloReferencial)
+class CicloReferencialAdmin(AVAModelAdmin):
+    list_display = (
+        "nome",
+        "ativo",
+        "inscricoes_abertas",
+        "inscricoes_inicio",
+        "inscricoes_fim",
+        "max_salas_por_participante",
+    )
+    list_filter = ("ativo", "inscricoes_abertas")
+    search_fields = ("nome", "descricao")
+
+
+@admin.register(ObjetivoReferencial)
+class ObjetivoReferencialAdmin(AVAModelAdmin):
+    list_display = ("codigo", "ordem", "titulo", "ativo")
+    list_filter = ("ativo",)
+    search_fields = ("codigo", "titulo", "texto")
+    ordering = ("ordem", "codigo")
+
+
+class InscricaoSalaGTInline(AVATabularInline):
+    model = InscricaoSalaGT
+    fields = ("usuario", "estado", "papel", "ordem_espera", "justificativa")
+    exclude = ("cliente",)
+
+
+@admin.register(SalaGT)
+class SalaGTAdmin(AVAModelAdmin):
+    list_display = (
+        "objetivo",
+        "gt",
+        "ciclo",
+        "situacao",
+        "capacidade",
+        "vagas_ocupadas",
+        "inscricoes_abertas",
+    )
+    list_filter = ("ciclo", "situacao", "inscricoes_abertas")
+    search_fields = ("objetivo__codigo", "objetivo__titulo", "gt__nome")
+    readonly_fields = ("vagas_ocupadas", "arquivada_em", "created_at", "updated_at")
+    inlines = [InscricaoSalaGTInline]
+
+
+class MetaGTInline(AVATabularInline):
+    model = MetaGT
+    fields = ("ordem", "descricao", "indicador", "prazo")
+    exclude = ("cliente",)
+
+
+class EstrategiaGTInline(AVATabularInline):
+    model = EstrategiaGT
+    fields = ("ordem", "descricao", "responsavel", "prazo", "indicador")
+    exclude = ("cliente",)
+
+
+@admin.register(TrabalhoGT)
+class TrabalhoGTAdmin(AVAModelAdmin):
+    list_display = ("sala", "estado", "version", "aprovado_em", "publicado_em")
+    list_filter = ("estado",)
+    search_fields = ("sala__objetivo__codigo", "sala__gt__nome")
+    readonly_fields = (
+        "version",
+        "enviado_revisao_em",
+        "aprovado_em",
+        "publicado_em",
+        "created_at",
+        "updated_at",
+    )
+    inlines = [MetaGTInline, EstrategiaGTInline]
+
+
+class PresencaReuniaoGTInline(AVATabularInline):
+    model = PresencaReuniaoGT
+    fields = ("usuario", "situacao", "justificativa", "registrado_em", "alterado_em")
+    readonly_fields = ("registrado_em", "alterado_em")
+    exclude = ("cliente",)
+
+
+@admin.register(ReuniaoGT)
+class ReuniaoGTAdmin(AVAModelAdmin):
+    list_display = ("data_hora", "titulo", "sala", "modalidade", "situacao", "frequencia_validada")
+    list_filter = ("situacao", "modalidade", "frequencia_validada")
+    search_fields = ("titulo", "pauta", "sala__objetivo__codigo")
+    date_hierarchy = "data_hora"
+    readonly_fields = ("frequencia_validada_em", "created_at", "updated_at")
+    inlines = [PresencaReuniaoGTInline]
+
+
+@admin.register(ModeloAtaGT)
+class ModeloAtaGTAdmin(AVAModelAdmin):
+    list_display = ("nome", "versao", "ativo", "created_at")
+    list_filter = ("ativo",)
+    search_fields = ("nome",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(AtaReuniaoGT)
+class AtaReuniaoGTAdmin(AVAModelAdmin):
+    list_display = ("reuniao", "estado", "modelo_nome", "modelo_versao", "validada_em")
+    list_filter = ("estado",)
+    search_fields = ("reuniao__titulo", "sintese")
+    readonly_fields = (
+        "modelo_nome",
+        "modelo_versao",
+        "estrutura_json",
+        "version",
+        "validada_em",
+        "created_at",
+        "updated_at",
+    )
+
+
+@admin.register(VersaoTrabalhoGT)
+class VersaoTrabalhoGTAdmin(AVAModelAdmin):
+    list_display = ("trabalho", "numero", "estado", "criado_por", "created_at")
+    list_filter = ("estado",)
+    readonly_fields = ("conteudo_json", "created_at", "updated_at")

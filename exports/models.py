@@ -14,6 +14,9 @@ class ExportJob(TenantModel):
         RESPOSTA = "resposta", "Resposta"
         COLECAO = "colecao", "Coleção"
         RELATORIO = "relatorio", "Relatório"
+        GT_OBJETIVO = "gt_objetivo", "Documento do objetivo do GT"
+        GT_ATA = "gt_ata", "Ata de reunião do GT"
+        GT_CONSOLIDADO = "gt_consolidado", "Consolidação dos objetivos"
 
     class Formato(models.TextChoices):
         PDF = "pdf", "PDF"

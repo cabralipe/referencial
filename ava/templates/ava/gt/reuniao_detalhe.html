@@ -1,0 +1,286 @@
+{% extends "ava/base.html" %}
+
+{% block title %}{{ reuniao.titulo }} · reunião do GT | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="ava-surface p-4 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <h2 class="h5 mb-1">{{ reuniao.titulo }}</h2>
+                    <p class="small text-muted mb-0">
+                        {{ reuniao.data_hora|date:"d/m/Y H:i" }} · {{ reuniao.get_modalidade_display }}
+                        {% if reuniao.local %} · {{ reuniao.local }}{% endif %}
+                        · {{ reuniao.get_situacao_display }}
+                    </p>
+                </div>
+                <div>
+                    <p class="small mb-0">
+                        {% if reuniao.frequencia_validada %}
+                        <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>
+                        Frequência validada em {{ reuniao.frequencia_validada_em|date:"d/m/Y H:i" }}
+                        por {{ reuniao.frequencia_validada_por.nome|default:reuniao.frequencia_validada_por.email }}
+                        {% else %}
+                        <i class="bi bi-pencil me-1" aria-hidden="true"></i>Frequência em aberto
+                        {% endif %}
+                    </p>
+                    {% if reuniao.justificativa_reabertura %}
+                    <p class="small text-muted mb-0">
+                        Última reabertura: {{ reuniao.justificativa_reabertura }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% if reuniao.pauta %}
+            <h3 class="h6 mt-3">Pauta</h3>
+            <p class="mb-0">{{ reuniao.pauta|linebreaksbr }}</p>
+            {% endif %}
+            {% if reuniao.link %}
+            <p class="small mt-2 mb-0">
+                Acesso: <a href="{{ reuniao.link }}" rel="noopener noreferrer" target="_blank">{{ reuniao.link }}</a>
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Frequência</h2>
+                        {% if resumo %}
+                        <p class="small text-muted mb-0" aria-live="polite">
+                            {{ resumo.presentes }} presente(s) · {{ resumo.ausentes }} ausente(s) ·
+                            {{ resumo.justificadas }} justificada(s)
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    {% if acesso.pode_lancar_presenca and not reuniao.frequencia_validada %}
+                    <form method="post" action="{% url 'ava:gt_frequencia_preparar' reuniao_id=reuniao.id %}" class="mb-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            Atualizar lista com os membros do GT
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if presencas %}
+                    <form method="post" action="{% url 'ava:gt_frequencia_lancar' reuniao_id=reuniao.id %}">
+                        {% csrf_token %}
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <caption class="visually-hidden">Lista de presença da reunião</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Membro</th>
+                                        <th scope="col">Situação</th>
+                                        <th scope="col">Justificativa</th>
+                                        <th scope="col">Registro</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for presenca in presencas %}
+                                    <tr>
+                                        <th scope="row" class="fw-normal">
+                                            {{ presenca.usuario.nome|default:presenca.usuario.email }}
+                                        </th>
+                                        <td>
+                                            {% if acesso.pode_lancar_presenca and not reuniao.frequencia_validada %}
+                                            <label class="visually-hidden" for="situacao_{{ presenca.usuario_id }}">
+                                                Situação de {{ presenca.usuario.nome|default:presenca.usuario.email }}
+                                            </label>
+                                            <select class="form-select form-select-sm" name="situacao_{{ presenca.usuario_id }}"
+                                                id="situacao_{{ presenca.usuario_id }}">
+                                                {% for value, label in situacao_presenca_choices %}
+                                                <option value="{{ value }}" {% if presenca.situacao == value %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            {% else %}
+                                            {{ presenca.get_situacao_display }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if acesso.pode_lancar_presenca and not reuniao.frequencia_validada %}
+                                            <label class="visually-hidden" for="justificativa_{{ presenca.usuario_id }}">
+                                                Justificativa de {{ presenca.usuario.nome|default:presenca.usuario.email }}
+                                            </label>
+                                            <input class="form-control form-control-sm"
+                                                id="justificativa_{{ presenca.usuario_id }}"
+                                                name="justificativa_{{ presenca.usuario_id }}"
+                                                value="{{ presenca.justificativa }}" maxlength="255">
+                                            {% else %}
+                                            {{ presenca.justificativa|default:"—" }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="small text-muted">
+                                            {% if presenca.registrado_por %}
+                                            por {{ presenca.registrado_por.nome|default:presenca.registrado_por.email }}
+                                            {% endif %}
+                                            {% if presenca.alterado_em %}
+                                            <span class="d-block">
+                                                alterado em {{ presenca.alterado_em|date:"d/m/Y H:i" }}
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% if acesso.pode_lancar_presenca and not reuniao.frequencia_validada %}
+                        <button type="submit" class="btn btn-primary px-4">Salvar frequência</button>
+                        {% endif %}
+                    </form>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Lista de presença vazia. Confirme participantes na sala e atualize a lista.
+                    </p>
+                    {% endif %}
+
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        {% if acesso.pode_validar_presenca and not reuniao.frequencia_validada %}
+                        <form method="post" action="{% url 'ava:gt_frequencia_validar' reuniao_id=reuniao.id %}"
+                            onsubmit="return confirm('Validar a frequência? Depois disso, só perfis autorizados corrigem, com justificativa.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-sm px-3">Conferir e validar</button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    {% if acesso.pode_reabrir_presenca and reuniao.frequencia_validada %}
+                    <form class="mt-3" method="post" action="{% url 'ava:gt_frequencia_reabrir' reuniao_id=reuniao.id %}">
+                        {% csrf_token %}
+                        <label class="form-label fw-semibold" for="justificativa_reabrir">
+                            Justificativa para corrigir a frequência
+                        </label>
+                        <textarea class="form-control mb-2" id="justificativa_reabrir" name="justificativa" rows="2"
+                            required></textarea>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Reabrir frequência</button>
+                        <p class="form-text mb-0">A reabertura e a correção ficam registradas na auditoria.</p>
+                    </form>
+                    {% endif %}
+                </article>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <article class="ava-surface p-4 mb-4">
+                    <h2 class="h5 mb-3">Ata</h2>
+                    {% if not ata %}
+                    <p class="text-muted">
+                        Nenhuma minuta criada. A minuta nasce do modelo institucional vigente e é
+                        pré-preenchida apenas com os dados já registrados.
+                    </p>
+                    {% if acesso.pode_editar_ata %}
+                    <form method="post" action="{% url 'ava:gt_ata_acao' reuniao_id=reuniao.id acao='minuta' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Criar minuta</button>
+                    </form>
+                    {% endif %}
+                    {% else %}
+                    <p class="small mb-3">
+                        <span class="badge text-bg-light text-dark border">
+                            {% if ata.validada %}
+                            <i class="bi bi-patch-check me-1" aria-hidden="true"></i>Ata validada
+                            {% else %}
+                            <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>{{ ata.get_estado_display }}
+                            {% endif %}
+                        </span>
+                        <span class="d-block text-muted mt-1">
+                            Modelo {{ ata.modelo_nome }} (v{{ ata.modelo_versao }}) · versão interna v{{ ata.version }}
+                            {% if ata.validada_em %}· validada em {{ ata.validada_em|date:"d/m/Y H:i" }}{% endif %}
+                        </span>
+                    </p>
+
+                    {% if ata_form and ata.editavel %}
+                    <form method="post" action="{% url 'ava:gt_ata_acao' reuniao_id=reuniao.id acao='salvar' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="version" value="{{ ata.version }}">
+                        {% for campo in ata_form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% if campo.help_text %}<p class="form-text">{{ campo.help_text }}</p>{% endif %}
+                            {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary px-4">Salvar ata</button>
+                    </form>
+                    {% else %}
+                    <dl class="mb-0">
+                        <dt>Pauta</dt>
+                        <dd>{{ ata.pauta|default:"—"|linebreaksbr }}</dd>
+                        <dt>Síntese das discussões</dt>
+                        <dd>{{ ata.sintese|default:"—"|linebreaksbr }}</dd>
+                        <dt>Decisões</dt>
+                        <dd>{{ ata.decisoes|default:"—"|linebreaksbr }}</dd>
+                        <dt>Encaminhamentos</dt>
+                        <dd>{{ ata.encaminhamentos|default:"—"|linebreaksbr }}</dd>
+                        <dt>Pendências</dt>
+                        <dd class="mb-0">{{ ata.pendencias|default:"—"|linebreaksbr }}</dd>
+                    </dl>
+                    {% endif %}
+
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        {% if acesso.pode_editar_ata and ata.estado == 'minuta' %}
+                        <form method="post" action="{% url 'ava:gt_ata_acao' reuniao_id=reuniao.id acao='revisao' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Enviar para revisão</button>
+                        </form>
+                        {% endif %}
+                        {% if acesso.pode_validar_ata and not ata.validada %}
+                        <form method="post" action="{% url 'ava:gt_ata_acao' reuniao_id=reuniao.id acao='validar' %}"
+                            onsubmit="return confirm('Validar a ata? Ela passa a valer como documento do GT.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-sm">Validar ata</button>
+                        </form>
+                        {% endif %}
+                        {% if acesso.pode_exportar %}
+                        <form method="post" action="{% url 'ava:gt_documento_ata' reuniao_id=reuniao.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark-word me-1" aria-hidden="true"></i>Gerar DOCX
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    {% if acesso.pode_validar_ata and ata.validada %}
+                    <form class="mt-3" method="post" action="{% url 'ava:gt_ata_acao' reuniao_id=reuniao.id acao='reabrir' %}">
+                        {% csrf_token %}
+                        <label class="form-label fw-semibold" for="justificativa_ata">
+                            Justificativa para reabrir a ata
+                        </label>
+                        <textarea class="form-control mb-2" id="justificativa_ata" name="justificativa" rows="2"
+                            required></textarea>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Reabrir ata</button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </article>
+
+                {% if reuniao_form %}
+                <article class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Editar dados da reunião</h2>
+                    <form method="post" action="{% url 'ava:gt_reuniao_editar' reuniao_id=reuniao.id %}">
+                        {% csrf_token %}
+                        {% for campo in reuniao_form %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% for erro in campo.errors %}<p class="text-danger small mb-0">{{ erro }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">Salvar reunião</button>
+                    </form>
+                </article>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

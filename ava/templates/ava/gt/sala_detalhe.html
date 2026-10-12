@@ -1,0 +1,217 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Objetivo {{ sala.objetivo.codigo }} · visão geral | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        {% include "ava/gt/_cabecalho_sala.html" %}
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+                <article class="ava-surface p-4 mb-4">
+                    <h2 class="h5 mb-3">Objetivo oficial do Referencial</h2>
+                    <p class="text-muted small mb-2">
+                        Código {{ sala.objetivo.codigo }} · ordem oficial {{ sala.objetivo.ordem }}
+                    </p>
+                    <p class="mb-3">{{ sala.objetivo.texto|default:"Redação oficial ainda não cadastrada."|linebreaksbr }}</p>
+
+                    {% if mostra_conteudo and trabalho and trabalho.objetivo_proposto %}
+                    <h3 class="h6 mt-4">Proposta de redação do GT</h3>
+                    <p class="mb-0">{{ trabalho.objetivo_proposto|linebreaksbr }}</p>
+                    {% endif %}
+                </article>
+
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Andamento do trabalho</h2>
+                        <a href="{% url 'ava:gt_sala_trabalho' sala_id=sala.id %}" class="btn btn-outline-primary btn-sm">
+                            Abrir diagnóstico e quadro
+                        </a>
+                    </div>
+                    <p class="mb-2">
+                        <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>
+                        Situação do conteúdo: <strong>{{ progresso.estado_display }}</strong>
+                    </p>
+                    <div class="progress mb-2" role="progressbar" aria-label="Progresso do GT"
+                        aria-valuenow="{{ progresso.percentual }}" aria-valuemin="0" aria-valuemax="100"
+                        style="height:.5rem;">
+                        <div class="progress-bar" style="width: {{ progresso.percentual }}%"></div>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        Diagnóstico {% if progresso.diagnostico %}registrado{% else %}pendente{% endif %} ·
+                        {{ progresso.metas }} meta(s) · {{ progresso.estrategias }} estratégia(s)
+                    </p>
+                    {% if trabalho and trabalho.pendencias %}
+                    <h3 class="h6 mt-3">Pendências registradas pelo GT</h3>
+                    <p class="mb-0 small">{{ trabalho.pendencias|linebreaksbr }}</p>
+                    {% endif %}
+                </article>
+
+                {% if acesso.pode_ver %}
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Reuniões recentes</h2>
+                        <a href="{% url 'ava:gt_sala_reunioes' sala_id=sala.id %}" class="btn btn-outline-primary btn-sm">
+                            Ver todas
+                        </a>
+                    </div>
+                    {% if reunioes %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <caption class="visually-hidden">Reuniões recentes da sala</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Data</th>
+                                    <th scope="col">Reunião</th>
+                                    <th scope="col">Modalidade</th>
+                                    <th scope="col">Frequência</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reuniao in reunioes %}
+                                <tr>
+                                    <td>{{ reuniao.data_hora|date:"d/m/Y H:i" }}</td>
+                                    <td><a href="{% url 'ava:gt_reuniao' reuniao_id=reuniao.id %}">{{ reuniao.titulo }}</a></td>
+                                    <td>{{ reuniao.get_modalidade_display }}</td>
+                                    <td>
+                                        {% if reuniao.frequencia_validada %}
+                                        <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Validada
+                                        {% else %}
+                                        <i class="bi bi-pencil me-1" aria-hidden="true"></i>Em aberto
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma reunião registrada ainda.</p>
+                    {% endif %}
+                </article>
+                {% endif %}
+            </div>
+
+            <aside class="col-12 col-lg-4">
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Dados da sala</h2>
+                    <dl class="row small mb-0">
+                        <dt class="col-6">Município</dt>
+                        <dd class="col-6">{{ sala.cliente.nome }}</dd>
+                        <dt class="col-6">Ciclo</dt>
+                        <dd class="col-6">{{ sala.ciclo.nome }}</dd>
+                        <dt class="col-6">Situação</dt>
+                        <dd class="col-6">{{ sala.get_situacao_display }}</dd>
+                        <dt class="col-6">Vagas</dt>
+                        <dd class="col-6">
+                            {% if sala.capacidade %}{{ sala.vagas_ocupadas }} de {{ sala.capacidade }}
+                            {% else %}{{ sala.vagas_ocupadas }} · sem limite{% endif %}
+                        </dd>
+                        <dt class="col-6">Inscrições</dt>
+                        <dd class="col-6">{% if sala.aceita_inscricao %}Abertas{% else %}Fechadas{% endif %}</dd>
+                        <dt class="col-6">Participantes editam</dt>
+                        <dd class="col-6">{% if sala.participantes_editam_conteudo %}Sim{% else %}Não{% endif %}</dd>
+                    </dl>
+                    {% if sala.observacoes %}
+                    <p class="small text-muted mt-3 mb-0">{{ sala.observacoes|linebreaksbr }}</p>
+                    {% endif %}
+                </div>
+
+                {% if acesso.pode_configurar_sala %}
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Situação da sala</h2>
+                    <form method="post" action="{% url 'ava:gt_sala_situacao' sala_id=sala.id %}">
+                        {% csrf_token %}
+                        <label class="form-label small fw-semibold" for="situacao">Nova situação</label>
+                        <select class="form-select mb-2" id="situacao" name="situacao">
+                            {% for value, label in situacao_choices %}
+                            <option value="{{ value }}" {% if sala.situacao == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="form-label small fw-semibold" for="justificativa_situacao">Justificativa</label>
+                        <textarea class="form-control mb-2" id="justificativa_situacao" name="justificativa" rows="2"
+                            aria-describedby="ajuda_situacao"></textarea>
+                        <p class="form-text" id="ajuda_situacao">Obrigatória para concluir ou arquivar a sala.</p>
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">Atualizar situação</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if acesso.pode_ver %}
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Membros do GT ({{ membros|length }})</h2>
+                    <ul class="list-unstyled small mb-0">
+                        {% for inscricao in membros %}
+                        <li class="d-flex justify-content-between border-bottom py-1">
+                            <span>{{ inscricao.usuario.nome|default:inscricao.usuario.email }}</span>
+                            <span class="text-muted">{{ inscricao.get_papel_display }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="text-muted">Nenhum participante confirmado.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if inscricao %}
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Minha participação</h2>
+                    <p class="small mb-2">
+                        Estado: <strong>{{ inscricao.get_estado_display }}</strong><br>
+                        Papel: {{ inscricao.get_papel_display }}
+                    </p>
+                    {% if minha_frequencia %}
+                    <p class="small mb-2">
+                        Minha frequência: {{ minha_frequencia.presentes }} presença(s) em
+                        {{ minha_frequencia.total }} reunião(ões) ({{ minha_frequencia.percentual }}%)
+                        {% if minha_frequencia.justificadas %}
+                        · {{ minha_frequencia.justificadas }} ausência(s) justificada(s)
+                        {% endif %}
+                    </p>
+                    <ul class="list-unstyled small mb-0">
+                        {% for presenca in minhas_presencas %}
+                        <li class="border-bottom py-1">
+                            {{ presenca.reuniao.data_hora|date:"d/m/Y" }} ·
+                            {{ presenca.get_situacao_display }}
+                        </li>
+                        {% empty %}
+                        <li class="text-muted">Sem registros de frequência.</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if inscricao.estado == 'confirmada' or inscricao.estado == 'solicitada' or inscricao.estado == 'lista_espera' %}
+                    <form class="mt-3" method="post" action="{% url 'ava:gt_inscricao_desistir' sala_id=sala.id %}"
+                        onsubmit="return confirm('Cancelar sua inscrição nesta sala?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Cancelar minha inscrição</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if acesso.pode_exportar %}
+                <div class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Documentos recentes</h2>
+                    <ul class="list-unstyled small mb-3">
+                        {% for job in documentos %}
+                        <li class="border-bottom py-1">
+                            <a href="{% url 'ava:gt_documento_download' job_id=job.id %}">
+                                {{ job.payload_json.nome_arquivo|default:"Documento" }}
+                            </a>
+                            <span class="text-muted d-block">{{ job.created_at|date:"d/m/Y H:i" }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="text-muted">Nenhum documento gerado ainda.</li>
+                        {% endfor %}
+                    </ul>
+                    <a href="{% url 'ava:gt_sala_documentos' sala_id=sala.id %}" class="btn btn-outline-primary btn-sm w-100">
+                        Documentos e histórico
+                    </a>
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

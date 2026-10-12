@@ -1,0 +1,65 @@
+{% comment %}
+Cabeçalho e navegação da sala de GT. Os estados aparecem com ícone + texto —
+nunca apenas por cor — e as abas respondem às capacidades já resolvidas no
+servidor (``acesso``).
+{% endcomment %}
+<div class="ava-surface overflow-hidden mb-4">
+    <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                    <i class="bi bi-people-fill me-1" aria-hidden="true"></i>
+                    Sala de GT · Objetivo {{ sala.objetivo.codigo }}
+                </span>
+                <h1 class="h3 fw-bold text-white mb-2">{{ sala.objetivo.titulo }}</h1>
+                <p class="mb-0 text-white-50">
+                    {{ sala.gt.nome }} · Ciclo {{ sala.ciclo.nome }} ·
+                    <span>{{ sala.get_situacao_display }}</span>
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'ava:gt_salas' %}?ciclo={{ sala.ciclo_id }}" class="btn btn-light rounded-pill fw-bold px-3">
+                    <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Todas as salas
+                </a>
+                {% if acesso.pode_configurar_sala %}
+                <a href="{% url 'ava:gt_sala_editar' sala_id=sala.id %}" class="btn btn-outline-light rounded-pill px-3">
+                    <i class="bi bi-sliders me-1" aria-hidden="true"></i>Configurar sala
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <nav class="px-3 px-lg-4 pt-3" aria-label="Seções da sala do GT">
+        <ul class="nav nav-tabs border-0 flex-wrap">
+            <li class="nav-item">
+                <a class="nav-link {% if aba == 'visao_geral' %}active{% endif %}"
+                    {% if aba == 'visao_geral' %}aria-current="page"{% endif %}
+                    href="{% url 'ava:gt_sala' sala_id=sala.id %}">Visão geral</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if aba == 'trabalho' %}active{% endif %}"
+                    {% if aba == 'trabalho' %}aria-current="page"{% endif %}
+                    href="{% url 'ava:gt_sala_trabalho' sala_id=sala.id %}">Diagnóstico e quadro do objetivo</a>
+            </li>
+            {% if acesso.pode_ver %}
+            <li class="nav-item">
+                <a class="nav-link {% if aba == 'reunioes' %}active{% endif %}"
+                    {% if aba == 'reunioes' %}aria-current="page"{% endif %}
+                    href="{% url 'ava:gt_sala_reunioes' sala_id=sala.id %}">Reuniões e frequência</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if aba == 'documentos' %}active{% endif %}"
+                    {% if aba == 'documentos' %}aria-current="page"{% endif %}
+                    href="{% url 'ava:gt_sala_documentos' sala_id=sala.id %}">Documentos e histórico</a>
+            </li>
+            {% endif %}
+            {% if acesso.pode_gerir_inscricoes %}
+            <li class="nav-item">
+                <a class="nav-link {% if aba == 'inscricoes' %}active{% endif %}"
+                    {% if aba == 'inscricoes' %}aria-current="page"{% endif %}
+                    href="{% url 'ava:gt_sala_inscricoes' sala_id=sala.id %}">Inscrições</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>

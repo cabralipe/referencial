@@ -1,0 +1,272 @@
+{% extends "ava/base.html" %}
+
+{% block title %}Administração dos GTs | AVA PROLUC{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="ava-surface overflow-hidden mb-4">
+            <div class="p-4 p-lg-5 text-white" style="background: linear-gradient(120deg, #0f172a, #1d4ed8);">
+                <span class="badge rounded-pill text-bg-light text-primary mb-3">
+                    <i class="bi bi-gear-fill me-1" aria-hidden="true"></i> Administração do Referencial
+                </span>
+                <h1 class="h3 fw-bold text-white mb-2">Ciclos, objetivos e salas dos GTs</h1>
+                <p class="mb-3 text-white-50">
+                    Configure o ciclo, cadastre os objetivos oficiais, gere as salas, defina capacidade
+                    e períodos — tudo pela interface, sem alterar código.
+                </p>
+                <a class="btn btn-light rounded-pill fw-bold px-4"
+                    href="{% url 'ava:gt_tutorial' %}?municipio={{ cliente_atual.id }}{% if ciclo_atual %}&ciclo={{ ciclo_atual.id }}{% endif %}">
+                    <i class="bi bi-compass me-1" aria-hidden="true"></i>
+                    Primeira vez aqui? Abrir o tutorial guiado
+                </a>
+            </div>
+        </div>
+
+        <form method="get" class="ava-surface p-4 mb-4 row g-3 align-items-end">
+            {% if pode_gerir_multiplos_avas %}
+            <div class="col-md-6 col-lg-4">
+                <label class="form-label fw-semibold" for="municipio">Município / AVA</label>
+                <select class="form-select" id="municipio" name="municipio">
+                    {% for municipio in municipios_ava %}
+                    <option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>
+                        {{ municipio.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-6 col-lg-4">
+                <label class="form-label fw-semibold" for="ciclo">Ciclo</label>
+                <select class="form-select" id="ciclo" name="ciclo">
+                    {% for item in ciclos %}
+                    <option value="{{ item.id }}" {% if ciclo_atual and item.id == ciclo_atual.id %}selected{% endif %}>
+                        {{ item.nome }}
+                    </option>
+                    {% empty %}
+                    <option value="">Nenhum ciclo cadastrado</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-lg-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">Ver ciclo</button>
+                <a href="{% url 'ava:gt_ciclo_novo' %}?municipio={{ cliente_atual.id }}" class="btn btn-outline-primary px-4">
+                    Novo ciclo
+                </a>
+            </div>
+        </form>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Objetivos oficiais ({{ total_objetivos_ativos }} ativo(s))</h2>
+                        <a href="{% url 'ava:gt_objetivos' %}?municipio={{ cliente_atual.id }}" class="btn btn-outline-primary btn-sm">
+                            Cadastrar / importar objetivos
+                        </a>
+                    </div>
+                    {% if objetivos %}
+                    <ol class="list-unstyled mb-0">
+                        {% for objetivo in objetivos %}
+                        <li class="border-bottom py-2 d-flex justify-content-between gap-2">
+                            <span>
+                                <strong>{{ objetivo.codigo }}</strong> — {{ objetivo.titulo }}
+                                {% if not objetivo.ativo %}
+                                <span class="badge text-bg-light text-dark border ms-1">inativo</span>
+                                {% endif %}
+                            </span>
+                            <a class="small" href="{% url 'ava:gt_objetivo_editar' objetivo_id=objetivo.id %}?municipio={{ cliente_atual.id }}">
+                                editar
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Nenhum objetivo cadastrado. Importe a lista oficial para que as salas possam ser criadas.
+                    </p>
+                    {% endif %}
+                </article>
+
+                {% if ciclo_atual %}
+                <article class="ava-surface p-4 mb-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Salas do ciclo {{ ciclo_atual.nome }} ({{ salas|length }})</h2>
+                        <a href="{% url 'ava:gt_sala_nova' %}?municipio={{ cliente_atual.id }}" class="btn btn-outline-primary btn-sm">
+                            Nova sala manual
+                        </a>
+                    </div>
+
+                    {% if salas %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <caption class="visually-hidden">Salas do ciclo selecionado</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Objetivo</th>
+                                    <th scope="col">GT</th>
+                                    <th scope="col">Vagas</th>
+                                    <th scope="col">Inscrições</th>
+                                    <th scope="col">Situação</th>
+                                    <th scope="col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sala in salas %}
+                                <tr>
+                                    <th scope="row" class="fw-normal">{{ sala.objetivo.codigo }} — {{ sala.objetivo.titulo }}</th>
+                                    <td>{{ sala.gt.nome }}</td>
+                                    <td>
+                                        {% if sala.capacidade %}{{ sala.vagas_ocupadas }}/{{ sala.capacidade }}
+                                        {% else %}{{ sala.vagas_ocupadas }} (livre){% endif %}
+                                    </td>
+                                    <td>{% if sala.aceita_inscricao %}Abertas{% else %}Fechadas{% endif %}</td>
+                                    <td>{{ sala.get_situacao_display }}</td>
+                                    <td class="text-nowrap">
+                                        <a class="small" href="{% url 'ava:gt_sala' sala_id=sala.id %}">abrir</a>
+                                        <a class="small ms-2" href="{% url 'ava:gt_sala_editar' sala_id=sala.id %}?municipio={{ cliente_atual.id }}">
+                                            configurar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">
+                        Nenhuma sala neste ciclo. Gere uma sala por objetivo ativo com o formulário ao lado.
+                    </p>
+                    {% endif %}
+                </article>
+
+                <article class="ava-surface p-4">
+                    <h2 class="h5 mb-3">Consolidação institucional</h2>
+                    <p class="small text-muted">
+                        O documento reúne todos os objetivos do ciclo na ordem oficial. Entram apenas
+                        conteúdos aprovados ou publicados; os demais aparecem como pendentes. Rascunhos,
+                        listas nominais de presença e justificativas de ausência ficam fora.
+                    </p>
+                    <form method="post" action="{% url 'ava:gt_consolidacao_gerar' ciclo_id=ciclo_atual.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        <details class="mb-3">
+                            <summary>Exportação parcial (selecione explicitamente)</summary>
+                            <div class="row g-2 mt-2">
+                                {% for sala in salas %}
+                                <div class="col-12 col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="salas" value="{{ sala.id }}"
+                                            id="consolida_{{ sala.id }}">
+                                        <label class="form-check-label" for="consolida_{{ sala.id }}">
+                                            {{ sala.objetivo.codigo }} — {{ sala.objetivo.titulo }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p class="form-text mb-0">
+                                Sem seleção, a consolidação sai completa com todos os objetivos do ciclo.
+                            </p>
+                        </details>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-file-earmark-word me-1" aria-hidden="true"></i>Gerar consolidação DOCX
+                        </button>
+                    </form>
+
+                    {% if consolidacoes %}
+                    <h3 class="h6 mt-4">Consolidações recentes</h3>
+                    <ul class="list-unstyled small mb-0">
+                        {% for job in consolidacoes %}
+                        <li class="border-bottom py-1 d-flex justify-content-between gap-2">
+                            <span>
+                                {{ job.payload_json.nome_arquivo|default:"consolidacao.docx" }}
+                                <span class="d-block text-muted">{{ job.created_at|date:"d/m/Y H:i" }}</span>
+                            </span>
+                            <a href="{% url 'ava:gt_documento_download' job_id=job.id %}">baixar</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </article>
+                {% endif %}
+            </div>
+
+            <aside class="col-12 col-lg-4">
+                {% if ciclo_atual %}
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Ciclo {{ ciclo_atual.nome }}</h2>
+                    <dl class="row small mb-3">
+                        <dt class="col-7">Inscrições</dt>
+                        <dd class="col-5">{% if ciclo_atual.inscricoes_abertas %}Abertas{% else %}Fechadas{% endif %}</dd>
+                        <dt class="col-7">Janela</dt>
+                        <dd class="col-5">
+                            {{ ciclo_atual.inscricoes_inicio|date:"d/m/Y"|default:"—" }} a
+                            {{ ciclo_atual.inscricoes_fim|date:"d/m/Y"|default:"—" }}
+                        </dd>
+                        <dt class="col-7">Confirmação automática</dt>
+                        <dd class="col-5">{% if ciclo_atual.confirmacao_automatica %}Sim{% else %}Não{% endif %}</dd>
+                        <dt class="col-7">GTs por participante</dt>
+                        <dd class="col-5">{{ ciclo_atual.max_salas_por_participante|default:"sem limite" }}</dd>
+                        <dt class="col-7">Lista de espera</dt>
+                        <dd class="col-5">{% if ciclo_atual.permite_lista_espera %}Sim{% else %}Não{% endif %}</dd>
+                        <dt class="col-7">Mínimo de metas</dt>
+                        <dd class="col-5">{{ ciclo_atual.min_metas_para_aprovacao }}</dd>
+                        <dt class="col-7">Mínimo de estratégias</dt>
+                        <dd class="col-5">{{ ciclo_atual.min_estrategias_para_aprovacao }}</dd>
+                        <dt class="col-7">Exige ata validada</dt>
+                        <dd class="col-5">{% if ciclo_atual.exige_ata_para_aprovacao %}Sim{% else %}Não{% endif %}</dd>
+                    </dl>
+                    <a class="btn btn-outline-primary btn-sm w-100"
+                        href="{% url 'ava:gt_ciclo_editar' ciclo_id=ciclo_atual.id %}?municipio={{ cliente_atual.id }}">
+                        Editar configurações do ciclo
+                    </a>
+                </div>
+
+                <div class="ava-surface p-4 mb-4">
+                    <h2 class="h6 mb-3">Gerar salas do ciclo</h2>
+                    <form method="post" action="{% url 'ava:gt_ciclo_gerar_salas' ciclo_id=ciclo_atual.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
+                        {% include "ava/gt/_form_campos.html" with form=gerar_salas_form %}
+                        <button type="submit" class="btn btn-primary btn-sm w-100 mt-3">
+                            Criar uma sala por objetivo ativo
+                        </button>
+                        <p class="form-text mb-0">
+                            Nada é duplicado: objetivos que já possuem sala neste ciclo são ignorados.
+                        </p>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="ava-surface p-4">
+                    <h2 class="h6 mb-3">Modelo de ata</h2>
+                    {% if modelo_ata %}
+                    <p class="small mb-2">
+                        Em uso: <strong>{{ modelo_ata.nome }}</strong> (versão {{ modelo_ata.versao }})
+                    </p>
+                    {% else %}
+                    <p class="small text-muted mb-2">
+                        Nenhum modelo publicado — as minutas usam as seções padrão do sistema.
+                    </p>
+                    {% endif %}
+                    <a class="btn btn-outline-primary btn-sm w-100"
+                        href="{% url 'ava:gt_modelo_ata' %}?municipio={{ cliente_atual.id }}">
+                        Administrar modelo de ata
+                    </a>
+                    {% if modelos_ata %}
+                    <ul class="list-unstyled small mt-3 mb-0">
+                        {% for modelo in modelos_ata %}
+                        <li class="border-bottom py-1">
+                            {{ modelo.nome }} v{{ modelo.versao }}
+                            {% if modelo.ativo %}<span class="text-primary">· em uso</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

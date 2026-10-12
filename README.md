@@ -135,8 +135,24 @@ tests/             # suíte pytest (API, permissões, síntese, exportações)
   pré-visualização, validação por linha/coluna e confirmação, e os dados ficam
   consultáveis, filtráveis e exportáveis.
 
+- **Salas dos GTs** (`/ava/gts/`): uma sala por objetivo do Referencial em cada
+  ciclo, com inscrição e capacidade (lista de espera opcional), diagnóstico,
+  quadro do objetivo com metas e estratégias, comentários por campo
+  (reaproveitando `comments.Comentario`), fluxo
+  rascunho → em revisão → ajustes → aprovado → publicado com versões
+  congeladas, reuniões com frequência validável e auditada, ata a partir de
+  modelo institucional versionado e exportação DOCX individual e consolidada.
+  Reaproveita `curriculum.GT`, os papéis de `core.Usuario`, `core.AuditLog` e
+  `exports.ExportJob`; a administração fica em `/ava/gts/admin/`.
+- **Tutorial guiado** (`/ava/gts/admin/tutorial/`): aba do administrador com o
+  roteiro de dez passos — do cadastro dos objetivos até a consolidação —
+  mostrando o que já existe no município, o que falta, um exemplo pronto para
+  copiar e o link direto para cada página. Também cria (e remove) um ciclo de
+  demonstração para percorrer o fluxo inteiro sem tocar nos dados oficiais.
+
 Documentação completa em
-[`docs/diario_de_bordo_e_planilha_configuravel.md`](docs/diario_de_bordo_e_planilha_configuravel.md).
+[`docs/diario_de_bordo_e_planilha_configuravel.md`](docs/diario_de_bordo_e_planilha_configuravel.md)
+e [`docs/salas_gt_referencial.md`](docs/salas_gt_referencial.md).
 
 ## Notas
 
