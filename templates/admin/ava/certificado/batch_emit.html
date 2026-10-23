@@ -110,12 +110,12 @@
                 <h2>Resumo</h2>
                 <p><strong>{{ candidatos|length }}</strong> matrícula(s) encontrada(s).</p>
                 <p><strong>{{ elegiveis|length }}</strong> elegível(is) pela regra do curso.</p>
-                <p><strong>{{ pendentes|length }}</strong> pendente(s) de conclusão/nota/progresso.</p>
+                <p><strong>{{ pendentes|length }}</strong> pendente(s) de conclusão/nota/progresso/frequência. Não receberão certificado.</p>
             </div>
             {% if pendentes %}
             <div class="certificate-summary-card">
                 <h2>Atenção</h2>
-                <p>Há cursistas que ainda não concluíram todos os requisitos. Para emitir mesmo assim, marque o campo de aprovação de pendentes antes de confirmar.</p>
+                <p>A emissão considera apenas os cursistas elegíveis. Os demais precisam cumprir todos os requisitos do curso antes da certificação.</p>
             </div>
             {% endif %}
         </aside>

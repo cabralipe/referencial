@@ -73,6 +73,14 @@ class CertificacaoService:
         if Decimal(matricula.nota_final_obtida or 0) < Decimal(curso.nota_minima or 0):
             reasons.append(f"Nota {matricula.nota_final_obtida} abaixo de {curso.nota_minima}")
 
+        if curso.frequencia_minima:
+            from ava.services.attendance_service import resumo_frequencia
+            frequencia = resumo_frequencia(matricula)
+            if not frequencia["total"]:
+                reasons.append("Nenhum encontro realizado com frequência registrada")
+            elif frequencia["percentual"] < curso.frequencia_minima:
+                reasons.append(f"Frequência {frequencia['percentual']:.2f}% abaixo de {curso.frequencia_minima}%")
+
         return CertificateEligibility(approved=not reasons, reasons=reasons)
 
     @staticmethod
@@ -377,8 +385,13 @@ class CertificacaoService:
         gerar_pdf=True,
     ):
         elegibilidade = CertificacaoService.avaliar_matricula(matricula)
-        if not elegibilidade.approved and not aprovar_pendente:
+        if not elegibilidade.approved:
             return None, False, elegibilidade
+
+        if config.cliente_id != matricula.cliente_id or (
+            config.curso_id and config.curso_id != matricula.curso_id
+        ) or (config.trilha_id and not matricula.curso.trilhas.filter(pk=config.trilha_id).exists()):
+            return None, False, CertificateEligibility(False, ["Configuração incompatível com o curso da matrícula"])
 
         # A constraint unica do banco (ava_certificado_matricula_curso_id_key)
         # cobre a coluna matricula_curso_id independentemente do soft delete e do

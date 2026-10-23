@@ -177,6 +177,7 @@ class CourseCloneService:
             permite_certificado=curso_origem.permite_certificado,
             nota_minima=curso_origem.nota_minima,
             progresso_minimo=curso_origem.progresso_minimo,
+            frequencia_minima=curso_origem.frequencia_minima,
             autor_principal=CourseCloneService._resolve_target_author(
                 curso_origem,
                 cliente_destino,

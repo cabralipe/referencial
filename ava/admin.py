@@ -432,11 +432,6 @@ class CertificadoBatchEmitForm(forms.Form):
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
         help_text="Use este campo quando não marcar liberação imediata.",
     )
-    aprovar_pendentes = forms.BooleanField(
-        label="Emitir também para cursistas sem conclusão",
-        required=False,
-        help_text="A tela de confirmação mostra quem ainda não concluiu antes de emitir.",
-    )
 
     def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -852,8 +847,12 @@ class CertificadoAdmin(AVAModelAdmin):
     list_display = ("aluno", "curso_certificado", "codigo_validacao", "data_emissao", "liberado_em", "pdf_link")
     list_filter = ("liberado_em", "matricula_curso__curso", "aluno__escola")
     search_fields = ("aluno__nome", "aluno__email", "codigo_validacao")
-    readonly_fields = ("codigo_validacao", "dados_impressos", "data_emissao", "arquivo_pdf")
+    readonly_fields = ("codigo_validacao", "dados_impressos", "data_emissao", "arquivo_pdf", "matricula_curso", "matricula_trilha", "aluno", "config")
     actions = ("baixar_certificados_zip",)
+
+    def add_view(self, request, form_url="", extra_context=None):
+        # Novas emissões passam sempre pelo serviço que verifica os critérios.
+        return redirect("admin:ava_certificado_emitir_lote")
 
     def get_urls(self):
         urls = super().get_urls()
@@ -1013,24 +1012,24 @@ class CertificadoAdmin(AVAModelAdmin):
                     pendentes.append(item)
 
             if request.POST.get("confirmar") == "1":
-                if pendentes and not form.cleaned_data.get("aprovar_pendentes"):
+                if not elegiveis:
                     messages.warning(
                         request,
-                        "Há cursistas sem conclusão. Marque a aprovação de pendentes para confirmar a emissão mesmo assim.",
+                        "Nenhum cursista atende a todos os critérios. Nenhum certificado foi emitido.",
                     )
                 else:
                     liberar_em = timezone.now() if form.cleaned_data.get("liberar_agora") else form.cleaned_data.get("liberar_em")
                     campos = form.cleaned_data.get("campos_variaveis") or form.cleaned_data["config"].campos_variaveis
                     try:
                         with transaction.atomic():
-                            for matricula in candidatos:
+                            for item in elegiveis:
+                                matricula = item["matricula"]
                                 certificado, _, _ = CertificacaoService.emitir_para_matricula(
                                     matricula,
                                     form.cleaned_data["config"],
                                     emitido_por=request.user,
                                     campos=campos,
                                     liberado_em=liberar_em,
-                                    aprovar_pendente=form.cleaned_data.get("aprovar_pendentes"),
                                     gerar_pdf=False,
                                 )
                                 if certificado:

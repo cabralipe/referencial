@@ -101,7 +101,7 @@
                 <h3 class="h5 fw-bold mb-3">Informacoes importantes</h3>
                 <ul class="list-unstyled mb-0">
                     <li class="mb-3"><strong>Publico-alvo:</strong> {{ curso.publico_alvo|default:"Qualquer pessoa interessada." }}</li>
-                    <li class="mb-3"><strong>Aprovacao:</strong> nota minima {{ curso.nota_minima }} e frequencia {{ curso.progresso_minimo }}%</li>
+                    <li class="mb-3"><strong>Certificação:</strong> nota mínima {{ curso.nota_minima }}, progresso mínimo {{ curso.progresso_minimo }}% e frequência mínima {{ curso.frequencia_minima }}% nos encontros realizados.</li>
                     {% if curso.autor_principal %}
                     <li><strong>Autor responsavel:</strong> {{ curso.autor_principal.get_full_name|default:curso.autor_principal.nome|default:curso.autor_principal.email }}</li>
                     {% endif %}

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from core.mixins import TenantModel
+from django.core.validators import MaxValueValidator
 
 class TrilhaFormativa(TenantModel):
     nome = models.CharField("Nome", max_length=255)
@@ -75,6 +76,10 @@ class Curso(TenantModel):
     is_aberto = models.BooleanField("Curso aberto (Inscrição livre)?", default=False)
     
     permite_certificado = models.BooleanField("Permite certificado?", default=True)
+    frequencia_minima = models.PositiveIntegerField(
+        "Frequência mínima (%)", default=75, validators=[MaxValueValidator(100)],
+        help_text="Percentual mínimo nos encontros realizados. Zero dispensa frequência. Sem encontros realizados, uma exigência maior que zero impede a certificação.",
+    )
     nota_minima = models.DecimalField("Nota mínima para aprovação", max_digits=5, decimal_places=2, default=70.00)
     progresso_minimo = models.PositiveIntegerField("Progresso mínimo (%)", default=100, help_text="Percentual mínimo de conclusão exigido.")
 

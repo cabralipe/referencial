@@ -173,6 +173,12 @@ def dashboard(request):
         .select_related("matricula_curso__curso", "matricula_trilha__trilha")
         .order_by("-data_emissao")
     )
+    from ava.services.certificate_service import CertificacaoService
+    certificados_liberados = [
+        certificado for certificado in certificados_liberados
+        if not certificado.matricula_curso_id
+        or CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved
+    ]
     certificados_por_matricula = {
         certificado.matricula_curso_id: certificado
         for certificado in certificados_liberados
@@ -201,6 +207,9 @@ def baixar_certificado(request, certificado_id):
         liberado_em__isnull=False,
         liberado_em__lte=timezone.now(),
     )
+    from ava.services.certificate_service import CertificacaoService
+    if certificado.matricula_curso_id and not CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved:
+        raise Http404("Os critérios de certificação ainda não foram atendidos.")
     if not certificado.arquivo_pdf:
         raise Http404("Certificado sem arquivo PDF.")
     nome = certificado.dados_impressos.get("aluno_nome") or request.user.email

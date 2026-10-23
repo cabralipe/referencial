@@ -216,6 +216,11 @@
                         <a class="nav-link ava-nav-link" href="{% url 'ava:diario_lista' %}">Diário de bordo</a>
                     </li>
                     {% endif %}
+                    {% if user.role == 'admin_cliente' or user.role == 'super_admin' or user.cursos_criados.exists or user.autorizacoes_ava.exists %}
+                    <li class="nav-item">
+                        <a class="nav-link ava-nav-link" href="{% url 'ava:frequencia_lista' %}">Frequência</a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link ava-nav-link" href="{% url 'ava:gt_salas' %}">Salas dos GTs</a>
                     </li>

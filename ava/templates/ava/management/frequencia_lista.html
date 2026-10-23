@@ -1,0 +1,38 @@
+{% extends 'ava/base.html' %}
+{% block title %}Frequência dos cursos{% endblock %}
+{% block content %}
+<div class="container py-4">
+<h1>Frequência dos cursos</h1>
+<form method="get" class="mb-4">
+  <label for="curso">Curso</label>
+  <select name="curso" id="curso" class="form-select mb-2">
+    {% for item in cursos %}<option value="{{ item.pk }}" {% if item.pk == curso.pk %}selected{% endif %}>{{ item.titulo }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-outline-primary">Consultar</button>
+</form>
+<p>Certificação: progresso mínimo de {{ curso.progresso_minimo }}%, nota mínima {{ curso.nota_minima }} e frequência mínima de {{ curso.frequencia_minima }}% nos encontros realizados. Configure os critérios no cadastro do curso.</p>
+<div class="row g-4">
+  <section class="col-lg-7"><div class="card card-body">
+    <h2 class="h4">Aulas e reuniões</h2>
+    <p>Abra a chamada para marcar presenças, editar a data e compartilhar o link durante a reunião.</p>
+    <ul class="list-group list-group-flush">
+      {% for encontro in encontros %}<li class="list-group-item">
+        <a href="{% url 'ava:frequencia_checklist' encontro.pk %}">{{ encontro.data_aula|date:'d/m/Y' }} — {{ encontro.titulo }}</a>
+        <span class="badge bg-secondary">{% if encontro.realizado %}Realizado{% else %}Previsto{% endif %}</span>
+      </li>{% empty %}<li class="list-group-item">Nenhum encontro cadastrado.</li>{% endfor %}
+    </ul>
+  </div></section>
+  <section class="col-lg-5"><div class="card card-body">
+    <h2 class="h4">Novo encontro</h2>
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Criar chamada</button></form>
+  </div></section>
+</div>
+<section class="card card-body mt-4">
+  <h2 class="h4">Acompanhamento da frequência</h2>
+  <div class="table-responsive"><table class="table">
+    <thead><tr><th scope="col">Cursista</th><th scope="col">Presenças / encontros realizados</th><th scope="col">Frequência</th></tr></thead>
+    <tbody>{% for linha in resumo %}<tr><td>{{ linha.matricula.aluno.nome|default:linha.matricula.aluno.email }}</td><td>{{ linha.presentes }} / {{ linha.total }}</td><td>{{ linha.percentual|floatformat:2 }}%</td></tr>{% empty %}<tr><td colspan="3">Nenhum cursista matriculado.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+</div>
+{% endblock %}

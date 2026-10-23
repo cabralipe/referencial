@@ -21,6 +21,7 @@ def certificate_context(cliente, usuario):
         status=Curso.Status.PUBLICADO,
         carga_horaria=20,
         autor_principal=usuario,
+        frequencia_minima=0,  # Curso assíncrono, sem encontros de frequência.
     )
     matricula = MatriculaCurso.objects.create(
         cliente=cliente,

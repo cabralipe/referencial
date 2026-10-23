@@ -166,7 +166,7 @@
                     </li>
                     <li class="mb-3 d-flex align-items-start gap-2">
                         <i class="bi bi-bar-chart-steps text-primary"></i>
-                        <span><strong>Mínimo para aprovação:</strong> {{ curso.progresso_minimo }}%</span>
+                        <span><strong>Critérios para certificação:</strong> progresso {{ curso.progresso_minimo }}%, nota {{ curso.nota_minima }} e frequência {{ curso.frequencia_minima }}%.</span>
                     </li>
                     {% if curso.permite_certificado %}
                     <li class="d-flex align-items-start gap-2 text-success">
