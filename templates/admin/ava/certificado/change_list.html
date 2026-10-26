@@ -2,6 +2,9 @@
 
 {% block object-tools-items %}
     <li>
+        <a href="{% url 'admin:ava_certificado_liberar' %}?escopo=todos">Liberar todos para os cursistas</a>
+    </li>
+    <li>
         <a href="{% url 'admin:ava_certificado_baixar_todos' %}">Baixar todos em ZIP</a>
     </li>
     <li>

@@ -121,6 +121,10 @@
                         <a href="{% url 'ava:aluno_baixar_certificado' matricula.certificado_disponivel.id %}" class="btn btn-success w-100">
                             Baixar certificado <i class="bi bi-download ms-1"></i>
                         </a>
+                        {% elif matricula.certificado_aguardando %}
+                        <span class="btn btn-outline-secondary w-100 disabled" aria-disabled="true">
+                            Certificado aguardando liberação <i class="bi bi-hourglass-split ms-1"></i>
+                        </span>
                         {% endif %}
                         <a href="{% url 'ava:aluno_curso_detalhe' matricula.curso.slug %}" class="btn btn-outline-success w-100">
                             Rever curso <i class="bi bi-arrow-right ms-1"></i>

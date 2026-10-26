@@ -1,3 +1,4 @@
+import logging
 import re
 from dataclasses import dataclass
 from decimal import Decimal
@@ -6,6 +7,7 @@ from tempfile import NamedTemporaryFile
 
 from django.conf import settings
 from django.core.files import File
+from django.db.models import Q
 from django.template import Context, Template
 from django.utils import timezone
 from django.utils.html import conditional_escape, format_html, mark_safe
@@ -14,10 +16,29 @@ from ava.models import Certificado, ConfigCertificado, MatriculaCurso
 from ava.models.certificate import DEFAULT_CERTIFICATE_VARIABLES
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass(frozen=True)
 class CertificateEligibility:
     approved: bool
     reasons: list[str]
+
+
+@dataclass(frozen=True)
+class CertificateReleaseResult:
+    """Resumo de uma operacao de liberacao/revogacao em lote."""
+
+    liberados: int = 0
+    reagendados: int = 0
+    sem_pdf: int = 0
+    pdf_enfileirados: int = 0
+    pdf_sem_config: int = 0
+    fila_indisponivel: bool = False
+
+    @property
+    def total_afetado(self) -> int:
+        return self.liberados
 
 
 def _safe_percent(value, default):
@@ -459,6 +480,105 @@ class CertificacaoService:
         if not certificado:
             return False, "; ".join(elegibilidade.reasons)
         return True, certificado
+
+    # ------------------------------------------------------------------
+    # Liberacao para o cursista
+    # ------------------------------------------------------------------
+    @staticmethod
+    def filtro_sem_pdf() -> Q:
+        """Certificados sem PDF: o FileField guarda "" quando nada foi salvo."""
+        return Q(arquivo_pdf="") | Q(arquivo_pdf__isnull=True)
+
+    @staticmethod
+    def com_pdf(queryset):
+        return queryset.exclude(CertificacaoService.filtro_sem_pdf())
+
+    @staticmethod
+    def sem_pdf(queryset):
+        return queryset.filter(CertificacaoService.filtro_sem_pdf())
+
+    @staticmethod
+    def esta_liberado(certificado: Certificado, agora=None) -> bool:
+        if not certificado.liberado_em:
+            return False
+        return certificado.liberado_em <= (agora or timezone.now())
+
+    @staticmethod
+    def disponivel_para_download(certificado: Certificado, agora=None) -> bool:
+        """Regra unica usada pelo painel do cursista e pelo download."""
+        if not certificado.arquivo_pdf:
+            return False
+        if not CertificacaoService.esta_liberado(certificado, agora=agora):
+            return False
+        if certificado.matricula_curso_id:
+            return CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved
+        return True
+
+    @staticmethod
+    def certificados_do_aluno(aluno, *, somente_liberados=True, agora=None):
+        """Certificados do cursista com PDF pronto, respeitando a liberacao."""
+        agora = agora or timezone.now()
+        queryset = CertificacaoService.com_pdf(
+            Certificado.objects.filter(aluno=aluno)
+        ).select_related("matricula_curso__curso", "matricula_trilha__trilha")
+        if somente_liberados:
+            queryset = queryset.filter(liberado_em__isnull=False, liberado_em__lte=agora)
+        return queryset.order_by("-data_emissao")
+
+    @staticmethod
+    def _enfileirar_pdfs(queryset) -> tuple[int, int, bool]:
+        """Manda os certificados sem PDF para a fila; nao renderiza no processo web."""
+        from tasks.certificates import build_certificate_pdf
+
+        enfileirados = 0
+        sem_config = 0
+        fila_indisponivel = False
+        for pk, config_id in list(queryset.values_list("pk", "config_id")):
+            if not config_id:
+                sem_config += 1
+                continue
+            try:
+                build_certificate_pdf.delay(pk, None)
+            except Exception:
+                logger.exception("Falha ao enfileirar a geracao do PDF do certificado %s", pk)
+                fila_indisponivel = True
+                break
+            enfileirados += 1
+        return enfileirados, sem_config, fila_indisponivel
+
+    @staticmethod
+    def liberar_em_lote(queryset, *, quando=None, enfileirar_pdf=True) -> CertificateReleaseResult:
+        """Libera os certificados que ja tem PDF e enfileira o PDF dos que faltam.
+
+        Usamos ``update`` em massa para que "liberar todos" nao carregue milhares
+        de linhas na memoria do processo web.
+        """
+        quando = quando or timezone.now()
+        com_pdf = CertificacaoService.com_pdf(queryset)
+        reagendados = com_pdf.filter(liberado_em__isnull=False).count()
+        liberados = com_pdf.update(liberado_em=quando)
+
+        pendentes_qs = CertificacaoService.sem_pdf(queryset)
+        sem_pdf = pendentes_qs.count()
+        enfileirados = 0
+        sem_config = 0
+        fila_indisponivel = False
+        if sem_pdf and enfileirar_pdf:
+            enfileirados, sem_config, fila_indisponivel = CertificacaoService._enfileirar_pdfs(pendentes_qs)
+
+        return CertificateReleaseResult(
+            liberados=liberados,
+            reagendados=reagendados,
+            sem_pdf=sem_pdf,
+            pdf_enfileirados=enfileirados,
+            pdf_sem_config=sem_config,
+            fila_indisponivel=fila_indisponivel,
+        )
+
+    @staticmethod
+    def revogar_em_lote(queryset) -> int:
+        """Volta os certificados para oculto no painel do cursista."""
+        return queryset.filter(liberado_em__isnull=False).update(liberado_em=None)
 
 
 DEFAULT_CERTIFICATE_VARIABLES_LABELS = {

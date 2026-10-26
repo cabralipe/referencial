@@ -163,29 +163,31 @@ def dashboard(request):
             if matricula.proxima_aula:
                 break
 
-    certificados_liberados = list(
-        Certificado.objects.filter(
-            aluno=request.user,
-            liberado_em__isnull=False,
-            liberado_em__lte=timezone.now(),
-            arquivo_pdf__isnull=False,
-        )
-        .select_related("matricula_curso__curso", "matricula_trilha__trilha")
-        .order_by("-data_emissao")
-    )
     from ava.services.certificate_service import CertificacaoService
+
+    agora = timezone.now()
     certificados_liberados = [
-        certificado for certificado in certificados_liberados
-        if not certificado.matricula_curso_id
-        or CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved
+        certificado
+        for certificado in CertificacaoService.certificados_do_aluno(request.user, agora=agora)
+        if CertificacaoService.disponivel_para_download(certificado, agora=agora)
     ]
     certificados_por_matricula = {
         certificado.matricula_curso_id: certificado
         for certificado in certificados_liberados
         if certificado.matricula_curso_id
     }
+    # Certificados ja emitidos mas ainda nao liberados pela coordenacao: o cursista
+    # ve o aviso de "aguardando liberacao" em vez de um curso concluido sem resposta.
+    aguardando_liberacao = set(
+        Certificado.objects.filter(aluno=request.user)
+        .exclude(pk__in=[certificado.pk for certificado in certificados_liberados])
+        .values_list("matricula_curso_id", flat=True)
+    )
     for matricula in matriculas_concluidas:
         matricula.certificado_disponivel = certificados_por_matricula.get(matricula.id)
+        matricula.certificado_aguardando = (
+            matricula.certificado_disponivel is None and matricula.id in aguardando_liberacao
+        )
 
     return render(
         request,
@@ -201,13 +203,14 @@ def dashboard(request):
 @login_required
 def baixar_certificado(request, certificado_id):
     certificado = get_object_or_404(
-        Certificado.objects.select_related("aluno"),
+        Certificado.objects.select_related("aluno", "matricula_curso__curso"),
         pk=certificado_id,
         aluno=request.user,
-        liberado_em__isnull=False,
-        liberado_em__lte=timezone.now(),
     )
     from ava.services.certificate_service import CertificacaoService
+
+    if not CertificacaoService.esta_liberado(certificado):
+        raise Http404("Certificado ainda não liberado para download.")
     if certificado.matricula_curso_id and not CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved:
         raise Http404("Os critérios de certificação ainda não foram atendidos.")
     if not certificado.arquivo_pdf:

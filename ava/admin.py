@@ -480,6 +480,76 @@ class CertificadoBatchEmitForm(forms.Form):
         return cleaned_data
 
 
+class CertificadoLiberacaoForm(forms.Form):
+    """Decide quando os certificados selecionados ficam visiveis para o cursista."""
+
+    liberar_agora = forms.BooleanField(
+        label="Liberar imediatamente",
+        required=False,
+        initial=True,
+    )
+    liberar_em = forms.DateTimeField(
+        label="Programar liberação para",
+        required=False,
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        help_text="Use quando a liberação não for imediata. Antes dessa data o cursista não vê o certificado.",
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("liberar_agora") and not cleaned_data.get("liberar_em"):
+            raise forms.ValidationError(
+                "Marque liberar imediatamente ou informe a data da liberação programada."
+            )
+        return cleaned_data
+
+    @property
+    def momento_liberacao(self):
+        if self.cleaned_data.get("liberar_agora"):
+            return timezone.now()
+        return self.cleaned_data["liberar_em"]
+
+
+class CertificadoLiberacaoFilter(admin.SimpleListFilter):
+    title = "Situação da liberação"
+    parameter_name = "situacao_liberacao"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("liberado", "Liberado para o cursista"),
+            ("agendado", "Liberação programada"),
+            ("bloqueado", "Não liberado"),
+        )
+
+    def queryset(self, request, queryset):
+        agora = timezone.now()
+        if self.value() == "liberado":
+            return queryset.filter(liberado_em__isnull=False, liberado_em__lte=agora)
+        if self.value() == "agendado":
+            return queryset.filter(liberado_em__gt=agora)
+        if self.value() == "bloqueado":
+            return queryset.filter(liberado_em__isnull=True)
+        return queryset
+
+
+class CertificadoPdfFilter(admin.SimpleListFilter):
+    title = "PDF"
+    parameter_name = "pdf"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("sim", "PDF disponível"),
+            ("nao", "Sem PDF"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "sim":
+            return CertificacaoService.com_pdf(queryset)
+        if self.value() == "nao":
+            return CertificacaoService.sem_pdf(queryset)
+        return queryset
+
+
 class AssinaturaCertificadoInline(AVATabularInline):
     model = AssinaturaCertificado
     extra = 0
@@ -844,11 +914,30 @@ def _candidate_queryset_from_form(form, request):
 @admin.register(Certificado)
 class CertificadoAdmin(AVAModelAdmin):
     change_list_template = "admin/ava/certificado/change_list.html"
-    list_display = ("aluno", "curso_certificado", "codigo_validacao", "data_emissao", "liberado_em", "pdf_link")
-    list_filter = ("liberado_em", "matricula_curso__curso", "aluno__escola")
+    list_display = (
+        "aluno",
+        "curso_certificado",
+        "codigo_validacao",
+        "data_emissao",
+        "situacao_liberacao",
+        "pdf_link",
+        "acoes_liberacao",
+    )
+    list_filter = (
+        CertificadoLiberacaoFilter,
+        CertificadoPdfFilter,
+        "matricula_curso__curso",
+        "aluno__escola",
+    )
     search_fields = ("aluno__nome", "aluno__email", "codigo_validacao")
     readonly_fields = ("codigo_validacao", "dados_impressos", "data_emissao", "arquivo_pdf", "matricula_curso", "matricula_trilha", "aluno", "config")
-    actions = ("baixar_certificados_zip",)
+    actions = (
+        "liberar_para_cursistas",
+        "programar_liberacao",
+        "revogar_liberacao",
+        "baixar_certificados_zip",
+    )
+    SESSAO_IDS_LIBERACAO = "ava_certificado_liberacao_ids"
 
     def add_view(self, request, form_url="", extra_context=None):
         # Novas emissões passam sempre pelo serviço que verifica os critérios.
@@ -872,6 +961,11 @@ class CertificadoAdmin(AVAModelAdmin):
                 self.admin_site.admin_view(self.baixar_pdf_view),
                 name="ava_certificado_baixar_pdf",
             ),
+            path(
+                "liberar/",
+                self.admin_site.admin_view(self.liberar_view),
+                name="ava_certificado_liberar",
+            ),
         ]
         return custom + urls
 
@@ -886,11 +980,48 @@ class CertificadoAdmin(AVAModelAdmin):
 
     def pdf_link(self, obj):
         if not obj.pk or not obj.arquivo_pdf:
-            return "-"
+            return format_html('<span style="color:#b45309;">{}</span>', "Sem PDF")
         url = reverse("admin:ava_certificado_baixar_pdf", args=[obj.pk])
         return format_html('<a class="button" href="{}">Baixar PDF</a>', url)
 
     pdf_link.short_description = "PDF"
+
+    def situacao_liberacao(self, obj):
+        if not obj.liberado_em:
+            return format_html('<span style="color:#b91c1c;">{}</span>', "Não liberado")
+        if obj.liberado_em > timezone.now():
+            return format_html(
+                '<span style="color:#b45309;">Programado para {}</span>',
+                timezone.localtime(obj.liberado_em).strftime("%d/%m/%Y %H:%M"),
+            )
+        return format_html(
+            '<span style="color:#15803d;">Liberado em {}</span>',
+            timezone.localtime(obj.liberado_em).strftime("%d/%m/%Y %H:%M"),
+        )
+
+    situacao_liberacao.short_description = "Liberação"
+    situacao_liberacao.admin_order_field = "liberado_em"
+
+    def acoes_liberacao(self, obj):
+        if not obj.pk:
+            return "-"
+        base = reverse("admin:ava_certificado_liberar")
+        liberar = format_html(
+            '<a class="button" href="{}?ids={}">Liberar</a>',
+            base,
+            obj.pk,
+        )
+        if not obj.liberado_em:
+            return liberar
+        revogar = format_html(
+            '<a class="button" href="{}?ids={}&amp;acao=revogar" '
+            'style="background:#b91c1c;">Revogar</a>',
+            base,
+            obj.pk,
+        )
+        return format_html('{} {}', liberar, revogar)
+
+    acoes_liberacao.short_description = "Ações"
 
     def baixar_pdf_view(self, request, object_id):
         if not self.has_view_permission(request):
@@ -981,6 +1112,156 @@ class CertificadoAdmin(AVAModelAdmin):
         return self._resposta_zip(request, queryset, nome_arquivo="certificados-selecionados.zip")
 
     baixar_certificados_zip.short_description = "Baixar certificados selecionados em ZIP"
+
+    # ------------------------------------------------------------------
+    # Liberacao dos certificados para o painel do cursista
+    # ------------------------------------------------------------------
+    def _mensagens_liberacao(self, request, resultado, *, quando):
+        if resultado.liberados:
+            quando_local = timezone.localtime(quando).strftime("%d/%m/%Y %H:%M")
+            if quando > timezone.now():
+                texto = f"{resultado.liberados} certificado(s) com liberação programada para {quando_local}."
+            else:
+                texto = f"{resultado.liberados} certificado(s) liberados para download no painel do cursista."
+            if resultado.reagendados:
+                texto += f" {resultado.reagendados} já estavam liberados e tiveram a data atualizada."
+            self.message_user(request, texto, level=messages.SUCCESS)
+
+        if resultado.sem_pdf:
+            detalhe = f"{resultado.sem_pdf} certificado(s) ainda não têm PDF e por isso não foram liberados."
+            if resultado.pdf_enfileirados:
+                detalhe += (
+                    f" {resultado.pdf_enfileirados} entraram na fila de geração; "
+                    "libere novamente quando o PDF estiver pronto."
+                )
+            self.message_user(request, detalhe, level=messages.WARNING)
+
+        if resultado.pdf_sem_config:
+            self.message_user(
+                request,
+                f"{resultado.pdf_sem_config} certificado(s) estão sem configuração de modelo e o PDF não "
+                "pode ser gerado. Vincule uma configuração de certificado ao curso.",
+                level=messages.ERROR,
+            )
+
+        if resultado.fila_indisponivel:
+            self.message_user(
+                request,
+                "A fila de geração de PDFs está indisponível. Verifique o Redis e o worker Celery.",
+                level=messages.ERROR,
+            )
+
+        if not resultado.liberados and not resultado.sem_pdf:
+            self.message_user(request, "Nenhum certificado foi liberado.", level=messages.WARNING)
+
+    def liberar_para_cursistas(self, request, queryset):
+        quando = timezone.now()
+        resultado = CertificacaoService.liberar_em_lote(queryset, quando=quando)
+        self._mensagens_liberacao(request, resultado, quando=quando)
+
+    liberar_para_cursistas.short_description = "Liberar certificados selecionados para os cursistas"
+
+    def programar_liberacao(self, request, queryset):
+        # A selecao pode ter milhares de linhas ("marcar todos"), o que nao cabe na
+        # querystring; guardamos os ids na sessao e a tela de confirmacao os retoma.
+        request.session[self.SESSAO_IDS_LIBERACAO] = list(queryset.values_list("pk", flat=True))
+        return redirect(f"{reverse('admin:ava_certificado_liberar')}?escopo=sessao")
+
+    programar_liberacao.short_description = "Programar liberação dos selecionados (escolher data)"
+
+    def revogar_liberacao(self, request, queryset):
+        total = CertificacaoService.revogar_em_lote(queryset)
+        if total:
+            self.message_user(
+                request,
+                f"{total} certificado(s) voltaram a ficar ocultos para o cursista.",
+                level=messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                "Nenhum dos certificados selecionados estava liberado.",
+                level=messages.WARNING,
+            )
+
+    revogar_liberacao.short_description = "Revogar liberação dos selecionados"
+
+    def _queryset_liberacao(self, request):
+        """Resolve o alvo da tela de liberacao: os ids informados ou todos do cliente."""
+        queryset = self.get_queryset(request)
+        escopo = request.POST.get("escopo") or request.GET.get("escopo")
+        if escopo == "todos":
+            return queryset, "todos"
+        brutos = request.POST.get("ids") or request.GET.get("ids") or ""
+        ids = [trecho.strip() for trecho in brutos.split(",") if trecho.strip().isdigit()]
+        if not ids and escopo == "sessao":
+            ids = request.session.get(self.SESSAO_IDS_LIBERACAO) or []
+        if not ids:
+            return queryset.none(), "selecionados"
+        return queryset.filter(pk__in=ids), "selecionados"
+
+    def liberar_view(self, request):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+
+        queryset, escopo = self._queryset_liberacao(request)
+        acao = request.POST.get("acao") or request.GET.get("acao") or "liberar"
+        if acao not in {"liberar", "revogar"}:
+            acao = "liberar"
+
+        total = queryset.count()
+        if not total:
+            self.message_user(
+                request,
+                "Selecione ao menos um certificado para liberar.",
+                level=messages.WARNING,
+            )
+            return redirect("admin:ava_certificado_changelist")
+
+        form = CertificadoLiberacaoForm(request.POST if request.method == "POST" else None)
+
+        if request.method == "POST" and request.POST.get("confirmar") == "1":
+            request.session.pop(self.SESSAO_IDS_LIBERACAO, None)
+            if acao == "revogar":
+                revogados = CertificacaoService.revogar_em_lote(queryset)
+                self.message_user(
+                    request,
+                    f"{revogados} certificado(s) voltaram a ficar ocultos para o cursista."
+                    if revogados
+                    else "Nenhum dos certificados estava liberado.",
+                    level=messages.SUCCESS if revogados else messages.WARNING,
+                )
+                return redirect("admin:ava_certificado_changelist")
+            if form.is_valid():
+                quando = form.momento_liberacao
+                resultado = CertificacaoService.liberar_em_lote(queryset, quando=quando)
+                self._mensagens_liberacao(request, resultado, quando=quando)
+                return redirect("admin:ava_certificado_changelist")
+
+        amostra = list(
+            queryset.select_related("aluno", "matricula_curso__curso", "matricula_trilha__trilha")[:200]
+        )
+        com_pdf = CertificacaoService.com_pdf(queryset).count()
+        context = {
+            **self.admin_site.each_context(request),
+            "title": (
+                "Revogar liberação de certificados"
+                if acao == "revogar"
+                else "Liberar certificados para os cursistas"
+            ),
+            "opts": self.model._meta,
+            "form": form,
+            "media": self.media + form.media,
+            "acao": acao,
+            "escopo": escopo,
+            "ids": "" if escopo == "todos" else ",".join(str(pk) for pk in queryset.values_list("pk", flat=True)),
+            "total": total,
+            "total_com_pdf": com_pdf,
+            "total_sem_pdf": total - com_pdf,
+            "certificados": amostra,
+            "truncado": total > len(amostra),
+        }
+        return render(request, "admin/ava/certificado/liberar.html", context)
 
     def baixar_todos_view(self, request):
         if not self.has_view_permission(request):

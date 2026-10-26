@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .release-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+        gap: 24px;
+        align-items: start;
+    }
+    .release-panel {
+        background: var(--body-bg);
+        border: 1px solid var(--hairline-color);
+        border-radius: 8px;
+        padding: 18px;
+    }
+    .release-panel .form-row {
+        border-bottom: 1px solid var(--hairline-color);
+        padding: 10px 0;
+    }
+    .release-panel .form-row:last-child {
+        border-bottom: 0;
+    }
+    .release-panel label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .release-summary-card {
+        border: 1px solid var(--hairline-color);
+        border-radius: 8px;
+        padding: 14px;
+        background: var(--darkened-bg);
+        margin-bottom: 12px;
+    }
+    .release-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+    }
+    .release-table th,
+    .release-table td {
+        border-bottom: 1px solid var(--hairline-color);
+        padding: 9px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .status-ok { color: #166534; font-weight: 700; }
+    .status-warning { color: #92400e; font-weight: 700; }
+    .status-blocked { color: #991b1b; font-weight: 700; }
+    @media (max-width: 900px) {
+        .release-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:ava_certificado_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="{{ acao }}">
+    <input type="hidden" name="escopo" value="{{ escopo }}">
+    <input type="hidden" name="ids" value="{{ ids }}">
+
+    <div class="release-grid">
+        <div class="release-panel">
+            {% if acao == "revogar" %}
+                <p>
+                    Os <strong>{{ total }}</strong> certificado(s) abaixo deixarão de aparecer no painel
+                    do cursista. O arquivo PDF e o código de validação são preservados — basta liberar
+                    novamente quando quiser.
+                </p>
+                <div class="submit-row">
+                    <button type="submit" class="default" name="confirmar" value="1">
+                        Confirmar revogação
+                    </button>
+                    <a href="{% url 'admin:ava_certificado_changelist' %}" class="button cancel-link">Cancelar</a>
+                </div>
+            {% else %}
+                {% if form.non_field_errors %}
+                    <div class="errornote">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <p>
+                    Liberar significa deixar o botão <em>Baixar certificado</em> visível no painel do
+                    cursista. Só os certificados que já têm PDF são liberados; os que ainda não têm
+                    entram na fila de geração.
+                </p>
+                {% for field in form %}
+                    <div class="form-row{% if field.errors %} errors{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+                <div class="submit-row">
+                    <button type="submit" class="default" name="confirmar" value="1">
+                        {% if escopo == "todos" %}Liberar todos os certificados{% else %}Liberar {{ total }} certificado(s){% endif %}
+                    </button>
+                    <a href="{% url 'admin:ava_certificado_changelist' %}" class="button cancel-link">Cancelar</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <aside>
+            <div class="release-summary-card">
+                <h2>Resumo</h2>
+                <p><strong>{{ total }}</strong> certificado(s) no escopo{% if escopo == "todos" %} (todos os visíveis para você){% endif %}.</p>
+                <p class="status-ok">{{ total_com_pdf }} com PDF pronto.</p>
+                {% if total_sem_pdf %}
+                <p class="status-warning">{{ total_sem_pdf }} sem PDF — não serão liberados agora.</p>
+                {% endif %}
+            </div>
+            {% if total_sem_pdf and acao != "revogar" %}
+            <div class="release-summary-card">
+                <h2>Atenção</h2>
+                <p>
+                    Os certificados sem PDF serão enviados para a fila de geração. Assim que o worker
+                    terminar, use esta tela novamente para liberá-los.
+                </p>
+            </div>
+            {% endif %}
+        </aside>
+    </div>
+
+    <table class="release-table">
+        <thead>
+            <tr>
+                <th>Cursista</th>
+                <th>Curso/Trilha</th>
+                <th>Código</th>
+                <th>PDF</th>
+                <th>Liberação atual</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for certificado in certificados %}
+            <tr>
+                <td>{{ certificado.aluno.nome|default:certificado.aluno.email }}</td>
+                <td>
+                    {% if certificado.matricula_curso %}{{ certificado.matricula_curso.curso.titulo }}
+                    {% elif certificado.matricula_trilha %}{{ certificado.matricula_trilha.trilha.nome }}
+                    {% else %}-{% endif %}
+                </td>
+                <td>{{ certificado.codigo_validacao }}</td>
+                <td>
+                    {% if certificado.arquivo_pdf %}<span class="status-ok">Disponível</span>
+                    {% else %}<span class="status-warning">Sem PDF</span>{% endif %}
+                </td>
+                <td>
+                    {% if certificado.liberado_em %}
+                        <span class="status-ok">{{ certificado.liberado_em|date:"d/m/Y H:i" }}</span>
+                    {% else %}
+                        <span class="status-blocked">Não liberado</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if truncado %}
+    <p class="help">Mostrando os primeiros {{ certificados|length }} de {{ total }} certificados. A ação vale para todos.</p>
+    {% endif %}
+</form>
+{% endblock %}
