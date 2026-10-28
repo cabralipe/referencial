@@ -8,7 +8,7 @@ Para reuniões on-line, abra o link de presença e informe uma validade futura. 
 
 Administradores do município e responsáveis do curso (autor, gestor ou tutor autorizado) têm acesso à chamada, respeitando os municípios disponíveis para o usuário.
 
-A emissão em lote exibe os motivos das pendências e emite somente para matrículas concluídas que atendam aos critérios de progresso, nota e frequência e cujo curso permita certificação. A antiga opção de aprovar pendentes foi removida. A opção legada `aprovar_pendente` do serviço não dispensa mais os critérios. O download pelo cursista também verifica a elegibilidade atual; certificados antigos não são apagados.
+A emissão em lote exibe os motivos das pendências e emite somente para matrículas concluídas que atendam aos critérios de progresso, nota e frequência e cujo curso permita certificação. A antiga opção de aprovar pendentes foi removida. A opção legada `aprovar_pendente` do serviço não dispensa mais os critérios. Os critérios são verificados na emissão; certificados antigos não são apagados.
 
 ## Liberação dos certificados para o cursista
 
@@ -22,6 +22,6 @@ Em **Certificados**, a listagem mostra a situação de cada registro (não liber
 
 Somente certificados com PDF são liberados. Os que ainda não têm PDF são contados na mensagem de retorno e reenviados para a fila de geração — repita a liberação quando o worker terminar. A liberação usa atualização em massa no banco, então "liberar todos" não carrega os registros na memória do processo web.
 
-A revogação (*Revogar* na linha ou a ação *Revogar liberação dos selecionados*) apenas oculta o certificado: o PDF e o código de validação são preservados e a liberação pode ser refeita. O download continua verificando a elegibilidade atual do cursista, portanto uma matrícula que deixe de cumprir os critérios perde o acesso mesmo com o certificado liberado.
+A revogação (*Revogar* na linha ou a ação *Revogar liberação dos selecionados*) apenas oculta o certificado: o PDF e o código de validação são preservados e a liberação pode ser refeita. A liberação é a autorização final: o painel e o download exigem apenas PDF gerado e data de liberação cumprida, sem reavaliar os critérios do curso. Isso evita que uma mudança de configuração feita depois da emissão faça o certificado desaparecer do painel sem nenhum aviso ao admin — era o que acontecia com cursos sem encontros registrados depois que a frequência mínima passou a valer 75% por padrão. Quando uma matrícula deixa de cumprir os critérios, a coordenação revoga a liberação.
 
 Aplicação: execute `python manage.py migrate` antes de publicar o código. A migração não emite certificados nem altera presenças existentes no Diário de Bordo ou nas salas de GT. Os encontros de cursos possuem controle próprio para não somar registros de outros fluxos à certificação.

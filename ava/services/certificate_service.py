@@ -505,14 +505,20 @@ class CertificacaoService:
 
     @staticmethod
     def disponivel_para_download(certificado: Certificado, agora=None) -> bool:
-        """Regra unica usada pelo painel do cursista e pelo download."""
+        """Regra unica usada pelo painel do cursista e pelo download.
+
+        A liberacao e a palavra final. O certificado so existe porque a matricula
+        passou por ``avaliar_matricula`` na emissao, e ``liberado_em`` registra a
+        decisao explicita da coordenacao. Reavaliar os criterios aqui fazia o
+        certificado sumir do painel sempre que a configuracao do curso mudava
+        depois da emissao: com ``frequencia_minima`` valendo 75% por padrao, todo
+        curso sem encontros registrados reprovava na reavaliacao e o cursista nao
+        via nada, mesmo com o admin mostrando "Liberado em ...". Quando os
+        criterios regridem, a coordenacao revoga a liberacao.
+        """
         if not certificado.arquivo_pdf:
             return False
-        if not CertificacaoService.esta_liberado(certificado, agora=agora):
-            return False
-        if certificado.matricula_curso_id:
-            return CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved
-        return True
+        return CertificacaoService.esta_liberado(certificado, agora=agora)
 
     @staticmethod
     def certificados_do_aluno(aluno, *, somente_liberados=True, agora=None):

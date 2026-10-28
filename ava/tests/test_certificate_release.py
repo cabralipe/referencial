@@ -270,6 +270,30 @@ class CertificateReleaseTests(TestCase):
         CertificacaoService.revogar_em_lote(Certificado.objects.all())
         self.assertEqual(self.client.get(url).status_code, 404)
 
+    def test_liberacao_vale_mesmo_quando_o_curso_passa_a_exigir_frequencia(self):
+        """Mudar os criterios do curso depois da emissao nao oculta o certificado.
+
+        A migracao 0022 colocou frequencia_minima=75 em todos os cursos antigos.
+        Como esses cursos nao tem encontros realizados, a reavaliacao dos
+        criterios reprovava a matricula e o certificado liberado pela
+        coordenacao desaparecia do painel do cursista.
+        """
+        certificado = self.criar_certificado(liberado_em=timezone.now())
+        self.course.frequencia_minima = 75
+        self.course.save(update_fields=["frequencia_minima"])
+        self.assertFalse(CertificacaoService.avaliar_matricula(self.enrollment).approved)
+
+        self.assertTrue(CertificacaoService.disponivel_para_download(certificado))
+
+        self.client.force_login(self.student)
+        painel = self.client.get(reverse("ava:aluno_dashboard"))
+        self.assertContains(painel, "Baixar certificado")
+        self.assertNotContains(painel, "aguardando liberação")
+
+        download = self.client.get(reverse("ava:aluno_baixar_certificado", args=[certificado.pk]))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(b"".join(download.streaming_content), b"%PDF-1.4 fake")
+
     def test_cursista_nao_baixa_certificado_de_outra_pessoa(self):
         certificado = self.criar_certificado(liberado_em=timezone.now())
         self.client.force_login(self.admin)

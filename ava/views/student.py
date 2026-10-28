@@ -203,16 +203,16 @@ def dashboard(request):
 @login_required
 def baixar_certificado(request, certificado_id):
     certificado = get_object_or_404(
-        Certificado.objects.select_related("aluno", "matricula_curso__curso"),
+        Certificado.objects.select_related("aluno"),
         pk=certificado_id,
         aluno=request.user,
     )
     from ava.services.certificate_service import CertificacaoService
 
+    # A liberacao pela coordenacao e a autorizacao final: nao reavaliamos os
+    # criterios aqui, senao o botao do painel levaria a um 404.
     if not CertificacaoService.esta_liberado(certificado):
         raise Http404("Certificado ainda não liberado para download.")
-    if certificado.matricula_curso_id and not CertificacaoService.avaliar_matricula(certificado.matricula_curso).approved:
-        raise Http404("Os critérios de certificação ainda não foram atendidos.")
     if not certificado.arquivo_pdf:
         raise Http404("Certificado sem arquivo PDF.")
     nome = certificado.dados_impressos.get("aluno_nome") or request.user.email
