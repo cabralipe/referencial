@@ -15,6 +15,7 @@ from ava.models.enrollment import MatriculaCurso, MatriculaTrilha, AutorizacaoCu
 from ava.models.progress import ProgressoAula, ProgressoConteudo, ProgressoModulo
 from ava.models.certificate import AssinaturaCertificado, ConfigCertificado, Certificado
 from ava.models.attendance import EncontroCurso, PresencaCurso
+from ava.models.atividades_presenciais import RepasseFrequencia, RegistroSeminario
 from ava.models.followup import DocumentoAcompanhamento
 from ava.models.diario import (
     DiarioBordo,

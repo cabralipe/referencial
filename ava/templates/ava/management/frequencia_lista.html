@@ -27,6 +27,7 @@
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Criar chamada</button></form>
   </div></section>
 </div>
+<section class="card card-body mt-4"><h2 class="h4">Frequências presenciais enviadas</h2><p>Os arquivos são comprovantes; as presenças individuais da plataforma são exibidas abaixo.</p><ul>{% for r in repasses_fisicos %}<li>{{ r.data_encontro|date:'d/m/Y' }} — {{ r.descricao }} — <a href="{% url 'ava:presencial_arquivo' curso.pk r.pk %}">Baixar comprovante</a></li>{% empty %}<li>Nenhum comprovante enviado.</li>{% endfor %}</ul></section>
 <section class="card card-body mt-4">
   <h2 class="h4">Acompanhamento da frequência</h2>
   <div class="table-responsive"><table class="table">

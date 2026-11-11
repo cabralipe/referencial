@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from ava.models import AutorizacaoCurso, Curso, EncontroCurso, PresencaCurso
+from ava.models import AutorizacaoCurso, Curso, EncontroCurso, PresencaCurso, RepasseFrequencia
 from ava.services.attendance_service import (
     matriculas_do_curso,
     registrar_presenca,
@@ -113,6 +113,7 @@ def frequencia_lista(request):
             "form": form,
             "encontros": encontros,
             "resumo": resumo,
+            "repasses_fisicos": RepasseFrequencia.raw_objects.filter(curso=curso, is_deleted=False),
         },
     )
 

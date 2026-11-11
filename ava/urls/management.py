@@ -2,9 +2,19 @@ from django.urls import path
 
 from ava.views import diario, management
 from ava.views import attendance
+from ava.views import presencial
 
 
 urlpatterns = [
+    path('diario/presencial/', presencial.painel, name='presencial_painel'),
+    path('diario/presencial/<int:curso_id>/repasse/novo/', presencial.repasse_form, name='presencial_repasse_novo'),
+    path('diario/presencial/<int:curso_id>/repasse/<int:pk>/editar/', presencial.repasse_form, name='presencial_repasse_editar'),
+    path('diario/presencial/<int:curso_id>/repasse/<int:pk>/arquivo/', presencial.arquivo, name='presencial_arquivo'),
+    path('diario/presencial/<int:curso_id>/registro/novo/', presencial.registro_form, name='presencial_registro_novo'),
+    path('diario/presencial/<int:curso_id>/registro/<int:pk>/editar/', presencial.registro_form, name='presencial_registro_editar'),
+    path('diario/presencial/<int:curso_id>/<str:tipo>/<int:pk>/remover/', presencial.remover, name='presencial_remover'),
+    path('diario/presencial/<int:curso_id>/lista.pdf', presencial.lista_pdf, name='presencial_pdf'),
+    path('diario/presencial/<int:curso_id>/relatorio.csv', presencial.relatorio, name='presencial_relatorio'),
     path("frequencia/", attendance.frequencia_lista, name="frequencia_lista"),
     path("frequencia/<int:encontro_id>/", attendance.frequencia_checklist, name="frequencia_checklist"),
     path("dashboard/", management.dashboard, name="gestao_dashboard"),

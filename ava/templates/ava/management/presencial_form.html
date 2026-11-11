@@ -1,0 +1,5 @@
+{% extends 'ava/base.html' %}
+{% block content %}
+<main class="container py-4"><h1>{{ titulo }}</h1><p>{{ curso.titulo }}</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Salvar</button> <a class="btn btn-outline-secondary" href="{% url 'ava:presencial_painel' %}?curso={{ curso.pk }}">Cancelar</a></form></main>
+{% endblock %}

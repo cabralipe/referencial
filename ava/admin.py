@@ -17,6 +17,7 @@ from django.utils.text import slugify
 
 from ava.forms import CursoEstruturaCopyForm
 from ava.models.certificate import CERTIFICATE_VARIABLES, DEFAULT_CERTIFICATE_VARIABLES
+from ava.models.atividades_presenciais import RepasseFrequencia, RegistroSeminario
 from ava.services import CourseCloneService
 from ava.services.certificate_service import CertificacaoService
 from ava.services.course_copy_service import CourseCopyOptions
@@ -1466,6 +1467,20 @@ class ConfigCertificadoAdmin(AVAModelAdmin):
 # ----------------------------------------------------------------------
 # Diário de Bordo e planilhas configuráveis
 # ----------------------------------------------------------------------
+
+
+@admin.register(RepasseFrequencia)
+class RepasseFrequenciaAdmin(AVAModelAdmin):
+    list_display = ('curso', 'data_encontro', 'descricao', 'enviado_por')
+    list_filter = ('data_encontro',)
+    search_fields = ('curso__titulo', 'descricao')
+
+
+@admin.register(RegistroSeminario)
+class RegistroSeminarioAdmin(AVAModelAdmin):
+    list_display = ('matricula', 'tipo', 'atividade', 'data_realizacao', 'nota')
+    list_filter = ('tipo', 'data_realizacao')
+    search_fields = ('matricula__aluno__nome', 'atividade')
 
 
 class DiarioBordoParticipanteInline(AVATabularInline):
