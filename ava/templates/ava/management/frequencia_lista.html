@@ -16,9 +16,15 @@
     <h2 class="h4">Aulas e reuniões</h2>
     <p>Abra a chamada para marcar presenças, editar a data e compartilhar o link durante a reunião.</p>
     <ul class="list-group list-group-flush">
-      {% for encontro in encontros %}<li class="list-group-item">
-        <a href="{% url 'ava:frequencia_checklist' encontro.pk %}">{{ encontro.data_aula|date:'d/m/Y' }} — {{ encontro.titulo }}</a>
-        <span class="badge bg-secondary">{% if encontro.realizado %}Realizado{% else %}Previsto{% endif %}</span>
+      {% for encontro in encontros %}<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+        <div>
+          <a href="{% url 'ava:frequencia_checklist' encontro.pk %}">{{ encontro.data_aula|date:'d/m/Y' }} — {{ encontro.titulo }}</a>
+          <span class="badge bg-secondary">{% if encontro.realizado %}Realizado{% else %}Previsto{% endif %}</span>
+        </div>
+        <form method="post" action="{% url 'ava:frequencia_remover' encontro.pk %}" onsubmit="return confirm('Excluir esta chamada e o link de frequência? As presenças registradas nela também serão removidas.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm">Excluir</button>
+        </form>
       </li>{% empty %}<li class="list-group-item">Nenhum encontro cadastrado.</li>{% endfor %}
     </ul>
   </div></section>

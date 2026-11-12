@@ -17,6 +17,7 @@ urlpatterns = [
     path('diario/presencial/<int:curso_id>/relatorio.csv', presencial.relatorio, name='presencial_relatorio'),
     path("frequencia/", attendance.frequencia_lista, name="frequencia_lista"),
     path("frequencia/<int:encontro_id>/", attendance.frequencia_checklist, name="frequencia_checklist"),
+    path("frequencia/<int:encontro_id>/remover/", attendance.frequencia_remover, name="frequencia_remover"),
     path("dashboard/", management.dashboard, name="gestao_dashboard"),
     path("dashboard/relatorios/entenda/", management.dashboard_relatorio_entenda, name="gestao_dashboard_relatorio_entenda"),
     path("dashboard/relatorios/<str:formato>/", management.dashboard_relatorio, name="gestao_dashboard_relatorio"),

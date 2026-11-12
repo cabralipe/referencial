@@ -247,6 +247,43 @@ class AttendanceCertificationTests(TestCase):
         self.assertEqual(self.meetings[0].titulo, "Encontro 0")
         self.assertFalse(PresencaCurso.objects.exists())
 
+    def test_manager_can_remove_attendance_link_and_its_presences(self):
+        self.client.force_login(self.manager)
+        meeting = self.meetings[0]
+        registrar_presenca(
+            meeting,
+            self.enrollment,
+            self.manager,
+            presente=True,
+            origem="checklist",
+        )
+
+        response = self.client.post(
+            reverse("ava:frequencia_remover", args=[meeting.pk])
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('ava:frequencia_lista')}?curso={self.course.pk}",
+        )
+        meeting.refresh_from_db()
+        self.assertTrue(meeting.is_deleted)
+        presence = PresencaCurso.raw_objects.get(encontro=meeting)
+        self.assertTrue(presence.is_deleted)
+        self.assertEqual(
+            self.client.get(reverse("ava:confirmar_presenca", args=[meeting.token])).status_code,
+            404,
+        )
+
+    def test_student_cannot_remove_attendance_link(self):
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse("ava:frequencia_remover", args=[self.meetings[0].pk])
+        )
+        self.assertEqual(response.status_code, 404)
+        self.meetings[0].refresh_from_db()
+        self.assertFalse(self.meetings[0].is_deleted)
+
     def test_batch_emits_only_eligible_and_ignores_legacy_override(self):
         self.mark(3)
         other_student = get_user_model().objects.create_user(

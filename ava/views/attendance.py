@@ -188,6 +188,38 @@ def frequencia_checklist(request, encontro_id):
     )
 
 
+@login_required
+@require_http_methods(["POST"])
+@transaction.atomic
+def frequencia_remover(request, encontro_id):
+    """Remove uma chamada e impede o uso do respectivo link de presença."""
+    encontro = get_object_or_404(
+        EncontroCurso.raw_objects.select_for_update(),
+        pk=encontro_id,
+        curso__in=cursos_gerenciaveis(request.user),
+        is_deleted=False,
+    )
+    presencas = list(
+        PresencaCurso.raw_objects.select_for_update().filter(
+            encontro=encontro,
+            is_deleted=False,
+        )
+    )
+    for presenca in presencas:
+        presenca.delete()
+    encontro.delete()
+    AVAAuditService.registrar(
+        cliente_id=encontro.cliente_id,
+        usuario=request.user,
+        entidade="ava.EncontroCurso",
+        entidade_id=encontro.pk,
+        acao="frequencia_removida",
+        diff={"presencas_removidas": len(presencas)},
+    )
+    messages.success(request, "Chamada e link de frequência removidos.")
+    return redirect(f"{reverse('ava:frequencia_lista')}?curso={encontro.curso_id}")
+
+
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def confirmar_presenca(request, token):
