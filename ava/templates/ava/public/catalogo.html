@@ -3,7 +3,7 @@
 {% block title %}Catálogo de Cursos | PROLUC{% endblock %}
 
 {% block content %}
-<section class="section-hero py-5">
+<section class="section-hero py-5 ava-catalog-hero">
     <div class="container text-center py-2">
         <span class="badge text-bg-light mb-3">Formação continuada</span>
         <h1 class="display-5 fw-bold text-white">Trilhas e cursos PROLUC</h1>
@@ -72,7 +72,7 @@
     </form>
     {% endif %}
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
         {% for curso in cursos %}
         <div class="col">
             <article class="ava-surface h-100 overflow-hidden d-flex flex-column">
@@ -128,6 +128,14 @@
         {% endfor %}
     </div>
 </div>
+
+<style>
+    .ava-catalog-hero { background: linear-gradient(120deg, #0f172a 0%, #1d4ed8 62%, #06b6d4 100%); }
+    .ava-catalog-hero .badge { font-weight: 700; letter-spacing: .03em; }
+    .ava-catalog-hero h1 { max-width: 760px; margin-inline: auto; }
+    .ava-surface { transition: transform .18s ease, box-shadow .18s ease; }
+    .ava-surface:hover { transform: translateY(-3px); box-shadow: 0 20px 36px rgba(15, 23, 42, .12); }
+</style>
 
 {% if eixos_pendente %}
 <div class="modal fade" id="modalEixos" tabindex="-1" aria-labelledby="modalEixosLabel" data-bs-backdrop="static"
