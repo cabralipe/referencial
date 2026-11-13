@@ -20,15 +20,16 @@
         <div>
           <a href="{% url 'ava:frequencia_checklist' encontro.pk %}">{{ encontro.data_aula|date:'d/m/Y' }} — {{ encontro.titulo }}</a>
           <span class="badge bg-secondary">{% if encontro.realizado %}Realizado{% else %}Previsto{% endif %}</span>
+          {% if encontro.registro_retroativo %}<span class="badge text-bg-info">Retroativo</span>{% endif %}
         </div>
-        <form method="post" action="{% url 'ava:frequencia_remover' encontro.pk %}" onsubmit="return confirm('Excluir esta chamada e o link de frequência? As presenças registradas nela também serão removidas.');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-danger btn-sm">Excluir</button>
-        </form>
+        <a href="{% url 'ava:frequencia_remover' encontro.pk %}" class="btn btn-outline-danger btn-sm">Excluir</a>
       </li>{% empty %}<li class="list-group-item">Nenhum encontro cadastrado.</li>{% endfor %}
     </ul>
   </div></section>
   <section class="col-lg-5"><div class="card card-body">
+    <h2 class="h4">Registrar diário de bordo</h2>
+    <p>As informações e os alunos do curso selecionado serão carregados automaticamente.</p>
+    <a class="btn btn-primary mb-4" href="{% url 'ava:diario_novo' %}?municipio={{ curso.cliente_id }}&amp;curso={{ curso.pk }}">Registrar diário de bordo</a>
     <h2 class="h4">Novo encontro</h2>
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Criar chamada</button></form>
   </div></section>

@@ -67,14 +67,55 @@ Transições ficam em `ava/services/diario_service.py` (`DiarioBordoService`).
 
 ### 1.4 Frequência
 
-Dois modos, no mesmo registro:
+Ao abrir **Novo registro**, a primeira pergunta é qual curso será registrado.
+A seleção carrega título, ementa/descrição, carga horária, módulos, aulas e a
+lista de cursistas. Ao selecionar uma aula, o título e o resumo são sugeridos;
+textos já editados pelo professor são preservados. A tela de frequências também
+oferece **Registrar diário de bordo**, mantendo o curso consultado.
 
-- **Quantitativa** — o professor digita `participantes_presentes`.
-- **Nominal** — marcando `frequencia_nominal`, a quantidade passa a ser calculada
-  a partir de `DiarioBordoParticipante` com `presente=True`; incluir ou remover
-  alguém recalcula o total.
+Ao salvar, as matrículas ativas e concluídas de usuários ativos do mesmo
+município são incluídas na lista nominal, sem cadastro manual e sem marcar
+presença automaticamente. Matrículas canceladas, suspensas e removidas não são
+carregadas. Editar novamente o diário não duplica os alunos nem apaga presenças.
 
-`participantes_presentes` nunca pode superar `participantes_previstos`.
+A frequência pode ser registrada por **lista presencial**, no checklist da turma,
+ou por **link e QR Code**. Ambos atualizam a lista nominal e o total de presentes
+do diário. O professor responsável pode acessar o checklist de seu diário mesmo
+quando não é gestor do curso. Trocar o curso substitui a turma e limpa as
+presenças da chamada anterior. Atividades externas sem curso conservam o
+cadastro manual de participantes.
+
+#### Presença retroativa e lista nominal
+
+Selecione **Presença retroativa** na frequência do diário e informe a data real
+do encontro (até a data de hoje). Ao salvar, o checklist abre automaticamente com
+os matriculados do curso. Marque quem compareceu e salve: a tela exibe a lista
+nominal de presentes, e o diário e o percentual de frequência são atualizados.
+Os ausentes ficam identificados separadamente. A data de criação e a auditoria
+registram quando o lançamento foi feito e quem o fez.
+
+A tela **Frequência dos cursos** também oferece a opção **Registrar presença
+retroativa**. Nesse modo, a chamada é marcada como realizada e a confirmação por
+link é encerrada. Datas futuras são rejeitadas. Diários comuns com data futura
+permanecem fora do cálculo enquanto o encontro não tiver ocorrido.
+
+#### Exclusão de registros
+
+Use **Excluir registro** no diário ou **Excluir registro de presença** na
+chamada. A tela de confirmação mostra qual registro será excluído. Cancelar ou
+apenas abrir a tela não altera os dados.
+
+Excluir o diário retira sua lista nominal e seus anexos das telas, encerra a
+chamada vinculada e seu QR Code e remove o encontro do cálculo da frequência.
+Excluir apenas a chamada mantém o diário e limpa sua frequência. Se uma nova
+chamada for criada para esse diário, ela recebe outro token; o QR Code excluído
+não volta a funcionar. Os registros são removidos logicamente, preservando os
+arquivos físicos e a auditoria. Aplicam-se as permissões de edição existentes;
+um registro bloqueado precisa ser reaberto antes da exclusão.
+
+Para instalar esta atualização, aplique a migração
+`ava.0025_presenca_retroativa` com `python manage.py migrate` antes de iniciar a
+nova versão.
 
 ### 1.5 Fotos e comprovantes
 

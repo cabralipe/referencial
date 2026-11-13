@@ -207,6 +207,11 @@
                                     <i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span>
                                 </a>
                                 {% endif %}
+                                {% if diario.pode_excluir %}
+                                <a class="btn btn-sm btn-outline-danger rounded-pill" href="{% url 'ava:diario_excluir' diario.id %}" title="Excluir registro">
+                                    <i class="bi bi-trash"></i><span class="visually-hidden">Excluir {{ diario.titulo }}</span>
+                                </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

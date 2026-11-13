@@ -575,3 +575,139 @@ class DiarioBordoViewTests(DiarioBordoBaseTests):
             ).values_list("acao", flat=True)
         )
         self.assertIn("atualizado", acoes)
+
+
+class DiarioBordoCursoAutomaticoTests(DiarioBordoBaseTests):
+    def setUp(self):
+        super().setUp()
+        from ava.models import MatriculaCurso
+        self.matricula = MatriculaCurso.objects.create(
+            cliente=self.cliente, curso=self.curso, aluno=self.professor_b,
+        )
+        self.client.force_login(self.professor_a)
+
+    def dados_registro(self, **extras):
+        dados = {
+            "municipio": self.cliente.pk, "origem": OrigemAula.NO_SISTEMA,
+            "curso": self.curso.pk, "data_aula": "2026-03-12",
+            "titulo": "Diário com turma automática", "conteudo_trabalhado": "Leitura",
+            "modo_frequencia": DiarioBordo.ModoFrequencia.PRESENCIAL,
+        }
+        dados.update(extras)
+        return dados
+
+    def test_selecao_do_curso_carrega_dados_e_apenas_matriculas_elegiveis(self):
+        from ava.models import MatriculaCurso
+        MatriculaCurso.objects.create(
+            cliente=self.cliente, curso=self.curso, aluno=self.professor_a,
+            status=MatriculaCurso.Status.CANCELADA,
+        )
+        resposta = self.client.get(reverse("ava:diario_aulas_json"), {
+            "municipio": self.cliente.pk, "curso": self.curso.pk,
+        })
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["curso"]["titulo"], self.curso.titulo)
+        self.assertEqual(dados["alunos"], [{"id": self.professor_b.pk, "nome": "Professor B"}])
+        self.assertEqual(dados["escolas"], [self.escola_b.pk])
+        self.assertEqual(dados["aulas"][0]["id"], self.aula.pk)
+
+    def test_curso_de_outro_municipio_nao_carrega(self):
+        curso = Curso.objects.create(cliente=self.outro_cliente, titulo="Outro", slug="outro-auto")
+        resposta = self.client.get(reverse("ava:diario_aulas_json"), {
+            "municipio": self.cliente.pk, "curso": curso.pk,
+        })
+        self.assertEqual(resposta.status_code, 404)
+
+    def test_entrada_por_frequencia_preenche_curso(self):
+        resposta = self.client.get(reverse("ava:diario_novo"), {
+            "municipio": self.cliente.pk, "curso": self.curso.pk,
+        })
+        self.assertEqual(resposta.context["form"]["curso"].value(), self.curso.pk)
+        self.assertContains(resposta, "Qual é o curso deste diário?")
+
+    def test_criacao_inclui_turma_sem_marcar_presenca_e_edicao_nao_duplica(self):
+        resposta = self.client.post(reverse("ava:diario_novo"), self.dados_registro())
+        self.assertEqual(resposta.status_code, 302)
+        diario = DiarioBordo.objects.get(titulo="Diário com turma automática")
+        participante = diario.participantes.get()
+        self.assertEqual(participante.usuario_id, self.professor_b.pk)
+        self.assertFalse(participante.presente)
+        self.assertEqual(diario.participantes_previstos, 1)
+        self.assertEqual(diario.participantes_presentes, 0)
+        resposta = self.client.post(reverse("ava:diario_editar", args=[diario.pk]), self.dados_registro())
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(diario.participantes.count(), 1)
+        tela = self.client.get(resposta.url)
+        self.assertContains(tela, "Marcar presenças da turma")
+        self.assertNotContains(tela, reverse("ava:diario_participante_adicionar", args=[diario.pk]))
+
+    def test_checklist_do_diario_acessivel_ao_professor_e_sincroniza_presenca(self):
+        from ava.models import EncontroCurso
+        self.client.post(reverse("ava:diario_novo"), self.dados_registro(marcar_presentes="1"))
+        diario = DiarioBordo.objects.get(titulo="Diário com turma automática")
+        encontro = EncontroCurso.objects.get(diario=diario)
+        url = reverse("ava:frequencia_checklist", args=[encontro.pk])
+        self.assertContains(self.client.get(url), self.professor_b.nome)
+        resposta = self.client.post(url, {
+            "titulo": encontro.titulo, "data_aula": "2026-03-12", "realizado": "on",
+            "presentes": [self.matricula.pk],
+        })
+        self.assertEqual(resposta.status_code, 302)
+        diario.refresh_from_db()
+        self.assertEqual(diario.participantes_presentes, 1)
+        self.assertTrue(diario.participantes.get().presente)
+        self.client.post(reverse("ava:diario_editar", args=[diario.pk]), self.dados_registro())
+        self.assertTrue(diario.participantes.get().presente)
+        self.client.post(url, {"titulo": encontro.titulo, "data_aula": "2026-03-12", "realizado": "on"})
+        diario.refresh_from_db()
+        self.assertEqual(diario.participantes_presentes, 0)
+
+    def test_link_sincroniza_presenca_com_diario(self):
+        from ava.services.attendance_service import registrar_presenca
+        self.client.post(reverse("ava:diario_novo"), self.dados_registro(modo_frequencia="link"))
+        diario = DiarioBordo.objects.get(titulo="Diário com turma automática")
+        registrar_presenca(diario.encontro_frequencia, self.matricula, None, presente=True, origem="link")
+        diario.refresh_from_db()
+        self.assertEqual(diario.participantes_presentes, 1)
+        self.assertTrue(diario.participantes.get().presente)
+
+    def test_aula_de_outro_curso_e_rejeitada_sem_modulo(self):
+        curso = Curso.objects.create(cliente=self.cliente, titulo="Outro", slug="outro-auto-local")
+        resposta = self.client.post(reverse("ava:diario_novo"), self.dados_registro(curso=curso.pk, aula=self.aula.pk))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("aula", resposta.context["form"].errors)
+        self.assertFalse(DiarioBordo.objects.exists())
+
+    def test_administrador_pode_registrar_turma_sem_escola_oculta(self):
+        self.client.force_login(self.admin)
+        resposta = self.client.post(reverse("ava:diario_novo"), self.dados_registro(escolas=[self.escola_b.pk]))
+        self.assertEqual(resposta.status_code, 302)
+        diario = DiarioBordo.objects.get()
+        self.assertEqual(diario.professor, self.admin)
+        self.assertEqual(diario.escola, self.escola_b)
+        self.assertEqual(diario.participantes.get().usuario_id, self.professor_b.pk)
+
+    def test_troca_de_curso_substitui_turma_e_nao_reaproveita_presencas(self):
+        from ava.models import MatriculaCurso
+        from ava.services.attendance_service import registrar_presenca
+        self.client.post(reverse("ava:diario_novo"), self.dados_registro())
+        diario = DiarioBordo.objects.get()
+        registrar_presenca(diario.encontro_frequencia, self.matricula, self.professor_a, presente=True, origem="checklist")
+        curso = Curso.objects.create(cliente=self.cliente, titulo="Novo curso", slug="novo-curso-auto")
+        MatriculaCurso.objects.create(cliente=self.cliente, curso=curso, aluno=self.professor_a)
+        resposta = self.client.post(reverse("ava:diario_editar", args=[diario.pk]), self.dados_registro(curso=curso.pk))
+        self.assertEqual(resposta.status_code, 302)
+        diario.refresh_from_db()
+        self.assertEqual(diario.participantes_presentes, 0)
+        self.assertEqual(diario.participantes.get().usuario_id, self.professor_a.pk)
+        self.assertEqual(diario.encontro_frequencia.curso_id, curso.pk)
+        self.assertFalse(diario.encontro_frequencia.presencas.exists())
+
+    def test_turma_vazia_pode_ser_registrada_sem_participantes_manuais(self):
+        self.matricula.delete()
+        resposta = self.client.post(reverse("ava:diario_novo"), self.dados_registro())
+        self.assertEqual(resposta.status_code, 302)
+        diario = DiarioBordo.objects.get()
+        self.assertEqual(diario.participantes_previstos, 0)
+        self.assertFalse(diario.participantes.exists())
