@@ -322,7 +322,7 @@ def diario_exportar(request, formato):
 @diario_required
 def diario_novo(request):
     cliente = _cliente_atual(request)
-    instancia = DiarioBordo(cliente=cliente)
+    instancia = DiarioBordo(cliente=cliente, professor=request.user)
     if request.user.role == Usuario.Role.PROFESSOR:
         instancia.escola_id = request.user.escola_id
         instancia.professor = request.user

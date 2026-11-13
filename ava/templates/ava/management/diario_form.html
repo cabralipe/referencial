@@ -62,11 +62,7 @@
                             <div class="form-text">{{ form.escolas.help_text }}</div>
                             {% if form.escolas.errors %}<div class="text-danger small mt-1">{{ form.escolas.errors|join:" " }}</div>{% endif %}
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="{{ form.professor.id_for_label }}">{{ form.professor.label }}</label>
-                            {{ form.professor }}
-                            {% if form.professor.errors %}<div class="text-danger small mt-1">{{ form.professor.errors|join:" " }}</div>{% endif %}
-                        </div>
+                        {{ form.professor }}
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }}</label>
                             {{ form.titulo }}

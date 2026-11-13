@@ -95,6 +95,7 @@ class DiarioBordoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         self.cliente = cliente
+        self.criando = not bool(self.instance and self.instance.pk)
 
         escolas = Escola.raw_objects.filter(
             cliente=cliente, is_deleted=False
@@ -128,6 +129,10 @@ class DiarioBordoForm(forms.ModelForm):
         self.fields["escolas"].required = False
         self.fields["escolas"].help_text = "Selecione uma ou mais escolas, ou use “Todas as escolas”."
         self.fields["professor"].queryset = professores
+        # O responsável é sempre quem iniciou o registro; não há escolha manual.
+        self.fields["professor"].widget = forms.HiddenInput()
+        if self.criando:
+            self.fields["professor"].initial = user.pk
         self.fields["curso"].queryset = cursos
         self.fields["modulo"].queryset = modulos
         self.fields["aula"].queryset = aulas
@@ -163,6 +168,7 @@ class DiarioBordoForm(forms.ModelForm):
         # Campos desabilitados não chegam no POST; repõe a partir do usuário.
         if self.user.role == Usuario.Role.PROFESSOR:
             cleaned["escola"] = self.user.escola
+        if self.criando:
             cleaned["professor"] = self.user
 
         escolas = list(cleaned.get("escolas") or [])

@@ -294,6 +294,8 @@ class Usuario(AbstractUser):
 
     def clean(self):  # type: ignore[override]
         self._sync_from_tipo_cadastro()
+        if self.seguimento == self.Seguimento.PROFISSIONAL_APOIO:
+            self.role = self.Role.LEITOR
         super().clean()
         if self.tipo_cadastro_id and self.tipo_cadastro.cliente_id != self.cliente_id:
             raise ValidationError({"tipo_cadastro": "O tipo de usuário deve pertencer ao mesmo cliente do usuário."})
@@ -316,7 +318,14 @@ class Usuario(AbstractUser):
 
     def save(self, *args, **kwargs):  # type: ignore[override]
         self._sync_from_tipo_cadastro()
+        # Profissional de Apoio participa como cursista, nunca como professor.
+        if self.seguimento == self.Seguimento.PROFISSIONAL_APOIO:
+            self.role = self.Role.LEITOR
         update_fields = kwargs.get("update_fields")
+        if update_fields and self.seguimento == self.Seguimento.PROFISSIONAL_APOIO:
+            update_fields = set(update_fields)
+            update_fields.add("role")
+            kwargs["update_fields"] = list(update_fields)
         if update_fields and self.tipo_cadastro_id:
             update_fields = set(update_fields)
             update_fields.update({"role", "seguimento", "cliente"})
@@ -392,6 +401,7 @@ class TipoUsuarioCadastro(TenantModel):
         (Usuario.Role.DIRETOR, "Diretor"),
         (Usuario.Role.COORDENADOR_PEDAGOGICO, "Coordenador Pedagógico"),
         (Usuario.Role.PROFESSOR, "Professor"),
+        (Usuario.Role.LEITOR, "Cursista"),
     )
 
     nome = models.CharField(max_length=120)
@@ -421,7 +431,11 @@ class TipoUsuarioCadastro(TenantModel):
     def clean(self):  # type: ignore[override]
         super().clean()
         if self.seguimento and self.role_interno != Usuario.Role.PROFESSOR:
-            raise ValidationError({"seguimento": "Apenas tipos com papel interno de professor podem usar seguimento."})
+            if not (
+                self.seguimento == Usuario.Seguimento.PROFISSIONAL_APOIO
+                and self.role_interno == Usuario.Role.LEITOR
+            ):
+                raise ValidationError({"seguimento": "Apenas tipos de professor podem usar seguimento, exceto Profissional de Apoio (cursista)."})
 
 
 class AuditLog(TenantModel):
