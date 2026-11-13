@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import mimetypes
-from datetime import date
+import io
+from datetime import date, timedelta
 from functools import wraps
 
 from django.contrib import messages
@@ -13,8 +14,10 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 from ava.forms_diario import (
     ColunaPlanilhaFormSet,
@@ -35,6 +38,7 @@ from ava.models import (
     DiarioBordoMidia,
     ImportacaoPlanilha,
     ModeloPlanilha,
+    EncontroCurso,
     RegistroPlanilha,
 )
 from ava.models.diario import OrigemAula
@@ -346,6 +350,12 @@ def diario_novo(request):
         except ValidationError as exc:
             form.add_error(None, exc)
         else:
+            form.save_m2m()
+            _configurar_frequencia_do_diario(diario, request.user, form.cleaned_data.get("lista_fisica"))
+            if request.POST.get("marcar_presentes") == "1" and diario.curso_id:
+                encontro = EncontroCurso.raw_objects.filter(diario=diario, is_deleted=False).first()
+                if encontro:
+                    return redirect("ava:frequencia_checklist", encontro_id=encontro.id)
             messages.success(
                 request,
                 "Registro criado como rascunho. Adicione frequência e fotos antes de enviar.",
@@ -392,6 +402,12 @@ def diario_editar(request, diario_id):
             except ValidationError as exc:
                 form.add_error(None, exc)
             else:
+                form.save_m2m()
+                _configurar_frequencia_do_diario(atualizado, request.user, form.cleaned_data.get("lista_fisica"))
+                if request.POST.get("marcar_presentes") == "1" and atualizado.curso_id:
+                    encontro = EncontroCurso.raw_objects.filter(diario=atualizado, is_deleted=False).first()
+                    if encontro:
+                        return redirect("ava:frequencia_checklist", encontro_id=encontro.id)
                 messages.success(request, "Registro atualizado com sucesso.")
                 return redirect("ava:diario_editar", diario_id=diario.id)
         else:
@@ -415,6 +431,46 @@ def diario_editar(request, diario_id):
             "texto_botao": "Salvar alterações",
         },
     )
+
+
+def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None):
+    """Centraliza a chamada no diário, inclusive o comprovante físico."""
+    diario.frequencia_nominal = True
+    DiarioBordo.raw_objects.filter(pk=diario.pk).update(frequencia_nominal=True)
+    if diario.curso_id:
+        EncontroCurso.raw_objects.get_or_create(
+            diario=diario,
+            defaults={
+                "cliente_id": diario.cliente_id, "curso_id": diario.curso_id,
+                "titulo": diario.titulo, "data_aula": diario.data_aula,
+                "realizado": True,
+                "link_aberto": diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK,
+                "link_expira_em": timezone.now() + timedelta(days=7) if diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK else None,
+            },
+        )
+    if lista_fisica:
+        DiarioBordoService.adicionar_midia(
+            diario, usuario, lista_fisica,
+            tipo=DiarioBordoMidia.Tipo.COMPROVANTE,
+            legenda="Lista de frequência física",
+        )
+
+
+@diario_required
+def diario_qr_frequencia(request, diario_id):
+    diario = _obter_diario(request, diario_id)
+    encontro = EncontroCurso.raw_objects.filter(diario=diario, is_deleted=False).first()
+    if not encontro:
+        raise Http404("Este diário não possui frequência por link.")
+    try:
+        import qrcode
+    except ImportError as exc:  # proteção para instalações ainda sem a dependência nova
+        raise Http404("Gerador de QR Code indisponível.") from exc
+    url = request.build_absolute_uri(reverse("ava:confirmar_presenca", args=[encontro.token]))
+    imagem = qrcode.make(url)
+    arquivo = io.BytesIO()
+    imagem.save(arquivo, format="PNG")
+    return HttpResponse(arquivo.getvalue(), content_type="image/png")
 
 
 @diario_required

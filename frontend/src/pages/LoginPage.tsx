@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import { buildBackendUrl } from '@/config/env';
 
 // Remove import './LoginPage.css'; since we use Tailwind now
 
@@ -16,6 +17,7 @@ export function LoginPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [destination, setDestination] = useState<'referencial' | 'ava' | null>(null);
 
   useEffect(() => {
     queryClient.clear();
@@ -32,8 +34,32 @@ export function LoginPage() {
 
   const redirectTo = requestedPath ?? resolveDefaultRoute(user?.role);
 
-  if (isAuthenticated) {
+  if (isAuthenticated && (requestedPath || destination === 'referencial')) {
     return <Navigate to={redirectTo} replace />;
+  }
+
+  if (isAuthenticated && destination === 'ava') {
+    window.location.assign(buildBackendUrl('/ava/catalogo/'));
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <section className="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-xl border border-slate-100">
+          <h1 className="text-3xl font-bold text-slate-900">Onde você quer começar?</h1>
+          <p className="mt-2 text-slate-600">Escolha a plataforma que deseja acessar agora.</p>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={() => setDestination('referencial')} className="rounded-2xl border border-slate-200 p-6 text-left hover:border-primary hover:bg-blue-50 transition-colors">
+              <span className="material-symbols-outlined text-primary text-3xl">menu_book</span><h2 className="mt-3 font-bold text-lg">Referencial curricular</h2><p className="mt-1 text-sm text-slate-600">Planejamento, currículo e gestão pedagógica.</p>
+            </button>
+            <button type="button" onClick={() => setDestination('ava')} className="rounded-2xl border border-slate-200 p-6 text-left hover:border-primary hover:bg-blue-50 transition-colors">
+              <span className="material-symbols-outlined text-primary text-3xl">school</span><h2 className="mt-3 font-bold text-lg">AVA</h2><p className="mt-1 text-sm text-slate-600">Cursos, trilhas e ambiente de aprendizagem.</p>
+            </button>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

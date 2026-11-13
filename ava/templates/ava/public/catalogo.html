@@ -87,7 +87,7 @@
                 {% endif %}
 
                 <div class="p-4 d-flex flex-column flex-grow-1">
-                    <span class="ava-chip px-3 py-2 align-self-start mb-3">{{ curso.categoria.nome|default:"Geral" }}</span>
+                    <div class="d-flex gap-2 align-items-center mb-3"><span class="ava-chip px-3 py-2">{{ curso.categoria.nome|default:"Geral" }}</span>{% if not curso.is_aberto %}<span class="badge rounded-pill text-bg-secondary">Matrículas fechadas</span>{% endif %}</div>
                     <h3 class="h6 fw-bold mb-2">{{ curso.titulo }}</h3>
                     <p class="text-muted small mb-4">{{ curso.descricao_curta|default:"Curso com acompanhamento por módulo." }}</p>
                     <div class="mt-auto">

@@ -184,8 +184,8 @@
                                 </div>
                             </td>
                             <td class="small">
-                                <span class="fw-semibold">{{ diario.participantes_presentes }}</span> presente{{ diario.participantes_presentes|pluralize }}
-                                {% if diario.frequencia_nominal %}<br><span class="text-muted">lista nominal</span>{% endif %}
+                                <span class="fw-semibold">{{ diario.get_modo_frequencia_display }}</span>
+                                {% if diario.encontro_frequencia %}<br><span class="text-muted">chamada vinculada</span>{% endif %}
                             </td>
                             <td>
                                 <span class="badge rounded-pill

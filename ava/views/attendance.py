@@ -1,4 +1,6 @@
 from typing import ClassVar
+import hashlib
+import secrets
 
 from django import forms
 from django.contrib import messages
@@ -14,7 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from ava.models import AutorizacaoCurso, Curso, EncontroCurso, PresencaCurso, RepasseFrequencia
+from ava.models import AutorizacaoCurso, Curso, EncontroCurso, MatriculaCurso, PresencaCurso, PresencaLinkDispositivo, RepasseFrequencia
 from ava.services.attendance_service import (
     matriculas_do_curso,
     registrar_presenca,
@@ -229,29 +231,37 @@ def confirmar_presenca(request, token):
         is_deleted=False,
         curso__is_deleted=False,
     )
-    if not request.user.is_authenticated:
-        login_form = AuthenticationForm(request, data=request.POST or None)
-        for field in login_form.fields.values():
-            field.widget.attrs["class"] = "form-control"
-        if request.method == "POST" and login_form.is_valid():
-            login(request, login_form.get_user())
-            return redirect("ava:confirmar_presenca", token=token)
-        return render(
-            request,
-            "ava/student/confirmar_presenca.html",
-            {
-                "encontro": encontro,
-                "login_form": login_form,
-            },
-        )
-    matricula = get_object_or_404(
-        matriculas_do_curso(encontro.curso), aluno=request.user
-    )
     aberto = (
         encontro.link_aberto
         and encontro.link_expira_em
         and encontro.link_expira_em > timezone.now()
     )
+    device_key = request.COOKIES.get("ava_presence_device") or secrets.token_urlsafe(32)
+    device_hash = hashlib.sha256(device_key.encode()).hexdigest()
+    bloqueado = PresencaLinkDispositivo.raw_objects.filter(
+        encontro=encontro, dispositivo_hash=device_hash, is_deleted=False
+    ).exists()
+    matriculas = matriculas_do_curso(encontro.curso)
+    if request.method == "POST":
+        if not aberto:
+            messages.error(request, "O link de presenca esta fechado ou expirou.")
+        elif bloqueado:
+            messages.error(request, "Este telefone ja confirmou presenca nesta chamada.")
+        else:
+            matricula = get_object_or_404(matriculas, pk=request.POST.get("matricula"))
+            registrar_presenca(encontro, matricula, None, presente=True, origem="link")
+            PresencaLinkDispositivo.raw_objects.create(
+                cliente_id=encontro.cliente_id, encontro=encontro, dispositivo_hash=device_hash
+            )
+            messages.success(request, "Sua presenca foi confirmada.")
+        response = redirect("ava:confirmar_presenca", token=token)
+    else:
+        response = render(request, "ava/student/confirmar_presenca.html", {
+            "encontro": encontro, "aberto": aberto, "bloqueado": bloqueado, "matriculas": matriculas,
+        })
+    response.set_cookie("ava_presence_device", device_key, max_age=31536000, secure=request.is_secure(), httponly=True, samesite="Lax")
+    return response
+
     if request.method == "POST":
         if not aberto:
             messages.error(request, "O link de presença está fechado ou expirou.")

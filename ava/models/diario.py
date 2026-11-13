@@ -86,6 +86,9 @@ ORIGENS_COM_EXTERNO = {
 
 
 class DiarioBordo(TenantModel):
+    class ModoFrequencia(models.TextChoices):
+        PRESENCIAL = "presencial", "Lista presencial"
+        LINK = "link", "Link e QR Code"
     """Registro de um encontro/aula conduzido por um professor."""
 
     class Status(models.TextChoices):
@@ -109,6 +112,10 @@ class DiarioBordo(TenantModel):
         "curriculum.Escola",
         on_delete=models.PROTECT,
         related_name="diarios_bordo",
+    )
+    escolas = models.ManyToManyField(
+        "curriculum.Escola", related_name="diarios_bordo_compartilhados", blank=True,
+        verbose_name="Escolas atendidas",
     )
     professor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -198,6 +205,10 @@ class DiarioBordo(TenantModel):
         "Registrar lista nominal",
         default=False,
         help_text="Quando marcado, a quantidade é calculada pela lista de presença.",
+    )
+    modo_frequencia = models.CharField(
+        "Como registrar a frequência", max_length=20,
+        choices=ModoFrequencia.choices, default=ModoFrequencia.PRESENCIAL,
     )
 
     # ---- Fluxo ----

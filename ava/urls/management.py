@@ -39,6 +39,7 @@ urlpatterns = [
     ),
     path("diario/<int:diario_id>/", diario.diario_detalhe, name="diario_detalhe"),
     path("diario/<int:diario_id>/editar/", diario.diario_editar, name="diario_editar"),
+    path("diario/<int:diario_id>/frequencia/qr.png", diario.diario_qr_frequencia, name="diario_qr_frequencia"),
     path("diario/<int:diario_id>/enviar/", diario.diario_enviar, name="diario_enviar"),
     path("diario/<int:diario_id>/revisar/", diario.diario_revisar, name="diario_revisar"),
     path("diario/<int:diario_id>/reabrir/", diario.diario_reabrir, name="diario_reabrir"),

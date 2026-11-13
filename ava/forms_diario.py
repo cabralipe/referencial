@@ -47,6 +47,7 @@ class DiarioBordoForm(forms.ModelForm):
         fields = [
             "origem",
             "escola",
+            "escolas",
             "professor",
             "curso",
             "modulo",
@@ -60,14 +61,13 @@ class DiarioBordoForm(forms.ModelForm):
             "instituicao_parceira",
             "grupo_participante",
             "responsavel_externo",
-            "frequencia_nominal",
-            "participantes_previstos",
-            "participantes_presentes",
+            "modo_frequencia",
             "observacoes",
         ]
         widgets = {
             "origem": forms.Select(attrs={"class": "form-select", "id": "id_origem"}),
-            "escola": forms.Select(attrs={"class": "form-select"}),
+            "escola": forms.Select(attrs={"class": "form-select d-none"}),
+            "escolas": forms.SelectMultiple(attrs={"class": "form-select", "size": 5}),
             "professor": forms.Select(attrs={"class": "form-select"}),
             "curso": forms.Select(attrs={"class": "form-select"}),
             "modulo": forms.Select(attrs={"class": "form-select"}),
@@ -87,15 +87,7 @@ class DiarioBordoForm(forms.ModelForm):
             "instituicao_parceira": forms.TextInput(attrs={"class": "form-control"}),
             "grupo_participante": forms.TextInput(attrs={"class": "form-control"}),
             "responsavel_externo": forms.TextInput(attrs={"class": "form-control"}),
-            "frequencia_nominal": forms.CheckboxInput(
-                attrs={"class": "form-check-input", "id": "id_frequencia_nominal"}
-            ),
-            "participantes_previstos": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0"}
-            ),
-            "participantes_presentes": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0"}
-            ),
+            "modo_frequencia": forms.RadioSelect(attrs={"class": "form-check-input"}),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
@@ -128,8 +120,13 @@ class DiarioBordoForm(forms.ModelForm):
             self.fields["professor"].initial = user.pk
             self.fields["escola"].disabled = True
             self.fields["professor"].disabled = True
+            self.fields["escolas"].initial = [user.escola_id]
+            self.fields["escolas"].disabled = True
 
         self.fields["escola"].queryset = escolas
+        self.fields["escolas"].queryset = escolas
+        self.fields["escolas"].required = False
+        self.fields["escolas"].help_text = "Selecione uma ou mais escolas, ou use “Todas as escolas”."
         self.fields["professor"].queryset = professores
         self.fields["curso"].queryset = cursos
         self.fields["modulo"].queryset = modulos
@@ -147,8 +144,10 @@ class DiarioBordoForm(forms.ModelForm):
         self.fields["aula"].help_text = (
             "Vincule a uma aula já cadastrada para não duplicar o registro."
         )
-        self.fields["participantes_presentes"].help_text = (
-            "Calculado automaticamente quando a lista nominal estiver ativa."
+        self.fields["lista_fisica"] = forms.FileField(
+            label="Lista de frequência física", required=False,
+            widget=forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}),
+            help_text="Opcional: PDF ou imagem da lista assinada.",
         )
 
         # Marca os grupos para o JS do template alternar a visibilidade.
@@ -165,6 +164,15 @@ class DiarioBordoForm(forms.ModelForm):
         if self.user.role == Usuario.Role.PROFESSOR:
             cleaned["escola"] = self.user.escola
             cleaned["professor"] = self.user
+
+        escolas = list(cleaned.get("escolas") or [])
+        if not escolas:
+            escolas = list(self.fields["escolas"].queryset)
+        if not escolas:
+            self.add_error("escolas", "Selecione ao menos uma escola.")
+        else:
+            cleaned["escolas"] = escolas
+            cleaned["escola"] = escolas[0]
 
         if origem in ORIGENS_COM_SISTEMA and not cleaned.get("curso"):
             self.add_error(
@@ -195,6 +203,8 @@ class DiarioBordoForm(forms.ModelForm):
             cleaned["modulo"] = aula.modulo
             if not curso:
                 cleaned["curso"] = aula.modulo.curso
+        if cleaned.get("modo_frequencia") == DiarioBordo.ModoFrequencia.LINK and not cleaned.get("curso"):
+            self.add_error("curso", "Escolha o curso para gerar o link e carregar os cursistas.")
         return cleaned
 
 

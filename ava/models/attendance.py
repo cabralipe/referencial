@@ -8,6 +8,10 @@ from core.mixins import TenantModel
 
 
 class EncontroCurso(TenantModel):
+    diario = models.OneToOneField(
+        "ava.DiarioBordo", on_delete=models.CASCADE, related_name="encontro_frequencia",
+        null=True, blank=True,
+    )
     curso = models.ForeignKey(
         "ava.Curso", on_delete=models.CASCADE, related_name="encontros"
     )
@@ -50,4 +54,15 @@ class PresencaCurso(TenantModel):
             models.UniqueConstraint(
                 fields=["encontro", "matricula"], name="ava_presenca_encontro_matricula"
             )
+        ]
+
+
+class PresencaLinkDispositivo(TenantModel):
+    """Impede uma segunda confirmação no mesmo navegador/telefone por chamada."""
+    encontro = models.ForeignKey(EncontroCurso, on_delete=models.CASCADE, related_name="dispositivos_confirmados")
+    dispositivo_hash = models.CharField(max_length=64)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["encontro", "dispositivo_hash"], name="ava_presenca_link_dispositivo")
         ]

@@ -81,9 +81,8 @@
                 {% endif %}
                 <dt class="col-sm-3">Frequência</dt>
                 <dd class="col-sm-9">
-                    {{ diario.participantes_presentes }} presente{{ diario.participantes_presentes|pluralize }}
-                    {% if diario.participantes_previstos %} de {{ diario.participantes_previstos }} previstos{% endif %}
-                    {% if diario.frequencia_nominal %} (lista nominal){% endif %}
+                    {{ diario.get_modo_frequencia_display }}
+                    {% if diario.encontro_frequencia %} · chamada vinculada ao curso{% endif %}
                 </dd>
                 <dt class="col-sm-3">Conteúdo trabalhado</dt>
                 <dd class="col-sm-9">{{ diario.conteudo_trabalhado|linebreaksbr }}</dd>

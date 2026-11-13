@@ -33,7 +33,7 @@
         <div class="ava-surface p-4 p-lg-5 mb-4">
             <h1 class="h4 fw-bold mb-4">{{ titulo_pagina }}</h1>
 
-            <form method="post" novalidate>
+            <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="municipio" value="{{ cliente_atual.id }}">
 
@@ -56,9 +56,11 @@
                             {% if form.data_aula.errors %}<div class="text-danger small mt-1">{{ form.data_aula.errors|join:" " }}</div>{% endif %}
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold" for="{{ form.escola.id_for_label }}">{{ form.escola.label }}</label>
-                            {{ form.escola }}
-                            {% if form.escola.errors %}<div class="text-danger small mt-1">{{ form.escola.errors|join:" " }}</div>{% endif %}
+                            <label class="form-label fw-semibold" for="{{ form.escolas.id_for_label }}">Escolas atendidas</label>
+                            <button class="btn btn-link btn-sm p-0 float-end" type="button" id="selecionar-todas-escolas">Todas</button>
+                            {{ form.escola }}{{ form.escolas }}
+                            <div class="form-text">{{ form.escolas.help_text }}</div>
+                            {% if form.escolas.errors %}<div class="text-danger small mt-1">{{ form.escolas.errors|join:" " }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="{{ form.professor.id_for_label }}">{{ form.professor.label }}</label>
@@ -151,26 +153,21 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
                             <div class="form-check">
-                                {{ form.frequencia_nominal }}
-                                <label class="form-check-label fw-semibold" for="{{ form.frequencia_nominal.id_for_label }}">
-                                    {{ form.frequencia_nominal.label }}
-                                </label>
+                                {{ form.modo_frequencia }}
                             </div>
-                            <div class="form-text">{{ form.frequencia_nominal.help_text }}</div>
+                            <div class="form-text">Escolha lista presencial ou link com QR Code.</div>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="{{ form.participantes_previstos.id_for_label }}">{{ form.participantes_previstos.label }}</label>
-                            {{ form.participantes_previstos }}
+                            <label class="form-label fw-semibold" for="{{ form.lista_fisica.id_for_label }}">{{ form.lista_fisica.label }}</label>
+                            {{ form.lista_fisica }}
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="{{ form.participantes_presentes.id_for_label }}">{{ form.participantes_presentes.label }}</label>
-                            {{ form.participantes_presentes }}
-                            <div class="form-text">{{ form.participantes_presentes.help_text }}</div>
-                            {% if form.participantes_presentes.errors %}<div class="text-danger small mt-1">{{ form.participantes_presentes.errors|join:" " }}</div>{% endif %}
+                            <p class="form-text mb-0">Ao salvar, você poderá marcar os presentes pelo checklist do curso.</p>
                         </div>
                     </div>
                 </fieldset>
 
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="marcar_presentes" value="1" id="marcar-presentes"><label class="form-check-label" for="marcar-presentes">Após salvar, abrir o checklist para marcar os presentes</label></div>
                 <div class="d-flex flex-wrap gap-2">
                     {% if not diario or editavel %}
                     <button type="submit" class="btn btn-primary px-4">{{ texto_botao }}</button>
@@ -184,6 +181,9 @@
         </div>
 
         {% if diario %}
+        {% if diario.encontro_frequencia %}
+        <section class="ava-surface p-4 mb-4"><div class="row align-items-center g-3"><div class="col-auto"><img id="qr-frequencia" class="border rounded p-2 bg-white" width="150" height="150" src="{% url 'ava:diario_qr_frequencia' diario.id %}" alt="QR Code da frequência"></div><div class="col"><h2 class="h5">Frequência por link</h2><p class="text-muted mb-2">Compartilhe o QR Code ou copie o link. Cada telefone registra uma única presença nesta chamada.</p><input id="link-frequencia" class="form-control mb-2" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'ava:confirmar_presenca' diario.encontro_frequencia.token %}"><a class="btn btn-outline-primary btn-sm" download="qr-frequencia-{{ diario.id }}.png" href="{% url 'ava:diario_qr_frequencia' diario.id %}">Baixar QR Code</a> <button class="btn btn-outline-primary btn-sm" type="button" onclick="fetch(document.getElementById('qr-frequencia').src).then(function(r){return r.blob()}).then(function(b){return navigator.clipboard.write([new ClipboardItem({'image/png': b})])})">Copiar QR Code</button> <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('link-frequencia').value)">Copiar link</button></div></div></section>
+        {% endif %}
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="ava-surface p-4 h-100">
@@ -311,6 +311,14 @@
     var grupoSistema = document.getElementById("grupo-sistema");
     var grupoExterno = document.getElementById("grupo-externo");
     if (!origem) { return; }
+
+    var todasEscolas = document.getElementById("selecionar-todas-escolas");
+    var escolas = document.getElementById("id_escolas");
+    if (todasEscolas && escolas) {
+        todasEscolas.addEventListener("click", function () {
+            Array.prototype.forEach.call(escolas.options, function (option) { option.selected = true; });
+        });
+    }
 
     var COM_SISTEMA = ["no_sistema", "hibrida"];
     var COM_EXTERNO = ["presencial_externa", "atividade_externa", "hibrida"];

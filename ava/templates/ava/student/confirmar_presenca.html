@@ -1,17 +1,14 @@
 {% extends 'ava/base.html' %}
 {% block title %}Confirmar presença{% endblock %}
 {% block content %}
-<div class="container py-4">
-<div class="card card-body mx-auto" style="max-width: 640px">
-  <h1 class="h3">Confirmar presença</h1>
-  <h2 class="h5">{{ encontro.titulo }}</h2>
+<div class="container py-4"><div class="card card-body mx-auto" style="max-width: 640px">
+  <h1 class="h3">Confirmar presença</h1><h2 class="h5">{{ encontro.titulo }}</h2>
   <p>{{ encontro.curso.titulo }} — {{ encontro.data_aula|date:'d/m/Y' }}</p>
-  {% if login_form %}
-  <p>Entre na sua conta de cursista para continuar.</p>
-  <form method="post">{% csrf_token %}{{ login_form.as_p }}<button class="btn btn-primary">Entrar e continuar</button></form>
-  {% elif presente %}<p class="alert alert-success">Sua presença está registrada.</p>
-  {% elif aberto %}<p>Confirme sua participação neste encontro.</p><form method="post">{% csrf_token %}<button class="btn btn-primary">Confirmar minha presença</button></form>
+  {% if bloqueado %}<p class="alert alert-success">Presença já registrada neste telefone.</p>
+  {% elif aberto %}<p>Selecione seu nome e confirme. Não é necessário fazer login.</p>
+  <form method="post">{% csrf_token %}<label class="form-label" for="matricula">Seu nome</label>
+  <select class="form-select mb-3" id="matricula" name="matricula" required><option value="">Selecione seu nome</option>{% for matricula in matriculas %}<option value="{{ matricula.id }}">{{ matricula.aluno.nome|default:matricula.aluno.email }}</option>{% endfor %}</select>
+  <button class="btn btn-primary">Confirmar minha presença</button></form>
   {% else %}<p class="alert alert-warning">O link de presença está fechado ou expirou. Procure o responsável pelo curso.</p>{% endif %}
-</div>
-</div>
+</div></div>
 {% endblock %}
