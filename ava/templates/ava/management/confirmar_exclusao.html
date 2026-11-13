@@ -1,0 +1,17 @@
+{% extends 'ava/base.html' %}
+{% block title %}{{ titulo_pagina }} | AVA PROLUC{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <section class="ava-surface p-4 mx-auto" style="max-width: 680px">
+    <h1 class="h4">{{ titulo_pagina }}</h1>
+    <p class="fw-semibold">{{ objeto }}</p>
+    <p>{{ descricao }}</p>
+    <p class="text-muted">Confirme abaixo para excluir este registro.</p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+      <a class="btn btn-outline-secondary" href="{{ voltar_url }}">Cancelar</a>
+    </form>
+  </section>
+</div>
+{% endblock %}

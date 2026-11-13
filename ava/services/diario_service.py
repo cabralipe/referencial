@@ -74,6 +74,26 @@ class DiarioBordoService:
 
     @staticmethod
     @transaction.atomic
+    def excluir(diario: DiarioBordo, usuario) -> None:
+        from ava.models import EncontroCurso
+        from ava.services.attendance_service import remover_chamada
+
+        if not DiarioBordoService.pode_editar(diario, usuario):
+            raise PermissionDenied("Você não pode excluir este registro. Registros bloqueados devem ser reabertos antes da exclusão.")
+        encontro = EncontroCurso.raw_objects.select_for_update().filter(diario=diario).first()
+        if encontro:
+            remover_chamada(encontro)
+        DiarioBordo.raw_objects.select_for_update().get(pk=diario.pk)
+        diario.participantes.all().update(is_deleted=True, presente=False)
+        diario.midias.all().update(is_deleted=True)
+        diario.is_deleted = True
+        diario.updated_by = usuario
+        diario.participantes_presentes = 0
+        diario.save(update_fields=["is_deleted", "updated_by", "participantes_presentes", "updated_at"])
+        AVAAuditService.registrar_diario(diario, usuario, acao="excluido")
+
+    @staticmethod
+    @transaction.atomic
     def enviar(diario: DiarioBordo, usuario) -> DiarioBordo:
         if diario.status != DiarioBordo.Status.RASCUNHO:
             raise ValidationError("Somente rascunhos podem ser enviados.")

@@ -100,10 +100,7 @@ class DiarioBordoForm(forms.ModelForm):
         escolas = Escola.raw_objects.filter(
             cliente=cliente, is_deleted=False
         ).order_by("nome")
-        professores = Usuario.objects.filter(
-            cliente=cliente,
-            role__in=[Usuario.Role.PROFESSOR, Usuario.Role.COORDENADOR_PEDAGOGICO],
-        ).order_by("nome", "email")
+        professores = Usuario.objects.filter(cliente=cliente).order_by("nome", "email")
         cursos = Curso.raw_objects.filter(cliente=cliente, is_deleted=False).order_by(
             "titulo"
         )
@@ -125,12 +122,15 @@ class DiarioBordoForm(forms.ModelForm):
             self.fields["escolas"].disabled = True
 
         self.fields["escola"].queryset = escolas
+        # A escola principal é derivada da seleção de escolas em clean().
+        self.fields["escola"].required = False
         self.fields["escolas"].queryset = escolas
         self.fields["escolas"].required = False
         self.fields["escolas"].help_text = "Selecione uma ou mais escolas, ou use “Todas as escolas”."
         self.fields["professor"].queryset = professores
         # O responsável é sempre quem iniciou o registro; não há escolha manual.
         self.fields["professor"].widget = forms.HiddenInput()
+        self.fields["professor"].disabled = True
         if self.criando:
             self.fields["professor"].initial = user.pk
         self.fields["curso"].queryset = cursos
@@ -144,8 +144,15 @@ class DiarioBordoForm(forms.ModelForm):
             self.fields[nome].required = False
 
         self.fields["curso"].help_text = (
-            "Obrigatório quando a origem for 'No sistema' ou 'Híbrida'."
+            "Escolha o curso para carregar suas informações e todos os cursistas matriculados."
         )
+        self.fields["curso"].empty_label = "Selecione o curso"
+        if self.criando and self.instance.curso_id:
+            curso = self.instance.curso
+            if not self.initial.get("titulo"):
+                self.initial["titulo"] = curso.titulo
+            if not self.initial.get("conteudo_trabalhado"):
+                self.initial["conteudo_trabalhado"] = curso.ementa or curso.descricao_curta
         self.fields["aula"].help_text = (
             "Vincule a uma aula já cadastrada para não duplicar o registro."
         )
@@ -206,11 +213,15 @@ class DiarioBordoForm(forms.ModelForm):
         if aula and modulo and aula.modulo_id != modulo.id:
             self.add_error("aula", "A aula deve pertencer ao módulo selecionado.")
         if aula and not modulo:
+            if curso and aula.modulo.curso_id != curso.id:
+                self.add_error("aula", "A aula deve pertencer ao curso selecionado.")
             cleaned["modulo"] = aula.modulo
             if not curso:
                 cleaned["curso"] = aula.modulo.curso
-        if cleaned.get("modo_frequencia") == DiarioBordo.ModoFrequencia.LINK and not cleaned.get("curso"):
-            self.add_error("curso", "Escolha o curso para gerar o link e carregar os cursistas.")
+        if cleaned.get("modo_frequencia") in {
+            DiarioBordo.ModoFrequencia.LINK, DiarioBordo.ModoFrequencia.RETROATIVA,
+        } and not cleaned.get("curso"):
+            self.add_error("curso", "Escolha o curso para carregar a lista de cursistas.")
         return cleaned
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import mimetypes
 import io
+import uuid
 from datetime import date, timedelta
 from functools import wraps
 
@@ -16,7 +17,7 @@ from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
 
 from ava.forms_diario import (
@@ -54,6 +55,7 @@ from ava.services.planilha_service import (
     PlanilhaFormatoNaoSuportado,
     formatos_suportados,
 )
+from ava.services.attendance_service import matriculas_do_curso, sincronizar_participantes_diario
 from core.models import Usuario
 from curriculum.models import Escola
 
@@ -256,6 +258,8 @@ def diario_lista(request):
 
     paginator = Paginator(qs.order_by("-data_aula", "-id"), PAGINA_TAMANHO)
     page_obj = paginator.get_page(request.GET.get("page"))
+    for diario in page_obj.object_list:
+        diario.pode_excluir = DiarioBordoService.pode_editar(diario, request.user)
     query_params = request.GET.copy()
     query_params.pop("page", None)
 
@@ -320,9 +324,15 @@ def diario_exportar(request, formato):
 
 
 @diario_required
+@transaction.atomic
 def diario_novo(request):
     cliente = _cliente_atual(request)
     instancia = DiarioBordo(cliente=cliente, professor=request.user)
+    curso_id = _parse_int(request.GET.get("curso"))
+    if curso_id:
+        instancia.curso = get_object_or_404(
+            Curso.raw_objects, cliente=cliente, is_deleted=False, pk=curso_id,
+        )
     if request.user.role == Usuario.Role.PROFESSOR:
         instancia.escola_id = request.user.escola_id
         instancia.professor = request.user
@@ -338,6 +348,7 @@ def diario_novo(request):
 
     form = DiarioBordoForm(
         request.POST or None,
+        request.FILES or None,
         instance=instancia,
         user=request.user,
         cliente=cliente,
@@ -352,13 +363,14 @@ def diario_novo(request):
         else:
             form.save_m2m()
             _configurar_frequencia_do_diario(diario, request.user, form.cleaned_data.get("lista_fisica"))
-            if request.POST.get("marcar_presentes") == "1" and diario.curso_id:
+            if (request.POST.get("marcar_presentes") == "1" or diario.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA) and diario.curso_id:
                 encontro = EncontroCurso.raw_objects.filter(diario=diario, is_deleted=False).first()
                 if encontro:
                     return redirect("ava:frequencia_checklist", encontro_id=encontro.id)
             messages.success(
                 request,
-                "Registro criado como rascunho. Adicione frequência e fotos antes de enviar.",
+                "Registro criado como rascunho. Os alunos do curso foram carregados; registre as presenças e fotos antes de enviar."
+                if diario.curso_id else "Registro criado como rascunho. Adicione frequência e fotos antes de enviar.",
             )
             return redirect("ava:diario_editar", diario_id=diario.id)
     elif request.method == "POST":
@@ -381,12 +393,14 @@ def _obter_diario(request, diario_id) -> DiarioBordo:
 
 
 @diario_required
+@transaction.atomic
 def diario_editar(request, diario_id):
     diario = _obter_diario(request, diario_id)
     editavel = DiarioBordoService.pode_editar(diario, request.user)
 
     form = DiarioBordoForm(
         request.POST or None,
+        request.FILES or None,
         instance=diario,
         user=request.user,
         cliente=diario.cliente,
@@ -395,6 +409,8 @@ def diario_editar(request, diario_id):
         if not editavel:
             messages.error(request, "Este registro não pode mais ser alterado.")
             return redirect("ava:diario_editar", diario_id=diario.id)
+        # Mesma ordem de bloqueio usada pelo checklist: chamada, depois diário.
+        EncontroCurso.raw_objects.select_for_update().filter(diario=diario).first()
         if form.is_valid():
             atualizado = form.save(commit=False)
             try:
@@ -404,7 +420,7 @@ def diario_editar(request, diario_id):
             else:
                 form.save_m2m()
                 _configurar_frequencia_do_diario(atualizado, request.user, form.cleaned_data.get("lista_fisica"))
-                if request.POST.get("marcar_presentes") == "1" and atualizado.curso_id:
+                if (request.POST.get("marcar_presentes") == "1" or atualizado.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA) and atualizado.curso_id:
                     encontro = EncontroCurso.raw_objects.filter(diario=atualizado, is_deleted=False).first()
                     if encontro:
                         return redirect("ava:frequencia_checklist", encontro_id=encontro.id)
@@ -427,26 +443,59 @@ def diario_editar(request, diario_id):
             "pode_revisar": request.user.role in ROLES_REVISAO_VIEW,
             "midias": diario.midias.filter(is_deleted=False).order_by("ordem", "id"),
             "participantes": diario.participantes.filter(is_deleted=False).order_by("nome"),
+            "encontro": EncontroCurso.raw_objects.filter(diario=diario, is_deleted=False).first(),
             "titulo_pagina": "Editar registro do diário de bordo",
             "texto_botao": "Salvar alterações",
         },
     )
 
 
+@transaction.atomic
 def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None):
     """Centraliza a chamada no diário, inclusive o comprovante físico."""
     diario.frequencia_nominal = True
     DiarioBordo.raw_objects.filter(pk=diario.pk).update(frequencia_nominal=True)
     if diario.curso_id:
-        EncontroCurso.raw_objects.get_or_create(
+        encontro, criado = EncontroCurso.raw_objects.get_or_create(
             diario=diario,
             defaults={
                 "cliente_id": diario.cliente_id, "curso_id": diario.curso_id,
                 "titulo": diario.titulo, "data_aula": diario.data_aula,
-                "realizado": True,
+                "realizado": diario.data_aula <= timezone.localdate(),
+                "registro_retroativo": diario.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA,
                 "link_aberto": diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK,
                 "link_expira_em": timezone.now() + timedelta(days=7) if diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK else None,
             },
+        )
+        if not criado:
+            if encontro.is_deleted or encontro.curso_id != diario.curso_id:
+                encontro.token = uuid.uuid4()
+            if encontro.curso_id != diario.curso_id:
+                encontro.presencas.all().update(is_deleted=True)
+                encontro.dispositivos_confirmados.all().update(is_deleted=True)
+                diario.participantes.filter(usuario__isnull=False).update(
+                    presente=False, is_deleted=True,
+                )
+            encontro.curso_id = diario.curso_id
+            encontro.titulo = diario.titulo
+            encontro.data_aula = diario.data_aula
+            encontro.registro_retroativo = diario.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA
+            if encontro.registro_retroativo or diario.data_aula > timezone.localdate():
+                encontro.realizado = diario.data_aula <= timezone.localdate()
+            encontro.is_deleted = False
+            encontro.link_aberto = diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK
+            if encontro.link_aberto and (not encontro.link_expira_em or encontro.link_expira_em <= timezone.now()):
+                encontro.link_expira_em = timezone.now() + timedelta(days=7)
+            encontro.save()
+        sincronizar_participantes_diario(encontro)
+    else:
+        EncontroCurso.raw_objects.filter(diario=diario).update(
+            is_deleted=True, link_aberto=False,
+        )
+        diario.participantes.filter(usuario__isnull=False).update(is_deleted=True)
+        diario.sincronizar_frequencia()
+        DiarioBordo.raw_objects.filter(pk=diario.pk).update(
+            participantes_previstos=None, participantes_presentes=diario.participantes_presentes,
         )
     if lista_fisica:
         DiarioBordoService.adicionar_midia(
@@ -484,11 +533,31 @@ def diario_detalhe(request, diario_id):
             "cliente_atual": diario.cliente,
             "midias": diario.midias.filter(is_deleted=False).order_by("ordem", "id"),
             "participantes": diario.participantes.filter(is_deleted=False).order_by("nome"),
+            "presentes": diario.participantes.filter(is_deleted=False, presente=True).order_by("nome"),
+            "ausentes": diario.participantes.filter(is_deleted=False, presente=False).order_by("nome"),
             "revisao_form": DiarioBordoRevisaoForm(),
             "pode_revisar": request.user.role in ROLES_REVISAO_VIEW,
             "editavel": DiarioBordoService.pode_editar(diario, request.user),
         },
     )
+
+
+@diario_required
+@require_http_methods(["GET", "POST"])
+@transaction.atomic
+def diario_excluir(request, diario_id):
+    diario = _obter_diario(request, diario_id)
+    if not DiarioBordoService.pode_editar(diario, request.user):
+        raise PermissionDenied("Este registro não pode ser excluído. Reabra o diário antes de excluir.")
+    if request.method == "GET":
+        return render(request, "ava/management/confirmar_exclusao.html", {
+            "titulo_pagina": "Excluir registro do diário de bordo", "objeto": diario,
+            "descricao": "O diário, sua lista nominal e os anexos deixarão de aparecer. A chamada vinculada e seu QR Code serão encerrados e retirados da frequência do curso.",
+            "voltar_url": reverse("ava:diario_detalhe", args=[diario.pk]),
+        })
+    DiarioBordoService.excluir(diario, request.user)
+    messages.success(request, "Registro do diário de bordo e chamada vinculada excluídos.")
+    return redirect(f"{reverse('ava:diario_lista')}?municipio={diario.cliente_id}")
 
 
 @diario_required
@@ -669,6 +738,13 @@ def diario_aulas_json(request):
     cliente = _cliente_atual(request)
     curso_id = _parse_int(request.GET.get("curso"))
     modulo_id = _parse_int(request.GET.get("modulo"))
+    curso = None
+    matriculas = []
+    if curso_id:
+        curso = get_object_or_404(
+            Curso.raw_objects, pk=curso_id, cliente=cliente, is_deleted=False,
+        )
+        matriculas = list(matriculas_do_curso(curso))
 
     modulos = CursoModulo.raw_objects.filter(is_deleted=False, cliente=cliente)
     aulas = Aula.raw_objects.filter(is_deleted=False, cliente=cliente)
@@ -680,6 +756,16 @@ def diario_aulas_json(request):
 
     return JsonResponse(
         {
+            "curso": {
+                "id": curso.id, "titulo": curso.titulo,
+                "conteudo": curso.ementa or curso.descricao_curta,
+                "carga_horaria": curso.carga_horaria,
+            } if curso else None,
+            "alunos": [
+                {"id": m.aluno_id, "nome": m.aluno.nome or m.aluno.email}
+                for m in matriculas
+            ],
+            "escolas": sorted({m.aluno.escola_id for m in matriculas if m.aluno.escola_id}),
             "modulos": [
                 {"id": m.id, "titulo": m.titulo}
                 for m in modulos.order_by("ordem", "titulo")[:200]
