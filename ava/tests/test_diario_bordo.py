@@ -1,6 +1,8 @@
 """Testes do Diário de Bordo: fluxo, permissões, mídias e frequência."""
 
 from datetime import date
+import csv
+import io
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -527,6 +529,90 @@ class DiarioBordoViewTests(DiarioBordoBaseTests):
         conteudo = resposta.content.decode("utf-8-sig")
         self.assertIn("No sistema", conteudo)
         self.assertIn("Aula interna", conteudo)
+
+    def test_relatorio_frequencia_nominal_detalhado_e_isolado(self):
+        from ava.models import DiarioBordoParticipante
+
+        diario = self.criar_diario(frequencia_nominal=True)
+        DiarioBordoParticipante.objects.create(
+            cliente=self.cliente, diario=diario, nome="Ana", identificacao="Turma A", presente=True,
+        )
+        DiarioBordoParticipante.objects.create(
+            cliente=self.cliente, diario=diario, nome="Bruna", presente=False, justificativa="Atestado",
+        )
+        DiarioBordoParticipante.raw_objects.create(
+            cliente=self.cliente, diario=diario, nome="Removido", is_deleted=True,
+        )
+        self.criar_diario(escola=self.escola_b, professor=self.professor_b, titulo="Outra escola")
+        self.criar_diario(cliente=self.outro_cliente, escola=self.escola_outro,
+                          professor=self.professor_outro, titulo="Outro município")
+        self.client.force_login(self.professor_a)
+        resposta = self.client.get(reverse("ava:diario_exportar", args=["csv"]), {"relatorio": "frequencia"})
+        self.assertEqual(resposta.status_code, 200)
+        linhas = list(csv.DictReader(io.StringIO(resposta.content.decode("utf-8-sig")), delimiter=";"))
+        self.assertEqual(len(linhas), 2)
+        self.assertEqual(linhas[0]["Participante"], "Ana")
+        self.assertEqual(linhas[1]["Situação"], "Ausente")
+        self.assertEqual(linhas[1]["Justificativa"], "Atestado")
+        self.assertEqual(linhas[0]["Presentes no encontro"], "1")
+        self.assertEqual(linhas[0]["Ausentes registrados no encontro"], "1")
+
+    def test_relatorio_frequencia_inclui_chamada_por_link(self):
+        from ava.models import EncontroCurso, MatriculaCurso
+        from ava.services.attendance_service import registrar_presenca
+        from openpyxl import load_workbook
+
+        diario = self.criar_diario(frequencia_nominal=True)
+        encontro = EncontroCurso.objects.create(cliente=self.cliente, curso=self.curso,
+            diario=diario, titulo=diario.titulo, data_aula=diario.data_aula)
+        matricula = MatriculaCurso.objects.create(cliente=self.cliente, curso=self.curso,
+            aluno=self.professor_a, status=MatriculaCurso.Status.ATIVA)
+        MatriculaCurso.objects.create(cliente=self.cliente, curso=self.curso,
+            aluno=self.admin, status=MatriculaCurso.Status.ATIVA)
+        registrar_presenca(encontro, matricula, self.admin, presente=True, origem="link")
+        self.client.force_login(self.professor_a)
+        resposta = self.client.get(reverse("ava:diario_exportar", args=["xlsx"]), {"relatorio": "frequencia"})
+        sheet = load_workbook(io.BytesIO(resposta.content)).active
+        linhas = [dict(zip(next(sheet.values), linha)) for linha in list(sheet.values)[1:]]
+        self.assertEqual(len(linhas), 2)
+        self.assertEqual({p["Situação"] for p in linhas}, {"Presente", "Não registrada"})
+        self.assertEqual([p for p in linhas if p["Situação"] == "Presente"][0]["Origem da presença"], "Link")
+        self.assertEqual(sheet.freeze_panes, "A2")
+
+    def test_relatorios_respeitam_filtros_e_preservam_textos(self):
+        from openpyxl import load_workbook
+
+        self.criar_diario(titulo="=1+1", parecer_revisao="Detalhes da revisão")
+        self.criar_diario(titulo="Fora do período", data_aula=date(2025, 1, 1))
+        self.client.force_login(self.professor_a)
+        for tipo in ("diario", "frequencia"):
+            resposta = self.client.get(reverse("ava:diario_exportar", args=["csv"]),
+                {"relatorio": tipo, "data_inicio": "2026-01-01"})
+            conteudo = resposta.content.decode("utf-8-sig")
+            self.assertNotIn("Fora do período", conteudo)
+            self.assertIn("'=1+1", conteudo)
+        resposta = self.client.get(reverse("ava:diario_exportar", args=["xlsx"]))
+        sheet = load_workbook(io.BytesIO(resposta.content)).active
+        self.assertEqual(sheet.cell(2, 3).value, "=1+1")
+        self.assertEqual(sheet.cell(2, 3).data_type, "s")
+        self.assertIn("Detalhes da revisão", list(sheet.values)[1])
+
+    def test_relatorio_excesso_de_registros_nao_trunca_download(self):
+        from unittest.mock import patch
+
+        self.criar_diario()
+        self.client.force_login(self.professor_a)
+        with patch("ava.views.diario.MAX_EXPORTACAO", 0):
+            resposta = self.client.get(reverse("ava:diario_exportar", args=["csv"]))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_secao_relatorios_e_arquivo_vazio(self):
+        self.client.force_login(self.professor_a)
+        resposta = self.client.get(reverse("ava:diario_lista"))
+        self.assertContains(resposta, "Relatório do diário de bordo")
+        self.assertContains(resposta, "Relatório de frequência")
+        resposta = self.client.get(reverse("ava:diario_exportar", args=["csv"]), {"relatorio": "frequencia"})
+        self.assertEqual(len(resposta.content.decode("utf-8-sig").splitlines()), 1)
 
     def test_arquivo_de_midia_e_servido_pelo_django(self):
         diario = self.criar_diario()

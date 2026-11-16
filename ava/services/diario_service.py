@@ -284,6 +284,13 @@ class DiarioBordoExportService:
         "Observações",
         "Fotos",
         "Criado em",
+        "Município",
+        "Responsável externo",
+        "Modo de frequência",
+        "Enviado em",
+        "Revisado em",
+        "Revisado por",
+        "Parecer da revisão",
     ]
 
     @classmethod
@@ -316,6 +323,13 @@ class DiarioBordoExportService:
                     diario.observacoes,
                     diario.midias.filter(is_deleted=False).count(),
                     diario.created_at.strftime("%d/%m/%Y %H:%M"),
+                    diario.cliente.nome,
+                    diario.responsavel_externo,
+                    diario.get_modo_frequencia_display(),
+                    diario.enviado_em.strftime("%d/%m/%Y %H:%M") if diario.enviado_em else "",
+                    diario.revisado_em.strftime("%d/%m/%Y %H:%M") if diario.revisado_em else "",
+                    (diario.revisado_por.nome or diario.revisado_por.email) if diario.revisado_por_id else "",
+                    diario.parecer_revisao,
                 ]
             )
         return linhas
@@ -323,17 +337,24 @@ class DiarioBordoExportService:
     @classmethod
     def para_xlsx(cls, diarios) -> bytes:
         import openpyxl
-        from openpyxl.styles import Font
+        from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
 
         workbook = openpyxl.Workbook()
         sheet = workbook.active
-        sheet.title = "Diário de bordo"
+        sheet.title = getattr(cls, "TITULO", "Diário de bordo")
         sheet.append(cls.CABECALHOS)
         for celula in sheet[1]:
-            celula.font = Font(bold=True)
+            celula.font = Font(bold=True, color="FFFFFF")
+            celula.fill = PatternFill("solid", fgColor="17365D")
         for linha in cls.montar_linhas(diarios):
             sheet.append(linha)
+            for celula in sheet[sheet.max_row]:
+                if isinstance(celula.value, str):
+                    celula.data_type = "s"
+                celula.alignment = Alignment(vertical="top", wrap_text=True)
+        sheet.freeze_panes = "A2"
+        sheet.auto_filter.ref = sheet.dimensions
         for indice, cabecalho in enumerate(cls.CABECALHOS, start=1):
             sheet.column_dimensions[get_column_letter(indice)].width = min(
                 max(len(cabecalho) + 4, 14), 45
@@ -349,5 +370,72 @@ class DiarioBordoExportService:
         buffer = io.StringIO()
         escritor = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
         escritor.writerow(cls.CABECALHOS)
-        escritor.writerows(cls.montar_linhas(diarios))
+        escritor.writerows(
+            ["'" + valor if isinstance(valor, str) and valor.lstrip().startswith(("=", "+", "-", "@")) else valor for valor in linha]
+            for linha in cls.montar_linhas(diarios)
+        )
         return buffer.getvalue().encode("utf-8-sig")
+
+
+class DiarioBordoFrequenciaExportService(DiarioBordoExportService):
+    """Uma linha por participante; registros sem lista mantêm os totais informados."""
+
+    TITULO = "Frequência"
+    CABECALHOS = [
+        "ID do diário", "Município", "Data", "Encontro", "Escola", "Professor",
+        "Curso", "Grupo participante", "Local", "Status do diário", "Modo de frequência",
+        "Participante", "Identificação", "Situação", "Justificativa", "Origem da presença",
+        "Previstos no encontro", "Presentes no encontro", "Ausentes registrados no encontro",
+    ]
+
+    @classmethod
+    def montar_linhas(cls, diarios):
+        from ava.models import EncontroCurso, PresencaCurso
+        from ava.services.attendance_service import matriculas_do_curso
+
+        linhas = []
+        for diario in diarios:
+            participantes = [p for p in diario.participantes.all() if not p.is_deleted]
+            pessoas = {
+                ("usuario", p.usuario_id) if p.usuario_id else ("nominal", p.pk):
+                [p.nome, p.identificacao, "Presente" if p.presente else "Ausente", p.justificativa, "Lista nominal"]
+                for p in participantes
+            }
+            encontro = EncontroCurso.raw_objects.filter(
+                diario=diario, cliente_id=diario.cliente_id, is_deleted=False
+            ).first()
+            if encontro:
+                presencas = {
+                    p.matricula_id: p for p in PresencaCurso.raw_objects.filter(
+                        encontro=encontro, cliente_id=diario.cliente_id, is_deleted=False,
+                        matricula__is_deleted=False,
+                    )
+                }
+                for matricula in matriculas_do_curso(encontro.curso):
+                    p = presencas.get(matricula.pk)
+                    chave = ("usuario", matricula.aluno_id)
+                    if p is not None:
+                        pessoas[chave] = [
+                            matricula.aluno.nome or matricula.aluno.email, str(matricula.pk),
+                            "Presente" if p.presente else "Ausente", "", p.get_origem_display(),
+                        ]
+                    elif chave not in pessoas:
+                        pessoas[chave] = [matricula.aluno.nome or matricula.aluno.email, str(matricula.pk), "Não registrada", "", ""]
+            nominal = diario.frequencia_nominal or encontro is not None
+            presentes = sum(p[2] == "Presente" for p in pessoas.values()) if nominal else diario.participantes_presentes
+            ausentes = sum(p[2] == "Ausente" for p in pessoas.values()) if nominal else ""
+            previstos = diario.participantes_previstos
+            if previstos is None and nominal:
+                previstos = len(pessoas)
+            base = [
+                diario.pk, diario.cliente.nome, diario.data_aula.strftime("%d/%m/%Y"),
+                diario.titulo, diario.escola.nome, diario.professor.nome or diario.professor.email,
+                diario.curso.titulo if diario.curso_id else "", diario.grupo_participante,
+                diario.local_realizacao, diario.get_status_display(), diario.get_modo_frequencia_display(),
+            ]
+            detalhes = sorted(pessoas.values(), key=lambda p: p[0].casefold())
+            if not detalhes:
+                detalhes = [["", "", "Sem participantes registrados" if nominal else "Somente quantidade informada", "", ""]]
+            for detalhe in detalhes:
+                linhas.append(base + detalhe + [previstos if previstos is not None else "", presentes, ausentes])
+        return linhas

@@ -54,6 +54,7 @@ from ava.services.planilha_service import (
     PlanilhaFormatoNaoSuportado,
     formatos_suportados,
 )
+from ava.services.diario_service import DiarioBordoFrequenciaExportService
 from core.models import Usuario
 from curriculum.models import Escola
 
@@ -258,6 +259,7 @@ def diario_lista(request):
     page_obj = paginator.get_page(request.GET.get("page"))
     query_params = request.GET.copy()
     query_params.pop("page", None)
+    query_params.pop("relatorio", None)
 
     return render(
         request,
@@ -276,6 +278,7 @@ def diario_lista(request):
             "page_obj": page_obj,
             "querystring": query_params.urlencode(),
             "total_registros": paginator.count,
+            "limite_exportacao": MAX_EXPORTACAO,
         },
     )
 
@@ -290,12 +293,21 @@ def diario_exportar(request, formato):
         _diarios_do_usuario(request.user).filter(cliente=cliente), filtros
     ).order_by("-data_aula", "-id")
 
-    diarios = list(qs[:MAX_EXPORTACAO])
+    tipo = request.GET.get("relatorio", "diario")
+    if tipo not in {"diario", "frequencia"}:
+        raise Http404("Relatório não suportado.")
+    if qs.count() > MAX_EXPORTACAO:
+        messages.warning(request, "O relatório excede o limite de 5.000 encontros. Refine os filtros para baixar todas as informações do período desejado.")
+        params = request.GET.copy()
+        params.pop("relatorio", None)
+        return redirect(f"{reverse('ava:diario_lista')}?{params.urlencode()}")
+    diarios = list(qs)
+    service = DiarioBordoFrequenciaExportService if tipo == "frequencia" else DiarioBordoExportService
     if formato == "csv":
-        payload = DiarioBordoExportService.para_csv(diarios)
+        payload = service.para_csv(diarios)
         content_type = "text/csv; charset=utf-8"
     else:
-        payload = DiarioBordoExportService.para_xlsx(diarios)
+        payload = service.para_xlsx(diarios)
         content_type = (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
@@ -305,12 +317,12 @@ def diario_exportar(request, formato):
         entidade="ava.DiarioBordo",
         entidade_id="exportacao",
         acao="exportado",
-        diff={"formato": formato, "total": len(diarios)},
+        diff={"formato": formato, "relatorio": tipo, "total": len(diarios)},
     )
     response = HttpResponse(payload, content_type=content_type)
-    response["Content-Disposition"] = (
-        f'attachment; filename="diario-de-bordo.{formato}"'
-    )
+    nome_arquivo = "frequencia-diario-de-bordo" if tipo == "frequencia" else "diario-de-bordo"
+    response["Content-Disposition"] = f'attachment; filename="{nome_arquivo}.{formato}"'
+    response["Cache-Control"] = "private, no-store"
     return response
 
 
