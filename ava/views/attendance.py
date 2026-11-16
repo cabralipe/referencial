@@ -16,11 +16,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from ava.models import AutorizacaoCurso, Curso, EncontroCurso, MatriculaCurso, PresencaCurso, PresencaLinkDispositivo, RepasseFrequencia
+from ava.models import AutorizacaoCurso, Curso, DiarioBordo, EncontroCurso, MatriculaCurso, PresencaCurso, PresencaLinkDispositivo, RepasseFrequencia
 from ava.services.attendance_service import (
     matriculas_do_curso,
     registrar_presenca,
     resumo_frequencia,
+    remover_chamada,
 )
 from ava.services.audit_service import AVAAuditService
 
@@ -38,6 +39,7 @@ class EncontroForm(forms.ModelForm):
     class Meta:
         model = EncontroCurso
         fields: ClassVar = [
+            "registro_retroativo",
             "titulo",
             "data_aula",
             "realizado",
@@ -53,6 +55,10 @@ class EncontroForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
+        if data.get("registro_retroativo"):
+            data["realizado"] = True
+            data["link_aberto"] = False
+            data["link_expira_em"] = None
         if (
             data.get("realizado")
             and data.get("data_aula")
@@ -84,6 +90,16 @@ def cursos_gerenciaveis(user):
     return qs.filter(Q(autor_principal=user) | Q(pk__in=autorizados))
 
 
+def _chamadas_do_usuario(user):
+    from ava.views.diario import _diarios_do_usuario
+
+    return EncontroCurso.raw_objects.filter(
+        Q(curso__in=cursos_gerenciaveis(user))
+        | Q(diario__in=_diarios_do_usuario(user)),
+        is_deleted=False,
+    )
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def frequencia_lista(request):
@@ -95,7 +111,10 @@ def frequencia_lista(request):
         if request.GET.get("curso")
         else cursos.first()
     )
-    form = EncontroForm(request.POST or None)
+    form = EncontroForm(
+        request.POST or None,
+        initial={"registro_retroativo": request.GET.get("retroativo") == "1"},
+    )
     if request.method == "POST" and form.is_valid():
         encontro = form.save(commit=False)
         encontro.curso = curso
@@ -124,13 +143,16 @@ def frequencia_lista(request):
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def frequencia_checklist(request, encontro_id):
+    from ava.services.diario_service import DiarioBordoService
+
     encontro = get_object_or_404(
-        EncontroCurso.raw_objects.select_for_update(),
+        _chamadas_do_usuario(request.user).select_for_update(),
         pk=encontro_id,
-        curso__in=cursos_gerenciaveis(request.user),
-        is_deleted=False,
     )
+    if encontro.diario_id and not DiarioBordoService.pode_editar(encontro.diario, request.user):
+        raise PermissionDenied("Este diário não pode mais ter a frequência alterada.")
     matriculas = list(matriculas_do_curso(encontro.curso))
+    data_registrada = encontro.data_aula
     form = EncontroForm(request.POST or None, instance=encontro)
     if request.method == "POST" and form.is_valid():
         selecionados = set(request.POST.getlist("presentes"))
@@ -139,6 +161,17 @@ def frequencia_checklist(request, encontro_id):
                 "A lista contém cursistas de outro curso ou sem matrícula ativa."
             )
         form.save()
+        if encontro.diario_id:
+            diario = encontro.diario
+            diario.data_aula = encontro.data_aula
+            diario.titulo = encontro.titulo
+            diario.modo_frequencia = (
+                DiarioBordo.ModoFrequencia.RETROATIVA if encontro.registro_retroativo
+                else DiarioBordo.ModoFrequencia.LINK if encontro.link_aberto
+                else DiarioBordo.ModoFrequencia.PRESENCIAL
+            )
+            diario.updated_by = request.user
+            diario.save(update_fields=["data_aula", "titulo", "modo_frequencia", "updated_by", "updated_at"])
         for matricula in matriculas:
             registrar_presenca(
                 encontro,
@@ -156,6 +189,7 @@ def frequencia_checklist(request, encontro_id):
             diff={
                 "data_aula": encontro.data_aula.isoformat(),
                 "presentes": sorted(selecionados),
+                "registro_retroativo": encontro.registro_retroativo,
             },
         )
         messages.success(request, "Data e frequência salvas.")
@@ -183,6 +217,8 @@ def frequencia_checklist(request, encontro_id):
             "encontro": encontro,
             "form": form,
             "linhas": linhas,
+            "presentes_registrados": [m for m in matriculas if m.pk in presentes],
+            "data_registrada": data_registrada,
             "link_presenca": request.build_absolute_uri(
                 reverse("ava:confirmar_presenca", args=[encontro.token])
             ),
@@ -191,34 +227,37 @@ def frequencia_checklist(request, encontro_id):
 
 
 @login_required
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 @transaction.atomic
 def frequencia_remover(request, encontro_id):
     """Remove uma chamada e impede o uso do respectivo link de presença."""
     encontro = get_object_or_404(
-        EncontroCurso.raw_objects.select_for_update(),
+        _chamadas_do_usuario(request.user).select_for_update(),
         pk=encontro_id,
-        curso__in=cursos_gerenciaveis(request.user),
-        is_deleted=False,
     )
-    presencas = list(
-        PresencaCurso.raw_objects.select_for_update().filter(
-            encontro=encontro,
-            is_deleted=False,
-        )
-    )
-    for presenca in presencas:
-        presenca.delete()
-    encontro.delete()
+    if encontro.diario_id:
+        from ava.services.diario_service import DiarioBordoService
+        if not DiarioBordoService.pode_editar(encontro.diario, request.user):
+            raise PermissionDenied("Este diário não pode ter a chamada excluída. Reabra o registro antes de excluir.")
+    voltar_url = reverse("ava:frequencia_checklist", args=[encontro.pk])
+    if request.method == "GET":
+        return render(request, "ava/management/confirmar_exclusao.html", {
+            "titulo_pagina": "Excluir registro de presença", "objeto": encontro,
+            "descricao": "A chamada, as presenças e o link ou QR Code serão removidos. A frequência do curso será recalculada.",
+            "voltar_url": voltar_url,
+        })
+    total_removido = remover_chamada(encontro)
     AVAAuditService.registrar(
         cliente_id=encontro.cliente_id,
         usuario=request.user,
         entidade="ava.EncontroCurso",
         entidade_id=encontro.pk,
         acao="frequencia_removida",
-        diff={"presencas_removidas": len(presencas)},
+        diff={"presencas_removidas": total_removido},
     )
     messages.success(request, "Chamada e link de frequência removidos.")
+    if encontro.diario_id:
+        return redirect("ava:diario_editar", diario_id=encontro.diario_id)
     return redirect(f"{reverse('ava:frequencia_lista')}?curso={encontro.curso_id}")
 
 
@@ -226,7 +265,9 @@ def frequencia_remover(request, encontro_id):
 @transaction.atomic
 def confirmar_presenca(request, token):
     encontro = get_object_or_404(
-        EncontroCurso.raw_objects.select_for_update(),
+        EncontroCurso.raw_objects.select_for_update(of=("self",)).filter(
+            Q(diario__isnull=True) | Q(diario__is_deleted=False),
+        ),
         token=token,
         is_deleted=False,
         curso__is_deleted=False,
@@ -235,6 +276,8 @@ def confirmar_presenca(request, token):
         encontro.link_aberto
         and encontro.link_expira_em
         and encontro.link_expira_em > timezone.now()
+        and not encontro.registro_retroativo
+        and (not encontro.diario_id or encontro.diario.status == DiarioBordo.Status.RASCUNHO)
     )
     device_key = request.COOKIES.get("ava_presence_device") or secrets.token_urlsafe(32)
     device_hash = hashlib.sha256(device_key.encode()).hexdigest()

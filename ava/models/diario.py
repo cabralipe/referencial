@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.utils import timezone
 
 from ava.storage import private_ava_storage
 from core.mixins import TenantModel
@@ -89,6 +90,7 @@ class DiarioBordo(TenantModel):
     class ModoFrequencia(models.TextChoices):
         PRESENCIAL = "presencial", "Lista presencial"
         LINK = "link", "Link e QR Code"
+        RETROATIVA = "retroativa", "Presença retroativa"
     """Registro de um encontro/aula conduzido por um professor."""
 
     class Status(models.TextChoices):
@@ -298,6 +300,12 @@ class DiarioBordo(TenantModel):
     def clean(self):
         super().clean()
         errors: dict[str, str] = {}
+
+        if self.modo_frequencia == self.ModoFrequencia.RETROATIVA:
+            if not self.curso_id:
+                errors["curso"] = "Escolha o curso para carregar a lista nominal retroativa."
+            if self.data_aula and self.data_aula > timezone.localdate():
+                errors["data_aula"] = "A presença retroativa deve usar a data em que o encontro ocorreu, até hoje."
 
         if self.escola_id and self.cliente_id and self.escola.cliente_id != self.cliente_id:
             errors["escola"] = "A escola deve pertencer ao mesmo município do registro."

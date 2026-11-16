@@ -42,6 +42,22 @@
                 {% endif %}
 
                 <fieldset class="mb-4" {% if diario and not editavel %}disabled{% endif %}>
+                    <legend class="h6 fw-bold text-uppercase text-muted">Qual é o curso deste diário?</legend>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.curso.id_for_label }}">{{ form.curso.label }}</label>
+                            {{ form.curso }}
+                            <div class="form-text">{{ form.curso.help_text }}</div>
+                            {% if form.curso.errors %}<div class="text-danger small mt-1">{{ form.curso.errors|join:" " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <div id="resumo-curso" class="form-text" role="status" aria-live="polite">Selecione o curso para carregar as informações e os alunos automaticamente. Para atividades sem curso cadastrado, escolha uma origem externa abaixo.</div>
+                            <details id="turma-curso" class="mt-2 d-none"><summary>Alunos do curso</summary><ul id="alunos-curso" class="mt-2"></ul></details>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="mb-4" {% if diario and not editavel %}disabled{% endif %}>
                     <legend class="h6 fw-bold text-uppercase text-muted">1. Origem da aula</legend>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -74,12 +90,6 @@
                 <fieldset class="mb-4 d-none" id="grupo-sistema" {% if diario and not editavel %}disabled{% endif %}>
                     <legend class="h6 fw-bold text-uppercase text-muted">2. Aula cadastrada no sistema</legend>
                     <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="{{ form.curso.id_for_label }}">{{ form.curso.label }}</label>
-                            {{ form.curso }}
-                            <div class="form-text">{{ form.curso.help_text }}</div>
-                            {% if form.curso.errors %}<div class="text-danger small mt-1">{{ form.curso.errors|join:" " }}</div>{% endif %}
-                        </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold" for="{{ form.modulo.id_for_label }}">{{ form.modulo.label }}</label>
                             {{ form.modulo }}
@@ -154,14 +164,14 @@
                                 <label class="attendance-option" for="{{ radio.id_for_label }}">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>
                                 {% endfor %}
                             </div>
-                            <div class="form-text">Escolha lista presencial ou link com QR Code.</div>
+                            <div class="form-text">Escolha lista presencial, link com QR Code ou presença retroativa. Na opção retroativa, informe a data do encontro; após salvar, marque os alunos que compareceram na lista do curso.</div>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label fw-semibold" for="{{ form.lista_fisica.id_for_label }}">{{ form.lista_fisica.label }}</label>
                             {{ form.lista_fisica }}
                         </div>
                         <div class="col-12">
-                            <p class="form-text mb-0">Ao salvar, você poderá marcar os presentes pelo checklist do curso.</p>
+                            <p class="form-text mb-0">Os alunos do curso serão incluídos automaticamente. Marque as presenças no checklist após salvar.</p>
                         </div>
                     </div>
                 </fieldset>
@@ -174,19 +184,24 @@
                     <a class="btn btn-outline-secondary" href="{% url 'ava:diario_lista' %}">Voltar</a>
                     {% if diario %}
                     <a class="btn btn-outline-primary" href="{% url 'ava:diario_detalhe' diario.id %}">Ver registro completo</a>
+                    {% if editavel %}<a class="btn btn-outline-danger" href="{% url 'ava:diario_excluir' diario.id %}">Excluir registro</a>{% endif %}
                     {% endif %}
                 </div>
             </form>
         </div>
 
         {% if diario %}
-        {% if diario.encontro_frequencia %}
-        <section class="ava-surface p-4 mb-4"><div class="row align-items-center g-3"><div class="col-auto"><img id="qr-frequencia" class="border rounded p-2 bg-white" width="150" height="150" src="{% url 'ava:diario_qr_frequencia' diario.id %}" alt="QR Code da frequência"></div><div class="col"><h2 class="h5">Frequência por link</h2><p class="text-muted mb-2">Compartilhe o QR Code ou copie o link. Cada telefone registra uma única presença nesta chamada.</p><input id="link-frequencia" class="form-control mb-2" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'ava:confirmar_presenca' diario.encontro_frequencia.token %}"><a class="btn btn-outline-primary btn-sm" download="qr-frequencia-{{ diario.id }}.png" href="{% url 'ava:diario_qr_frequencia' diario.id %}">Baixar QR Code</a> <button class="btn btn-outline-primary btn-sm" type="button" onclick="fetch(document.getElementById('qr-frequencia').src).then(function(r){return r.blob()}).then(function(b){return navigator.clipboard.write([new ClipboardItem({'image/png': b})])})">Copiar QR Code</button> <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('link-frequencia').value)">Copiar link</button></div></div></section>
+        {% if encontro and diario.modo_frequencia == "link" %}
+        <section class="ava-surface p-4 mb-4"><div class="row align-items-center g-3"><div class="col-auto"><img id="qr-frequencia" class="border rounded p-2 bg-white" width="150" height="150" src="{% url 'ava:diario_qr_frequencia' diario.id %}" alt="QR Code da frequência"></div><div class="col"><h2 class="h5">Frequência por link</h2><p class="text-muted mb-2">Compartilhe o QR Code ou copie o link. Cada telefone registra uma única presença nesta chamada.</p><input id="link-frequencia" class="form-control mb-2" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'ava:confirmar_presenca' encontro.token %}"><a class="btn btn-outline-primary btn-sm" download="qr-frequencia-{{ diario.id }}.png" href="{% url 'ava:diario_qr_frequencia' diario.id %}">Baixar QR Code</a> <button class="btn btn-outline-primary btn-sm" type="button" onclick="fetch(document.getElementById('qr-frequencia').src).then(function(r){return r.blob()}).then(function(b){return navigator.clipboard.write([new ClipboardItem({'image/png': b})])})">Copiar QR Code</button> <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('link-frequencia').value)">Copiar link</button></div></div></section>
         {% endif %}
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="ava-surface p-4 h-100">
                     <h2 class="h6 fw-bold text-uppercase text-muted mb-3">Lista nominal de presença</h2>
+                    {% if diario.curso_id %}
+                    <p class="text-muted small">Alunos carregados automaticamente do curso. Use o checklist para registrar as presenças.</p>
+                    {% if encontro %}<a class="btn btn-outline-primary mb-3" href="{% url 'ava:frequencia_checklist' encontro.id %}">Marcar presenças da turma</a>{% endif %}
+                    {% endif %}
                     {% if participantes %}
                     <ul class="list-group list-group-flush mb-3">
                         {% for participante in participantes %}
@@ -196,9 +211,11 @@
                                 {% if participante.identificacao %}<span class="text-muted small"> · {{ participante.identificacao }}</span>{% endif %}
                                 {% if not participante.presente %}
                                 <span class="badge text-bg-warning ms-2">Ausente</span>
+                                {% else %}
+                                <span class="badge text-bg-success ms-2">Presente</span>
                                 {% endif %}
                             </span>
-                            {% if editavel %}
+                            {% if editavel and not diario.curso_id %}
                             <form method="post" action="{% url 'ava:diario_participante_remover' diario.id participante.id %}">
                                 {% csrf_token %}
                                 <button class="btn btn-sm btn-outline-danger rounded-pill" type="submit"
@@ -214,7 +231,7 @@
                     <p class="text-muted small">Nenhum participante registrado ainda.</p>
                     {% endif %}
 
-                    {% if editavel %}
+                    {% if editavel and not diario.curso_id %}
                     <form method="post" action="{% url 'ava:diario_participante_adicionar' diario.id %}" class="row g-2">
                         {% csrf_token %}
                         <div class="col-md-6">
@@ -304,7 +321,7 @@
 </section>
 
 <style>
-    .attendance-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    .attendance-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
     .attendance-option { display: flex; align-items: center; gap: .6rem; min-height: 52px; margin: 0; padding: .8rem 1rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: #fff; font-weight: 700; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, color .15s ease; }
     .attendance-option:has(input:checked) { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(13,110,253,.12); color: var(--bs-primary); }
     .attendance-option .form-check-input { float: none; margin: 0; flex: 0 0 auto; }
@@ -360,22 +377,82 @@
         });
     }
 
-    function carregar() {
-        if (!curso || !curso.value) { return; }
-        var url = endpoint + "?municipio={{ cliente_atual.id }}&curso=" + encodeURIComponent(curso.value);
-        if (modulo && modulo.value) { url += "&modulo=" + encodeURIComponent(modulo.value); }
-        fetch(url, { credentials: "same-origin" })
-            .then(function (resposta) { return resposta.ok ? resposta.json() : null; })
-            .then(function (dados) {
-                if (!dados) { return; }
-                preencher(modulo, dados.modulos, modulo ? modulo.value : "");
-                preencher(aula, dados.aulas, aula ? aula.value : "");
-            })
-            .catch(function () { /* mantém as opções atuais */ });
+    var resumo = document.getElementById("resumo-curso");
+    var lista = document.getElementById("alunos-curso");
+    var turma = document.getElementById("turma-curso");
+    var titulo = document.getElementById("id_titulo");
+    var conteudo = document.getElementById("id_conteudo_trabalhado");
+    var aulasCarregadas = [];
+    var requisicao = 0;
+    var automaticos = {};
+    function sugerir(campo, valor) {
+        if (campo && (!campo.value || campo.value === automaticos[campo.id])) {
+            campo.value = valor || "";
+            automaticos[campo.id] = campo.value;
+        }
     }
-
-    if (curso) { curso.addEventListener("change", function () { if (modulo) { modulo.value = ""; } carregar(); }); }
-    if (modulo) { modulo.addEventListener("change", carregar); }
+    function carregar(trocouCurso) {
+        var atual = ++requisicao;
+        if (!curso || !curso.value) {
+            preencher(modulo, [], ""); preencher(aula, [], "");
+            lista.replaceChildren(); turma.classList.add("d-none");
+            resumo.textContent = "Selecione o curso para carregar as informações e os alunos automaticamente.";
+            if (trocouCurso) { sugerir(titulo, ""); sugerir(conteudo, ""); }
+            return;
+        }
+        resumo.textContent = "Carregando informações e alunos do curso…";
+        var moduloSelecionado = modulo.value;
+        var aulaSelecionada = aula.value;
+        var url = endpoint + "?municipio={{ cliente_atual.id }}&curso=" + encodeURIComponent(curso.value);
+        if (moduloSelecionado) { url += "&modulo=" + encodeURIComponent(moduloSelecionado); }
+        fetch(url, { credentials: "same-origin" })
+            .then(function (resposta) { if (!resposta.ok) { throw new Error(); } return resposta.json(); })
+            .then(function (dados) {
+                if (atual !== requisicao) { return; }
+                preencher(modulo, dados.modulos, moduloSelecionado);
+                preencher(aula, dados.aulas, aulaSelecionada);
+                aulasCarregadas = dados.aulas;
+                resumo.textContent = dados.curso.titulo + " · " + dados.curso.carga_horaria + "h · " + dados.alunos.length + " aluno(s) carregado(s).";
+                lista.replaceChildren();
+                dados.alunos.forEach(function (aluno) {
+                    var item = document.createElement("li"); item.textContent = aluno.nome; lista.appendChild(item);
+                });
+                turma.classList.toggle("d-none", !dados.alunos.length);
+                if (!dados.alunos.length) { resumo.textContent += " Nenhum aluno matriculado neste curso."; }
+                if (trocouCurso || !{{ diario.id|default:'0' }}) {
+                    sugerir(titulo, dados.curso.titulo); sugerir(conteudo, dados.curso.conteudo);
+                    if (escolas && !escolas.disabled && dados.escolas.length) {
+                        Array.prototype.forEach.call(escolas.options, function (option) {
+                            option.selected = dados.escolas.indexOf(Number(option.value)) !== -1;
+                        });
+                    }
+                }
+            })
+            .catch(function () {
+                if (atual !== requisicao) { return; }
+                lista.replaceChildren(); turma.classList.add("d-none");
+                resumo.textContent = "Não foi possível carregar o curso. Selecione-o novamente para tentar de novo.";
+            });
+    }
+    if (curso) { curso.addEventListener("change", function () {
+        modulo.value = ""; aula.value = "";
+        if (curso.value && COM_SISTEMA.indexOf(origem.value) === -1) {
+            origem.value = "hibrida"; alternar();
+        }
+        carregar(true);
+    }); }
+    if (modulo) { modulo.addEventListener("change", function () { aula.value = ""; carregar(false); }); }
+    if (aula) { aula.addEventListener("change", function () {
+        var selecionada = aulasCarregadas.find(function (item) { return String(item.id) === aula.value; });
+        if (selecionada) {
+            modulo.value = String(selecionada.modulo_id);
+            sugerir(titulo, selecionada.titulo); sugerir(conteudo, selecionada.resumo);
+        }
+    }); }
+    origem.addEventListener("change", function () {
+        if (COM_SISTEMA.indexOf(origem.value) === -1) { curso.value = ""; carregar(true); }
+    });
+    carregar(false);
 })();
 </script>
 {% endblock %}

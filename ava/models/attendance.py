@@ -17,6 +17,10 @@ class EncontroCurso(TenantModel):
     )
     titulo = models.CharField("Título da aula/reunião", max_length=255)
     data_aula = models.DateField("Data da aula")
+    registro_retroativo = models.BooleanField(
+        "Registrar presença retroativa", default=False,
+        help_text="Informe a data em que o encontro ocorreu e marque os alunos que compareceram.",
+    )
     realizado = models.BooleanField(
         "Encontro realizado (conta na frequência)", default=False
     )
