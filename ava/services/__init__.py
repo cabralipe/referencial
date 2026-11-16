@@ -7,7 +7,11 @@ from .course_copy_service import CourseCloneService
 from .management_report_service import AVAManagementReportService
 from .quiz_service import AtividadeService
 from .audit_service import AVAAuditService
-from .diario_service import DiarioBordoExportService, DiarioBordoService
+from .diario_service import (
+    DiarioBordoExportService,
+    DiarioBordoFrequenciaExportService,
+    DiarioBordoService,
+)
 from .gt_access import acesso_a_sala, exigir_acesso, salas_do_catalogo, salas_visiveis
 from .gt_comentario_service import ComentarioGTService
 from .gt_documento_service import DocumentoGTService
@@ -32,6 +36,7 @@ __all__ = [
     "AVAAuditService",
     "DiarioBordoService",
     "DiarioBordoExportService",
+    "DiarioBordoFrequenciaExportService",
     "PlanilhaImportService",
     "PlanilhaExportService",
     "ler_planilha",

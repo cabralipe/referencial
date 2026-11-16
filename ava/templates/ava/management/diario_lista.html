@@ -133,6 +133,7 @@
                     <h3 class="h6 fw-bold">Relatório do diário de bordo</h3>
                     <p class="small text-muted">Dados dos encontros, conteúdo trabalhado, metodologia, observações e parecer da revisão.</p>
                     <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-outline-danger rounded-pill" href="{% url 'ava:diario_exportar' 'pdf' %}?{{ querystring }}" aria-label="Baixar relatório do diário de bordo em PDF">Baixar PDF</a>
                         <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:diario_exportar' 'xlsx' %}?{{ querystring }}" aria-label="Baixar relatório do diário de bordo em Excel">Baixar Excel</a>
                         <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:diario_exportar' 'csv' %}?{{ querystring }}" aria-label="Baixar relatório do diário de bordo em CSV">Baixar CSV</a>
                     </div>
@@ -141,6 +142,7 @@
                     <h3 class="h6 fw-bold">Relatório de frequência</h3>
                     <p class="small text-muted">Participantes, identificação, presenças, ausências, justificativas e totais por encontro. Chamadas sem resposta aparecem como não registradas. Os totais se repetem por participante e não devem ser somados.</p>
                     <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-outline-danger rounded-pill" href="{% url 'ava:diario_exportar' 'pdf' %}?{{ querystring }}&amp;relatorio=frequencia" aria-label="Baixar relatório de frequência em PDF">Baixar PDF</a>
                         <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:diario_exportar' 'xlsx' %}?{{ querystring }}&amp;relatorio=frequencia" aria-label="Baixar relatório de frequência em Excel">Baixar Excel</a>
                         <a class="btn btn-outline-success rounded-pill" href="{% url 'ava:diario_exportar' 'csv' %}?{{ querystring }}&amp;relatorio=frequencia" aria-label="Baixar relatório de frequência em CSV">Baixar CSV</a>
                     </div>

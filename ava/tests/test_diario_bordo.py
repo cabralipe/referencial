@@ -611,8 +611,57 @@ class DiarioBordoViewTests(DiarioBordoBaseTests):
         resposta = self.client.get(reverse("ava:diario_lista"))
         self.assertContains(resposta, "Relatório do diário de bordo")
         self.assertContains(resposta, "Relatório de frequência")
+        self.assertContains(resposta, "Baixar PDF", count=2)
         resposta = self.client.get(reverse("ava:diario_exportar", args=["csv"]), {"relatorio": "frequencia"})
         self.assertEqual(len(resposta.content.decode("utf-8-sig").splitlines()), 1)
+
+    def test_download_pdf_dos_dois_relatorios_com_filtros_e_escopo(self):
+        from unittest.mock import patch
+        from reportlab.platypus import SimpleDocTemplate
+
+        diario = self.criar_diario(titulo="Encontro selecionado", frequencia_nominal=True,
+                                  conteudo_trabalhado="Texto <especial> & conteúdo detalhado")
+        DiarioBordoParticipante.objects.create(
+            cliente=self.cliente, diario=diario, nome="Ana", presente=False,
+            justificativa="Atestado apresentado",
+        )
+        self.criar_diario(titulo="Fora do filtro", data_aula=date(2025, 1, 1))
+        self.criar_diario(escola=self.escola_b, professor=self.professor_b, titulo="Outra escola")
+        self.criar_diario(cliente=self.outro_cliente, escola=self.escola_outro,
+                          professor=self.professor_outro, titulo="Outro município")
+        self.client.force_login(self.professor_a)
+        # Desativa compressão apenas no teste para inspecionar o texto sem um leitor extra.
+        def documento_sem_compressao(*args, **kwargs):
+            kwargs["pageCompression"] = 0
+            return SimpleDocTemplate(*args, **kwargs)
+
+        for tipo in ("diario", "frequencia"):
+            with self.subTest(relatorio=tipo), patch(
+                "ava.services.diario_pdf.SimpleDocTemplate", side_effect=documento_sem_compressao,
+            ):
+                resposta = self.client.get(reverse("ava:diario_exportar", args=["pdf"]),
+                    {"relatorio": tipo, "data_inicio": "2026-01-01"})
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(resposta["Content-Type"], "application/pdf")
+                self.assertIn('.pdf"', resposta["Content-Disposition"])
+                self.assertEqual(resposta["Cache-Control"], "private, no-store")
+                self.assertTrue(resposta.content.startswith(b"%PDF-"))
+                self.assertIn(b"Encontro selecionado", resposta.content)
+                self.assertNotIn(b"Fora do filtro", resposta.content)
+                self.assertNotIn(b"Outra escola", resposta.content)
+                self.assertNotIn(b"Outro munic", resposta.content)
+                if tipo == "frequencia":
+                    self.assertIn(b"Ana", resposta.content)
+                    self.assertIn(b"Atestado apresentado", resposta.content)
+
+    def test_download_pdf_sem_registros(self):
+        self.client.force_login(self.professor_a)
+        for tipo in ("diario", "frequencia"):
+            with self.subTest(relatorio=tipo):
+                resposta = self.client.get(reverse("ava:diario_exportar", args=["pdf"]),
+                                          {"relatorio": tipo})
+                self.assertEqual(resposta.status_code, 200)
+                self.assertTrue(resposta.content.startswith(b"%PDF-"))
 
     def test_arquivo_de_midia_e_servido_pelo_django(self):
         diario = self.criar_diario()

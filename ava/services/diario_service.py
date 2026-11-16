@@ -384,6 +384,15 @@ class DiarioBordoExportService:
         return buffer.getvalue()
 
     @classmethod
+    def para_pdf(cls, diarios) -> bytes:
+        from .diario_pdf import gerar_pdf
+
+        return gerar_pdf(
+            cls.CABECALHOS, cls.montar_linhas(diarios),
+            frequencia=cls is DiarioBordoFrequenciaExportService,
+        )
+
+    @classmethod
     def para_csv(cls, diarios) -> bytes:
         import csv
 

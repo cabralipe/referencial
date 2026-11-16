@@ -46,6 +46,7 @@ from ava.models.diario import OrigemAula
 from ava.services import (
     AVAAuditService,
     DiarioBordoExportService,
+    DiarioBordoFrequenciaExportService,
     DiarioBordoService,
     PlanilhaExportService,
     PlanilhaImportService,
@@ -288,7 +289,7 @@ def diario_lista(request):
 
 @diario_required
 def diario_exportar(request, formato):
-    if formato not in {"xlsx", "csv"}:
+    if formato not in {"xlsx", "csv", "pdf"}:
         raise Http404("Formato de exportação não suportado.")
     cliente = _cliente_atual(request)
     filtros = _extrair_filtros(request)
@@ -309,6 +310,9 @@ def diario_exportar(request, formato):
     if formato == "csv":
         payload = service.para_csv(diarios)
         content_type = "text/csv; charset=utf-8"
+    elif formato == "pdf":
+        payload = service.para_pdf(diarios)
+        content_type = "application/pdf"
     else:
         payload = service.para_xlsx(diarios)
         content_type = (
