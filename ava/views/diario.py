@@ -377,7 +377,7 @@ def diario_novo(request):
             form.add_error(None, exc)
         else:
             form.save_m2m()
-            _configurar_frequencia_do_diario(diario, request.user, form.cleaned_data.get("lista_fisica"))
+            _configurar_frequencia_do_diario(diario, request.user, form.cleaned_data.get("lista_fisica"), form.cleaned_data.get("link_expira_em"))
             if (request.POST.get("marcar_presentes") == "1" or diario.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA) and diario.curso_id:
                 encontro = EncontroCurso.raw_objects.filter(diario=diario, is_deleted=False).first()
                 if encontro:
@@ -434,7 +434,7 @@ def diario_editar(request, diario_id):
                 form.add_error(None, exc)
             else:
                 form.save_m2m()
-                _configurar_frequencia_do_diario(atualizado, request.user, form.cleaned_data.get("lista_fisica"))
+                _configurar_frequencia_do_diario(atualizado, request.user, form.cleaned_data.get("lista_fisica"), form.cleaned_data.get("link_expira_em"))
                 if (request.POST.get("marcar_presentes") == "1" or atualizado.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA) and atualizado.curso_id:
                     encontro = EncontroCurso.raw_objects.filter(diario=atualizado, is_deleted=False).first()
                     if encontro:
@@ -466,7 +466,7 @@ def diario_editar(request, diario_id):
 
 
 @transaction.atomic
-def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None):
+def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None, link_expira_em=None):
     """Centraliza a chamada no diário, inclusive o comprovante físico."""
     diario.frequencia_nominal = True
     DiarioBordo.raw_objects.filter(pk=diario.pk).update(frequencia_nominal=True)
@@ -479,7 +479,7 @@ def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None):
                 "realizado": diario.data_aula <= timezone.localdate(),
                 "registro_retroativo": diario.modo_frequencia == DiarioBordo.ModoFrequencia.RETROATIVA,
                 "link_aberto": diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK,
-                "link_expira_em": timezone.now() + timedelta(days=7) if diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK else None,
+                "link_expira_em": (link_expira_em or timezone.now() + timedelta(days=7)) if diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK else None,
             },
         )
         if not criado:
@@ -499,8 +499,10 @@ def _configurar_frequencia_do_diario(diario, usuario, lista_fisica=None):
                 encontro.realizado = diario.data_aula <= timezone.localdate()
             encontro.is_deleted = False
             encontro.link_aberto = diario.modo_frequencia == DiarioBordo.ModoFrequencia.LINK
-            if encontro.link_aberto and (not encontro.link_expira_em or encontro.link_expira_em <= timezone.now()):
-                encontro.link_expira_em = timezone.now() + timedelta(days=7)
+            if encontro.link_aberto:
+                encontro.link_expira_em = link_expira_em or encontro.link_expira_em or timezone.now() + timedelta(days=7)
+            else:
+                encontro.link_expira_em = None
             encontro.save()
         sincronizar_participantes_diario(encontro)
     else:

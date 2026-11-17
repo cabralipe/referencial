@@ -171,6 +171,8 @@
                             {{ form.lista_fisica }}
                         </div>
                         <div class="col-12">
+                            {% include 'ava/management/expiracao_campos.html' with field=form.link_expira_em %}
+                            <p class="form-text">Preencha ao escolher frequência por link. Se deixar em branco ao criar, o prazo padrão será de 7 dias; você pode ajustá-lo na chamada.</p>
                             <p class="form-text mb-0">Os alunos do curso serão incluídos automaticamente. Marque as presenças no checklist após salvar.</p>
                         </div>
                     </div>

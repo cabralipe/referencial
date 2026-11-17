@@ -1,0 +1,13 @@
+<fieldset class="ava-expiration">
+  <legend class="form-label fs-6 fw-semibold">{{ field.label }}</legend>
+  <div class="row g-3">
+    {% for widget in field.subwidgets %}{% for part in widget.data.subwidgets %}
+    <div class="col-sm-6">
+      <label class="form-label small" for="{{ part.attrs.id }}">{% if forloop.first %}Data de expiração{% else %}Horário de expiração{% endif %}</label>
+      <input type="{{ part.type }}" name="{{ part.name }}" id="{{ part.attrs.id }}" value="{{ part.value|default_if_none:'' }}" class="form-control" aria-describedby="{{ field.auto_id }}_helptext" {% if part.type == 'time' %}step="60"{% endif %} {% if field.errors %}aria-invalid="true"{% endif %}>
+    </div>
+    {% endfor %}{% endfor %}
+  </div>
+  <div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>
+  {{ field.errors }}
+</fieldset>

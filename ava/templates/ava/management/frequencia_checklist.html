@@ -10,12 +10,14 @@
 <section class="card card-body mb-4">
   <h2 class="h4">Registro da presença</h2>
   <p>Para lançar uma presença retroativa, marque a opção abaixo, informe a data em que o encontro ocorreu e selecione os alunos que compareceram. Ao salvar, a lista nominal de presentes será exibida.</p>
-  <p>Para usar o link ou QR Code durante a reunião, abra o link e informe sua validade. O aluno seleciona seu nome para confirmar a presença.</p>
+  <p>Para usar o link ou QR Code durante a reunião, abra o link e escolha a data e o horário de expiração. O aluno seleciona seu nome para confirmar a presença.</p>
+  <p class="small fw-semibold">{% if encontro.link_aberto and encontro.link_expira_em %}Prazo do link: {{ encontro.link_expira_em|date:'d/m/Y' }} às {{ encontro.link_expira_em|date:'H:i' }} (horário local).{% else %}O link de presença está fechado.{% endif %}</p>
   <label for="link-presenca">Link de presença</label>
   <input id="link-presenca" class="form-control" type="text" readonly value="{{ link_presenca }}" onclick="this.select()">
 </section>
 <form method="post" class="card card-body">
-  {% csrf_token %}{{ form.as_p }}
+  {% csrf_token %}
+  {% include 'ava/management/encontro_campos.html' %}
   <h2 class="h4">Lista de cursistas</h2>
   <p>Marque os presentes e salve a chamada. Cursistas desmarcados ficam ausentes. Marque “Encontro realizado” para incluí-lo no cálculo da frequência.</p>
   <div class="table-responsive"><table class="table align-middle">

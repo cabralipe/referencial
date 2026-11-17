@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from ava.models import AutorizacaoCurso, Curso, DiarioBordo, EncontroCurso, MatriculaCurso, PresencaCurso, PresencaLinkDispositivo, RepasseFrequencia
+from ava.forms_attendance import LinkExpirationField
 from ava.services.attendance_service import (
     matriculas_do_curso,
     registrar_presenca,
@@ -27,7 +28,22 @@ from ava.services.audit_service import AVAAuditService
 
 
 class EncontroForm(forms.ModelForm):
+    link_expira_em = LinkExpirationField()
+
     def __init__(self, *args, **kwargs):
+        # Preserve requests from clients using the former datetime-local input.
+        if args and args[0] is not None and args[0].get("link_expira_em") and "link_expira_em_0" not in args[0]:
+            data = args[0].copy()
+            try:
+                value = forms.DateTimeField(required=False).clean(data["link_expira_em"])
+            except forms.ValidationError:
+                value = None
+                data["link_expira_em_0"] = data["link_expira_em"]
+            if value:
+                value = timezone.localtime(value)
+                data["link_expira_em_0"] = value.strftime("%Y-%m-%d")
+                data["link_expira_em_1"] = value.strftime("%H:%M:%S")
+            args = (data, *args[1:])
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = (
@@ -48,9 +64,6 @@ class EncontroForm(forms.ModelForm):
         ]
         widgets: ClassVar = {
             "data_aula": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
-            "link_expira_em": forms.DateTimeInput(
-                format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local"}
-            ),
         }
 
     def clean(self):
@@ -71,7 +84,7 @@ class EncontroForm(forms.ModelForm):
             not data.get("link_expira_em") or data["link_expira_em"] <= timezone.now()
         ):
             self.add_error(
-                "link_expira_em", "Para abrir o link, informe um prazo futuro."
+                "link_expira_em", "Para abrir o link, informe uma data e um horário futuros."
             )
         return data
 

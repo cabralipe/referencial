@@ -4,8 +4,7 @@
 
 {% block content %}
 <section class="section-hero py-5 ava-catalog-hero">
-    <div class="container text-center py-2">
-        <span class="badge text-bg-light mb-3">Formação continuada</span>
+    <div class="container py-2">
         <h1 class="display-5 fw-bold text-white">Trilhas e cursos PROLUC</h1>
         <p class="lead text-white-50 mb-0">Percursos organizados para desenvolvimento profissional com clareza e
             acompanhamento.</p>
@@ -49,11 +48,10 @@
 
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="h4 fw-bold mb-0">Cursos livres</h2>
-        <span class="ava-chip px-3 py-2">Atualizado</span>
     </div>
 
     {% if eixos %}
-    <form method="get" class="ava-surface p-3 mb-4">
+    <form method="get" class="ava-catalog-filter pb-4 mb-4 border-bottom">
         <label for="catalogo-eixo" class="form-label fw-semibold mb-2">Filtrar por eixo</label>
         <div class="d-flex flex-column flex-md-row gap-2">
             <select id="catalogo-eixo" name="eixo" class="form-select">
@@ -130,11 +128,11 @@
 </div>
 
 <style>
-    .ava-catalog-hero { background: linear-gradient(120deg, #0f172a 0%, #1d4ed8 62%, #06b6d4 100%); }
-    .ava-catalog-hero .badge { font-weight: 700; letter-spacing: .03em; }
-    .ava-catalog-hero h1 { max-width: 760px; margin-inline: auto; }
-    .ava-surface { transition: transform .18s ease, box-shadow .18s ease; }
-    .ava-surface:hover { transform: translateY(-3px); box-shadow: 0 20px 36px rgba(15, 23, 42, .12); }
+    .ava-catalog-hero h1 { max-width: 760px; }
+    .ava-catalog-hero .lead { max-width: 720px; font-size: 1.125rem; }
+    .ava-catalog-filter select { max-width: 32rem; }
+    .ava-catalog-filter .btn { align-self: start; }
+    .ava-surface:focus-within { border-color: var(--accent-primary); }
 </style>
 
 {% if eixos_pendente %}

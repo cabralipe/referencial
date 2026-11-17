@@ -1,0 +1,15 @@
+{{ form.non_field_errors }}
+{% for field in form %}
+<div class="mb-3">
+  {% if field.name == 'link_expira_em' %}
+  {% include 'ava/management/expiracao_campos.html' %}
+  {% elif field.field.widget.input_type == 'checkbox' %}
+  <div class="form-check">{{ field }}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+  {{ field.errors }}
+  {% else %}
+  <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}{{ field.errors }}
+  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endfor %}

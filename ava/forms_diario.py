@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
+
+from ava.forms_attendance import LinkExpirationField
 
 from ava.models import (
     Aula,
@@ -13,6 +16,7 @@ from ava.models import (
     DiarioBordo,
     DiarioBordoMidia,
     DiarioBordoParticipante,
+    EncontroCurso,
     ImportacaoPlanilha,
     ModeloPlanilha,
 )
@@ -41,6 +45,8 @@ class DiarioBordoForm(forms.ModelForm):
     Os campos exibidos mudam conforme a origem selecionada; o template usa
     ``data-origem-grupo`` para alternar os blocos sem recarregar a página.
     """
+
+    link_expira_em = LinkExpirationField()
 
     class Meta:
         model = DiarioBordo
@@ -96,6 +102,10 @@ class DiarioBordoForm(forms.ModelForm):
         self.user = user
         self.cliente = cliente
         self.criando = not bool(self.instance and self.instance.pk)
+        if not self.criando:
+            encontro = EncontroCurso.raw_objects.filter(diario=self.instance, is_deleted=False).first()
+            if encontro:
+                self.initial["link_expira_em"] = encontro.link_expira_em
 
         escolas = Escola.raw_objects.filter(
             cliente=cliente, is_deleted=False
@@ -170,6 +180,15 @@ class DiarioBordoForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        prazo = cleaned.get("link_expira_em")
+        if cleaned.get("modo_frequencia") != DiarioBordo.ModoFrequencia.LINK:
+            cleaned["link_expira_em"] = None
+            self._errors.pop("link_expira_em", None)
+        elif prazo and prazo <= timezone.now():
+            prazo_anterior = self.initial.get("link_expira_em")
+            # O controle de horário tem precisão de minutos, inclusive para links antigos.
+            if not prazo_anterior or prazo != prazo_anterior.replace(second=0, microsecond=0):
+                self.add_error("link_expira_em", "Informe uma data e um horário futuros para o link.")
         origem = cleaned.get("origem")
 
         # Campos desabilitados não chegam no POST; repõe a partir do usuário.
