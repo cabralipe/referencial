@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import F, Max
 from django.utils import timezone
 
-from ava.data.pne_2026 import CATEGORIAS_PNE
+from ava.data.pne_2026 import CATEGORIAS_PNE, ESTRATEGIAS_PNE
 from ava.models import CicloReferencial, InscricaoSalaGT, LinhaPlanoEducacao, ObjetivoReferencial, SalaGT
 from ava.services.gt_access import e_admin_referencial
 
@@ -55,14 +55,21 @@ def preparar_ciclo(ciclo):
             defaults={"participantes_editam_conteudo": True, "situacao": "em_andamento"},
         )
         principal, _ = LinhaPlanoEducacao.raw_objects.get_or_create(
-            cliente_id=ciclo.cliente_id, sala=sala, codigo=str(numero),
-            defaults={"tipo": "objetivo", "ordem": 0},
+            cliente_id=ciclo.cliente_id, sala=sala, codigo=str(numero), tipo="objetivo",
+            defaults={"ordem": 0},
         )
         for indice in range(1, quantidade + 1):
             LinhaPlanoEducacao.raw_objects.get_or_create(
-                cliente_id=ciclo.cliente_id, sala=sala, codigo=f"{numero}.{letra_meta(indice)}",
-                defaults={"tipo": "meta", "ordem": indice, "objetivo_relacionado": principal},
+                cliente_id=ciclo.cliente_id, sala=sala, codigo=f"{numero}.{letra_meta(indice)}", tipo="meta",
+                defaults={"ordem": indice, "objetivo_relacionado": principal},
             )
+        LinhaPlanoEducacao.raw_objects.bulk_create([
+            LinhaPlanoEducacao(
+                cliente_id=ciclo.cliente_id, sala=sala, codigo=f"{numero}.{indice}",
+                tipo="estrategia", ordem=indice, objetivo_relacionado=principal,
+            )
+            for indice in range(1, ESTRATEGIAS_PNE[numero - 1] + 1)
+        ], ignore_conflicts=True)
     ciclo.planilha_pne_preparada = True
     ciclo.save(update_fields=["planilha_pne_preparada", "updated_at"])
 
@@ -94,7 +101,7 @@ def linhas_da_sala(sala):
     principais = {linha.pk: linha for linha in linhas if linha.tipo == "objetivo"}
     return sorted(linhas, key=lambda linha: (
         principais[linha.objetivo_relacionado_id].ordem if linha.objetivo_relacionado_id in principais else linha.ordem,
-        0 if linha.tipo == "objetivo" else 1, linha.ordem, linha.pk,
+        {"objetivo": 0, "meta": 1, "estrategia": 2, "indicador": 3}[linha.tipo], linha.ordem, linha.pk,
     ))
 
 
@@ -103,6 +110,21 @@ def serializar(linha):
             "objetivo_id": linha.objetivo_relacionado_id, "texto": linha.texto, "revisao": linha.revisao,
             "autor": (linha.editado_por.nome or linha.editado_por.email) if linha.editado_por_id else "",
             "atualizado_em": linha.updated_at.isoformat()}
+
+
+def linhas_serializadas(sala):
+    linhas = linhas_da_sala(sala)
+    objetivos = {linha.pk: linha.rotulo for linha in linhas if linha.tipo == "objetivo"}
+    resultado = []
+    for indice, linha in enumerate(linhas):
+        grupo_id = linha.objetivo_relacionado_id or linha.pk
+        proxima = linhas[indice + 1] if indice + 1 < len(linhas) else None
+        dados = serializar(linha)
+        dados["grupo_id"] = grupo_id
+        dados["grupo_rotulo"] = objetivos[grupo_id]
+        dados["fim_objetivo"] = proxima is None or (proxima.objetivo_relacionado_id or proxima.pk) != grupo_id
+        resultado.append(dados)
+    return resultado
 
 
 @transaction.atomic
@@ -132,10 +154,10 @@ def adicionar_linha(sala, usuario, tipo, objetivo_id=None):
         ordem = (LinhaPlanoEducacao.raw_objects.filter(sala=sala, tipo="objetivo").aggregate(n=Max("ordem"))["n"] or 0) + 1
         codigo = f"{sala.objetivo.ordem}.{ordem + 1}"
         principal = None
-    elif tipo == "meta":
+    elif tipo in {"meta", "estrategia", "indicador"}:
         principal = LinhaPlanoEducacao.raw_objects.get(sala=sala, pk=objetivo_id, tipo="objetivo", is_deleted=False)
-        ordem = (LinhaPlanoEducacao.raw_objects.filter(sala=sala, objetivo_relacionado=principal).aggregate(n=Max("ordem"))["n"] or 0) + 1
-        codigo = f"{principal.codigo}.{letra_meta(ordem)}"
+        ordem = (LinhaPlanoEducacao.raw_objects.filter(sala=sala, objetivo_relacionado=principal, tipo=tipo).aggregate(n=Max("ordem"))["n"] or 0) + 1
+        codigo = f"{principal.codigo}.{letra_meta(ordem) if tipo == 'meta' else ordem}"
     else:
         raise ValidationError("Tipo de linha inválido.")
     return LinhaPlanoEducacao.raw_objects.create(

@@ -120,7 +120,7 @@
     }
   }
   function createRow(line) {
-    const row = document.createElement('tr'); row.dataset.linha = line.id;
+    const row = document.createElement('tr'); row.dataset.linha = line.id; row.dataset.tipo = line.tipo;
     if (line.tipo === 'objetivo') row.className = 'plano-objective';
     const th = document.createElement('th'); th.scope = 'row';
     const label = document.createElement('label'); label.htmlFor = `linha-${line.id}`; label.textContent = line.rotulo;
@@ -133,7 +133,8 @@
     const td = document.createElement('td');
     const input = document.createElement('textarea'); input.id = label.htmlFor;
     input.rows = 3; input.maxLength = 50000; input.readOnly = !editable;
-    input.placeholder = line.tipo === 'objetivo' ? 'Escreva o objetivo…' : 'Escreva o texto desta meta…';
+    input.placeholder = {objetivo: 'Escreva o objetivo…', meta: 'Escreva o texto desta meta…',
+      estrategia: 'Escreva o texto desta estratégia…', indicador: 'Escreva o texto deste indicador…'}[line.tipo];
     input.value = line.texto;
     const note = document.createElement('div'); note.className = 'plano-cell-status small text-muted'; note.setAttribute('role', 'status');
     const box = document.createElement('div'); box.className = 'plano-conflict'; box.hidden = true;
@@ -174,6 +175,29 @@
         tbody.insertBefore(row, next || null); register(line, row);
       } else if (!s.dirty && !s.saving && !s.conflict && line.revisao > s.revisao) applyRemote(s, line);
     }
+    refreshActions(lines);
+  }
+  function refreshActions(lines) {
+    if (!editable) return;
+    lines.filter(line => line.fim_objetivo).forEach(line => {
+      let actions = tbody.querySelector(`[data-grupo="${line.grupo_id}"]`);
+      if (!actions) {
+        actions = document.createElement('tr');
+        actions.className = 'plano-row-actions'; actions.dataset.grupo = line.grupo_id;
+        const cell = document.createElement('td'); cell.colSpan = 2;
+        const buttons = document.createElement('div'); buttons.className = 'd-flex flex-wrap gap-2';
+        for (const [tipo, rotulo] of [['estrategia', 'estratégia'], ['indicador', 'indicador']]) {
+          const button = document.createElement('button'); button.type = 'button';
+          button.className = 'btn btn-sm btn-outline-primary'; button.dataset.adicionar = tipo;
+          button.dataset.grupoId = line.grupo_id; button.textContent = `+ Adicionar ${rotulo}`;
+          button.setAttribute('aria-label', `Adicionar ${rotulo} ao ${line.grupo_rotulo}`);
+          buttons.append(button);
+        }
+        cell.append(buttons); actions.append(cell);
+      }
+      const last = tbody.querySelector(`[data-linha="${line.id}"]`);
+      if (last.nextElementSibling !== actions) last.after(actions);
+    });
   }
   function sync() {
     if (syncPromise) return syncPromise;
@@ -212,6 +236,8 @@
   }
   JSON.parse(document.getElementById('plano-dados').textContent).forEach(line => register(line, tbody.querySelector(`[data-linha="${line.id}"]`)));
   tbody.addEventListener('click', event => {
+    const action = event.target.closest('[data-adicionar]');
+    if (action) { add(action.dataset.adicionar, Number(action.dataset.grupoId)); return; }
     const button = event.target.closest('[data-objetivo]');
     if (button) add('meta', Number(button.dataset.objetivo));
   });

@@ -54,6 +54,7 @@ def catalogo(request):
     cliente, ciclo, ciclos = _ciclo(request)
     salas = _salas(ciclo).annotate(
         total_metas=Count("linhas_plano", filter=Q(linhas_plano__tipo="meta", linhas_plano__is_deleted=False), distinct=True),
+        total_estrategias=Count("linhas_plano", filter=Q(linhas_plano__tipo="estrategia", linhas_plano__is_deleted=False), distinct=True),
         preenchidas=Count("linhas_plano", filter=Q(linhas_plano__is_deleted=False) & ~Q(linhas_plano__texto=""), distinct=True),
         total_linhas=Count("linhas_plano", filter=Q(linhas_plano__is_deleted=False), distinct=True),
     )
@@ -76,7 +77,7 @@ def sala(request, sala_id):
         return gt.sala_trabalho(request, sala_id) if request.path.endswith('/trabalho/') else gt.sala_detalhe(request, sala_id)
     contexto = _contexto_sala(request, sala, "tabela")
     # A estrutura pode ser vista antes da inscrição; redações só após entrar.
-    linhas = [plano.serializar(linha) for linha in plano.linhas_da_sala(sala)]
+    linhas = plano.linhas_serializadas(sala)
     if not contexto["pode_ler"]:
         for linha in linhas:
             linha.update(texto="", autor="", revisao=0)
@@ -106,7 +107,7 @@ def celulas(request, sala_id):
     if sala.gt_id or not plano.pode_ler(request.user, sala):
         raise PermissionDenied
     if request.method == "GET":
-        return JsonResponse({"linhas": [plano.serializar(linha) for linha in plano.linhas_da_sala(sala)], "editavel": plano.pode_editar(request.user, sala)})
+        return JsonResponse({"linhas": plano.linhas_serializadas(sala), "editavel": plano.pode_editar(request.user, sala)})
     try:
         dados = json.loads(request.body)
         if not isinstance(dados, dict):
@@ -240,7 +241,7 @@ def exportar(request, sala_id=None):
                 documento.add_heading(f"{item.objetivo.ordem}) {item.objetivo.titulo}", level=1)
                 tabela = documento.add_table(rows=1, cols=2)
                 tabela.style = "Table Grid"
-                tabela.rows[0].cells[0].text = "Objetivos e metas"
+                tabela.rows[0].cells[0].text = "Objetivos, metas, estratégias e indicadores"
                 tabela.rows[0].cells[1].text = "Texto produzido"
                 for linha in plano.linhas_da_sala(item):
                     celulas = tabela.add_row().cells

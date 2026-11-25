@@ -17,13 +17,13 @@
     {% if e_admin_referencial %}<div class="d-flex flex-wrap gap-3 mt-3 small"><a href="{% url 'ava:gt_ciclo_novo' %}?municipio={{ cliente_atual.pk }}">+ Novo ciclo</a><a href="{% url 'ava:gt_ciclo_editar' ciclo_id=ciclo_atual.pk %}?municipio={{ cliente_atual.pk }}">Editar ciclo</a></div>{% endif %}
 </div>
 {% if ciclo_atual.descricao %}<p>{{ ciclo_atual.descricao }}</p>{% endif %}
-<div class="d-flex justify-content-between flex-wrap gap-2 mb-3 small text-muted"><span>{{ cartoes|length }} categorias · Objetivos e metas com campos vazios para preencher</span><a href="{{ fonte_pne }}" target="_blank" rel="noopener">Consultar documento nacional ↗</a></div>
+<div class="d-flex justify-content-between flex-wrap gap-2 mb-3 small text-muted"><span>{{ cartoes|length }} categorias · Objetivos, metas e estratégias para preencher</span><a href="{{ fonte_pne }}" target="_blank" rel="noopener">Consultar documento nacional ↗</a></div>
 <div class="plano-grid">
     {% for cartao in cartoes %}
     <a class="plano-card" href="{% url 'ava:gt_sala' sala_id=cartao.sala.pk %}">
         <div class="d-flex align-items-center justify-content-between gap-2 mb-3"><span class="plano-number">{{ cartao.sala.objetivo.ordem|stringformat:'02d' }}</span>{% if cartao.inscrito %}<span class="plano-badge">Você participa</span>{% endif %}</div>
         <h2 class="h6">{{ cartao.sala.objetivo.titulo }}</h2>
-        <div class="plano-card-bottom"><span>{{ cartao.sala.total_metas }} meta{{ cartao.sala.total_metas|pluralize }} · {{ cartao.sala.preenchidas }}/{{ cartao.sala.total_linhas }} campos preenchidos</span><span aria-hidden="true">↗</span></div>
+        <div class="plano-card-bottom"><span>{{ cartao.sala.total_metas }} meta{{ cartao.sala.total_metas|pluralize }} · {{ cartao.sala.total_estrategias }} estratégias<br>{{ cartao.sala.preenchidas }}/{{ cartao.sala.total_linhas }} campos preenchidos</span><span aria-hidden="true">↗</span></div>
     </a>
     {% empty %}<p class="text-muted">Nenhuma categoria encontrada para esta busca.</p>{% endfor %}
 </div>

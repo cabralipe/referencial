@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ava.data.pne_2026 import CATEGORIAS_PNE
+from ava.data.pne_2026 import CATEGORIAS_PNE, ESTRATEGIAS_PNE
 from ava.models import CicloReferencial, InscricaoSalaGT, LinhaPlanoEducacao, SalaGT
 from ava.services import plano_educacao_service as plano
 from core.models import Cliente
@@ -51,8 +51,13 @@ class PlanoEducacaoTests(TestCase):
             self.assertIsNone(sala.gt_id)
             self.assertEqual(sala.objetivo.titulo, titulo)
             linhas = plano.linhas_da_sala(sala)
-            self.assertEqual([l.rotulo for l in linhas], [f"Objetivo {numero}"] + [f"Meta {numero}.{chr(97+i)}" for i in range(total)])
+            self.assertEqual(
+                [l.rotulo for l in linhas],
+                [f"Objetivo {numero}"] + [f"Meta {numero}.{chr(97+i)}" for i in range(total)]
+                + [f"Estratégia {numero}.{i}" for i in range(1, ESTRATEGIAS_PNE[numero - 1] + 1)],
+            )
             self.assertTrue(all(l.texto == "" for l in linhas))
+        self.assertEqual(LinhaPlanoEducacao.raw_objects.filter(sala__ciclo=self.ciclo, tipo="estrategia").count(), 372)
         self.meta.texto = "Texto já escrito"
         self.meta.save()
         plano.preparar_ciclo(self.ciclo)
@@ -156,7 +161,7 @@ class PlanoEducacaoTests(TestCase):
         resposta = self.client.get(url, {"formato": "csv"})
         linhas = list(csv.reader(io.StringIO(resposta.content.decode("utf-8-sig")), delimiter=";"))
         self.assertEqual(linhas[2][2], "'=Fórmula;\nTexto com acentuação")
-        self.assertEqual(linhas[-1][1:], ["Meta 1.d", "Meta extra"])
+        self.assertIn([self.sala.objetivo.titulo, "Meta 1.d", "Meta extra"], linhas)
         docx = self.client.get(url, {"formato": "docx"})
         self.assertEqual(docx.status_code, 200)
         with zipfile.ZipFile(io.BytesIO(docx.content)) as pacote:
@@ -183,3 +188,61 @@ class PlanoEducacaoTests(TestCase):
         self.entrar()
         for dados in [{"id": self.meta.pk, "texto": "x", "revisao": True}, {"id": self.meta.pk, "texto": "a" * 50001, "revisao": 0}, {"id": self.meta.pk, "texto": "\u0000", "revisao": 0}, []]:
             self.assertEqual(self.api(dados).status_code, 400)
+
+    def test_estrategias_e_indicadores_numerados_abaixo_das_metas(self):
+        self.entrar()
+        estrategia = self.api({"acao": "adicionar", "tipo": "estrategia", "objetivo_id": self.principal.pk})
+        self.assertEqual(estrategia.status_code, 201)
+        self.assertEqual(estrategia.json()["linha"]["rotulo"], "Estratégia 1.14")
+        for numero in (1, 2):
+            resposta = self.api({"acao": "adicionar", "tipo": "indicador", "objetivo_id": self.principal.pk})
+            self.assertEqual(resposta.status_code, 201)
+            self.assertEqual(resposta.json()["linha"]["rotulo"], f"Indicador 1.{numero}")
+            self.assertEqual(resposta.json()["linha"]["texto"], "")
+        linhas = plano.linhas_da_sala(self.sala)
+        self.assertEqual([l.tipo for l in linhas], ["objetivo"] + ["meta"] * 3 + ["estrategia"] * 14 + ["indicador"] * 2)
+        self.assertEqual([l.rotulo for l in linhas[-3:]], ["Estratégia 1.14", "Indicador 1.1", "Indicador 1.2"])
+        self.assertEqual(len(plano.linhas_serializadas(self.sala)), len(linhas))
+        self.assertTrue(plano.linhas_serializadas(self.sala)[-1]["fim_objetivo"])
+        pagina = self.client.get(reverse("ava:gt_sala", args=[self.sala.pk]))
+        self.assertContains(pagina, "Adicionar indicador ao Objetivo 1")
+
+    def test_numeracao_independente_por_tipo_e_objetivo(self):
+        self.entrar()
+        objetivo = self.api({"acao": "adicionar", "tipo": "objetivo"}).json()["linha"]
+        # Objetivo 1.2, Estratégia 1.2 e Indicador 1.2 podem coexistir.
+        self.assertEqual(objetivo["codigo"], "1.2")
+        self.assertEqual(LinhaPlanoEducacao.raw_objects.filter(sala=self.sala, codigo="1.2").count(), 2)
+        for tipo, rotulo in [("estrategia", "Estratégia"), ("indicador", "Indicador")]:
+            resposta = self.api({"acao": "adicionar", "tipo": tipo, "objetivo_id": objetivo["id"]})
+            self.assertEqual(resposta.status_code, 201)
+            self.assertEqual(resposta.json()["linha"]["rotulo"], f"{rotulo} 1.2.1")
+        self.assertEqual(plano.linhas_da_sala(self.sala)[-1].rotulo, "Indicador 1.2.1")
+
+    def test_autosave_conflito_e_exportacao_dos_novos_tipos(self):
+        self.entrar()
+        estrategia = LinhaPlanoEducacao.raw_objects.get(sala=self.sala, tipo="estrategia", codigo="1.1")
+        indicador = self.api({"acao": "adicionar", "tipo": "indicador", "objetivo_id": self.principal.pk}).json()["linha"]
+        for linha_id, texto in [(estrategia.pk, "Estratégia produzida"), (indicador["id"], "Indicador produzido")]:
+            self.assertEqual(self.api({"id": linha_id, "texto": texto, "revisao": 0}).status_code, 200)
+            self.assertEqual(self.api({"id": linha_id, "texto": "Conflito", "revisao": 0}).status_code, 409)
+        url = reverse("ava:gt_sala_documentos", args=[self.sala.pk])
+        csv_exportado = self.client.get(url, {"formato": "csv"}).content.decode("utf-8-sig")
+        self.assertIn("Estratégia 1.1;Estratégia produzida", csv_exportado)
+        self.assertIn("Indicador 1.1;Indicador produzido", csv_exportado)
+        self.assertLess(csv_exportado.index("Meta 1.c"), csv_exportado.index("Estratégia 1.1"))
+        self.assertLess(csv_exportado.index("Estratégia 1.13"), csv_exportado.index("Indicador 1.1"))
+        with zipfile.ZipFile(io.BytesIO(self.client.get(url, {"formato": "docx"}).content)) as pacote:
+            xml = pacote.read("word/document.xml").decode()
+        self.assertIn("Estratégia produzida", xml)
+        self.assertIn("Indicador produzido", xml)
+
+    def test_novos_tipos_respeitam_permissoes_e_escopo(self):
+        self.entrar()
+        outra_sala = SalaGT.raw_objects.filter(ciclo=self.ciclo).exclude(pk=self.sala.pk).first()
+        outro_objetivo = LinhaPlanoEducacao.raw_objects.get(sala=outra_sala, tipo="objetivo")
+        for tipo in ["estrategia", "indicador"]:
+            self.assertEqual(self.api({"acao": "adicionar", "tipo": tipo, "objetivo_id": outro_objetivo.pk}).status_code, 404)
+        InscricaoSalaGT.raw_objects.filter(sala=self.sala, usuario=self.pessoa).update(papel="leitor")
+        for tipo in ["estrategia", "indicador"]:
+            self.assertEqual(self.api({"acao": "adicionar", "tipo": tipo, "objetivo_id": self.principal.pk}).status_code, 403)

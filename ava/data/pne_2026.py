@@ -1,7 +1,7 @@
 """Estrutura do Anexo I do PDF indicado. Os textos de produção começam vazios.
 
 Fonte: https://deg.unb.br/wp-content/uploads/plano_nacional_educacao_2026_2036.pdf
-Conferido em 25/11/2026, páginas 5–18. Não inclui estratégias nem o Anexo II.
+Conferido em 25/11/2026, páginas 5–18. Não inclui o Anexo II.
 Cada categoria tem um objetivo; as metas conservam as letras da fonte.
 """
 
@@ -28,3 +28,7 @@ CATEGORIAS_PNE = (
     ("Participação e Controle Social e Gestão Democrática na Educação Pública", 3),
     ("Financiamento e Infraestrutura da Educação", 6),
 )
+
+# Quantidade de estratégias por categoria, na ordem do Anexo I.
+# Conserva a numeração nacional: 1.1 a 1.13, 2.1 a 2.24 etc.
+ESTRATEGIAS_PNE = (13, 24, 16, 16, 26, 15, 20, 25, 24, 31, 25, 15, 14, 18, 16, 14, 28, 12, 20)

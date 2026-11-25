@@ -9,7 +9,10 @@ from core.mixins import TenantModel
 class LinhaPlanoEducacao(TenantModel):
     sala = models.ForeignKey("ava.SalaGT", on_delete=models.CASCADE, related_name="linhas_plano")
     codigo = models.CharField(max_length=30)
-    tipo = models.CharField(max_length=10, choices=[("objetivo", "Objetivo"), ("meta", "Meta")])
+    tipo = models.CharField(max_length=10, choices=[
+        ("objetivo", "Objetivo"), ("meta", "Meta"),
+        ("estrategia", "Estratégia"), ("indicador", "Indicador"),
+    ])
     ordem = models.PositiveIntegerField()
     objetivo_relacionado = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="metas_plano")
     texto = models.TextField(blank=True, default="")
@@ -18,7 +21,7 @@ class LinhaPlanoEducacao(TenantModel):
 
     class Meta:
         ordering = ["ordem", "id"]
-        constraints = [models.UniqueConstraint(fields=["sala", "codigo"], name="uniq_linha_plano_codigo")]
+        constraints = [models.UniqueConstraint(fields=["sala", "tipo", "codigo"], name="uniq_linha_plano_tipo_codigo")]
 
     @property
     def rotulo(self):

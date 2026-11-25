@@ -6,13 +6,21 @@
 {% endif %}
 <div id="plano-editor" data-endpoint="{% url 'ava:gt_plano_celulas' sala_id=sala.pk %}" data-editavel="{{ editavel|yesno:'true,false' }}" data-leitura="{{ pode_ler|yesno:'true,false' }}" data-user="{{ request.user.pk }}" data-sala="{{ sala.pk }}">
     {% csrf_token %}
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h2 class="h5 mb-0">Objetivos e metas</h2><span id="plano-status" role="status" aria-live="polite" class="small text-muted">{% if editavel %}Salvamento automático ativado{% elif pode_ler %}Somente leitura{% else %}Prévia da estrutura{% endif %}</span></div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h2 class="h5 mb-0">Objetivos, metas, estratégias e indicadores</h2><span id="plano-status" role="status" aria-live="polite" class="small text-muted">{% if editavel %}Salvamento automático ativado{% elif pode_ler %}Somente leitura{% else %}Prévia da estrutura{% endif %}</span></div>
     <p class="small text-muted">Preencha apenas o texto. {% if editavel %}As alterações são salvas enquanto você digita e compartilhadas com a sala.{% endif %}</p>
-    <div class="plano-table-wrap"><table class="plano-table"><caption class="visually-hidden">Tabela de objetivos e metas de {{ sala.objetivo.titulo }}</caption><thead><tr><th scope="col">Objetivos e metas</th><th scope="col">Texto produzido pela sala</th></tr></thead><tbody id="plano-linhas">
-    {% for linha in linhas %}<tr data-linha="{{ linha.id }}" class="{% if linha.tipo == 'objetivo' %}plano-objective{% endif %}"><th scope="row"><label for="linha-{{ linha.id }}">{{ linha.rotulo }}</label>{% if editavel and linha.tipo == 'objetivo' %}<button type="button" class="plano-add-meta" data-objetivo="{{ linha.id }}" aria-label="Adicionar meta ao {{ linha.rotulo }}">+ Meta</button>{% endif %}</th><td><textarea id="linha-{{ linha.id }}" rows="3" maxlength="50000" placeholder="{% if linha.tipo == 'objetivo' %}Escreva o objetivo…{% else %}Escreva o texto desta meta…{% endif %}" {% if not editavel %}readonly{% endif %}>{{ linha.texto }}</textarea><div class="plano-cell-status small text-muted" role="status"></div><div class="plano-conflict" hidden></div></td></tr>{% endfor %}
+    <div class="plano-table-wrap"><table class="plano-table"><caption class="visually-hidden">Tabela de objetivos, metas, estratégias e indicadores de {{ sala.objetivo.titulo }}</caption><thead><tr><th scope="col">Item</th><th scope="col">Texto produzido pela sala</th></tr></thead><tbody id="plano-linhas">
+    {% for linha in linhas %}
+    <tr data-linha="{{ linha.id }}" data-tipo="{{ linha.tipo }}" class="{% if linha.tipo == 'objetivo' %}plano-objective{% endif %}"><th scope="row"><label for="linha-{{ linha.id }}">{{ linha.rotulo }}</label>{% if editavel and linha.tipo == 'objetivo' %}<button type="button" class="plano-add-meta" data-objetivo="{{ linha.id }}" aria-label="Adicionar meta ao {{ linha.rotulo }}">+ Meta</button>{% endif %}</th><td><textarea id="linha-{{ linha.id }}" rows="3" maxlength="50000" placeholder="{% if linha.tipo == 'objetivo' %}Escreva o objetivo…{% elif linha.tipo == 'meta' %}Escreva o texto desta meta…{% elif linha.tipo == 'estrategia' %}Escreva o texto desta estratégia…{% else %}Escreva o texto deste indicador…{% endif %}" {% if not editavel %}readonly{% endif %}>{{ linha.texto }}</textarea><div class="plano-cell-status small text-muted" role="status"></div><div class="plano-conflict" hidden></div></td></tr>
+    {% if editavel and linha.fim_objetivo %}
+    <tr class="plano-row-actions" data-grupo="{{ linha.grupo_id }}"><td colspan="2"><div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" data-adicionar="estrategia" data-grupo-id="{{ linha.grupo_id }}" aria-label="Adicionar estratégia ao {{ linha.grupo_rotulo }}">+ Adicionar estratégia</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-adicionar="indicador" data-grupo-id="{{ linha.grupo_id }}" aria-label="Adicionar indicador ao {{ linha.grupo_rotulo }}">+ Adicionar indicador</button>
+    </div></td></tr>
+    {% endif %}
+    {% endfor %}
     </tbody></table></div>
     {% if editavel %}<div class="d-flex gap-3 flex-wrap mt-3"><button type="button" class="btn btn-outline-primary" id="plano-add-objective">+ Adicionar objetivo</button><button type="button" class="btn btn-outline-secondary" id="plano-retry" hidden>Tentar salvar novamente</button></div>{% endif %}
-    <p class="small text-muted mt-3 mb-0">A tabela começa com a quantidade de objetivos e metas do anexo nacional. Você pode acrescentar objetivos e metas nesta categoria.</p>
+    <p class="small text-muted mt-3 mb-0">A tabela começa com os objetivos, metas e estratégias numerados como no anexo nacional, com os textos vazios. Você pode acrescentar mais itens e adicionar indicadores abaixo das estratégias.</p>
     <noscript><p class="alert alert-warning mt-3">Ative o JavaScript para preencher a tabela e salvar automaticamente.</p></noscript>
 </div>
 {{ linhas|json_script:'plano-dados' }}
