@@ -1,0 +1,20 @@
+{% extends 'ava/plano/base.html' %}
+{% load static %}
+{% block plano_content %}
+{% if not pode_ler %}
+<div class="plano-callout mb-4"><div><h2 class="h6 mb-1">Entre na sala para produzir</h2><p class="small mb-0">A inscrição é imediata. Todos os participantes começam com permissão para editar.</p></div><form method="post" action="{% url 'ava:gt_inscricao_solicitar' sala_id=sala.pk %}">{% csrf_token %}{% if sala.editavel and sala.ciclo.ativo %}<button class="btn btn-primary" type="submit">Inscrever-se e começar</button>{% else %}<span>Sala encerrada</span>{% endif %}</form></div>
+{% endif %}
+<div id="plano-editor" data-endpoint="{% url 'ava:gt_plano_celulas' sala_id=sala.pk %}" data-editavel="{{ editavel|yesno:'true,false' }}" data-leitura="{{ pode_ler|yesno:'true,false' }}" data-user="{{ request.user.pk }}" data-sala="{{ sala.pk }}">
+    {% csrf_token %}
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h2 class="h5 mb-0">Objetivos e metas</h2><span id="plano-status" role="status" aria-live="polite" class="small text-muted">{% if editavel %}Salvamento automático ativado{% elif pode_ler %}Somente leitura{% else %}Prévia da estrutura{% endif %}</span></div>
+    <p class="small text-muted">Preencha apenas o texto. {% if editavel %}As alterações são salvas enquanto você digita e compartilhadas com a sala.{% endif %}</p>
+    <div class="plano-table-wrap"><table class="plano-table"><caption class="visually-hidden">Tabela de objetivos e metas de {{ sala.objetivo.titulo }}</caption><thead><tr><th scope="col">Objetivos e metas</th><th scope="col">Texto produzido pela sala</th></tr></thead><tbody id="plano-linhas">
+    {% for linha in linhas %}<tr data-linha="{{ linha.id }}" class="{% if linha.tipo == 'objetivo' %}plano-objective{% endif %}"><th scope="row"><label for="linha-{{ linha.id }}">{{ linha.rotulo }}</label>{% if editavel and linha.tipo == 'objetivo' %}<button type="button" class="plano-add-meta" data-objetivo="{{ linha.id }}" aria-label="Adicionar meta ao {{ linha.rotulo }}">+ Meta</button>{% endif %}</th><td><textarea id="linha-{{ linha.id }}" rows="3" maxlength="50000" placeholder="{% if linha.tipo == 'objetivo' %}Escreva o objetivo…{% else %}Escreva o texto desta meta…{% endif %}" {% if not editavel %}readonly{% endif %}>{{ linha.texto }}</textarea><div class="plano-cell-status small text-muted" role="status"></div><div class="plano-conflict" hidden></div></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if editavel %}<div class="d-flex gap-3 flex-wrap mt-3"><button type="button" class="btn btn-outline-primary" id="plano-add-objective">+ Adicionar objetivo</button><button type="button" class="btn btn-outline-secondary" id="plano-retry" hidden>Tentar salvar novamente</button></div>{% endif %}
+    <p class="small text-muted mt-3 mb-0">A tabela começa com a quantidade de objetivos e metas do anexo nacional. Você pode acrescentar objetivos e metas nesta categoria.</p>
+    <noscript><p class="alert alert-warning mt-3">Ative o JavaScript para preencher a tabela e salvar automaticamente.</p></noscript>
+</div>
+{{ linhas|json_script:'plano-dados' }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'ava/plano.js' %}" defer></script>{% endblock %}

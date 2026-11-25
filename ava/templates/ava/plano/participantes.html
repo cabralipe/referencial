@@ -1,0 +1,9 @@
+{% extends 'ava/plano/base.html' %}
+{% block plano_content %}
+{% if not sala %}<a class="small" href="{% url 'ava:gt_salas' %}?municipio={{ cliente_atual.pk }}&amp;ciclo={{ ciclo_atual.pk }}">← Categorias do ciclo</a>{% endif %}
+<h1 class="h4 mt-3">Participantes{% if not sala %} · {{ ciclo_atual.nome }}{% endif %}</h1>
+<p class="text-muted">Cada inscrição começa como editor. Defina o papel de cada pessoa em cada sala. Leitores podem consultar e exportar.</p>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Participante</th>{% if not sala %}<th>Categoria</th>{% endif %}<th>Inscrição</th><th>Papel na sala</th></tr></thead><tbody>
+{% for inscricao in inscricoes %}<tr><td><strong>{{ inscricao.usuario.nome|default:inscricao.usuario.email }}</strong><div class="small text-muted">{{ inscricao.usuario.email }}</div></td>{% if not sala %}<td><a href="{% url 'ava:gt_sala' sala_id=inscricao.sala_id %}">{{ inscricao.sala.objetivo.ordem }}) {{ inscricao.sala.objetivo.titulo }}</a></td>{% endif %}<td class="small">{{ inscricao.solicitada_em|date:'d/m/Y H:i' }}</td><td><form method="post" action="{% url 'ava:gt_plano_papel' sala_id=inscricao.sala_id inscricao_id=inscricao.pk %}" class="d-flex gap-2">{% csrf_token %}<select name="papel" class="form-select form-select-sm" aria-label="Papel de {{ inscricao.usuario.nome }} em {{ inscricao.sala.objetivo.titulo }}">{% for valor, rotulo in papel_choices %}<option value="{{ valor }}" {% if valor == inscricao.papel %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select><button type="submit" class="btn btn-sm btn-outline-primary">Salvar</button></form></td></tr>{% empty %}<tr><td colspan="4" class="text-muted py-4">Ainda não há participantes inscritos.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

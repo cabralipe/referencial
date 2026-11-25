@@ -1,0 +1,7 @@
+{% extends 'ava/plano/base.html' %}
+{% block plano_content %}
+{% if not sala %}<a class="small" href="{% url 'ava:gt_salas' %}?municipio={{ cliente_atual.pk }}&amp;ciclo={{ ciclo_atual.pk }}">← Categorias do ciclo</a>{% endif %}
+<div class="plano-toolbar mt-3"><h1 class="h4">Exportar trabalho</h1><p class="text-muted">Baixe o texto salvo, incluindo os objetivos e metas acrescentados pela sala. A exportação não exige aprovação.</p>
+{% if salas_exportar %}<div class="d-flex flex-wrap gap-2 mb-4"><a class="btn btn-primary" href="?municipio={{ cliente_atual.pk }}&amp;ciclo={{ ciclo_atual.pk }}&amp;formato=docx">Baixar Word (.docx)</a><a class="btn btn-outline-primary" href="?municipio={{ cliente_atual.pk }}&amp;ciclo={{ ciclo_atual.pk }}&amp;formato=csv">Baixar planilha (.csv)</a></div><p class="small text-muted">{% if sala %}Categoria incluída:{% elif e_admin_referencial %}Todas as categorias deste ciclo:{% else %}Categorias em que você está inscrito neste ciclo:{% endif %}</p><ul class="mb-0">{% for item in salas_exportar %}<li>{{ item.objetivo.ordem }}) {{ item.objetivo.titulo }}</li>{% endfor %}</ul>{% else %}<p>Inscreva-se em uma sala para começar a produzir e exportar o trabalho.</p>{% endif %}
+</div>
+{% endblock %}

@@ -436,7 +436,7 @@ class ApiEUrlsTests(SalaGTBaseTests):
         self.client.force_login(self.externo)
         resposta = self.client.get(reverse("ava:gt_salas"))
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Objetivo 01")
+        self.assertContains(resposta, "Acesso à Educação Infantil")
 
     def test_participante_nao_abre_area_administrativa(self):
         self.client.force_login(self.participante)

@@ -591,6 +591,8 @@ class SalaGTService:
         apenas reflete nele quem foi confirmado, sem criar um segundo cadastro.
         """
 
+        if not sala.gt_id:
+            return
         confirmados = set(
             InscricaoSalaGT.raw_objects.filter(
                 is_deleted=False, sala_id=sala.pk, estado=InscricaoSalaGT.Estado.CONFIRMADA

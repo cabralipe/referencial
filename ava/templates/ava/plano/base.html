@@ -1,0 +1,22 @@
+{% extends 'ava/base.html' %}
+{% load static %}
+{% block title %}Plano de Educação · AVA PROLUC{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'ava/plano.css' %}">
+{% endblock %}
+{% block content %}
+<section class="container plano-page py-4 py-lg-5">
+    <div class="plano-eyebrow mb-2">CONSTRUÇÃO COLABORATIVA · {{ cliente_atual.nome }}</div>
+    {% if sala %}
+    <a class="small d-inline-block mb-3" href="{% url 'ava:gt_salas' %}?municipio={{ sala.cliente_id }}&amp;ciclo={{ sala.ciclo_id }}">← Todos os objetivos</a>
+    <h1 class="h3 mb-2">{{ sala.objetivo.ordem }}) {{ sala.objetivo.titulo }}</h1>
+    <p class="text-muted mb-4">{{ sala.ciclo.nome }} · Escreva com os demais participantes da sala.</p>
+    <nav class="plano-tabs mb-4" aria-label="Sala de produção">
+        <a class="{% if aba == 'tabela' %}active{% endif %}" href="{% url 'ava:gt_sala_trabalho' sala_id=sala.pk %}" {% if aba == 'tabela' %}aria-current="page"{% endif %}>Tabela</a>
+        {% if pode_ler %}<a class="{% if aba == 'exportar' %}active{% endif %}" href="{% url 'ava:gt_sala_documentos' sala_id=sala.pk %}" {% if aba == 'exportar' %}aria-current="page"{% endif %}>Exportar trabalho</a>{% endif %}
+        {% if e_admin_referencial %}<a class="{% if aba == 'participantes' %}active{% endif %}" href="{% url 'ava:gt_sala_inscricoes' sala_id=sala.pk %}" {% if aba == 'participantes' %}aria-current="page"{% endif %}>Participantes</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% block plano_content %}{% endblock %}
+</section>
+{% endblock %}

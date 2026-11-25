@@ -1,4 +1,5 @@
 from ava.models.course import TrilhaFormativa, CursoCategoria, Curso
+from ava.models.plano_educacao import LinhaPlanoEducacao
 from ava.models.module import CursoModulo
 from ava.models.lesson import Aula, ConteudoAula
 from ava.models.activity import (
@@ -46,6 +47,7 @@ from ava.models.planilha import (
 )
 
 __all__ = [
+    "LinhaPlanoEducacao",
     "TrilhaFormativa",
     "CursoCategoria",
     "Curso",

@@ -74,6 +74,7 @@ class CicloReferencial(TenantModel):
         default=False,
     )
     ativo = models.BooleanField("Ciclo ativo", default=True)
+    planilha_pne_preparada = models.BooleanField(default=False, editable=False)
 
     class Meta:
         verbose_name = "Ciclo do Referencial"
@@ -171,7 +172,7 @@ class ObjetivoReferencial(TenantModel):
 
 
 class SalaGT(TenantModel):
-    """Sala de trabalho: um GT existente trabalhando um objetivo em um ciclo."""
+    """Sala de um objetivo por ciclo. O vínculo com GT é opcional no plano simples."""
 
     class Situacao(models.TextChoices):
         PLANEJAMENTO = "planejamento", "Em planejamento"
@@ -200,6 +201,8 @@ class SalaGT(TenantModel):
         related_name="salas_referencial",
         verbose_name="Grupo de Trabalho",
         help_text="Reaproveita o GT já cadastrado no Referencial.",
+        null=True,
+        blank=True,
     )
 
     capacidade = models.PositiveIntegerField(
@@ -279,7 +282,7 @@ class SalaGT(TenantModel):
         ]
 
     def __str__(self) -> str:  # pragma: no cover
-        return f"{self.objetivo.codigo} · {self.gt.nome}"
+        return f"{self.objetivo.codigo} · {self.objetivo.titulo}"
 
     def clean(self):
         super().clean()

@@ -1,0 +1,30 @@
+{% extends 'ava/plano/base.html' %}
+{% block plano_content %}
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+    <div><h1 class="h2 mb-2">Plano de Educação</h1><p class="text-muted mb-0">Escolha uma categoria, entre na sala e comece a escrever.</p></div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if e_admin_referencial %}<a class="btn btn-outline-secondary" href="{% url 'ava:gt_participantes' %}?municipio={{ cliente_atual.id }}&amp;ciclo={{ ciclo_atual.pk }}">Participantes</a>{% endif %}
+        <a class="btn btn-primary" href="{% url 'ava:gt_exportar' %}?municipio={{ cliente_atual.id }}&amp;ciclo={{ ciclo_atual.pk }}">Exportar trabalho</a>
+    </div>
+</div>
+<div class="plano-toolbar mb-4">
+    <form method="get" class="plano-filters">
+        {% if pode_gerir_multiplos_avas %}<div><label for="municipio" class="form-label small">Município</label><select id="municipio" name="municipio" class="form-select">{% for municipio in municipios_ava %}<option value="{{ municipio.id }}" {% if municipio.id == cliente_atual.id %}selected{% endif %}>{{ municipio.nome }}</option>{% endfor %}</select></div>{% else %}<input type="hidden" name="municipio" value="{{ cliente_atual.id }}">{% endif %}
+        <div><label class="form-label small" for="ciclo">Ciclo de trabalho</label><select id="ciclo" name="ciclo" class="form-select">{% for ciclo in ciclos %}<option value="{{ ciclo.pk }}" {% if ciclo.pk == ciclo_atual.pk %}selected{% endif %}>{{ ciclo.nome }}{% if not ciclo.ativo %} (encerrado){% endif %}</option>{% endfor %}</select></div>
+        <div class="plano-search"><label class="form-label small" for="q">Buscar categoria</label><input class="form-control" id="q" name="q" value="{{ busca }}" placeholder="Nome da categoria"></div>
+        <button class="btn btn-outline-primary" type="submit">Mostrar</button>
+    </form>
+    {% if e_admin_referencial %}<div class="d-flex flex-wrap gap-3 mt-3 small"><a href="{% url 'ava:gt_ciclo_novo' %}?municipio={{ cliente_atual.pk }}">+ Novo ciclo</a><a href="{% url 'ava:gt_ciclo_editar' ciclo_id=ciclo_atual.pk %}?municipio={{ cliente_atual.pk }}">Editar ciclo</a></div>{% endif %}
+</div>
+{% if ciclo_atual.descricao %}<p>{{ ciclo_atual.descricao }}</p>{% endif %}
+<div class="d-flex justify-content-between flex-wrap gap-2 mb-3 small text-muted"><span>{{ cartoes|length }} categorias · Objetivos e metas com campos vazios para preencher</span><a href="{{ fonte_pne }}" target="_blank" rel="noopener">Consultar documento nacional ↗</a></div>
+<div class="plano-grid">
+    {% for cartao in cartoes %}
+    <a class="plano-card" href="{% url 'ava:gt_sala' sala_id=cartao.sala.pk %}">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3"><span class="plano-number">{{ cartao.sala.objetivo.ordem|stringformat:'02d' }}</span>{% if cartao.inscrito %}<span class="plano-badge">Você participa</span>{% endif %}</div>
+        <h2 class="h6">{{ cartao.sala.objetivo.titulo }}</h2>
+        <div class="plano-card-bottom"><span>{{ cartao.sala.total_metas }} meta{{ cartao.sala.total_metas|pluralize }} · {{ cartao.sala.preenchidas }}/{{ cartao.sala.total_linhas }} campos preenchidos</span><span aria-hidden="true">↗</span></div>
+    </a>
+    {% empty %}<p class="text-muted">Nenhuma categoria encontrada para esta busca.</p>{% endfor %}
+</div>
+{% endblock %}

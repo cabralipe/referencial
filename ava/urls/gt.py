@@ -3,20 +3,25 @@
 from django.urls import path
 
 from ava.views import gt
+from ava.views import plano_educacao as plano
 
 
 urlpatterns = [
     # --- Lista geral e sala ---
-    path("", gt.salas_lista, name="gt_salas"),
+    path("", plano.catalogo, name="gt_salas"),
+    path("participantes/", plano.participantes, name="gt_participantes"),
+    path("exportar/", plano.exportar, name="gt_exportar"),
     path("acompanhamento/", gt.acompanhamento, name="gt_acompanhamento"),
-    path("<int:sala_id>/", gt.sala_detalhe, name="gt_sala"),
-    path("<int:sala_id>/trabalho/", gt.sala_trabalho, name="gt_sala_trabalho"),
-    path("<int:sala_id>/inscricoes/", gt.sala_inscricoes, name="gt_sala_inscricoes"),
+    path("<int:sala_id>/", plano.sala, name="gt_sala"),
+    path("<int:sala_id>/trabalho/", plano.sala, name="gt_sala_trabalho"),
+    path("<int:sala_id>/planilha/", plano.celulas, name="gt_plano_celulas"),
+    path("<int:sala_id>/inscricoes/", plano.participantes, name="gt_sala_inscricoes"),
+    path("<int:sala_id>/participantes/<int:inscricao_id>/papel/", plano.papel, name="gt_plano_papel"),
     path("<int:sala_id>/reunioes/", gt.sala_reunioes, name="gt_sala_reunioes"),
-    path("<int:sala_id>/documentos/", gt.sala_documentos, name="gt_sala_documentos"),
+    path("<int:sala_id>/documentos/", plano.exportar, name="gt_sala_documentos"),
 
     # --- Inscrição ---
-    path("<int:sala_id>/inscrever/", gt.inscricao_solicitar, name="gt_inscricao_solicitar"),
+    path("<int:sala_id>/inscrever/", plano.entrar, name="gt_inscricao_solicitar"),
     path("<int:sala_id>/desistir/", gt.inscricao_desistir, name="gt_inscricao_desistir"),
     path("<int:sala_id>/inscricoes/nova/", gt.inscricao_manual, name="gt_inscricao_manual"),
     path(
@@ -109,9 +114,9 @@ urlpatterns = [
     path("documentos/<int:job_id>/arquivo/", gt.documento_download, name="gt_documento_download"),
 
     # --- Administração do Referencial ---
-    path("admin/", gt.admin_painel, name="gt_admin"),
-    path("admin/ciclos/novo/", gt.ciclo_form, name="gt_ciclo_novo"),
-    path("admin/ciclos/<int:ciclo_id>/editar/", gt.ciclo_form, name="gt_ciclo_editar"),
+    path("admin/", plano.participantes, name="gt_admin"),
+    path("admin/ciclos/novo/", plano.ciclo_form, name="gt_ciclo_novo"),
+    path("admin/ciclos/<int:ciclo_id>/editar/", plano.ciclo_form, name="gt_ciclo_editar"),
     path(
         "admin/ciclos/<int:ciclo_id>/gerar-salas/",
         gt.ciclo_gerar_salas,
