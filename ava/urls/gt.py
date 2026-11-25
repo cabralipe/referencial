@@ -11,6 +11,7 @@ urlpatterns = [
     path("", plano.catalogo, name="gt_salas"),
     path("participantes/", plano.participantes, name="gt_participantes"),
     path("exportar/", plano.exportar, name="gt_exportar"),
+    path("materiais/<int:material_id>/anexo/", plano.material_download, name="gt_material_download"),
     path("acompanhamento/", gt.acompanhamento, name="gt_acompanhamento"),
     path("<int:sala_id>/", plano.sala, name="gt_sala"),
     path("<int:sala_id>/trabalho/", plano.sala, name="gt_sala_trabalho"),

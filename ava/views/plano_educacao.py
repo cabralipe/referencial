@@ -3,13 +3,15 @@
 import csv
 import io
 import json
+import mimetypes
+from pathlib import Path
 
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Count, Q
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -18,11 +20,11 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST, require_http_methods
 
 from ava.data.pne_2026 import FONTE_PNE
-from ava.models import CicloReferencial, InscricaoSalaGT, LinhaPlanoEducacao, SalaGT
+from ava.models import CicloReferencial, InscricaoSalaGT, LinhaPlanoEducacao, MaterialReferenciaPlano, SalaGT
 from ava.services import plano_educacao_service as plano
 from ava.services.gt_access import e_admin_referencial
 from ava.services.gt_sala_service import SalaGTService
-from ava.views.gt import _cliente_atual, _ciclo_atual, _contexto_base, _obter_sala, gt_required, gt_admin_required
+from ava.views.gt import _cliente_atual, _cliente_ids, _ciclo_atual, _contexto_base, _obter_sala, gt_required, gt_admin_required
 
 
 def _ciclo(request):
@@ -64,8 +66,39 @@ def catalogo(request):
     minhas = set(InscricaoSalaGT.raw_objects.filter(usuario=request.user, sala__ciclo=ciclo, is_deleted=False, estado="confirmada").values_list("sala_id", flat=True))
     cartoes = [{"sala": sala, "inscrito": sala.pk in minhas} for sala in salas]
     contexto = _contexto_base(request, cliente)
-    contexto.update(ciclo_atual=ciclo, ciclos=ciclos, cartoes=cartoes, busca=busca, fonte_pne=FONTE_PNE)
+    materiais = MaterialReferenciaPlano.raw_objects.filter(
+        cliente=cliente, is_deleted=False, ativo=True,
+    ).filter(Q(ciclo__isnull=True) | Q(ciclo=ciclo))
+    contexto.update(ciclo_atual=ciclo, ciclos=ciclos, cartoes=cartoes, busca=busca,
+                    fonte_pne=FONTE_PNE, materiais_referencia=materiais)
     return render(request, "ava/plano/catalogo.html", contexto)
+
+
+@gt_required
+@never_cache
+def material_download(request, material_id):
+    materiais = MaterialReferenciaPlano.raw_objects.filter(
+        cliente_id__in=_cliente_ids(request.user), is_deleted=False,
+    ).filter(Q(ciclo__isnull=True) | Q(ciclo__is_deleted=False))
+    if not e_admin_referencial(request.user):
+        materiais = materiais.filter(ativo=True)
+    material = get_object_or_404(
+        materiais,
+        pk=material_id,
+    )
+    if not material.arquivo:
+        raise Http404("Este material não possui anexo.")
+    try:
+        arquivo = material.arquivo.open("rb")
+    except (FileNotFoundError, OSError) as exc:
+        raise Http404("Anexo não encontrado.") from exc
+    nome = material.nome_original or Path(material.arquivo.name).name
+    resposta = FileResponse(
+        arquivo, as_attachment=True, filename=nome,
+        content_type=mimetypes.guess_type(nome)[0] or "application/octet-stream",
+    )
+    resposta["X-Content-Type-Options"] = "nosniff"
+    return resposta
 
 
 @gt_required

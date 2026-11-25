@@ -17,7 +17,19 @@
     {% if e_admin_referencial %}<div class="d-flex flex-wrap gap-3 mt-3 small"><a href="{% url 'ava:gt_ciclo_novo' %}?municipio={{ cliente_atual.pk }}">+ Novo ciclo</a><a href="{% url 'ava:gt_ciclo_editar' ciclo_id=ciclo_atual.pk %}?municipio={{ cliente_atual.pk }}">Editar ciclo</a></div>{% endif %}
 </div>
 {% if ciclo_atual.descricao %}<p>{{ ciclo_atual.descricao }}</p>{% endif %}
-<div class="d-flex justify-content-between flex-wrap gap-2 mb-3 small text-muted"><span>{{ cartoes|length }} categorias · Objetivos, metas e estratégias para preencher</span><a href="{{ fonte_pne }}" target="_blank" rel="noopener">Consultar documento nacional ↗</a></div>
+<div class="d-flex justify-content-between flex-wrap gap-2 mb-3 small text-muted">
+    <span>{{ cartoes|length }} categorias · Objetivos, metas e estratégias para preencher</span>
+    <nav class="d-flex flex-wrap gap-2 gap-md-3 plano-reference-links" aria-label="Materiais de referência">
+        <a href="{{ fonte_pne }}" target="_blank" rel="noopener">Consultar documento nacional ↗</a>
+        {% for material in materiais_referencia %}
+        <span>
+            {% if material.link %}<a href="{{ material.link }}" target="_blank" rel="noopener">{{ material.titulo }} ↗</a>{% endif %}
+            {% if material.arquivo %}<a href="{% url 'ava:gt_material_download' material_id=material.pk %}" aria-label="Baixar anexo de {{ material.titulo }}">{% if material.link %}Anexo ↓{% else %}{{ material.titulo }} ↓{% endif %}</a>{% endif %}
+        </span>
+        {% endfor %}
+        {% if e_admin_referencial and request.user.is_staff %}<a href="{% url 'admin:ava_materialreferenciaplano_changelist' %}">Gerenciar materiais</a>{% endif %}
+    </nav>
+</div>
 <div class="plano-grid">
     {% for cartao in cartoes %}
     <a class="plano-card" href="{% url 'ava:gt_sala' sala_id=cartao.sala.pk %}">

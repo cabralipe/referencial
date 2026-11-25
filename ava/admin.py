@@ -2,6 +2,7 @@ import json
 import logging
 import zipfile
 from tempfile import SpooledTemporaryFile
+from types import SimpleNamespace
 
 from django import forms
 from django.contrib import admin, messages
@@ -50,6 +51,7 @@ from .models import (
     InscricaoSalaGT,
     MatriculaCurso,
     MatriculaTrilha,
+    MaterialReferenciaPlano,
     MetaGT,
     ModeloAtaGT,
     ModeloPlanilha,
@@ -1574,6 +1576,55 @@ class ImportacaoPlanilhaAdmin(AVAModelAdmin):
 # ----------------------------------------------------------------------
 # Salas de GT do Referencial
 # ----------------------------------------------------------------------
+
+
+class MaterialPlanoArquivoValue(SimpleNamespace):
+    def __str__(self):
+        return self.name
+
+
+class MaterialPlanoArquivoWidget(forms.ClearableFileInput):
+    def is_initial(self, value):
+        return bool(value and getattr(value, "name", None) and getattr(getattr(value, "instance", None), "pk", None))
+
+    def format_value(self, value):
+        if self.is_initial(value):
+            return MaterialPlanoArquivoValue(
+                name=value.instance.nome_original or value.name.rsplit("/", 1)[-1],
+                url=reverse("ava:gt_material_download", args=[value.instance.pk]),
+            )
+
+
+class MaterialReferenciaPlanoForm(forms.ModelForm):
+    class Meta:
+        model = MaterialReferenciaPlano
+        fields = "__all__"
+        widgets = {"arquivo": MaterialPlanoArquivoWidget}
+
+
+@admin.register(MaterialReferenciaPlano)
+class MaterialReferenciaPlanoAdmin(AVAModelAdmin):
+    form = MaterialReferenciaPlanoForm
+    list_display = ("titulo", "cliente", "ciclo", "link", "ordem", "ativo")
+    list_editable = ("ordem", "ativo")
+    list_filter = ("ativo",)
+    search_fields = ("titulo", "link", "ciclo__nome")
+
+    def get_fields(self, request, obj=None):
+        campos = ["titulo", "ciclo", "link", "arquivo", "ordem", "ativo"]
+        return ["cliente", *campos] if self._is_super_admin(request) else campos
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form_class = super().get_form(request, obj, change=change, **kwargs)
+        if self._is_super_admin(request):
+            return form_class
+
+        class MaterialMunicipioForm(form_class):
+            def __init__(self, *args, **form_kwargs):
+                super().__init__(*args, **form_kwargs)
+                self.instance.cliente_id = request.user.cliente_id
+
+        return MaterialMunicipioForm
 
 
 @admin.register(CicloReferencial)
